@@ -15,6 +15,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { matchesKey } from "@earendil-works/pi-tui";
 import { frameLines } from "@xynogen/pix-pretty/modal-frame";
 import type { OptimizerHandle, OptimizerStatus, OptimizerTool } from "./status.ts";
 import { toolIcon } from "./status.ts";
@@ -166,12 +167,12 @@ export function registerOptCommand(
 						},
 						invalidate: () => {},
 						handleInput: (data: string) => {
-							if (data === "k" || data === "\u001b[A") move(-1);
-							else if (data === "j" || data === "\u001b[B") move(1);
-							else if (data === "h" || data === "\u001b[D") cycle(-1);
-							else if (data === "l" || data === "\u001b[C" || data === " " || data === "\r")
+							if (data === "k" || matchesKey(data, "up")) move(-1);
+							else if (data === "j" || matchesKey(data, "down")) move(1);
+							else if (data === "h" || matchesKey(data, "left")) cycle(-1);
+							else if (data === "l" || matchesKey(data, "right") || data === " " || data === "\r")
 								cycle(1);
-							else if (data === "\u001b" || data === "q") {
+							else if (matchesKey(data, "escape") || data === "q") {
 								done(null);
 								return;
 							} else return;
