@@ -100,7 +100,7 @@ export interface OverlayUI {
 			kb: unknown,
 			done: (v: T) => void,
 		) => OverlayComponent,
-		opts?: { overlay?: boolean },
+		opts?: { overlay?: boolean; overlayOptions?: { maxHeight?: number | `${number}%` } },
 	): Promise<T | undefined>;
 }
 
@@ -355,7 +355,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 					},
 				};
 			},
-			{ overlay: true },
+			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
 		).then((result) => {
 			resolve(result ?? { action: "denied" });
 		});

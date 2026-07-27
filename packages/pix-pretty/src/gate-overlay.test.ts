@@ -27,7 +27,10 @@ interface Wired {
  * the SelectList keys; simpler: we expose the live component so the test can
  * call its handlers. We do the latter via the captured component ref.
  */
-function makeUI(onReady: (comp: Wired, finish: (v: unknown) => void) => void): OverlayUI {
+function makeUI(
+	onReady: (comp: Wired, finish: (v: unknown) => void) => void,
+	onOptions?: (options: unknown) => void,
+): OverlayUI {
 	return {
 		custom: async <T>(
 			cb: (
@@ -36,7 +39,9 @@ function makeUI(onReady: (comp: Wired, finish: (v: unknown) => void) => void): O
 				kb: unknown,
 				done: (v: T) => void,
 			) => Wired,
+			options?: unknown,
 		): Promise<T | undefined> => {
+			onOptions?.(options);
 			let resolved: T | undefined;
 			const done = (v: T) => {
 				resolved = v;
@@ -55,6 +60,20 @@ const ENTER = "\r";
 const DOWN = "\x1b[B";
 
 describe("showOverlay — confirm mode", () => {
+	test("caps overlay at 80% of terminal height", async () => {
+		let options: unknown;
+		await showOverlay(
+			makeUI(
+				(comp) => comp.handleInput(ENTER),
+				(value) => {
+					options = value;
+				},
+			),
+			{ mode: "confirm", title: "T" },
+		);
+		expect(options).toEqual({ overlay: true, overlayOptions: { maxHeight: "80%" } });
+	});
+
 	test("selecting the approve choice (first) returns approved", async () => {
 		const result = await showOverlay(
 			makeUI((comp) => {
