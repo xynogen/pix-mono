@@ -38,7 +38,7 @@ function readJson(path: string): Record<string, unknown> {
 
 let cliModuleId = 0;
 function importCli() {
-	return import(`../cli.js?bun-test=${cliModuleId++}`) as Promise<typeof import("../cli.js")>;
+	return import(`../cli.ts?bun-test=${cliModuleId++}`) as Promise<typeof import("../cli.ts")>;
 }
 
 describe("cli init helper", () => {
@@ -126,7 +126,7 @@ describe("cli init helper", () => {
 		const home = mkdtempSync(join(tmpdir(), "pi-mcp-cli-home-"));
 		const binDir = mkdtempSync(join(tmpdir(), "pi-mcp-cli-bin-"));
 		const symlinkPath = join(binDir, "pix-mcp");
-		symlinkSync(fileURLToPath(new URL("../cli.js", import.meta.url)), symlinkPath);
+		symlinkSync(fileURLToPath(new URL("../cli.ts", import.meta.url)), symlinkPath);
 
 		const result = spawnSync("bun", [symlinkPath, "init", "--dry-run"], {
 			cwd: mkdtempSync(join(tmpdir(), "pi-mcp-cli-project-")),

@@ -12,7 +12,7 @@ import { UiResourceHandler } from "../src/ui-resource-handler.ts";
 const mocks = { open: mock(async () => undefined) };
 mock.module("open", () => ({ default: mocks.open }));
 
-const fixture = fileURLToPath(new URL("./fixtures/elicitation-server.mjs", import.meta.url));
+const fixture = fileURLToPath(new URL("./fixtures/elicitation-server.ts", import.meta.url));
 const definition = { command: process.execPath, args: [fixture] };
 const managers: McpServerManager[] = [];
 

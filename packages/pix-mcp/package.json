@@ -5,14 +5,14 @@
 	"type": "module",
 	"main": "src/index.ts",
 	"bin": {
-		"pix-mcp": "cli.js"
+		"pix-mcp": "cli.ts"
 	},
 	"scripts": {
 		"test": "bun scripts/test.ts"
 	},
 	"files": [
 		"src",
-		"cli.js",
+		"cli.ts",
 		"README.md",
 		"OAUTH.md",
 		"LICENSE"
