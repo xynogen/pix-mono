@@ -343,6 +343,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 							lines,
 							color: (s) => theme.fg(accent, s),
 							bg: (s) => theme.bg("customMessageBg", s),
+							fg: (s) => theme.fg("text", s),
 						});
 					},
 					invalidate: () => {},

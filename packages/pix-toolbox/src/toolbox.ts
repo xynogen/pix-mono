@@ -457,6 +457,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 							lines,
 							color: (s) => theme.fg(accent, s),
 							bg: (s) => theme.bg("customMessageBg", s),
+							fg: (s) => theme.fg("text", s),
 						});
 					},
 					invalidate() {

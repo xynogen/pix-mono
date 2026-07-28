@@ -451,6 +451,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						lines,
 						color: (s) => theme.fg(accent, s),
 						bg: (s) => theme.bg("customMessageBg", s),
+						fg: (s) => theme.fg("text", s),
 					});
 				},
 				invalidate() {

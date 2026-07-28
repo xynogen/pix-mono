@@ -35,6 +35,14 @@ export interface FrameOptions {
 	color: (s: string) => string;
 	/** Background fill function — e.g. `(s) => theme.bg("customMessageBg", s)` */
 	bg?: (s: string) => string;
+	/**
+	 * Base foreground for content rows — e.g. `(s) => theme.fg("text", s)`.
+	 * Establishes a readable default color so raw (unstyled) text — such as the
+	 * unselected labels a pi-tui SelectList emits without any fg escape — does
+	 * not fall back to the terminal default and collide with the modal `bg`.
+	 * Content that carries its own fg escapes is unaffected.
+	 */
+	fg?: (s: string) => string;
 	/** Optional pre-styled string rendered as the first content row (tab bar etc.) */
 	top?: string;
 }
@@ -55,24 +63,36 @@ export interface FrameOptions {
 export function frameLines(opts: FrameOptions): string[] {
 	const { width, lines, color, top } = opts;
 	const bg = opts.bg ?? ((s: string) => s);
+	const fg = opts.fg;
 	const inner = Math.max(1, width - CHROME);
 	const dashes = "─".repeat(width - 2);
 
-	// Derive the bg OPEN sequence so we can re-assert it after any full reset
-	// (\x1b[0m) or bg reset (\x1b[49m) embedded in content.
+	// Derive the OPEN sequences so we can re-assert them after any embedded
+	// reset. A full reset (\x1b[0m) clears both fg and bg; \x1b[49m clears bg;
+	// \x1b[39m clears fg. Re-emitting the base opens after each keeps the modal
+	// background solid AND gives raw text a readable foreground.
 	const SENTINEL = "\x00";
 	const bgOpen = bg(SENTINEL).split(SENTINEL)[0] ?? "";
+	const fgOpen = fg ? (fg(SENTINEL).split(SENTINEL)[0] ?? "") : "";
 	const reassert = (s: string): string =>
-		bgOpen
-			? s.replace(/\x1b\[([0-9;]*)m/g, (seq, p: string) =>
-					p === "0" || p.split(";").includes("49") ? `${seq}${bgOpen}` : seq,
-				)
+		bgOpen || fgOpen
+			? s.replace(/\x1b\[([0-9;]*)m/g, (seq, p: string) => {
+					const parts = p.split(";");
+					const isFull = p === "0";
+					let tail = seq;
+					if (isFull || parts.includes("49")) tail += bgOpen;
+					if (isFull || parts.includes("39")) tail += fgOpen;
+					return tail;
+				})
 			: s;
 
 	const row = (content: string): string => {
 		const pad = inner - visibleWidth(content);
 		const padded = pad > 0 ? content + " ".repeat(pad) : truncateToWidth(content, inner);
-		return bg(`${color("│")} ${reassert(padded)} ${color("│")}`);
+		// Wrap in the base fg first so unstyled text gets an explicit color, then
+		// reassert base opens after any embedded resets from theme fg/bold spans.
+		const body = fgOpen ? reassert(fg?.(padded) ?? padded) : reassert(padded);
+		return bg(`${color("│")} ${body} ${color("│")}`);
 	};
 
 	const out: string[] = [bg(color(`╭${dashes}╮`))];

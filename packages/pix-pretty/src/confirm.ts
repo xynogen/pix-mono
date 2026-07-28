@@ -139,6 +139,7 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 							lines,
 							color: (s) => theme.fg(accent, s),
 							bg: (s) => theme.bg("customMessageBg", s),
+							fg: (s) => theme.fg("text", s),
 						});
 					},
 					invalidate: () => {},
