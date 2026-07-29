@@ -1,11 +1,12 @@
-import {
-	decodeKittyPrintable,
-	matchesKey,
-	truncateToWidth,
-	visibleWidth,
-} from "@earendil-works/pi-tui";
+import { decodeKittyPrintable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import {
+	frameModal,
+	MIN_MODAL_HEIGHT,
+	ModalPager,
+	modalWidth,
+	terminalModalHeight,
+} from "@xynogen/pix-pretty/modal-frame";
 import type { CachedTool, MetadataCache, ServerCacheEntry } from "./metadata-cache.ts";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
@@ -92,31 +93,8 @@ function createTheme(theme: McpPopupTheme): PanelTheme {
 	};
 }
 
-function ansiFg(code: string, text: string): string {
-	return `\x1b[${code}m${text}\x1b[0m`;
-}
-
 function fg(style: (text: string) => string, text: string): string {
 	return style(text);
-}
-
-const RAINBOW_COLORS = [
-	"38;2;178;129;214",
-	"38;2;215;135;175",
-	"38;2;254;188;56",
-	"38;2;228;192;15",
-	"38;2;137;210;129",
-	"38;2;0;175;175",
-	"38;2;23;143;185",
-];
-
-function rainbowProgress(filled: number, total: number): string {
-	const dots: string[] = [];
-	for (let i = 0; i < total; i++) {
-		const color = RAINBOW_COLORS[i % RAINBOW_COLORS.length];
-		dots.push(ansiFg(color, i < filled ? "●" : "○"));
-	}
-	return dots.join(" ");
 }
 
 function fuzzyScore(query: string, text: string): number {
@@ -230,13 +208,13 @@ class McpPanel {
 	private authInFlight: string | null = null;
 	private inactivityTimeout: ReturnType<typeof setTimeout> | null = null;
 	private visibleItems: VisibleItem[] = [];
-	private tui: { requestRender(): void };
+	private tui: { requestRender(): void; terminal?: { rows?: number } };
 	private popupTheme: McpPopupTheme;
 	private t: PanelTheme;
 	private authOnly: boolean;
 	private keys: PanelKeys;
+	private pager = new ModalPager();
 
-	private static readonly MAX_VISIBLE = 12;
 	private static readonly INACTIVITY_MS = 60_000;
 
 	constructor(
@@ -244,7 +222,7 @@ class McpPanel {
 		cache: MetadataCache | null,
 		provenance: Map<string, ServerProvenance>,
 		private callbacks: McpPanelCallbacks,
-		tui: { requestRender(): void },
+		tui: { requestRender(): void; terminal?: { rows?: number } },
 		private done: (result: McpPanelResult) => void,
 		options: {
 			noticeLines?: string[];
@@ -433,6 +411,22 @@ class McpPanel {
 		if (matchesKey(data, "ctrl+s")) {
 			this.cleanup();
 			this.done(this.buildResult());
+			return;
+		}
+
+		if (
+			this.pager.handleInput(
+				data,
+				{
+					matches: (input, action) =>
+						action === "tui.select.pageUp"
+							? this.keys.selectPageUp(input)
+							: this.keys.selectPageDown(input),
+				},
+				true,
+			)
+		) {
+			this.tui.requestRender();
 			return;
 		}
 
@@ -685,6 +679,7 @@ class McpPanel {
 
 	private moveCursor(delta: number): void {
 		if (this.visibleItems.length === 0) return;
+		this.pager.followSelection();
 		this.cursorIndex = Math.max(
 			0,
 			Math.min(this.visibleItems.length - 1, this.cursorIndex + delta),
@@ -746,42 +741,45 @@ class McpPanel {
 	render(width: number): string[] {
 		const mw = modalWidth(width);
 		const innerW = mw - 4;
-		const lines: string[] = [];
+		const header: string[] = [];
+		const body: string[] = [];
+		const footer: string[] = [];
 		const t = this.t;
 		const bold = (s: string) => this.popupTheme.bold?.(s) ?? `\x1b[1m${s}\x1b[22m`;
 		const italic = (s: string) => `\x1b[3m${s}\x1b[23m`;
 		const inverse = (s: string) => `\x1b[7m${s}\x1b[27m`;
 
-		const row = (content: string) =>
-			truncateToWidth(sanitizeRowContent(content), innerW, "…", true);
+		// Keep full text; frameModal wraps and pages it. Pre-truncating here would
+		// make the omitted tail irrecoverable and invisible to textTruncated.
+		const row = (content: string) => sanitizeRowContent(content);
 		const emptyRow = () => "";
 
 		const title = this.authOnly ? "MCP OAuth" : "MCP servers";
 		const subtitle = this.authOnly
 			? "authenticate external MCP services"
 			: "servers · direct tools · estimated prompt cost";
-		lines.push(fg(t.title, `${icon("mcp")}  ${title}`));
-		lines.push(fg(t.hint, subtitle));
-		lines.push(fg(t.description, this.descSearchActive ? "Description search:" : "Search:"));
+		header.push(fg(t.title, `${icon("mcp")}  ${title}`));
+		header.push(fg(t.hint, subtitle));
+		header.push(fg(t.description, this.descSearchActive ? "Description search:" : "Search:"));
 
 		const cursor = fg(t.selected, "│");
 		if (this.descSearchActive) {
-			lines.push(row(`${this.descQuery}${cursor}`));
+			header.push(row(`${this.descQuery}${cursor}`));
 		} else if (this.nameQuery) {
-			lines.push(row(`${this.nameQuery}${cursor}`));
+			header.push(row(`${this.nameQuery}${cursor}`));
 		} else {
-			lines.push(row(fg(t.placeholder, italic("type to filter..."))));
+			header.push(row(fg(t.placeholder, italic("type to filter..."))));
 		}
 		if (this.noticeLines.length > 0) {
 			for (const notice of this.noticeLines) {
-				lines.push(row(fg(t.hint, italic(sanitizeDisplayText(notice)))));
+				header.push(row(fg(t.hint, italic(sanitizeDisplayText(notice)))));
 			}
-			lines.push(emptyRow());
+			header.push(emptyRow());
 		}
 
 		if (this.servers.length === 0) {
-			lines.push(emptyRow());
-			lines.push(
+			body.push(emptyRow());
+			body.push(
 				row(
 					fg(
 						t.hint,
@@ -793,47 +791,33 @@ class McpPanel {
 					),
 				),
 			);
-			lines.push(emptyRow());
+			body.push(emptyRow());
 		} else {
-			const maxVis = McpPanel.MAX_VISIBLE;
 			const total = this.visibleItems.length;
-			const startIdx = Math.max(
-				0,
-				Math.min(this.cursorIndex - Math.floor(maxVis / 2), total - maxVis),
-			);
-			const endIdx = Math.min(startIdx + maxVis, total);
 
-			lines.push(emptyRow());
+			body.push(emptyRow());
 
-			for (let i = startIdx; i < endIdx; i++) {
+			for (let i = 0; i < total; i++) {
 				const item = this.visibleItems[i];
 				const isCursor = i === this.cursorIndex;
 				const server = this.servers[item.serverIndex];
 
 				if (item.type === "server") {
-					lines.push(row(this.renderServerRow(server, isCursor)));
+					body.push(row(this.renderServerRow(server, isCursor)));
 				} else if (item.toolIndex !== undefined) {
-					lines.push(row(this.renderToolRow(server.tools[item.toolIndex], isCursor, innerW)));
+					body.push(row(this.renderToolRow(server.tools[item.toolIndex], isCursor)));
 				}
 			}
 
-			lines.push(emptyRow());
-
-			if (total > maxVis) {
-				const prog = Math.round(((this.cursorIndex + 1) / total) * 10);
-				lines.push(
-					row(`${rainbowProgress(prog, 10)}  ${fg(t.hint, `${this.cursorIndex + 1}/${total}`)}`),
-				);
-				lines.push(emptyRow());
-			}
+			body.push(emptyRow());
 
 			if (this.importNotice) {
-				lines.push(row(fg(t.needsAuth, italic(sanitizeDisplayText(this.importNotice)))));
-				lines.push(emptyRow());
+				body.push(row(fg(t.needsAuth, italic(sanitizeDisplayText(this.importNotice)))));
+				body.push(emptyRow());
 			}
 			if (this.authNotice) {
-				lines.push(row(fg(t.needsAuth, italic(sanitizeDisplayText(this.authNotice)))));
-				lines.push(emptyRow());
+				body.push(row(fg(t.needsAuth, italic(sanitizeDisplayText(this.authNotice)))));
+				body.push(emptyRow());
 			}
 		}
 
@@ -846,10 +830,10 @@ class McpPanel {
 				this.discardSelected === 1
 					? inverse(bold(fg(t.confirm, "  Keep & Close  ")))
 					: fg(t.hint, "  Keep & Close  ");
-			lines.push(row(`Discard unsaved changes?  ${discardBtn}   ${keepBtn}`));
+			footer.push(row(`Discard unsaved changes?  ${discardBtn}   ${keepBtn}`));
 		} else {
 			if (this.authOnly) {
-				lines.push(row(fg(t.description, "select a server to authenticate")));
+				footer.push(row(fg(t.description, "select a server to authenticate")));
 			} else {
 				const directCount = this.servers.reduce(
 					(sum, s) => sum + s.tools.filter((t) => t.isDirect).length,
@@ -864,13 +848,13 @@ class McpPanel {
 					directCount > 0
 						? `${directCount} direct  ~${totalTokens.toLocaleString()} tokens`
 						: "no direct tools";
-				lines.push(
+				footer.push(
 					row(fg(t.description, stats + (this.dirty ? fg(t.needsAuth, "  (unsaved)") : ""))),
 				);
 			}
 		}
 
-		lines.push(emptyRow());
+		footer.push(emptyRow());
 		const hints = this.authOnly
 			? [
 					`${italic("↑↓")} navigate`,
@@ -899,7 +883,7 @@ class McpPanel {
 			const hw = visibleWidth(hint);
 			const needed = curW === 0 ? hw : gapW + hw;
 			if (curW > 0 && curW + needed > maxW) {
-				lines.push(row(fg(t.hint, curLine)));
+				footer.push(row(fg(t.hint, curLine)));
 				curLine = hint;
 				curW = hw;
 			} else {
@@ -907,14 +891,23 @@ class McpPanel {
 				curW += needed;
 			}
 		}
-		if (curLine) lines.push(row(fg(t.hint, curLine)));
+		if (curLine) footer.push(row(fg(t.hint, curLine)));
 
-		return frameLines({
+		const result = frameModal({
 			width: mw,
-			lines,
+			maxHeight: terminalModalHeight(this.tui.terminal?.rows),
+			minHeight: MIN_MODAL_HEIGHT,
+			header,
+			body,
+			footer,
+			bodyOffset: this.pager.bodyOffset,
+			selectedBodyLine:
+				this.visibleItems.length > 0 ? this.pager.selectedLine(this.cursorIndex + 1) : undefined,
 			color: t.border,
 			bg: (text) => this.popupTheme.bg("customMessageBg", text),
 		});
+		this.pager.sync(result);
+		return result.lines;
 	}
 
 	private renderServerRow(server: ServerState, isCursor: boolean): string {
@@ -972,7 +965,7 @@ class McpPanel {
 		return "";
 	}
 
-	private renderToolRow(tool: ToolState, isCursor: boolean, innerW: number): string {
+	private renderToolRow(tool: ToolState, isCursor: boolean): string {
 		const t = this.t;
 		const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
 
@@ -982,13 +975,7 @@ class McpPanel {
 		const description = sanitizeDisplayText(tool.description);
 		const nameStr = isCursor ? bold(fg(t.selected, toolName)) : toolName;
 
-		const prefixLen = 7 + visibleWidth(toolName);
-		const maxDescLen = Math.max(0, innerW - prefixLen - 8);
-		const descStr =
-			maxDescLen > 5 && description
-				? fg(t.description, `— ${truncateToWidth(description, maxDescLen, "…")}`)
-				: "";
-
+		const descStr = description ? fg(t.description, `— ${description}`) : "";
 		return `  ${cursor} ${toggleIcon} ${nameStr} ${descStr}`;
 	}
 
@@ -1004,7 +991,7 @@ export function createMcpPanel(
 	cache: MetadataCache | null,
 	provenance: Map<string, ServerProvenance>,
 	callbacks: McpPanelCallbacks,
-	tui: { requestRender(): void },
+	tui: { requestRender(): void; terminal?: { rows?: number } },
 	done: (result: McpPanelResult) => void,
 	options?: {
 		noticeLines?: string[];

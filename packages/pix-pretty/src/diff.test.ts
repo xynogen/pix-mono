@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { parseDiff } from "./diff.js";
 import {
+	DEFAULT_DIFF_COLORS,
 	diffThemeCacheKey,
 	renderDiffSummary,
 	renderUnified,
@@ -22,20 +23,34 @@ describe("theme-derived diff rendering", () => {
 		},
 	};
 
-	it("uses semantic foregrounds without tint backgrounds", () => {
+	it("uses semantic foregrounds", () => {
 		const colors = resolveDiffColors(theme);
 		expect(colors.fgAdd).toBe("\x1b[38;2;120;210;150m");
 		expect(colors.fgDel).toBe("\x1b[38;2;230;120;130m");
 		expect(colors.fgCtx).toBe("\x1b[38;2;130;140;150m");
-		for (const key of [
-			"bgAdd",
-			"bgDel",
-			"bgAddHighlight",
-			"bgDelHighlight",
-			"bgGutterAdd",
-			"bgGutterDel",
-		] as const) {
-			expect(colors[key]).toBe("\x1b[49m");
+	});
+
+	// Regression: these six slots were all set to BG_BASE (\x1b[49m), which
+	// dropped the faint green/red row tint and left only the gutter chips
+	// colored. A diff must read as add/remove bands at a glance.
+	it("gives changed rows a faint tint background", () => {
+		for (const colors of [DEFAULT_DIFF_COLORS, resolveDiffColors(theme)]) {
+			for (const key of [
+				"bgAdd",
+				"bgDel",
+				"bgAddHighlight",
+				"bgDelHighlight",
+				"bgGutterAdd",
+				"bgGutterDel",
+			] as const) {
+				expect(colors[key]).not.toBe("\x1b[49m");
+				expect(colors[key]).toMatch(/^\x1b\[48;2;\d+;\d+;\d+m$/);
+			}
+			// Word-diff emphasis must be distinguishable from the row tint.
+			expect(colors.bgAddHighlight).not.toBe(colors.bgAdd);
+			expect(colors.bgDelHighlight).not.toBe(colors.bgDel);
+			// Add and remove must never collide.
+			expect(colors.bgAdd).not.toBe(colors.bgDel);
 		}
 	});
 
@@ -53,7 +68,19 @@ describe("theme-derived diff rendering", () => {
 		);
 	});
 
-	it("keeps the foreground-only diff style", async () => {
+	it("emits tint backgrounds on changed rows", async () => {
+		const rendered = await renderUnified(
+			parseDiff("const oldValue = 1;", "const newValue = 2;"),
+			"typescript",
+			80,
+			resolveDiffColors({ ...theme, fg: (_key, text) => text }),
+		);
+		const { bgAdd, bgDel } = resolveDiffColors(theme);
+		expect(rendered).toContain(bgDel);
+		expect(rendered).toContain(bgAdd);
+	});
+
+	it("keeps gutter numbering and rule layout intact", async () => {
 		const rendered = await renderUnified(
 			parseDiff("const oldValue = 1;", "const newValue = 2;"),
 			"typescript",
@@ -69,7 +96,6 @@ describe("theme-derived diff rendering", () => {
 		expect(lines[3]).toMatch(/^─+$/);
 		expect(rendered).toContain(theme.getFgAnsi("toolDiffRemoved"));
 		expect(rendered).toContain(theme.getFgAnsi("toolDiffAdded"));
-		expect(rendered).not.toMatch(/\x1b\[48(?:;[^m]*)?m/);
 	});
 });
 

@@ -14,8 +14,16 @@
  *   - Single source of truth for the overlay look across pix-gate and pix-sudo.
  */
 
-import { Input, type SelectItem, SelectList, wrapTextWithAnsi } from "@earendil-works/pi-tui";
-import { frameLines, modalWidth, selectListTheme } from "./modal-frame.js";
+import { Input, type SelectItem, SelectList } from "@earendil-works/pi-tui";
+import {
+	frameModal,
+	MIN_PERMISSION_MODAL_HEIGHT,
+	type ModalPageKeybindings,
+	ModalPager,
+	modalWidth,
+	selectListTheme,
+	terminalModalHeight,
+} from "./modal-frame.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -83,6 +91,7 @@ interface OverlayTheme {
 
 interface OverlayTui {
 	requestRender(): void;
+	terminal?: { rows?: number };
 }
 
 interface OverlayComponent {
@@ -111,6 +120,13 @@ const DEFAULT_CHOICES: OverlayChoice[] = [
 	{ value: "no", label: "Deny", description: "Block" },
 ];
 
+function asPageKeybindings(value: unknown): ModalPageKeybindings | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	return typeof (value as { matches?: unknown }).matches === "function"
+		? (value as ModalPageKeybindings)
+		: undefined;
+}
+
 // ── Masked input (● per char) ─────────────────────────────────────────────────
 
 class MaskedInput extends Input {
@@ -125,8 +141,14 @@ class MaskedInput extends Input {
 
 // ── Renderer ──────────────────────────────────────────────────────────────────
 
-/** Build body lines for the current stage, rendered into frameLines. */
-function buildLines(opts: {
+interface OverlaySections {
+	header: string[];
+	body: string[];
+	footer: string[];
+}
+
+/** Partition inspectable content from pinned approval controls. */
+function buildSections(opts: {
 	theme: OverlayTheme;
 	accent: string;
 	config: OverlayConfig;
@@ -136,7 +158,7 @@ function buildLines(opts: {
 	countdownLine: string | undefined;
 	passwordStatus: string | undefined;
 	width: number;
-}): string[] {
+}): OverlaySections {
 	const {
 		theme,
 		accent,
@@ -149,42 +171,31 @@ function buildLines(opts: {
 		width,
 	} = opts;
 	const inner = width - 4; // CHROME = 2 border + 2 padding
-	const lines: string[] = [];
+	const header = [theme.fg(accent, theme.bold(config.title))];
+	const body = (config.body ?? []).map((line) => {
+		if (line.startsWith("Intent:")) return theme.fg("text", line.slice(7).trimStart());
+		if (line.startsWith("Command:")) return theme.fg("dim", line.slice(8).trimStart());
+		return theme.fg("text", line);
+	});
+	const footer = [theme.fg("dim", "─".repeat(inner))];
 
-	// Title — wrap so a long reason/command isn't truncated by the frame.
-	for (const t of wrapTextWithAnsi(config.title, inner)) {
-		lines.push(theme.fg(accent, theme.bold(t)));
-	}
-
-	// Body — wrap each line so long commands wrap instead of getting cut off.
-	for (const line of config.body ?? []) {
-		const wrapped = line === "" ? [""] : wrapTextWithAnsi(line, inner);
-		for (const w of wrapped) lines.push(theme.fg("text", w));
-	}
-
-	// Divider after title/body
-	lines.push(theme.fg("dim", "─".repeat(inner)));
-
-	// Countdown
-	if (countdownLine !== undefined) lines.push(countdownLine);
+	if (countdownLine !== undefined) footer.push(countdownLine);
 
 	// Select or password stage
 	if (stage === "select") {
-		const listLines = selectList.render(inner);
-		for (const l of listLines) lines.push(l);
-		lines.push("");
-		lines.push(theme.fg("dim", "↑↓ navigate • enter select • esc deny"));
+		footer.push(...selectList.render(inner));
+		footer.push("");
+		footer.push(theme.fg("dim", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc deny"));
 	} else {
 		const label = config.mode === "sudo" ? (config.passwordLabel ?? "Sudo password:") : "Password:";
-		lines.push(theme.fg("muted", label));
-		if (passwordStatus) lines.push(theme.fg("error", passwordStatus));
-		const inputLines = maskedInput.render(inner);
-		for (const l of inputLines) lines.push(l);
-		lines.push("");
-		lines.push(theme.fg("dim", "enter confirm • esc cancel"));
+		footer.push(theme.fg("muted", label));
+		if (passwordStatus) footer.push(theme.fg("error", passwordStatus));
+		footer.push(...maskedInput.render(inner));
+		footer.push("");
+		footer.push(theme.fg("dim", "←→/PgUp/PgDn inspect • enter confirm • esc cancel"));
 	}
 
-	return lines;
+	return { header, body, footer };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -225,13 +236,15 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 
 	return new Promise((resolve) => {
 		ui.custom<OverlayResult>(
-			(tui, theme, _kb, done) => {
+			(tui, theme, kb, done) => {
+				const pageKeybindings = asPageKeybindings(kb);
 				type Stage = "select" | "password";
 				let stage: Stage = "select";
 				let countdownLine: string | undefined;
 				let passwordStatus: string | undefined;
 				let passwordAttempts = 0;
 				let validatingPassword = false;
+				const pager = new ModalPager();
 
 				// Dead-man's-switch timer: counts down only while untouched. The
 				// first keypress cancels it (user is present → let them decide). If
@@ -267,14 +280,21 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 
 				// Arm the dead-man's switch (only when a timeout was requested).
 				if (timeoutMs > 0) {
-					countdownLine = theme.fg("dim", `auto-deny in ${remaining}s`);
+					const urgencyColor = (s: number): string =>
+						s <= 5 ? "error" : s <= 15 ? "warning" : "dim";
+					const countdownText = (s: number): string => {
+						const color = urgencyColor(s);
+						const text = `auto-deny in ${s}s`;
+						return s <= 5 ? theme.bold(theme.fg(color, text)) : theme.fg(color, text);
+					};
+					countdownLine = countdownText(remaining);
 					timer = setInterval(() => {
 						remaining -= 1;
 						if (remaining <= 0) {
 							finish({ action: "timeout" });
 							return;
 						}
-						countdownLine = theme.fg("dim", `auto-deny in ${remaining}s`);
+						countdownLine = countdownText(remaining);
 						tui.requestRender();
 					}, 1000);
 				}
@@ -327,7 +347,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 				return {
 					render: (w) => {
 						const mw = modalWidth(w);
-						const lines = buildLines({
+						const sections = buildSections({
 							theme,
 							accent,
 							config,
@@ -338,18 +358,29 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 							passwordStatus,
 							width: mw,
 						});
-						return frameLines({
+						const result = frameModal({
 							width: mw,
-							lines,
+							maxHeight: terminalModalHeight(tui.terminal?.rows),
+							minHeight: MIN_PERMISSION_MODAL_HEIGHT,
+							...sections,
+							bodyOffset: pager.bodyOffset,
 							color: (s) => theme.fg(accent, s),
 							bg: (s) => theme.bg("customMessageBg", s),
 							fg: (s) => theme.fg("text", s),
+							overflowLine: ({ page, totalPages }) =>
+								theme.fg("dim", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
 						});
+						pager.sync(result);
+						return result.lines;
 					},
 					invalidate: () => {},
 					handleInput: (data) => {
 						cancelTimer(); // user is present — stop the auto-deny countdown
 						if (validatingPassword) return;
+						if (pager.handleInput(data, pageKeybindings, true)) {
+							tui.requestRender();
+							return;
+						}
 						if (stage === "select") selectList.handleInput(data);
 						else maskedInput.handleInput(data);
 						tui.requestRender();

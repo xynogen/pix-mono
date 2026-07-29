@@ -341,7 +341,7 @@ export async function openMcpSetup(
 					theme,
 				);
 			},
-			{ overlay: true },
+			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
 		);
 	});
 }
@@ -429,7 +429,7 @@ export async function openMcpPanel(
 					{ noticeLines, keybindings, theme },
 				);
 			},
-			{ overlay: true },
+			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
 		);
 	});
 
@@ -484,7 +484,7 @@ export async function openMcpAuthPanel(
 					},
 				);
 			},
-			{ overlay: true },
+			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
 		);
 	});
 

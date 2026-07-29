@@ -5,8 +5,15 @@
  * as gate-overlay and pix-ask. Returns true on confirm, false on deny/timeout.
  */
 
-import { type SelectItem, SelectList } from "@earendil-works/pi-tui";
-import { frameLines, modalWidth, selectListTheme } from "./modal-frame.js";
+import { type KeybindingsManager, type SelectItem, SelectList } from "@earendil-works/pi-tui";
+import {
+	frameModal,
+	MIN_PERMISSION_MODAL_HEIGHT,
+	ModalPager,
+	modalWidth,
+	selectListTheme,
+	terminalModalHeight,
+} from "./modal-frame.js";
 
 // Minimal structural type for the `ctx.ui.custom` host call.
 interface CustomTheme {
@@ -25,12 +32,12 @@ interface CustomComponent {
 export interface ConfirmUI {
 	custom<T>(
 		cb: (
-			tui: { requestRender(): void },
+			tui: { requestRender(): void; terminal?: { rows?: number } },
 			theme: CustomTheme,
-			kb: unknown,
+			kb: KeybindingsManager,
 			done: (v: T) => void,
 		) => CustomComponent,
-		opts?: { overlay?: boolean },
+		opts?: { overlay?: boolean; overlayOptions?: { maxHeight?: number | `${number}%` } },
 	): Promise<T | undefined>;
 }
 
@@ -64,9 +71,10 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 		const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
 
 		ui.custom<boolean>(
-			(tui, theme, _kb, done) => {
+			(tui, theme, kb, done) => {
 				let ticker: ReturnType<typeof setInterval> | undefined;
 				let countdownLine: string | undefined;
+				const pager = new ModalPager();
 
 				const choices: SelectItem[] = [
 					{
@@ -112,44 +120,43 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 					render: (w: number) => {
 						const mw = modalWidth(w);
 						const inner = mw - 4;
-						const lines: string[] = [];
+						const footer = [theme.fg("dim", "─".repeat(inner))];
+						if (countdownLine !== undefined) footer.push(countdownLine);
+						footer.push(...selectList.render(inner));
+						footer.push("");
+						footer.push(
+							theme.fg("dim", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc cancel"),
+						);
 
-						// Title
-						lines.push(theme.fg(accent, theme.bold(opts.title)));
-
-						// Body
-						for (const line of opts.body ?? []) {
-							lines.push(theme.fg("text", line));
-						}
-
-						// Divider
-						lines.push(theme.fg("dim", "─".repeat(inner)));
-
-						// Countdown
-						if (countdownLine !== undefined) lines.push(countdownLine);
-
-						// Select list
-						for (const l of selectList.render(inner)) lines.push(l);
-
-						lines.push("");
-						lines.push(theme.fg("dim", "↑↓ navigate • enter select • esc cancel"));
-
-						return frameLines({
+						const result = frameModal({
 							width: mw,
-							lines,
+							maxHeight: terminalModalHeight(tui.terminal?.rows),
+							minHeight: MIN_PERMISSION_MODAL_HEIGHT,
+							header: [theme.fg(accent, theme.bold(opts.title))],
+							body: (opts.body ?? []).map((line) => theme.fg("text", line)),
+							footer,
+							bodyOffset: pager.bodyOffset,
 							color: (s) => theme.fg(accent, s),
 							bg: (s) => theme.bg("customMessageBg", s),
 							fg: (s) => theme.fg("text", s),
+							overflowLine: ({ page, totalPages }) =>
+								theme.fg("dim", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
 						});
+						pager.sync(result);
+						return result.lines;
 					},
 					invalidate: () => {},
 					handleInput: (data: string) => {
+						if (pager.handleInput(data, kb, true)) {
+							tui.requestRender();
+							return;
+						}
 						selectList.handleInput(data);
 						tui.requestRender();
 					},
 				};
 			},
-			{ overlay: true },
+			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
 		).then((result) => {
 			if (timer !== undefined) clearTimeout(timer);
 			resolve(result ?? false);

@@ -12,7 +12,13 @@ import {
 	truncateToWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import {
+	frameModal,
+	MIN_MODAL_HEIGHT,
+	ModalPager,
+	modalWidth,
+	terminalModalHeight,
+} from "@xynogen/pix-pretty/modal-frame";
 import { dim } from "./components.js";
 import { checkboxGlyphs, selectionGlyph } from "./glyphs.js";
 import { safeMarkdownTheme, sentinelsFor } from "./helpers.js";
@@ -53,6 +59,8 @@ export class AskQuestionnaire extends Container {
 	private inputMode = false;
 	private editor?: Editor;
 	private mdTheme = safeMarkdownTheme();
+	private pager = new ModalPager();
+	private selectedOptionRows: { start: number; end: number } | undefined;
 
 	constructor(
 		params: Params,
@@ -198,6 +206,7 @@ export class AskQuestionnaire extends Container {
 		this.inputMode = false;
 		this.selectedOptionIndex = 0;
 		this.editor = undefined;
+		this.pager.reset();
 		this.restoreAnswerState();
 		this.refresh();
 	}
@@ -255,6 +264,10 @@ export class AskQuestionnaire extends Container {
 		// cancel guard, which is also bound to esc and would otherwise close the
 		// whole questionnaire instead of stepping back.
 		if (this.inputMode) {
+			if (this.pager.handleInput(data, this.keybindings)) {
+				this.refresh();
+				return;
+			}
 			if (matchesKey(data, Key.escape)) {
 				this.inputMode = false;
 				this.editor = undefined;
@@ -275,6 +288,11 @@ export class AskQuestionnaire extends Container {
 			return;
 		}
 
+		if (this.pager.handleInput(data, this.keybindings)) {
+			this.refresh();
+			return;
+		}
+
 		const isMulti = !!this.currentQ.multiSelect;
 		const total = this.totalItems;
 
@@ -285,6 +303,7 @@ export class AskQuestionnaire extends Container {
 		) {
 			if (total > 0) {
 				this.selectedOptionIndex = (this.selectedOptionIndex - 1 + total) % total;
+				this.pager.followSelection();
 				this.refresh();
 			}
 			return;
@@ -297,6 +316,7 @@ export class AskQuestionnaire extends Container {
 		) {
 			if (total > 0) {
 				this.selectedOptionIndex = (this.selectedOptionIndex + 1) % total;
+				this.pager.followSelection();
 				this.refresh();
 			}
 			return;
@@ -320,6 +340,7 @@ export class AskQuestionnaire extends Container {
 				chars.pop();
 				this.searchQuery = chars.join("");
 				this.selectedOptionIndex = 0;
+				this.pager.followSelection();
 				this.refresh();
 			}
 			return;
@@ -329,6 +350,7 @@ export class AskQuestionnaire extends Container {
 			if (this.searchQuery) {
 				this.searchQuery = "";
 				this.selectedOptionIndex = 0;
+				this.pager.followSelection();
 				this.refresh();
 			}
 			return;
@@ -376,6 +398,7 @@ export class AskQuestionnaire extends Container {
 			if (printable !== undefined) {
 				this.searchQuery += printable;
 				this.selectedOptionIndex = 0;
+				this.pager.followSelection();
 				this.refresh();
 			}
 		}
@@ -409,14 +432,13 @@ export class AskQuestionnaire extends Container {
 
 		if (total === 0) return [t.fg("warning", "No options")];
 
-		const maxVisible = Math.min(total, 12);
-		const start = Math.max(
-			0,
-			Math.min(this.selectedOptionIndex - Math.floor(maxVisible / 2), total - maxVisible),
-		);
-		const end = Math.min(start + maxVisible, total);
+		// Render the complete logical list. frameModal owns the only viewport, so
+		// PageUp/PageDown can inspect every option without a nested 12-item crop.
+		const start = 0;
+		const end = total;
 
 		const lines: string[] = [];
+		this.selectedOptionRows = undefined;
 		// Hang-indent descriptions under the LABEL column, not the pointer.
 		// Prefix is `→ G ` = ptr(1)+sp(1)+glyph(1)+sp(1) = 4 cols.
 		const LABEL_COL = 4;
@@ -428,6 +450,7 @@ export class AskQuestionnaire extends Container {
 			const sel = i === this.selectedOptionIndex;
 			const ptr = sel ? t.fg("accent", "→") : " ";
 
+			const itemStart = lines.length;
 			if (item.kind === "option" && item.option) {
 				const optIdx = this.filteredOptions.indexOf(item.option);
 				const glyph = glyphFor(optIdx, sel);
@@ -455,12 +478,8 @@ export class AskQuestionnaire extends Container {
 					: t.fg("text", t.bold(SENTINEL_NEXT));
 				lines.push(truncateToWidth(`${ptr} ${t.fg("dim", "→")} ${label}`, inner, ""));
 			}
-		}
-
-		if (start > 0 || end < total) {
-			const count =
-				this.filteredOptions.length > 0 ? `${this.selectedOptionIndex + 1}/${total}` : `${total}`;
-			lines.push(t.fg("dim", truncateToWidth(`  ${count}`, inner, "")));
+			if (sel)
+				this.selectedOptionRows = { start: itemStart, end: Math.max(itemStart + 1, lines.length) };
 		}
 
 		return lines;
@@ -499,7 +518,9 @@ export class AskQuestionnaire extends Container {
 		const leftWidth = useSplit ? Math.floor((width - 2) * 0.45) : inner;
 		const previewWidth = useSplit ? Math.max(20, width - leftWidth - 3) : 0;
 
-		const lines: string[] = [];
+		const header: string[] = [];
+		const body: string[] = [];
+		let footer: string[] = [];
 
 		const row = (content: string): string => truncateToWidth(content, width, "");
 
@@ -521,25 +542,24 @@ export class AskQuestionnaire extends Container {
 			this.params.questions.length > 1
 				? dim(t)(` ${this.currentIndex + 1}/${this.params.questions.length}`)
 				: "";
-		lines.push(row(`${chip}${prog}`));
+		header.push(row(`${chip}${prog}`));
 
 		// Question text
 		for (const w of wrapTextWithAnsi(this.currentQ.question, Math.max(10, inner))) {
-			lines.push(row(t.fg("text", t.bold(w))));
+			header.push(row(t.fg("text", t.bold(w))));
 		}
 
 		// Input mode
 		if (this.inputMode) {
-			lines.push("");
-			lines.push(row(t.fg("accent", t.bold("Type your response:"))));
-			lines.push("");
-			const editorLines = this.ensureEditor().render(width);
-			for (const el of editorLines) {
-				lines.push(truncateToWidth(el, width, ""));
-			}
-			lines.push("");
-			lines.push(row(dim(t)("enter submit • esc back • ctrl+c cancel")));
-			return this.frame(mw, lines, top);
+			header.push("");
+			header.push(row(t.fg("accent", t.bold("Type your response:"))));
+			body.push(
+				...this.ensureEditor()
+					.render(width)
+					.map((line) => truncateToWidth(line, width, "")),
+			);
+			footer = [row(dim(t)("PgUp/PgDn inspect • enter submit • esc back • ctrl+c cancel"))];
+			return this.frame(mw, header, body, footer, top);
 		}
 
 		// Search bar
@@ -547,7 +567,7 @@ export class AskQuestionnaire extends Container {
 			const searchVal = this.searchQuery
 				? t.fg("text", this.searchQuery)
 				: t.fg("dim", "type to filter");
-			lines.push(row(`${t.fg("accent", "Filter:")} ${searchVal}`));
+			header.push(row(`${t.fg("accent", "Filter:")} ${searchVal}`));
 		}
 
 		// Options (with optional split-pane preview)
@@ -560,11 +580,11 @@ export class AskQuestionnaire extends Container {
 			for (let i = 0; i < maxOptLines; i++) {
 				const left = truncateToWidth(optionLines[i] ?? "", leftWidth, "", true);
 				const right = truncateToWidth(previewLines[i] ?? "", previewWidth, "");
-				const body = `${left || " ".repeat(leftWidth)}${sep}${right || " ".repeat(previewWidth)}`;
-				lines.push(truncateToWidth(body, width, ""));
+				const splitRow = `${left || " ".repeat(leftWidth)}${sep}${right || " ".repeat(previewWidth)}`;
+				body.push(truncateToWidth(splitRow, width, ""));
 			}
 		} else {
-			for (const line of optionLines) lines.push(row(line));
+			for (const line of optionLines) body.push(row(line));
 		}
 
 		// Footer hints
@@ -572,20 +592,39 @@ export class AskQuestionnaire extends Container {
 		const hintParts = isMulti
 			? [`${navHint} • space toggle • enter commit • esc clear`, "ctrl+c cancel"]
 			: [`${navHint} • type filter • enter select • esc clear`, "ctrl+c cancel"];
-		lines.push(row(dim(t)(hintParts.join(" • "))));
+		footer = [row(dim(t)(`${hintParts.join(" • ")} • PgUp/PgDn inspect`))];
 
-		return this.frame(mw, lines, top);
+		return this.frame(mw, header, body, footer, top);
 	}
 
-	/** Wrap body lines in the rounded modal border at the given outer width. */
-	private frame(outerWidth: number, lines: string[], top: string | undefined): string[] {
+	/** Frame sections with a terminal-height budget and inspectable body paging. */
+	private frame(
+		outerWidth: number,
+		header: string[],
+		body: string[],
+		footer: string[],
+		top: string | undefined,
+	): string[] {
 		const t = this.theme;
-		return frameLines({
+		const result = frameModal({
 			width: outerWidth,
-			lines,
+			maxHeight: terminalModalHeight(this.tui.terminal.rows),
+			minHeight: MIN_MODAL_HEIGHT,
+			header,
+			body,
+			footer,
+			bodyOffset: this.pager.bodyOffset,
+			selectedBodyRange:
+				this.selectedOptionRows === undefined
+					? undefined
+					: this.pager.selectedRange(this.selectedOptionRows),
 			top,
 			color: (s) => t.fg("accent", s),
 			bg: (s) => t.bg("customMessageBg", s),
+			overflowLine: ({ page, totalPages }) =>
+				t.fg("dim", `PgUp/PgDn inspect • ${page}/${totalPages}`),
 		});
+		this.pager.sync(result);
+		return result.lines;
 	}
 }

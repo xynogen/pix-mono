@@ -9,6 +9,7 @@
 
 import { afterEach, describe, expect, it } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { getKeybindings, setKittyProtocolActive } from "@earendil-works/pi-tui";
 import { registerPixCommand } from "./pix-command.ts";
 import { prettySection } from "./sections/pretty.ts";
 import { createIsolatedRuntime, type IsolatedRuntime } from "./testing.ts";
@@ -22,6 +23,8 @@ const KEYS = {
 	escape: { legacy: "\u001b", kitty: "\u001b[27u" },
 	enter: { legacy: "\r", kitty: "\u001b[13u" },
 	space: { legacy: " ", kitty: "\u001b[32u" },
+	pageUp: { legacy: "\u001b[5~", kitty: "\u001b[57421u" },
+	pageDown: { legacy: "\u001b[6~", kitty: "\u001b[57422u" },
 	k: { legacy: "k", kitty: "\u001b[107u" },
 	j: { legacy: "j", kitty: "\u001b[106u" },
 	q: { legacy: "q", kitty: "\u001b[113u" },
@@ -84,15 +87,20 @@ async function openOverlay(): Promise<Driver> {
 			notify: () => {},
 			custom: async <T>(
 				cb: (
-					tui: { requestRender(): void },
+					tui: { requestRender(): void; terminal?: { rows?: number } },
 					th: typeof theme,
 					kb: unknown,
 					done: (v: T) => void,
 				) => Overlay,
 			): Promise<T | undefined> => {
-				overlay = cb({ requestRender: () => {} }, theme, undefined, () => {
-					closed = true;
-				});
+				overlay = cb(
+					{ requestRender: () => {}, terminal: { rows: 12 } },
+					theme,
+					getKeybindings(),
+					() => {
+						closed = true;
+					},
+				);
 				return undefined;
 			},
 		},
@@ -171,6 +179,23 @@ for (const enc of ENCODINGS) {
 			const d = await openOverlay();
 			d.feed(KEYS.escape[enc]);
 			expect(d.closed()).toBe(true);
+		});
+
+		it("PageDown/PageUp page through overflow without closing", async () => {
+			if (enc === "kitty") setKittyProtocolActive(true);
+			try {
+				const d = await openOverlay();
+				const first = d.lines().join("\n");
+				d.feed(KEYS.pageDown[enc]);
+				const paged = d.lines().join("\n");
+				expect(paged).not.toBe(first);
+				expect(paged).toContain("PgUp/PgDn inspect");
+				d.feed(KEYS.pageUp[enc]);
+				expect(d.lines().join("\n")).toBe(first);
+				expect(d.closed()).toBe(false);
+			} finally {
+				if (enc === "kitty") setKittyProtocolActive(false);
+			}
 		});
 
 		it("q closes the overlay", async () => {

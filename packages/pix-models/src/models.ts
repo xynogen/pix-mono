@@ -20,7 +20,13 @@ import {
 } from "@earendil-works/pi-tui";
 import { benchScoreColor, lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import {
+	frameModal,
+	MIN_MODAL_HEIGHT,
+	ModalPager,
+	modalWidth,
+	terminalModalHeight,
+} from "@xynogen/pix-pretty/modal-frame";
 import { patchOutBuiltinModelCommand } from "./patch-builtin";
 
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
@@ -271,7 +277,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 	// items built inside the custom() factory so we have theme access for colors
 
 	const result = await ctx.ui.custom<string | null>(
-		(tui, theme, _kb, done) => {
+		(tui, theme, kb, done) => {
 			const accent = "accent";
 
 			// Find max rank width across all benchmarked rows for # padding
@@ -322,7 +328,9 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					rankPrefix = mute("#") + mute(dash);
 				}
 				// Display model id only; m.provider is routing provider, not part of id.
-				const idColored = theme.fg(accent, m.id);
+				// Color the name by bench score so high-scoring models visually pop.
+				const nameColor = bench ? benchScoreColor(bench.overallScore) : accent;
+				const idColored = theme.fg(nameColor, m.id);
 				const label = `${marker} ${rankPrefix} ${idColored}`;
 
 				// Description: ctx · cost · score stars
@@ -373,7 +381,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			const search = new Input();
 			const list = new SelectList(
 				items,
-				Math.min(items.length, 14),
+				Math.max(1, items.length),
 				{
 					selectedPrefix: (t) => theme.fg(accent, t),
 					selectedText: (t) => theme.fg(accent, t),
@@ -418,6 +426,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			// We seed it from the getter, then advance it in lock-step with each
 			// setThinkingLevel() call and reconcile back to the getter when present.
 			let localLevel = pi.getThinkingLevel?.() ?? "";
+			const pager = new ModalPager();
 			const thinkLine = () => {
 				const live = pi.getThinkingLevel?.();
 				const resolved = live ?? localLevel;
@@ -434,31 +443,48 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				render(w: number) {
 					const mw = modalWidth(w);
 					const inner = mw - 4; // CHROME = 2 border + 2 padding
-					const lines: string[] = [
-						theme.fg(accent, theme.bold(`${icon("picker.model")}  Select model`)),
-						theme.fg("dim", "context · pricing · coding rank & score from modelgrep.com"),
-						thinkLine(),
-						theme.fg("muted", "Search:"),
-						...search.render(inner),
-						...list.render(inner),
-						theme.fg(
-							"dim",
-							"fuzzy search · ↑↓ navigate · shift+←/→ thinking · enter select · esc cancel",
-						),
-					];
-					return frameLines({
+					const result = frameModal({
 						width: mw,
-						lines,
+						maxHeight: terminalModalHeight(tui.terminal.rows),
+						minHeight: MIN_MODAL_HEIGHT,
+						header: [
+							theme.fg(accent, theme.bold(`${icon("picker.model")}  Select model`)),
+							theme.fg("dim", "context · pricing · coding rank & score from modelgrep.com"),
+							thinkLine(),
+							theme.fg("muted", "Search:"),
+							...search.render(inner),
+						],
+						body: list.render(inner),
+						selectedBodyRange: (() => {
+							const internal = list as unknown as { selectedIndex: number };
+							return pager.selectedRange({
+								start: internal.selectedIndex,
+								end: internal.selectedIndex + 1,
+							});
+						})(),
+						footer: [
+							theme.fg(
+								"dim",
+								"fuzzy search · ↑↓ navigate · ←→/PgUp/PgDn inspect · shift+←/→ thinking · enter select · esc cancel",
+							),
+						],
+						bodyOffset: pager.bodyOffset,
 						color: (s) => theme.fg(accent, s),
 						bg: (s) => theme.bg("customMessageBg", s),
 						fg: (s) => theme.fg("text", s),
 					});
+					pager.sync(result);
+					return result.lines;
 				},
 				invalidate() {
 					list.invalidate();
 					search.invalidate();
 				},
 				handleInput(data: string) {
+					if (pager.handleInput(data, kb, true)) {
+						tui.requestRender();
+						return;
+					}
 					// Detect keys via pi-tui's own parser — the same recognition
 					// SelectList uses. Arrows arrive as named keys ("up"/"down"),
 					// not raw escape sequences, so string-equality checks fail.
@@ -481,17 +507,19 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						return;
 					} else if (isNav || matchesKey(data, "enter")) {
 						list.handleInput?.(data);
+						if (isNav) pager.followSelection();
 					} else if (matchesKey(data, "escape")) {
 						done(null);
 					} else {
 						search.handleInput?.(data);
 						applyFuzzy(search.getValue?.() ?? "");
+						pager.followSelection();
 					}
 					list.invalidate();
 				},
 			};
 		},
-		{ overlay: true },
+		{ overlay: true, overlayOptions: { maxHeight: "80%" } },
 	);
 
 	if (!result) return;

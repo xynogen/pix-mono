@@ -13,7 +13,7 @@
  *   p.close();                             // releases input, removes overlay
  */
 
-import { frameLines, modalWidth } from "./modal-frame.js";
+import { frameModal, MIN_MODAL_HEIGHT, modalWidth, terminalModalHeight } from "./modal-frame.js";
 
 interface ProgressTheme {
 	fg(color: string, text: string): string;
@@ -30,12 +30,12 @@ interface ProgressComponent {
 export interface ProgressUI {
 	custom<T>(
 		cb: (
-			tui: { requestRender(): void },
+			tui: { requestRender(): void; terminal?: { rows?: number } },
 			theme: ProgressTheme,
 			kb: unknown,
 			done: (v: T) => void,
 		) => ProgressComponent,
-		opts?: { overlay?: boolean },
+		opts?: { overlay?: boolean; overlayOptions?: { maxHeight?: number | `${number}%` } },
 	): Promise<T | undefined>;
 }
 
@@ -81,15 +81,15 @@ export function openProgress(ui: ProgressUI, title: string, accent = "accent"): 
 			return {
 				render: (w: number) => {
 					const mw = modalWidth(w);
-					return frameLines({
+					return frameModal({
 						width: mw,
-						lines: [
-							theme.fg(accent, theme.bold(title)),
-							`${theme.fg(accent, SPINNER[frame] ?? "")} ${theme.fg("muted", labelValue)}`,
-						],
+						maxHeight: terminalModalHeight(tui.terminal?.rows),
+						minHeight: MIN_MODAL_HEIGHT,
+						header: [theme.fg(accent, theme.bold(title))],
+						body: [`${theme.fg(accent, SPINNER[frame] ?? "")} ${theme.fg("muted", labelValue)}`],
 						color: (s) => theme.fg(accent, s),
 						bg: (s) => theme.bg("customMessageBg", s),
-					});
+					}).lines;
 				},
 				invalidate: () => {},
 				// Swallow every keystroke: a focused overlay owns input, so nothing
@@ -97,7 +97,7 @@ export function openProgress(ui: ProgressUI, title: string, accent = "accent"): 
 				handleInput: () => {},
 			};
 		},
-		{ overlay: true },
+		{ overlay: true, overlayOptions: { maxHeight: "80%" } },
 	);
 
 	return {

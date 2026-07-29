@@ -1,6 +1,12 @@
-import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import {
+	frameModal,
+	MIN_MODAL_HEIGHT,
+	ModalPager,
+	modalWidth,
+	terminalModalHeight,
+} from "@xynogen/pix-pretty/modal-frame";
 import type { ConfigWritePreview, McpDiscoverySummary } from "./config.ts";
 import type { McpOnboardingState } from "./onboarding-state.ts";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
@@ -116,10 +122,11 @@ export class McpSetupPanel {
 	private selectedImports = new Set<ImportKind>();
 	private busy = false;
 	private notice: { text: string; tone: "success" | "warning" | "muted" } | null = null;
-	private tui: { requestRender(): void };
+	private tui: { requestRender(): void; terminal?: { rows?: number } };
 	private popupTheme: McpSetupPopupTheme;
 	private t: SetupTheme;
 	private keys: PanelKeys;
+	private pager = new ModalPager();
 	private inactivityTimeout: ReturnType<typeof setTimeout> | null = null;
 	private static readonly INACTIVITY_MS = 60_000;
 
@@ -127,7 +134,7 @@ export class McpSetupPanel {
 		private discovery: McpDiscoverySummary,
 		private callbacks: SetupPanelCallbacks,
 		private options: SetupPanelOptions,
-		tui: { requestRender(): void },
+		tui: { requestRender(): void; terminal?: { rows?: number } },
 		private done: () => void,
 		theme: McpSetupPopupTheme = FALLBACK_POPUP_THEME,
 	) {
@@ -239,6 +246,22 @@ export class McpSetupPanel {
 			return;
 		}
 
+		if (
+			this.pager.handleInput(
+				data,
+				{
+					matches: (input, action) =>
+						action === "tui.select.pageUp"
+							? this.keys.selectPageUp(input)
+							: this.keys.selectPageDown(input),
+				},
+				true,
+			)
+		) {
+			this.tui.requestRender();
+			return;
+		}
+
 		if (matchesKey(data, "escape")) {
 			if (this.screen === "imports" || this.screen === "paths") {
 				this.screen = this.discovery.hasAnyConfig ? "setup" : "empty";
@@ -263,11 +286,13 @@ export class McpSetupPanel {
 
 		const actions = this.getActions();
 		if (this.keys.selectUp(data)) {
+			this.pager.followSelection();
 			this.actionCursor = Math.max(0, this.actionCursor - 1);
 			this.tui.requestRender();
 			return;
 		}
 		if (this.keys.selectDown(data)) {
+			this.pager.followSelection();
 			this.actionCursor = Math.min(actions.length - 1, this.actionCursor + 1);
 			this.tui.requestRender();
 			return;
@@ -281,11 +306,13 @@ export class McpSetupPanel {
 	private handleImportsInput(data: string): void {
 		const imports = this.discovery.imports;
 		if (this.keys.selectUp(data)) {
+			this.pager.followSelection();
 			this.importCursor = Math.max(0, this.importCursor - 1);
 			this.tui.requestRender();
 			return;
 		}
 		if (this.keys.selectDown(data)) {
+			this.pager.followSelection();
 			this.importCursor = Math.min(imports.length - 1, this.importCursor + 1);
 			this.tui.requestRender();
 			return;
@@ -309,11 +336,13 @@ export class McpSetupPanel {
 	private handlePathsInput(data: string): void {
 		const paths = this.getDetectedPaths();
 		if (this.keys.selectUp(data)) {
+			this.pager.followSelection();
 			this.pathCursor = Math.max(0, this.pathCursor - 1);
 			this.tui.requestRender();
 			return;
 		}
 		if (this.keys.selectDown(data)) {
+			this.pager.followSelection();
 			this.pathCursor = Math.min(paths.length - 1, this.pathCursor + 1);
 			this.tui.requestRender();
 			return;
@@ -427,14 +456,14 @@ export class McpSetupPanel {
 	render(width: number): string[] {
 		const mw = modalWidth(width);
 		const innerW = mw - 4;
-		const lines: string[] = [];
-		lines.push(this.padLine(fg(this.t.title, `${icon("mcp")}  MCP setup`), innerW));
-		lines.push(
+		const header: string[] = [];
+		header.push(this.padLine(fg(this.t.title, `${icon("mcp")}  MCP setup`), innerW));
+		header.push(
 			this.padLine(fg(this.t.hint, "discover · import · configure external MCP servers"), innerW),
 		);
-		lines.push(this.padLine(this.discoverySummaryLine(), innerW));
-		lines.push(this.padLine(fg(this.t.muted, this.secondarySummaryLine()), innerW));
-		lines.push(this.padLine("", innerW));
+		header.push(this.padLine(this.discoverySummaryLine(), innerW));
+		header.push(this.padLine(fg(this.t.muted, this.secondarySummaryLine()), innerW));
+		header.push(this.padLine("", innerW));
 
 		if (this.notice) {
 			const tone =
@@ -444,25 +473,39 @@ export class McpSetupPanel {
 						? this.t.warning
 						: this.t.hint;
 			for (const line of wrapText(this.notice.text, innerW - 6)) {
-				lines.push(this.padLine(fg(tone, line), innerW));
+				header.push(this.padLine(fg(tone, line), innerW));
 			}
-			lines.push(this.padLine("", innerW));
+			header.push(this.padLine("", innerW));
 		}
 
-		if (this.screen === "imports") {
-			lines.push(...this.renderImports(innerW));
-		} else if (this.screen === "paths") {
-			lines.push(...this.renderPaths(innerW));
-		} else {
-			lines.push(...this.renderActions(innerW));
-		}
+		let body: string[];
+		if (this.screen === "imports") body = this.renderImports(innerW);
+		else if (this.screen === "paths") body = this.renderPaths(innerW);
+		else body = this.renderActions(innerW);
 
-		return frameLines({
+		const selectedBodyLine =
+			this.screen === "imports"
+				? this.importCursor + 2
+				: this.screen === "paths"
+					? this.pathCursor + 2
+					: this.actionCursor;
+		const result = frameModal({
 			width: mw,
-			lines,
+			maxHeight: terminalModalHeight(this.tui.terminal?.rows),
+			minHeight: MIN_MODAL_HEIGHT,
+			header,
+			body,
+			footer: [
+				fg(this.t.hint, "↑↓ navigate · enter select · esc back · ctrl+c close"),
+				fg(this.t.hint, "←→/PgUp/PgDn inspect overflow"),
+			],
+			bodyOffset: this.pager.bodyOffset,
+			selectedBodyLine: this.pager.selectedLine(selectedBodyLine),
 			color: this.t.border,
 			bg: (text) => this.popupTheme.bg("customMessageBg", text),
 		});
+		this.pager.sync(result);
+		return result.lines;
 	}
 
 	private renderActions(innerW: number): string[] {
@@ -472,7 +515,7 @@ export class McpSetupPanel {
 			const action = actions[index];
 			const selected = index === this.actionCursor;
 			const cursor = selected ? fg(this.t.selected, "›") : " ";
-			lines.push(this.padLine(`${cursor} ${truncateToWidth(action.label, innerW - 4)}`, innerW));
+			lines.push(`${cursor} ${action.label}`);
 		}
 		lines.push(this.padLine("", innerW));
 
@@ -480,10 +523,6 @@ export class McpSetupPanel {
 		for (const line of preview) {
 			lines.push(this.padLine(line, innerW));
 		}
-		lines.push(this.padLine("", innerW));
-		lines.push(
-			this.padLine(fg(this.t.hint, "↑↓ navigate · enter select · esc back · ctrl+c close"), innerW),
-		);
 		return lines;
 	}
 
@@ -671,25 +710,16 @@ export class McpSetupPanel {
 			),
 		);
 		lines.push("");
-		const diffLines = preview.diffText.split("\n");
-		const maxLines = 18;
-		const shown = diffLines.slice(0, maxLines);
-		for (const line of shown) {
+		for (const line of preview.diffText.split("\n")) {
 			lines.push(...wrapText(line, 74));
-		}
-		if (diffLines.length > maxLines) {
-			lines.push(
-				...wrapText(
-					`… ${diffLines.length - maxLines} more diff line${diffLines.length - maxLines === 1 ? "" : "s"}`,
-					74,
-				),
-			);
 		}
 		return lines;
 	}
 
-	private padLine(text: string, innerW: number): string {
-		return truncateToWidth(text, innerW, "…", true);
+	private padLine(text: string, _innerW: number): string {
+		// frameModal owns lossless wrapping and row padding. Pre-truncating here
+		// would hide command/config tails before the height-aware viewport sees them.
+		return text;
 	}
 
 	invalidate(): void {}
@@ -703,7 +733,7 @@ export function createMcpSetupPanel(
 	discovery: McpDiscoverySummary,
 	callbacks: SetupPanelCallbacks,
 	options: SetupPanelOptions,
-	tui: { requestRender(): void },
+	tui: { requestRender(): void; terminal?: { rows?: number } },
 	done: () => void,
 	theme?: McpSetupPopupTheme,
 ): McpSetupPanel & { dispose(): void } {

@@ -80,16 +80,25 @@ export interface DiffColors {
 	bgGutterDel: string;
 }
 
+// Faint row tints for changed lines. Kept dark enough to sit under syntax
+// highlighting without washing it out, but visible enough that a scanned diff
+// reads as add/remove bands rather than gutter chips alone.
+const BG_ADD_FAINT = "\x1b[48;2;18;42;28m";
+const BG_DEL_FAINT = "\x1b[48;2;48;22;26m";
+/** Intra-line word-diff emphasis — one step brighter than the row tint. */
+const BG_ADD_STRONG = "\x1b[48;2;28;72;44m";
+const BG_DEL_STRONG = "\x1b[48;2;82;32;38m";
+
 export const DEFAULT_DIFF_COLORS: DiffColors = {
 	fgAdd: FG_ADD,
 	fgDel: FG_DEL,
 	fgCtx: FG_DIM,
-	bgAdd: BG_BASE,
-	bgDel: BG_BASE,
-	bgAddHighlight: BG_BASE,
-	bgDelHighlight: BG_BASE,
-	bgGutterAdd: BG_BASE,
-	bgGutterDel: BG_BASE,
+	bgAdd: BG_ADD_FAINT,
+	bgDel: BG_DEL_FAINT,
+	bgAddHighlight: BG_ADD_STRONG,
+	bgDelHighlight: BG_DEL_STRONG,
+	bgGutterAdd: BG_ADD_FAINT,
+	bgGutterDel: BG_DEL_FAINT,
 };
 
 type DiffTheme = {
@@ -112,12 +121,12 @@ export function resolveDiffColors(theme?: DiffTheme): DiffColors {
 		fgDel: themeFg(theme, "toolDiffRemoved", FG_DEL),
 		fgCtx: themeFg(theme, "toolDiffContext", FG_DIM),
 		theme: typeof theme.fg === "function" ? (theme as FgTheme) : undefined,
-		bgAdd: BG_BASE,
-		bgDel: BG_BASE,
-		bgAddHighlight: BG_BASE,
-		bgDelHighlight: BG_BASE,
-		bgGutterAdd: BG_BASE,
-		bgGutterDel: BG_BASE,
+		bgAdd: BG_ADD_FAINT,
+		bgDel: BG_DEL_FAINT,
+		bgAddHighlight: BG_ADD_STRONG,
+		bgDelHighlight: BG_DEL_STRONG,
+		bgGutterAdd: BG_ADD_FAINT,
+		bgGutterDel: BG_DEL_FAINT,
 	};
 }
 

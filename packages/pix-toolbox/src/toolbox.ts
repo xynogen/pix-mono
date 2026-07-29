@@ -34,7 +34,13 @@ import {
 	type TUI,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
-import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import {
+	frameModal,
+	MIN_MODAL_HEIGHT,
+	ModalPager,
+	modalWidth,
+	terminalModalHeight,
+} from "@xynogen/pix-pretty/modal-frame";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -334,7 +340,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 		};
 	}): Promise<void> {
 		await ctx.ui.custom<null>(
-			(tui: TUI, theme: Theme, _kb: KeybindingsManager, done: (r: null) => void) => {
+			(tui: TUI, theme: Theme, keybindings: KeybindingsManager, done: (r: null) => void) => {
 				const accent = "accent";
 				const mute = (s: string) => theme.fg("muted", s);
 
@@ -371,7 +377,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 
 				const list = new SelectList(
 					allItems,
-					Math.min(allItems.length, 14),
+					Math.max(1, allItems.length),
 					{
 						selectedPrefix: (t: string) => theme.fg(accent, t),
 						selectedText: (t: string) => theme.fg(accent, t),
@@ -393,6 +399,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 
 				const search = new Input();
 				let statusText = "";
+				const pager = new ModalPager();
 
 				const refreshLabels = () => {
 					for (const it of internal.items) {
@@ -442,31 +449,48 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 					render(w: number) {
 						const mw = modalWidth(w);
 						const inner = mw - 4; // CHROME = 2 border + 2 padding
-						const lines: string[] = [
-							theme.fg(accent, theme.bold("🧰  Toolbox")),
-							theme.fg("muted", "Search:"),
-							...search.render(inner),
-							...list.render(inner),
-						];
-						if (statusText) lines.push(statusText);
-						lines.push(
-							theme.fg("dim", "↑↓ navigate · e enable · d disable · space toggle · esc close"),
+						const footer = statusText ? [statusText] : [];
+						footer.push(
+							theme.fg(
+								"dim",
+								"↑↓ navigate · ←→/PgUp/PgDn inspect · e enable · d disable · space toggle · esc close",
+							),
 						);
-						return frameLines({
+						const result = frameModal({
 							width: mw,
-							lines,
+							maxHeight: terminalModalHeight(tui.terminal.rows),
+							minHeight: MIN_MODAL_HEIGHT,
+							header: [
+								theme.fg(accent, theme.bold("🧰  Toolbox")),
+								theme.fg("muted", "Search:"),
+								...search.render(inner),
+							],
+							body: list.render(inner),
+							selectedBodyRange: pager.selectedRange({
+								start: internal.selectedIndex,
+								end: internal.selectedIndex + 1,
+							}),
+							footer,
+							bodyOffset: pager.bodyOffset,
 							color: (s) => theme.fg(accent, s),
 							bg: (s) => theme.bg("customMessageBg", s),
 							fg: (s) => theme.fg("text", s),
 						});
+						pager.sync(result);
+						return result.lines;
 					},
 					invalidate() {
 						list.invalidate();
 						search.invalidate();
 					},
 					handleInput(data: string) {
+						if (pager.handleInput(data, keybindings, true)) {
+							tui.requestRender?.();
+							return;
+						}
 						if (matchesKey(data, Key.up) || matchesKey(data, Key.down)) {
 							list.handleInput?.(data);
+							pager.followSelection();
 						} else if (matchesKey(data, Key.enter) || matchesKey(data, Key.escape)) {
 							done(null);
 							return;
@@ -482,10 +506,12 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 								} else {
 									search.handleInput?.(data);
 									applyFilter(search.getValue?.() ?? "");
+									pager.followSelection();
 								}
 							} else {
 								search.handleInput?.(data);
 								applyFilter(search.getValue?.() ?? "");
+								pager.followSelection();
 							}
 						}
 						list.invalidate();

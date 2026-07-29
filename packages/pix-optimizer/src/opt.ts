@@ -15,8 +15,13 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { matchesKey } from "@earendil-works/pi-tui";
-import { frameLines } from "@xynogen/pix-pretty/modal-frame";
+import { type KeybindingsManager, matchesKey } from "@earendil-works/pi-tui";
+import {
+	frameModal,
+	MIN_MODAL_HEIGHT,
+	ModalPager,
+	terminalModalHeight,
+} from "@xynogen/pix-pretty/modal-frame";
 import type { OptimizerHandle, OptimizerStatus, OptimizerTool } from "./status.ts";
 import { toolIcon } from "./status.ts";
 
@@ -114,12 +119,13 @@ export function registerOptCommand(
 
 			await ui.custom<null>(
 				(
-					tui: { requestRender(): void },
+					tui: { requestRender(): void; terminal?: { rows?: number } },
 					theme: typeof ui.theme,
-					_kb: unknown,
+					kb: KeybindingsManager,
 					done: (v: null) => void,
 				) => {
 					let selected = 0;
+					const pager = new ModalPager();
 
 					const cycle = (direction: -1 | 1) => {
 						const tool = TOOL_ORDER[selected] as OptimizerTool;
@@ -131,6 +137,7 @@ export function registerOptCommand(
 
 					const move = (direction: -1 | 1) => {
 						selected = (selected + direction + TOOL_ORDER.length) % TOOL_ORDER.length;
+						pager.followSelection();
 					};
 
 					return {
@@ -149,24 +156,32 @@ export function registerOptCommand(
 								const bar = theme.fg(on ? "accent" : "dim", levelBar(cur, handles[tool].values));
 								return `${cursor} ${glyph}  ${name}  ${value}  ${bar}`;
 							});
-							const lines = [
-								theme.fg("accent", theme.bold("󱎫  Optimizer")),
-								"",
-								...rows,
-								"",
-								theme.fg("dim", helpSummary(handles[TOOL_ORDER[selected] as OptimizerTool].help)),
-								"",
-								theme.fg("dim", "←→ change · ↑↓ move · esc close"),
-							];
-							return frameLines({
+							const result = frameModal({
 								width: boxW,
-								lines,
+								maxHeight: terminalModalHeight(tui.terminal?.rows),
+								minHeight: MIN_MODAL_HEIGHT,
+								header: [theme.fg("accent", theme.bold("󱎫  Optimizer")), ""],
+								body: rows,
+								footer: [
+									"",
+									theme.fg("dim", helpSummary(handles[TOOL_ORDER[selected] as OptimizerTool].help)),
+									"",
+									theme.fg("dim", "←→ change · ↑↓ move · PgUp/PgDn inspect · esc close"),
+								],
+								bodyOffset: pager.bodyOffset,
+								selectedBodyLine: pager.selectedLine(selected),
 								color: (s) => theme.fg("accent", s),
 								bg: (s) => theme.bg("customMessageBg", s),
 							});
+							pager.sync(result);
+							return result.lines;
 						},
 						invalidate: () => {},
 						handleInput: (data: string) => {
+							if (pager.handleInput(data, kb)) {
+								tui.requestRender();
+								return;
+							}
 							// matchesKey handles both legacy bytes and Kitty CSI-u encodings
 							// for letters and special keys alike — raw string compares like
 							// `data === "k"` silently fail under the Kitty keyboard protocol.
