@@ -12,6 +12,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { createLocalBashOperations } from "@earendil-works/pi-coding-agent";
 import registerAsk from "@xynogen/pix-ask/src/index.ts";
 import registerBash from "@xynogen/pix-bash/src/extension.ts";
 import registerCommands from "@xynogen/pix-commands/src/extension.ts";
@@ -81,4 +82,57 @@ export default function (pi: ExtensionAPI): void {
 	for (const register of MEMBERS) {
 		(register as (pi: ExtensionAPI) => void)(pi);
 	}
+
+	// ── Respect $SHELL for user ! commands ──────────────────────────────────
+	// Pi defaults to /bin/bash for ! commands. When the user's login shell
+	// differs (zsh, fish, nushell, …), redirect ! execution through $SHELL
+	// in interactive mode so aliases, functions, and rc config all work.
+	const userShell = process.env.SHELL;
+	if (userShell && !/\bbash$/.test(userShell)) {
+		const ops = createInteractiveShellOps(userShell);
+		pi.on("user_bash", () => ({ operations: ops }));
+	}
+}
+
+/**
+ * Build BashOperations that run commands through the user's real shell with
+ * rc files loaded and alias expansion enabled.
+ *
+ * Problem: `zsh -c "gss"` is non-interactive — it skips `.zshrc` and disables
+ * alias expansion.  Even `zsh -c ". ~/.zshrc; gss"` fails because aliases
+ * are resolved at parse-time, before `.zshrc` is sourced.
+ *
+ * Solution: source the rc file, then `eval` the command.  `eval` creates a
+ * new parse boundary, so aliases defined by the source are available.
+ */
+function createInteractiveShellOps(
+	shellPath: string,
+): import("@earendil-works/pi-coding-agent").BashOperations {
+	const inner = createLocalBashOperations({ shellPath });
+	const name = shellPath.split("/").pop() ?? "";
+	const home = process.env.HOME ?? "~";
+
+	return {
+		exec(command, cwd, options) {
+			return inner.exec(wrapForShell(name, home, command), cwd, options);
+		},
+	};
+}
+
+/**
+ * Wrap a command so it runs inside the user's shell with rc and alias support.
+ */
+function wrapForShell(shell: string, home: string, command: string): string {
+	if (shell === "zsh") {
+		// 1. source .zshrc for aliases/functions/PATH
+		// 2. eval to create a fresh parse boundary so aliases expand
+		return `. ${home}/.zshrc 2>/dev/null; eval ${escapeForShell(command)}`;
+	}
+	// Other shells: run as-is, rely on shellPath alone
+	return command;
+}
+
+/** Single-quote a string for safe shell embedding. */
+function escapeForShell(s: string): string {
+	return `'${s.replace(/'/g, "'\\''")}'`;
 }
