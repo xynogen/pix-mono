@@ -4,10 +4,10 @@ import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
 
 const noColor = (s: string) => s;
 
-test("modalWidth clamps to [40, 96] with 4-col margin", () => {
+test("modalWidth prefers 40–96 columns without exceeding the render width", () => {
 	expect(modalWidth(200)).toBe(96);
 	expect(modalWidth(50)).toBe(46);
-	expect(modalWidth(10)).toBe(40);
+	expect(modalWidth(10)).toBe(10);
 });
 
 test("frameLines draws rounded border with uniform width", () => {
