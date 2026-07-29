@@ -39,6 +39,12 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 | `pix-todo` | `todo` — durable execution checklist |
 | `pix-ask` | `ask_user` — structured TUI questionnaire |
 
+**Shell integration**
+
+| Feature | Description |
+|---|---|
+| `$SHELL` respect | User `!` commands run through `$SHELL` instead of Pi's default `/bin/bash`. For zsh, `.zshrc` is sourced and aliases expand correctly via `eval`. Other non-bash shells get the shell redirect without rc wrapping. |
+
 **Shared data + behaviour**
 
 | Package | Description |
