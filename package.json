@@ -9,7 +9,7 @@
 	],
 	"scripts": {
 		"install:deps": "bun install --frozen-lockfile",
-		"dev": "bun test --watch",
+		"dev": "bun test --watch --path-ignore-patterns='packages/pix-mcp/tests/**'",
 		"test": "bun test --path-ignore-patterns='packages/pix-mcp/tests/**' && bun run --cwd packages/pix-mcp test",
 		"test:unit": "bun test --path-ignore-patterns='packages/pix-mcp/tests/**' && bun run --cwd packages/pix-mcp test",
 		"test:tidy": "rm -rf coverage",
