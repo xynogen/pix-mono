@@ -23,6 +23,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,12 +107,13 @@ interface DataSourceOptions<T> {
 export class DataSource<T> {
 	private _mem: T | null = null;
 	private _inflight: Promise<T> | null = null;
-	private readonly opts: Required<DataSourceOptions<T>>;
+	private readonly opts: Required<Omit<DataSourceOptions<T>, "timeoutMs">> & {
+		timeoutMs?: number;
+	};
 
 	constructor(opts: DataSourceOptions<T>) {
 		this.opts = {
 			ttlMs: 24 * 60 * 60 * 1000,
-			timeoutMs: 10_000,
 			headers: () => undefined,
 			skip: () => false,
 			fetchRaw: defaultFetchRaw,
@@ -156,7 +158,11 @@ export class DataSource<T> {
 		}
 		try {
 			const url = typeof this.opts.url === "function" ? this.opts.url() : this.opts.url;
-			const raw = await this.opts.fetchRaw(url, this.opts.headers(), this.opts.timeoutMs);
+			const raw = await this.opts.fetchRaw(
+				url,
+				this.opts.headers(),
+				this.opts.timeoutMs ?? ioTimeoutMs(),
+			);
 			const val = this.opts.parse(raw);
 			this._mem = val;
 			void this._writeCache(raw);

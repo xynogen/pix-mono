@@ -5,6 +5,7 @@ export {
 	type GateSeverity,
 	gateSection,
 } from "./gate.ts";
+export { type IoConfig, ioSection } from "./io.ts";
 export {
 	type CavemanLevel,
 	type OptimizerConfig,
@@ -22,6 +23,7 @@ export {
 
 import { collapseSection } from "./collapse.ts";
 import { gateSection } from "./gate.ts";
+import { ioSection } from "./io.ts";
 import { optimizerSection } from "./optimizer.ts";
 import { prettySection } from "./pretty.ts";
 
@@ -29,6 +31,7 @@ import { prettySection } from "./pretty.ts";
 export const builtinSections = [
 	collapseSection,
 	prettySection,
+	ioSection,
 	optimizerSection,
 	gateSection,
 ] as const;

@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { throwIfAborted } from "./abort.ts";
 import { loadMcpConfig } from "./config.ts";
 import { ConsentManager } from "./consent-manager.ts";
@@ -38,7 +39,7 @@ export async function initializeMcp(
 	const config = loadMcpConfig(configPath, ctx.cwd);
 
 	const manager = new McpServerManager(ctx.cwd);
-	manager.setDefaultRequestTimeoutMs(config.settings?.requestTimeoutMs);
+	manager.setDefaultRequestTimeoutMs(ioTimeoutMs());
 	const samplingAutoApprove = config.settings?.samplingAutoApprove === true;
 	if (config.settings?.sampling !== false && (ctx.hasUI || samplingAutoApprove)) {
 		manager.setSamplingConfig({

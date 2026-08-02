@@ -7,6 +7,7 @@ export type {
 	SubscribeOptions,
 } from "./events.ts";
 export { default } from "./extension.ts";
+export { ioTimeoutMs, ioTimeoutSignal } from "./io.ts";
 export {
 	config,
 	createRuntime,
@@ -34,6 +35,8 @@ export {
 	type GateConfig,
 	type GateRuleConfig,
 	gateSection,
+	type IoConfig,
+	ioSection,
 	type OptimizerConfig,
 	optimizerSection,
 	type PrettyConfig,

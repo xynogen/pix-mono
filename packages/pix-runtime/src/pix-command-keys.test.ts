@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getKeybindings, setKittyProtocolActive } from "@earendil-works/pi-tui";
 import { registerPixCommand } from "./pix-command.ts";
+import { ioSection } from "./sections/io.ts";
 import { prettySection } from "./sections/pretty.ts";
 import { createIsolatedRuntime, type IsolatedRuntime } from "./testing.ts";
 
@@ -48,6 +49,7 @@ interface Driver {
 	cursorLine(): string | undefined;
 	closed(): boolean;
 	iconsValue(): string;
+	timeoutValue(): number;
 	cleanup(): void;
 }
 
@@ -120,6 +122,7 @@ async function openOverlay(): Promise<Driver> {
 		closed: () => closed,
 		// First row is Pretty/icons; read the live value through the runtime.
 		iconsValue: () => iso.runtime.get(prettySection).icons,
+		timeoutValue: () => iso.runtime.get(ioSection).timeoutSec,
 		cleanup: () => iso.cleanup(),
 	};
 }
@@ -205,6 +208,21 @@ for (const enc of ENCODINGS) {
 		});
 	});
 }
+
+describe("/pix network timeout", () => {
+	it("exposes and updates the shared timeout row", async () => {
+		const d = await openOverlay();
+		d.feed(KEYS.down.legacy);
+		d.feed(KEYS.down.legacy);
+		d.feed(KEYS.down.legacy);
+		d.feed(KEYS.down.legacy);
+		expect(d.cursorLine()).toContain("timeout (sec)");
+		expect(d.timeoutValue()).toBe(30);
+		d.feed(KEYS.right.legacy);
+		await d.settle();
+		expect(d.timeoutValue()).toBe(10);
+	});
+});
 
 describe("/pix overlay frame", () => {
 	it("renders a rounded border around every settings row", async () => {

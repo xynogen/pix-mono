@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pixRuntime } from "@xynogen/pix-runtime/config";
+import { ioSection } from "@xynogen/pix-runtime/sections";
 
 import registerSkills, {
 	copySkillResource,
@@ -161,6 +163,41 @@ describe("formatCollapsedSkillResult", () => {
 				bytes: 2048,
 			}),
 		).toBe("copied · .pi/tools/render.ts · 2.0 KiB");
+	});
+});
+
+describe("remote skill timeout config", () => {
+	beforeEach(async () => {
+		await pixRuntime().update(ioSection, { timeoutSec: 30 });
+	});
+
+	it("passes the configured timeout and tool cancellation signal to fetch", async () => {
+		await pixRuntime().update(ioSection, { timeoutSec: 120 });
+		const controller = new AbortController();
+		let seenRequest: RequestInit | undefined;
+		const originalFetch = globalThis.fetch;
+		globalThis.fetch = mock((_input: string | URL | Request, init?: RequestInit) => {
+			seenRequest = init;
+			return Promise.resolve(new Response(JSON.stringify({ skills: [] }), { status: 200 }));
+		}) as unknown as typeof fetch;
+		try {
+			let registered: Record<string, unknown> = {};
+			registerSkills({
+				registerTool(tool: unknown) {
+					registered = tool as Record<string, unknown>;
+				},
+				on() {},
+			} as never);
+			const execute = registered.execute as (...args: unknown[]) => Promise<unknown>;
+			await execute("call", { search: "typescript" }, controller.signal, undefined, {});
+			const requestSignal = seenRequest?.signal;
+			expect(requestSignal).toBeDefined();
+			expect(requestSignal).not.toBe(controller.signal);
+			expect(requestSignal?.aborted).toBe(false);
+		} finally {
+			globalThis.fetch = originalFetch;
+			await pixRuntime().update(ioSection, { timeoutSec: 30 });
+		}
 	});
 });
 

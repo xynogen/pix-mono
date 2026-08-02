@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { rm } from "node:fs/promises";
+import { pixRuntime } from "@xynogen/pix-runtime/config";
+import { ioSection } from "@xynogen/pix-runtime/sections";
 import {
 	benchlm,
 	buildModelsDevIndex,
+	DataSource,
 	lookupBenchmark,
 	lookupInIndex,
 	lookupModelsDev,
@@ -42,6 +46,34 @@ function mg(
 		benchmarks: { artificial_analysis: { ...opts.bench } },
 	};
 }
+
+describe("network timeout config", () => {
+	it("uses the shared timeout when a data source has no explicit override", async () => {
+		const cachePath = `/tmp/pix-data-timeout-${process.pid}-${Date.now()}.json`;
+		await pixRuntime().update(ioSection, { timeoutSec: 120 });
+		try {
+			let seenTimeout = 0;
+			const source = new DataSource<string[]>({
+				label: "test",
+				url: "https://example.test/data",
+				cachePath,
+				fetchRaw: async (_url, _headers, timeoutMs) => {
+					seenTimeout = timeoutMs;
+					return { data: [] };
+				},
+				parse: () => [],
+				parseCache: () => [],
+				empty: [],
+			});
+
+			await source.get();
+			expect(seenTimeout).toBe(120_000);
+		} finally {
+			await pixRuntime().update(ioSection, { timeoutSec: 30 });
+			await rm(cachePath, { force: true });
+		}
+	});
+});
 
 // ── buildModelsDevIndex ──────────────────────────────────────────────────────
 

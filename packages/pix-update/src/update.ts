@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { openProgress, type ProgressHandle, type ProgressUI } from "@xynogen/pix-pretty/progress";
+import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
 
 export const PACKAGE_NAME = "@earendil-works/pi-coding-agent";
@@ -182,7 +183,7 @@ export async function runWithRetry(pi: ExtensionAPI, spec: CommandSpec, sleep: S
 	for (let attempt = 1; attempt <= 3; attempt++) {
 		// nice -n 19: deprioritize the install so the TUI keeps echoing keystrokes.
 		const result = await pi.exec("nice", ["-n", "19", spec.command, ...spec.args], {
-			timeout: 180_000,
+			timeout: ioTimeoutMs(),
 		});
 		lastOutput = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
 		if ((result.code ?? 0) === 0) return { ok: true, output: lastOutput, attempts: attempt };
@@ -238,7 +239,7 @@ async function updatePackages(
 ) {
 	progress?.setLabel("Updating pi packages…");
 	const result = await pi.exec("nice", ["-n", "19", "pi", "update", "--extensions"], {
-		timeout: 240_000,
+		timeout: ioTimeoutMs(),
 	});
 	const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
 	if ((result.code ?? 0) !== 0) {

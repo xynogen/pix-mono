@@ -278,36 +278,17 @@ describe("McpServerManager sampling", () => {
 		expect(client.listResources).toHaveBeenCalledWith(undefined, { timeout: 2500 });
 	});
 
-	it("prefers the per-server timeout for connect and discovery requests", async () => {
+	it("builds request options from the global timeout", async () => {
 		const { McpServerManager } = await import("../src/server-manager.ts");
 		const manager = new McpServerManager();
 		manager.setDefaultRequestTimeoutMs(2500);
 
-		await manager.connect("demo", { command: "node", args: ["server.js"], requestTimeoutMs: 5000 });
-
-		const client = mocks.clients[0];
-		expect(client.connect).toHaveBeenCalledWith(mocks.transports[0], { timeout: 5000 });
-		expect(client.listTools).toHaveBeenCalledWith(undefined, { timeout: 5000 });
-		expect(client.listResources).toHaveBeenCalledWith(undefined, { timeout: 5000 });
-	});
-
-	it("builds request options from global and per-server timeouts", async () => {
-		const { McpServerManager } = await import("../src/server-manager.ts");
-		const manager = new McpServerManager();
-		manager.setDefaultRequestTimeoutMs(2500);
-
-		await manager.connect("demo", { command: "node", args: ["server.js"], requestTimeoutMs: 5000 });
-		await manager.connect("sdk-default", {
-			command: "node",
-			args: ["server.js"],
-			requestTimeoutMs: 0,
-		});
+		await manager.connect("demo", { command: "node", args: ["server.js"] });
 
 		const signal = new AbortController().signal;
-		expect(manager.getRequestOptions("demo", signal)).toEqual({ signal, timeout: 5000 });
+		expect(manager.getRequestOptions("demo", signal)).toEqual({ signal, timeout: 2500 });
 		expect(manager.getRequestOptions("missing", signal)).toEqual({ signal, timeout: 2500 });
 		expect(manager.getRequestOptions("missing")).toEqual({ timeout: 2500 });
-		expect(manager.getRequestOptions("sdk-default")).toBeUndefined();
 
 		manager.setDefaultRequestTimeoutMs(0);
 		expect(manager.getRequestOptions("missing")).toBeUndefined();

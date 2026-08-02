@@ -19,6 +19,7 @@ import type { PixRuntime } from "./runtime.ts";
 import type { DeepPartial, SectionHandle } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { gateSection } from "./sections/gate.ts";
+import { ioSection } from "./sections/io.ts";
 import { prettySection } from "./sections/pretty.ts";
 
 interface SettingRow<T> {
@@ -67,6 +68,14 @@ const SETTINGS: SettingRow<unknown>[] = [
 		values: ["5", "10", "15", "20", "30", "60"],
 		read: (v) => String(v.delaySec),
 		patch: (value) => ({ delaySec: Number(value) }),
+	}),
+	row({
+		section: "Network",
+		label: "timeout (sec)",
+		handle: ioSection,
+		values: ["30", "10", "60", "120", "300"],
+		read: (v) => String(v.timeoutSec),
+		patch: (value) => ({ timeoutSec: Number(value) }),
 	}),
 	row({
 		section: "Gate",

@@ -50,6 +50,23 @@ describe("Skills.sh search", () => {
 	it("rejects undersized queries", async () => {
 		expect(searchRemoteSkills("x")).rejects.toThrow("between 2 and 200");
 	});
+
+	it("cancels an in-flight search", async () => {
+		const controller = new AbortController();
+		const fetcher = ((_input: string | URL | Request, init?: RequestInit) =>
+			new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener(
+					"abort",
+					() => reject(init.signal?.reason ?? new DOMException("Aborted", "AbortError")),
+					{ once: true },
+				);
+			})) as typeof fetch;
+
+		const pending = searchRemoteSkills("hallmark", fetcher, { signal: controller.signal });
+		controller.abort();
+
+		await expect(pending).rejects.toThrow("Remote request cancelled");
+	});
 });
 
 describe("remote skill fetching", () => {
@@ -110,6 +127,32 @@ describe("remote skill fetching", () => {
 		});
 		expect(second.cached).toBe(true);
 		expect(calls).toHaveLength(callCount);
+	});
+
+	it("times out a stalled remote fetch", async () => {
+		const root = await mkdtemp(join(tmpdir(), "pix-remote-skill-"));
+		roots.push(root);
+		let aborted = false;
+		const fetcher = ((_input: string | URL | Request, init?: RequestInit) =>
+			new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener(
+					"abort",
+					() => {
+						aborted = true;
+						reject(new DOMException("Aborted", "AbortError"));
+					},
+					{ once: true },
+				);
+			})) as typeof fetch;
+
+		await expect(
+			fetchRemoteSkill("owner/repo", "hallmark", {
+				cacheRoot: root,
+				fetcher,
+				timeoutMs: 10,
+			}),
+		).rejects.toThrow("Remote request timed out after 10 ms");
+		expect(aborted).toBe(true);
 	});
 
 	it("requires the selected skill name to match frontmatter", async () => {

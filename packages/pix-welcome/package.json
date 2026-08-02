@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-welcome",
-	"version": "0.1.17",
+	"version": "0.1.18",
 	"description": "Pi extension — welcome banner with startup health checks",
 	"type": "module",
 	"main": "src/index.ts",
@@ -43,6 +43,6 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-pretty": "^1.7.9",
-		"@xynogen/pix-runtime": "^0.3.0"
+		"@xynogen/pix-runtime": "^0.4.0"
 	}
 }

@@ -15,6 +15,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { dirname, extname, join, resolve, sep } from "node:path";
+import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { getAgentPath } from "./agent-dir.ts";
 
 const CACHE_VERSION = 1;
@@ -242,8 +243,6 @@ function resolveFromNpmCache(packageSpec: string, binName?: string): NpxCacheEnt
 	};
 }
 
-const FORCE_CACHE_TIMEOUT_MS = 30_000;
-
 async function forceNpxCache(packageSpec: string): Promise<void> {
 	try {
 		await new Promise<void>((resolve, reject) => {
@@ -255,7 +254,7 @@ async function forceNpxCache(packageSpec: string): Promise<void> {
 			const timer = setTimeout(() => {
 				proc.kill();
 				reject(new Error("timeout"));
-			}, FORCE_CACHE_TIMEOUT_MS);
+			}, ioTimeoutMs());
 			timer.unref();
 			proc.on("close", () => {
 				clearTimeout(timer);

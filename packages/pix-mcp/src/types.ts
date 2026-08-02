@@ -316,7 +316,6 @@ export interface ServerEntry {
 	oauth?: OAuthConfig | false;
 	lifecycle?: "keep-alive" | "lazy" | "eager";
 	idleTimeout?: number; // minutes, overrides global setting
-	requestTimeoutMs?: number; // milliseconds, overrides global request timeout when > 0
 	// Resource handling
 	exposeResources?: boolean;
 	// Direct tool registration
@@ -341,7 +340,6 @@ export interface McpOutputGuardSettings {
 export interface McpSettings {
 	toolPrefix?: "server" | "none" | "short";
 	idleTimeout?: number; // minutes, default 10, 0 to disable
-	requestTimeoutMs?: number; // milliseconds, overrides the SDK request timeout when > 0
 	discoveryLimit?: number; // compact search/list/status result cap, default 12, max 50
 	directTools?: boolean;
 	disableProxyTool?: boolean;

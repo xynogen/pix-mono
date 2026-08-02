@@ -10,7 +10,7 @@ See `DESIGN.md` for the full contract.
 ## What it does
 
 - Versioned, sparse `pix.json` (`$version: 1`) — defaults resolve in code.
-- Typed sections: `collapse`, `pretty`, `optimizer`, `gate`.
+- Typed sections: `collapse`, `pretty`, `io`, `optimizer`, `gate`.
 - Atomic writes behind a serialized in-process queue and a short-lived
   cross-process lock. A failed write leaves the old file intact.
 - Immutable, deeply frozen config snapshots with a monotonic revision.
@@ -38,7 +38,16 @@ import { prettySection } from "@xynogen/pix-runtime/sections";
 const icons = config(prettySection).icons;         // synchronous read
 await updateConfig(prettySection, { icons: "ascii" });
 const off = onConfigChange((c) => render(), { paths: ["pretty.icons"] });
+
+import { ioTimeoutMs, ioTimeoutSignal } from "@xynogen/pix-runtime/io";
+const timeoutMs = ioTimeoutMs();                    // shared network timeout
+const signal = ioTimeoutSignal(toolSignal);         // timeout + cancellation
 ```
+
+Set `io.timeoutSec` in `~/.pi/agent/pix.json`, or change **Network → timeout (sec)**
+with `/pix`. The default is 30 seconds. It applies to Pix network operations,
+including remote skills, web fetch/search/transcription, MCP requests and
+connection bootstrap, background model-data refreshes, and update downloads.
 
 Collapse policy helpers:
 

@@ -16,12 +16,12 @@ import { access, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 import { Type } from "typebox";
 import { routerBaseUrl } from "./data.js";
 import { auth, curl } from "./http.js";
 import { makeRenderCall, makeRenderResult } from "./render.js";
 
-const REQUEST_TIMEOUT_MS = 120_000; // audio transcription can take longer
 const CHAT_TRUNCATE_LIMIT = 50_000; // only when no output_file is provided
 const DEFAULT_MODEL = "dg/nova-3";
 
@@ -71,35 +71,28 @@ async function apiMultipart(
 ): Promise<string> {
 	const url = `${routerBaseUrl()}${path}`;
 	const key = auth();
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-	const s = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+	const requestSignal = ioTimeoutSignal(signal);
+	const fileData = await readFile(filePath, { signal: requestSignal });
+	const blob = new Blob([fileData], { type: mimeType(filePath) });
 
-	try {
-		const fileData = await readFile(filePath);
-		const blob = new Blob([fileData], { type: mimeType(filePath) });
+	const form = new FormData();
+	form.append("file", blob, basename(filePath));
+	form.append("model", model);
+	if (language) form.append("language", language);
 
-		const form = new FormData();
-		form.append("file", blob, basename(filePath));
-		form.append("model", model);
-		if (language) form.append("language", language);
-
-		const res = await fetch(url, {
-			method: "POST",
-			headers: {
-				...(key ? { Authorization: `Bearer ${key}` } : {}),
-			},
-			body: form,
-			signal: s,
-		});
-		if (!res.ok) {
-			const errText = await res.text().catch(() => "");
-			throw new Error(`API ${res.status}: ${errText.slice(0, 500)}`);
-		}
-		return await res.text();
-	} finally {
-		clearTimeout(timeout);
+	const res = await fetch(url, {
+		method: "POST",
+		headers: {
+			...(key ? { Authorization: `Bearer ${key}` } : {}),
+		},
+		body: form,
+		signal: requestSignal,
+	});
+	if (!res.ok) {
+		const errText = await res.text().catch(() => "");
+		throw new Error(`API ${res.status}: ${errText.slice(0, 500)}`);
 	}
+	return res.text();
 }
 
 /** Extract the `text` field from a JSON envelope, or return the raw string. */
@@ -448,7 +441,7 @@ export default function registerTranscribe(pi: ExtensionAPI): void {
 					`${routerBaseUrl()}/audio/transcriptions`,
 				];
 
-				const raw = await curl(curlArgs, { maxTime: 120, timeoutMs: REQUEST_TIMEOUT_MS });
+				const raw = await curl(curlArgs);
 				return await run("curl-fallback", raw);
 			} catch (curlErr: unknown) {
 				const curlMsg = curlErr instanceof Error ? curlErr.message : String(curlErr);

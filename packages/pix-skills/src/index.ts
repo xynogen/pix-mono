@@ -20,6 +20,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { formatCollapsedToolRow, hideCollapsedToolCall } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
 import {
@@ -487,7 +488,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 		executionMode: "sequential",
 		parameters: ParamsSchema,
 
-		async execute(_toolCallId, params, _signal, _upd, toolCtx) {
+		async execute(_toolCallId, params, signal, _upd, toolCtx) {
 			const ok = (text: string, details: SkillResultDetails) => ({
 				content: [{ type: "text" as const, text }],
 				details,
@@ -510,7 +511,10 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 
 			if (search) {
 				try {
-					const results = await searchRemoteSkills(search);
+					const results = await searchRemoteSkills(search, fetch, {
+						signal,
+						timeoutMs: ioTimeoutMs(),
+					});
 					return ok(formatRemoteSkillSearch(search, results), {
 						mode: "search",
 						query: search,
@@ -542,7 +546,11 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 			let remoteCached: boolean | undefined;
 			if (source) {
 				try {
-					const remote = await fetchRemoteSkill(source, name, { refresh });
+					const remote = await fetchRemoteSkill(source, name, {
+						refresh,
+						signal,
+						timeoutMs: ioTimeoutMs(),
+					});
 					entry = { name: remote.name, path: remote.path, root: remote.root };
 					remoteSource = remote.source;
 					remoteCached = remote.cached;

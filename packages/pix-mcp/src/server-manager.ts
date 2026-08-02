@@ -75,18 +75,11 @@ export class McpServerManager {
 		return this.buildRequestOptions(connection?.definition, signal);
 	}
 
-	private getResolvedRequestTimeoutMs(definition?: ServerDefinition): number | undefined {
-		if (definition?.requestTimeoutMs !== undefined) {
-			return normalizeRequestTimeoutMs(definition.requestTimeoutMs);
-		}
-		return this.defaultRequestTimeoutMs;
-	}
-
 	private buildRequestOptions(
-		definition?: ServerDefinition,
+		_definition?: ServerDefinition,
 		signal?: AbortSignal,
 	): RequestOptions | undefined {
-		const timeout = this.getResolvedRequestTimeoutMs(definition);
+		const timeout = this.defaultRequestTimeoutMs;
 
 		if (!signal && timeout === undefined) {
 			return undefined;
@@ -290,7 +283,15 @@ export class McpServerManager {
 		signal?: AbortSignal,
 	): Promise<Transport> {
 		throwIfAborted(signal);
-		const url = new URL(definition.url!);
+		if (!definition.url) throw new Error(`Server ${serverName} has no URL`);
+		let url: URL;
+		try {
+			url = new URL(definition.url);
+		} catch (error) {
+			throw new Error(`Server ${serverName} has an invalid URL: ${definition.url}`, {
+				cause: error,
+			});
+		}
 
 		// Build headers first (including any bearer token)
 		const headers = resolveHeaders(definition.headers) ?? {};

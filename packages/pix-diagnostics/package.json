@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-diagnostics",
-	"version": "0.1.9",
+	"version": "0.1.10",
 	"description": "Pi extension — compact session-touched-files widget (overrides pi-lens)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -42,6 +42,6 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.3.0"
+		"@xynogen/pix-runtime": "^0.4.0"
 	}
 }

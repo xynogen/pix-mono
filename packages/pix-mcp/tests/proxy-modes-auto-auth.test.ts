@@ -449,12 +449,12 @@ describe("proxy auto auth", () => {
 		});
 
 		const manager = new McpServerManager();
-		manager.setDefaultRequestTimeoutMs(2500);
+		manager.setDefaultRequestTimeoutMs(5000);
 		const state = {
 			config: {
 				settings: { toolPrefix: "server" },
 				mcpServers: {
-					demo: { command: "node", args: ["server.js"], requestTimeoutMs: 5000 },
+					demo: { command: "node", args: ["server.js"] },
 				},
 			},
 			manager,

@@ -7,6 +7,7 @@ import { createRuntime } from "./runtime.ts";
 import { stripDefaults } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { gateSection } from "./sections/gate.ts";
+import { ioSection } from "./sections/io.ts";
 import { optimizerSection } from "./sections/optimizer.ts";
 import { prettySection } from "./sections/pretty.ts";
 import { createIsolatedRuntime, type IsolatedRuntime } from "./testing.ts";
@@ -32,7 +33,19 @@ describe("schema and normalization", () => {
 		expect(runtime.get(prettySection).icons).toBe("nerd");
 		expect(runtime.get(collapseSection).enabled).toBe(true);
 		expect(runtime.get(gateSection).guardrails).toBe("on");
+		expect(runtime.get(ioSection).timeoutSec).toBe(30);
 		expect(runtime.get(optimizerSection).rtk).toBe("on");
+	});
+
+	it("parses a positive network timeout and falls back for invalid values", async () => {
+		const { runtime, agentDir } = fresh();
+		writeFileSync(join(agentDir, "pix.json"), JSON.stringify({ io: { timeoutSec: 120 } }));
+		await runtime.reload();
+		expect(runtime.get(ioSection).timeoutSec).toBe(120);
+
+		writeFileSync(join(agentDir, "pix.json"), JSON.stringify({ io: { timeoutSec: 0 } }));
+		await runtime.reload();
+		expect(runtime.get(ioSection).timeoutSec).toBe(30);
 	});
 
 	it("ignores the removed gate.disableDefaults field", async () => {

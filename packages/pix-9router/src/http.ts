@@ -8,10 +8,8 @@
  */
 
 import { type ExecFileException, execFile } from "node:child_process";
+import { ioTimeoutMs, ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 import { routerBaseUrl } from "./data.js";
-
-/** Default request timeout — audio transcription overrides with a longer one. */
-export const REQUEST_TIMEOUT_MS = 30_000;
 
 export function auth(): string | undefined {
 	return process.env.ROUTER_API_KEY;
@@ -22,32 +20,27 @@ export async function apiPost(
 	path: string,
 	body: Record<string, unknown>,
 	signal?: AbortSignal,
-	timeoutMs: number = REQUEST_TIMEOUT_MS,
+	timeoutMs: number = ioTimeoutMs(),
 ): Promise<string> {
 	const url = `${routerBaseUrl()}${path}`;
 	const key = auth();
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), timeoutMs);
-	const s = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
-
-	try {
-		const res = await fetch(url, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				...(key ? { Authorization: `Bearer ${key}` } : {}),
-			},
-			body: JSON.stringify(body),
-			signal: s,
-		});
-		if (!res.ok) {
-			const errText = await res.text().catch(() => "");
-			throw new Error(`API ${res.status}: ${errText.slice(0, 500)}`);
-		}
-		return await res.text();
-	} finally {
-		clearTimeout(timeout);
+	const timeoutSignal =
+		timeoutMs === ioTimeoutMs() ? ioTimeoutSignal() : AbortSignal.timeout(timeoutMs);
+	const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+	const res = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			...(key ? { Authorization: `Bearer ${key}` } : {}),
+		},
+		body: JSON.stringify(body),
+		signal: requestSignal,
+	});
+	if (!res.ok) {
+		const errText = await res.text().catch(() => "");
+		throw new Error(`API ${res.status}: ${errText.slice(0, 500)}`);
 	}
+	return res.text();
 }
 
 export interface CurlOptions {
@@ -61,7 +54,9 @@ export interface CurlOptions {
 
 /** Run curl with sane defaults, rejecting on non-zero exit or timeout. */
 export function curl(args: string[], opts: CurlOptions = {}): Promise<string> {
-	const { maxTime = 25, timeoutMs = 30_000, stdin } = opts;
+	const timeoutMs = opts.timeoutMs ?? ioTimeoutMs();
+	const maxTime = opts.maxTime ?? timeoutMs / 1000;
+	const { stdin } = opts;
 	return new Promise((resolve, reject) => {
 		const child = execFile(
 			"curl",
