@@ -35,7 +35,7 @@ export ROUTER_API_KEY="your-key-here"
 
 - **Provider**: on load, fetches `/models` from the router and registers them with Pi. The [modelgrep](https://modelgrep.com) catalog (via [`@xynogen/pix-data`](https://github.com/xynogen/pix-mono/tree/main/packages/pix-data)'s shared cache) is used internally to fill missing context window / modality fields where the router response omits them. Model list is cached at `~/.cache/pi/9router.json` (TTL 30 min).
 - **fetch / search**: POST to `/web/fetch` and `/search` on the router (which proxies to exa). If the router is unreachable, falls back to `curl` (for `fetch`, raw URL fetch; for `search`, the same `/search` endpoint via curl). Tool output is rendered dimmed so fetched web content reads like faded context rather than primary output.
-- **transcribe**: POST to `/audio/transcriptions` (Deepgram Nova 3 by default). Accepts any audio file path; falls back to curl.
+- **transcribe**: POST to `/audio/transcriptions` (Deepgram Nova 3 by default). Accepts any audio file path; falls back to curl. Pass the optional `output_file` to write the full transcription to disk (parent dirs created, path pre-flight checked) and return only a short path summary to the model — useful for long results; without it the text is returned inline (truncated to 50,000 chars).
 
 ## Compact results
 

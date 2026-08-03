@@ -109,6 +109,7 @@ Delivered after the agent's current tool execution. If the session isn't ready y
 | `general` | all (read/bash/edit/write/grep/find/ls) |
 | `Explore` | read/bash/grep/find/ls (read-only) |
 | `Plan` | read/bash/grep/find/ls (read-only) |
+| `Mentor` | read/bash/grep/find/ls (read-only) — senior advisor for critical decisions; caller must pick a model at least as capable as the parent |
 
 Built-in types set the **tool allowlist and persona only** — never a model. The
 caller picks the model per call via the `model` parameter on the `agent` tool,

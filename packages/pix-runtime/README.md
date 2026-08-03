@@ -50,11 +50,16 @@ including remote skills, web fetch/search/transcription, MCP requests and
 connection bootstrap, background model-data refreshes, and update downloads.
 
 Set `compaction.triggerPercent` in `~/.pi/agent/pix.json`, or change **Compaction →
-Trigger (% ctx)** with `/pix`. It is the context-window usage percent (0–100) that
-fires compaction; the default is `60` and `0` disables the self-trigger (pi decides
-when to compact). The `/pix` picker offers 0, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70,
-80, 90. Low values matter because the threshold scales with the active model's
-context window (a 1M-context model vs a 200K one). pix-core consumes this setting.
+Trigger (% ctx)** with `/pix`. It is the context-window usage percent (0–100) used
+to calculate the trigger; the default is `60` and `0` disables the self-trigger
+(pi decides when to compact). The `/pix` picker offers 0, 5, 10, 15, 20, 25, 30,
+40, 50, 60, 70, 80, 90.
+
+`compaction.minimumTokens` is the absolute floor for that calculation. The
+effective threshold is `max(contextWindow × triggerPercent, minimumTokens)`, so
+a 300K-context model at 10% waits for 100K tokens instead of compacting at 30K.
+The default floor is 100K; `/pix` offers 100K, 150K, 200K, 300K, 400K, 500K, and
+600K. pix-core consumes both settings.
 
 Collapse policy helpers:
 

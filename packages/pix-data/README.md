@@ -115,101 +115,25 @@ place if your priorities differ.
 | `DataSource` | Generic cached data source class |
 | `CACHE_DIR` | Resolved cache directory (`~/.cache/pi`) |
 | `buildModelsDevIndex` | Build a lookup `Map` from the catalog (context/cost/modalities) |
+| `fetchModelsDevIndex` | Fetch the catalog and build the lookup index in one call |
 | `lookupInIndex` | Fuzzy-match a router model id against an index |
 | `lookupModelsDev` | Sync lookup by id from in-memory cache (joined on slug) |
 | `lookupBenchmark` | Sync lookup a model by id — returns score + rank + pricing |
 | `benchScoreColor` | Map a 0–100 score to a `success`/`warning`/`error`/`muted` token |
-| `pixConfig` | `@xynogen/pix-data/pix-config` — load/access the unified `pix.json` config |
-| `reloadPixConfig` | Force a fresh read of `pix.json` from disk |
-| `shouldCollapse` | `@xynogen/pix-data/collapse` — whether a tool's output card should auto-collapse |
-| `collapseDelayMs` | Configured delay (ms) before a card collapses (default 10 000) |
-| `tickCollapse` | Schedule auto-collapse and report whether the current render should use its compact row |
 
-## Unified config — `~/.pi/agent/pix.json`
+## Unified config + collapse — now in `pix-runtime`
 
-pix-data hosts the **single shared config file** consumed by every `pix-*` package. The file is auto-created with defaults on the first session that loads pix-data — you never need to create it manually.
+The shared `~/.pi/agent/pix.json` config loader and the auto-collapse state
+machine used to live here. They now live in
+[`@xynogen/pix-runtime`](https://github.com/xynogen/pix-mono/tree/main/packages/pix-runtime):
 
-**Location:** `~/.pi/agent/pix.json`
+- Config: `@xynogen/pix-runtime/config` (sections in `@xynogen/pix-runtime/sections`)
+- Collapse: `@xynogen/pix-runtime/collapse`
+- The `/pix` settings command and config APIs are documented in `pix-runtime`'s
+  README.
 
-### Full schema
-
-```jsonc
-{
-  // Auto-collapse for tool output cards (pix-bash, pix-read, pix-grep, …)
-  "collapse": {
-    "enabled": true,          // master switch
-    "delaySec": 10,            // seconds before collapse fires (default 10)
-    "tools": {
-      // per-tool overrides — set false to disable for a specific tool
-      "bash":   true,
-      "read":   true,
-      "grep":   true,
-      "edit":   true,
-      "write":  true,
-      "find":   true,
-      "ls":     true,
-      "todo":   true,
-      "agent":  true,
-      "fetch":  true,
-      "search": true,
-      "sudo":   true
-    }
-  },
-
-  // Rendering behavior (colors always come from the active Pi theme)
-  "pretty": {
-    "icons": "nerd",          // icon mode: nerd | unicode | ascii (overrides PRETTY_ICONS)
-    "lsStyle": "grid",        // ls output layout: "grid" (horizontal) | "tree" (vertical)
-    "maxPreviewLines": 80,
-    "maxRenderLines": 150,
-    "maxHighlightChars": 80000,
-    "cacheLimit": 128,
-    "diff": {
-      "splitMinWidth": 150,
-      "splitMinCodeWidth": 60
-    }
-  },
-
-  // Gate rules (pix-gate)
-  "gate": {
-    "disableDefaults": false,
-    "extraRules": [],          // same shape as pix-gate.json extraRules
-    "autoApprove": []          // regex strings that skip the dialog
-  }
-}
-```
-
-All sections are optional — missing keys fall back to the defaults shown above. Syntax, diff, modal, and status colors are not configurable here; they follow the active Pi theme. Optimizer state lives separately in `~/.pi/agent/optimizer.json`. Legacy color and optimizer fields are ignored and removed the next time `/pix` saves the config.
-
-### API — `@xynogen/pix-data/pix-config`
-
-```ts
-import { pixConfig, reloadPixConfig } from "@xynogen/pix-data/pix-config";
-
-const cfg = pixConfig();          // returns cached PixConfig (loaded once per session)
-await reloadPixConfig();          // force re-read from disk (e.g. after /config reload)
-```
-
-### API — `@xynogen/pix-data/collapse`
-
-```ts
-import { shouldCollapse, collapseDelayMs, tickCollapse } from "@xynogen/pix-data/collapse";
-
-// In a terminal tool result renderer:
-const collapsed = tickCollapse(
-  "bash",
-  renderContext.state,
-  renderContext.invalidate,
-  renderContext.expanded,
-);
-if (collapsed) {
-  // Return the tool's one-line compact status row.
-}
-```
-
-- `shouldCollapse(tool)` — returns `true` when `collapse.enabled` is true and the named tool is not opted out.
-- `collapseDelayMs()` — converts `collapse.delaySec` to milliseconds (default `10000`).
-- `tickCollapse(tool, state, invalidate, expanded?)` — installs at most one timer in the per-card state and returns `true` when the elapsed card should render its compact row. Passing `expanded: true` restores the normal detailed renderer without clearing or restarting the elapsed timer; leaving expanded mode therefore returns immediately to the compact row. Running and partial results should not call this helper.
+pix-data no longer exports `pixConfig`, `reloadPixConfig`, `shouldCollapse`,
+`collapseDelayMs`, or `tickCollapse` — update any imports to `pix-runtime`.
 
 ## Install
 

@@ -49,11 +49,12 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 
 | Package | Description |
 |---|---|
-| `pix-data` | Shared model data layer (models.dev + BenchLM) cached at `~/.cache/pi`; hosts the unified `~/.pi/agent/pix.json` config loader and auto-collapse helper |
+| `pix-data` | Shared model data layer (modelgrep + BenchLM) cached at `~/.cache/pi` |
+| `pix-runtime` | Unified `~/.pi/agent/pix.json` config runtime, `/pix` settings command, once guard, and auto-collapse policy |
 | `pix-optimizer` | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/optimizer`) |
 | `pix-gate` | Permission gate for dangerous bash commands |
 | `pix-subagent` | `agent` / `agent_result` / `agent_steer` — planner-driven sub-agents with live widget |
-| `compaction` | Built into pix-core: replaces pi's built-in context compaction with two levers. **Summary prompt is always pix's** — every compaction (manual `/compact`, threshold, overflow) generates the summary with the current conversation model (no silent routing) from an editable source prompt. **Trigger is pix's when `compaction.triggerPercent > 0`** — after each settled turn pix reads live context usage and compacts once it reaches that percent of the active model's context window (scales per model); `0` disables it and lets pi decide, while pix's summary prompt still applies. After a pix-triggered compaction pix sends a short, visible "resume" user message so the agent continues on its own. Every trigger, resume, and summary run emits a notify line (reason, model, token counts). |
+| `compaction` | Built into pix-core: replaces pi's built-in context compaction with two levers. **Summary prompt is always pix's** — every compaction (manual `/compact`, threshold, overflow) generates the summary with the current conversation model (no silent routing) from an editable source prompt. **Trigger is pix's when `compaction.triggerPercent > 0`** — after each settled turn pix reads live context usage and compacts at `max(contextWindow × triggerPercent, compaction.minimumTokens)`. The default 100K floor prevents low percentages from compacting too early (for example, 10% of a 300K model waits for 100K rather than 30K); `0` disables pix's trigger and lets pi decide, while pix's summary prompt still applies. After a pix-triggered compaction pix sends a short, visible "resume" user message so the agent continues on its own. Every trigger, resume, and summary run emits a notify line (reason, model, token counts). |
 
 ## Install
 

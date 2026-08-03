@@ -20,7 +20,7 @@ After a configurable delay (default 10 seconds), a completed write collapses to 
 }
 ```
 
-Set `collapse.tools.write: false` to disable for this tool only. See `@xynogen/pix-data/collapse` for the full API.
+Set `collapse.tools.write: false` to disable for this tool only. See `@xynogen/pix-runtime/collapse` for the full API.
 
 ## Install
 

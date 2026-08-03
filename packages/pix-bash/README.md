@@ -20,7 +20,7 @@ After a configurable delay (default 10 seconds), completed output collapses to o
 }
 ```
 
-Set `collapse.tools.bash: false` (or `collapse.enabled: false`) to disable. See `@xynogen/pix-data/collapse` for the full API.
+Set `collapse.tools.bash: false` (or `collapse.enabled: false`) to disable. See `@xynogen/pix-runtime/collapse` for the full API.
 
 ## Install
 

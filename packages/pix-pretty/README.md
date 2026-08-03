@@ -11,7 +11,7 @@ consume. It does not register user-facing tools itself — the tool renderers
 initializes the syntax-highlight theme from Pi settings, clears the highlight
 cache, seeds the icon mode from `pix.json`, and registers two FFF slash
 commands (`/fff-health`, `/fff-rescan`) once `pix-grep` has brought the FFF
-finder online. The `/pix` settings command lives in `pix-data`.
+finder online. The `/pix` settings command lives in `pix-runtime`.
 (Activated by `pix-core`; not a standalone extension.)
 
 ### Rendering
@@ -36,7 +36,7 @@ problem on terminals without a Nerd Font, becomes a one-file edit here.
   `getIconMode()`, `setIconMode()`, `ICON_KEYS`, `ICON_MODES`.
 - **`./icon-persist`** — reads/writes the icon mode via `pix.json`
   (`pretty.icons`); `initIconMode()` applies it on load.
-- **`/pix`** (in `pix-data`) — unified settings overlay that includes the icon
+- **`/pix`** (in `pix-runtime`) — unified settings overlay that includes the icon
   mode switch. One global knob governs every pix-* package (footer, paste
   chips, model picker, welcome banner, optimizer cell). Seeded from
   `PRETTY_ICONS` (`none`/`off` → `ascii`) when no choice is saved.
@@ -62,9 +62,9 @@ pi install npm:@xynogen/pix-pretty
 
 ## Configuration
 
-Configuration is read from **`~/.pi/agent/pix.json`** (the unified config file hosted by `@xynogen/pix-data/pix-config`). The `pretty` section of that file sets the defaults for theme, icon mode, and preview lines. Environment variables still override `pix.json` values.
+Configuration is read from **`~/.pi/agent/pix.json`** (the unified config file owned by `@xynogen/pix-runtime/config`). The `pretty` section of that file sets the defaults for theme, icon mode, and preview lines. Environment variables still override `pix.json` values.
 
-> **Note:** `pix-config.ts` and `collapse.ts` previously shipped with `pix-pretty` — they have moved to `pix-data` (`@xynogen/pix-data/pix-config` and `@xynogen/pix-data/collapse`). Update any direct imports.
+> **Note:** config and collapse helpers previously shipped with `pix-pretty`; they now live in `pix-runtime` (`@xynogen/pix-runtime/config` and `@xynogen/pix-runtime/collapse`). Update any direct imports.
 
 ### `pix.json` — `pretty` section
 

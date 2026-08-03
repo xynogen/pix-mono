@@ -4,7 +4,7 @@ Pi extension — permission gate for dangerous bash commands.
 
 ## What it does
 
-Intercepts every `bash` tool call and classifies the command against a set of severity rules before it runs. Two rule sets: **path rules** (block / warn / info) protect the `read` / `write` / `edit` tools from touching private keys, credential files, etc. — `block` is deny-first (15s timeout), `warn` is allow-first (30s), `info` is a blue notify that never blocks. **Command rules** (critical / dangerous / risky) gate `bash` invocations: `critical` (force pushes to main, recursive deletes, `dd` to disks, etc.) is hard-blocked in non-interactive mode and hard-denied via a 15-second auto-deny dialog in TUI mode; `dangerous` commands (including any `sudo` invocation, which is hard-redirected to the `sudo_run` tool — no bypass) show a 30-second auto-deny confirmation dialog; `risky` commands show a 60-second allow-first dialog and silently pass in non-interactive mode. Auto-approve patterns and extra rules can be configured in `~/.pi/agent/pix-gate.json`. Built-in rules can be replaced entirely by setting `disableDefaults: true` in the config file.
+Intercepts every `bash` tool call and classifies the command against a set of severity rules before it runs. Two rule sets: **path rules** (block / warn / info) protect the `read` / `write` / `edit` tools from touching private keys, credential files, etc. — `block` is deny-first (15s timeout), `warn` is allow-first (30s), `info` is a blue notify that never blocks. **Command rules** (critical / dangerous / risky) gate `bash` invocations: `critical` (force pushes to main, recursive deletes, `dd` to disks, etc.) is hard-blocked in non-interactive mode and hard-denied via a 15-second auto-deny dialog in TUI mode; `dangerous` commands (including any `sudo` invocation, which is hard-redirected to the `sudo_run` tool — no bypass) show a 30-second auto-deny confirmation dialog; `risky` commands show a 60-second allow-first dialog and silently pass in non-interactive mode. Auto-approve patterns and extra rules can be configured in the `gate` section of `~/.pi/agent/pix.json`. Built-in rules can be turned off entirely by setting `guardrails: "off"` in that section.
 
 ## Install
 
@@ -42,7 +42,7 @@ Gate rules are read from the **`gate` section of `~/.pi/agent/pix.json`** (the u
 ```jsonc
 {
   "gate": {
-    "disableDefaults": false,
+    "guardrails": "on",
     "extraRules": [
       { "pattern": "rm -rf /my-dir", "severity": "critical", "reason": "Deletes project root" }
     ],
