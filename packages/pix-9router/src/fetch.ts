@@ -251,7 +251,7 @@ export default function registerFetch(pi: ExtensionAPI): void {
 				Type.Number({
 					description: "Max characters (default 1000, 0 = unlimited)",
 					default: 1000,
-				}),
+				})
 			),
 		}),
 
