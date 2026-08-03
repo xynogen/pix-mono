@@ -135,7 +135,7 @@ export async function initializeMcp(
 					name,
 					definition,
 					connection: null,
-					error: `OAuth authentication required. Run /mcp-auth ${name}.`,
+					error: "OAuth authentication required. Open /mcp and select this server.",
 				};
 			}
 			return { name, definition, connection, error: null };

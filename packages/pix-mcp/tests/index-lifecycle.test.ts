@@ -6,18 +6,16 @@ const mocks = {
 	flushMetadataCache: mock(),
 	initializeOAuth: mock().mockResolvedValue(undefined),
 	shutdownOAuth: mock().mockResolvedValue(undefined),
-	loadMcpConfig: mock(() => ({ mcpServers: {} })),
-	loadMetadataCache: mock(() => null),
+	loadMcpConfig: mock((): any => ({ mcpServers: {} })),
+	loadMetadataCache: mock((): any => null),
 	buildProxyDescription: mock(() => "MCP gateway"),
 	createDirectToolExecutor: mock(() => mock()),
-	getMissingConfiguredDirectToolServers: mock(() => []),
-	resolveDirectTools: mock(() => []),
+	getMissingConfiguredDirectToolServers: mock((): string[] => []),
+	resolveDirectTools: mock((): any[] => []),
 	showStatus: mock(),
 	showTools: mock(),
 	reconnectServers: mock(),
-	authenticateServer: mock(),
 	logoutServer: mock(),
-	openMcpAuthPanel: mock(),
 	openMcpPanel: mock(),
 	openMcpSetup: mock(),
 	executeAuthComplete: mock(),
@@ -72,9 +70,7 @@ mock.module("../src/commands.ts", () => ({
 	showStatus: mocks.showStatus,
 	showTools: mocks.showTools,
 	reconnectServers: mocks.reconnectServers,
-	authenticateServer: mocks.authenticateServer,
 	logoutServer: mocks.logoutServer,
-	openMcpAuthPanel: mocks.openMcpAuthPanel,
 	openMcpPanel: mocks.openMcpPanel,
 	openMcpSetup: mocks.openMcpSetup,
 }));
@@ -510,71 +506,14 @@ describe("mcpAdapter session lifecycle", () => {
 		expect(mocks.flushMetadataCache).not.toHaveBeenCalledWith(initialState);
 	});
 
-	it("opens the auth picker for `/mcp-auth` without args in UI sessions", async () => {
-		const state = createState();
-		mocks.initializeMcp.mockResolvedValue(state);
-
-		const { default: mcpAdapter } = await import("../src/index.ts");
-		const { api, handlers } = createPi();
-		mcpAdapter(api);
-
-		const ui = { notify: mock() };
-		const sessionStart = handlers.get("session_start");
-		await sessionStart?.({}, { hasUI: true, ui });
-		await Promise.resolve();
-		await Promise.resolve();
-
-		const commandDef = api.registerCommand.mock.calls.find(
-			(call: any[]) => call[0] === "mcp-auth",
-		)?.[1];
-		await commandDef.handler("", { hasUI: true, ui });
-
-		expect(mocks.openMcpAuthPanel).toHaveBeenCalledWith(state, api, expect.any(Object), undefined);
-		expect(mocks.authenticateServer).not.toHaveBeenCalled();
-	});
-
-	it("keeps explicit `/mcp-auth <server>` routed to direct authentication", async () => {
-		const state = createState();
-		mocks.initializeMcp.mockResolvedValue(state);
-
-		const { default: mcpAdapter } = await import("../src/index.ts");
-		const { api, handlers } = createPi();
-		mcpAdapter(api);
-
-		const ui = { notify: mock() };
-		const sessionStart = handlers.get("session_start");
-		await sessionStart?.({}, { hasUI: true, ui });
-		await Promise.resolve();
-		await Promise.resolve();
-
-		const commandDef = api.registerCommand.mock.calls.find(
-			(call: any[]) => call[0] === "mcp-auth",
-		)?.[1];
-		await commandDef.handler("github", { hasUI: true, ui });
-
-		expect(mocks.authenticateServer).toHaveBeenCalledWith(
-			"github",
-			state.config,
-			expect.any(Object),
-		);
-		expect(mocks.openMcpAuthPanel).not.toHaveBeenCalled();
-	});
-
-	it("documents that no-arg `/mcp-auth` has no non-UI picker or command feedback path", async () => {
-		const state = createState();
-		mocks.initializeMcp.mockResolvedValue(state);
-
+	it("registers /mcp as the only interactive MCP management command", async () => {
 		const { default: mcpAdapter } = await import("../src/index.ts");
 		const { api } = createPi();
 		mcpAdapter(api);
 
-		const commandDef = api.registerCommand.mock.calls.find(
-			(call: any[]) => call[0] === "mcp-auth",
-		)?.[1];
-		await commandDef.handler("", { hasUI: false });
-
-		expect(mocks.openMcpAuthPanel).not.toHaveBeenCalled();
-		expect(mocks.authenticateServer).not.toHaveBeenCalled();
+		const commandNames = api.registerCommand.mock.calls.map((call: any[]) => call[0]);
+		expect(commandNames).toContain("mcp");
+		expect(commandNames).not.toContain("mcp-auth");
 	});
 
 	it("logs initialization errors when updateStatusBar throws", async () => {

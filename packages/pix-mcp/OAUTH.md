@@ -107,13 +107,15 @@ This flow does not open a browser or use callback handling. `oauth.redirectUri` 
 
 ### Step 1: Authenticate
 
-Run the `/mcp-auth` command with the server name:
+Open the unified MCP panel:
 
 ```
-/mcp-auth my-oauth-server
+/mcp
 ```
 
-Manual `/mcp-auth` is the default flow. If you set `settings.autoAuth: true`, proxy/direct tool execution will trigger OAuth automatically when a server returns `needs-auth`, then retry the original operation once.
+Servers that require OAuth appear dimmed with a `needs auth` label. Select one and press Enter to start authentication. Successful authentication reconnects the server automatically.
+
+Manual authentication through `/mcp` is the default flow. If you set `settings.autoAuth: true`, proxy/direct tool execution will trigger OAuth automatically when a server returns `needs-auth`, then retry the original operation once.
 
 This will:
 
@@ -279,7 +281,7 @@ Credentials are tied to a specific server URL. If the URL changes, the credentia
 
 ### "No OAuth tokens found"
 
-Run `/mcp-auth <server>` to authenticate.
+Open `/mcp`, select the dimmed server marked `needs auth`, and press Enter.
 
 ### "Failed to discover OAuth endpoints"
 

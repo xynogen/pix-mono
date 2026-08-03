@@ -27,8 +27,8 @@ function createCallbacks(status: "connected" | "idle" | "failed" | "needs-auth" 
 		reconnect: async () => true,
 		canAuthenticate: (serverName) => serverName === "github",
 		authenticate: mock(async () => {
-			currentStatus = "idle";
-			return { ok: true };
+			currentStatus = "connected";
+			return { ok: true, message: 'OAuth authenticated and connected for "github".' };
 		}),
 		getConnectionStatus: () => currentStatus,
 		refreshCacheAfterReconnect: () => null,
@@ -60,7 +60,33 @@ describe("mcp-panel auth actions", () => {
 
 		expect(callbacks.authenticate).toHaveBeenCalledWith("github");
 		const output = stripAnsi(panel.render(100).join("\n"));
-		expect(output).toContain("OAuth finished for github");
+		expect(output).toContain("OAuth authenticated and connected for github");
+		panel.dispose();
+	});
+
+	it("renders unauthenticated servers dimmed with a needs-auth label", () => {
+		const config: McpConfig = {
+			mcpServers: {
+				github: { url: "https://api.githubcopilot.com/mcp", auth: "oauth" },
+			},
+		};
+		const theme = {
+			fg: (color: string, text: string) => `<fg:${color}>${text}</fg>`,
+			bg: (_color: string, text: string) => text,
+		};
+		const panel = createMcpPanel(
+			config,
+			createCache(config),
+			new Map(),
+			createCallbacks("needs-auth"),
+			{ requestRender: () => {} },
+			() => {},
+			{ theme },
+		);
+
+		const output = panel.render(120).join("\n");
+		expect(output).toContain("<fg:dim>github</fg>");
+		expect(output).toContain("<fg:dim>needs auth</fg>");
 		panel.dispose();
 	});
 
@@ -172,123 +198,6 @@ describe("mcp-panel auth actions", () => {
 		expect(callbacks.authenticate).toHaveBeenCalledTimes(1);
 		auth.resolve({ ok: true });
 		await Promise.resolve();
-		panel.dispose();
-	});
-
-	it("filters the auth picker to OAuth-capable servers", () => {
-		const config: McpConfig = {
-			mcpServers: {
-				github: { url: "https://api.githubcopilot.com/mcp", auth: "oauth" },
-				local: { command: "node", args: ["server.js"] },
-			},
-		};
-		const callbacks = createCallbacks("needs-auth");
-		const panel = createMcpPanel(
-			config,
-			null,
-			new Map(),
-			callbacks,
-			{ requestRender: () => {} },
-			() => {},
-			{
-				authOnly: true,
-				noticeLines: ["Select an OAuth MCP server"],
-			},
-		);
-
-		const output = stripAnsi(panel.render(100).join("\n"));
-		expect(output).toContain("MCP OAuth");
-		expect(output).toContain("github");
-		expect(output).not.toContain("local");
-		panel.dispose();
-	});
-
-	it("treats Space as a no-op in auth-only mode", () => {
-		const config: McpConfig = {
-			mcpServers: {
-				github: { url: "https://api.githubcopilot.com/mcp", auth: "oauth" },
-			},
-		};
-		const callbacks = createCallbacks("needs-auth");
-		const panel = createMcpPanel(
-			config,
-			null,
-			new Map(),
-			callbacks,
-			{ requestRender: () => {} },
-			() => {},
-			{
-				authOnly: true,
-			},
-		);
-
-		panel.handleInput(" ");
-
-		expect(callbacks.authenticate).not.toHaveBeenCalled();
-		panel.dispose();
-	});
-
-	it("searches server rows directly in auth-only mode", () => {
-		const config: McpConfig = {
-			mcpServers: {
-				github: { url: "https://api.githubcopilot.com/mcp", auth: "oauth" },
-				gitlab: { url: "https://gitlab.example.com/mcp", auth: "oauth" },
-			},
-		};
-		const callbacks = createCallbacks("needs-auth");
-		callbacks.canAuthenticate = () => true;
-		const panel = createMcpPanel(
-			config,
-			null,
-			new Map(),
-			callbacks,
-			{ requestRender: () => {} },
-			() => {},
-			{
-				authOnly: true,
-			},
-		);
-
-		panel.handleInput("l");
-		panel.handleInput("a");
-		panel.handleInput("b");
-
-		const output = stripAnsi(panel.render(100).join("\n"));
-		expect(output).toContain("gitlab");
-		expect(output).not.toContain("github");
-		panel.dispose();
-	});
-
-	it("ignores description-search shortcut in auth-only mode", () => {
-		const config: McpConfig = {
-			mcpServers: {
-				github: { url: "https://api.githubcopilot.com/mcp", auth: "oauth" },
-				gitlab: { url: "https://gitlab.example.com/mcp", auth: "oauth" },
-			},
-		};
-		const callbacks = createCallbacks("needs-auth");
-		callbacks.canAuthenticate = () => true;
-		const panel = createMcpPanel(
-			config,
-			null,
-			new Map(),
-			callbacks,
-			{ requestRender: () => {} },
-			() => {},
-			{
-				authOnly: true,
-			},
-		);
-
-		panel.handleInput("?");
-		panel.handleInput("l");
-		panel.handleInput("a");
-		panel.handleInput("b");
-
-		const output = stripAnsi(panel.render(100).join("\n"));
-		expect(output).not.toContain("desc:");
-		expect(output).toContain("gitlab");
-		expect(output).not.toContain("github");
 		panel.dispose();
 	});
 });

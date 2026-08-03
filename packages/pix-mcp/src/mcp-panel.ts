@@ -211,7 +211,6 @@ class McpPanel {
 	private tui: { requestRender(): void; terminal?: { rows?: number } };
 	private popupTheme: McpPopupTheme;
 	private t: PanelTheme;
-	private authOnly: boolean;
 	private keys: PanelKeys;
 	private pager = new ModalPager();
 
@@ -226,7 +225,6 @@ class McpPanel {
 		private done: (result: McpPanelResult) => void,
 		options: {
 			noticeLines?: string[];
-			authOnly?: boolean;
 			keybindings?: PanelKeybindings;
 			theme?: McpPopupTheme;
 		} = {},
@@ -235,12 +233,10 @@ class McpPanel {
 		this.popupTheme = options.theme ?? FALLBACK_POPUP_THEME;
 		this.t = createTheme(this.popupTheme);
 		this.noticeLines = options.noticeLines ?? [];
-		this.authOnly = options.authOnly === true;
 		this.keys = createPanelKeys(options.keybindings);
 		this.prefix = config.settings?.toolPrefix ?? "server";
 
 		for (const [serverName, definition] of Object.entries(config.mcpServers)) {
-			if (this.authOnly && !callbacks.canAuthenticate(serverName)) continue;
 			const prov = provenance.get(serverName);
 			const serverCache = cache?.servers?.[serverName];
 
@@ -253,7 +249,7 @@ class McpPanel {
 			}
 
 			const tools: ToolState[] = [];
-			if (serverCache && !this.authOnly) {
+			if (serverCache) {
 				for (const tool of serverCache.tools ?? []) {
 					if (isToolExcluded(tool.name, serverName, this.prefix, definition.excludeTools)) {
 						continue;
@@ -331,15 +327,8 @@ class McpPanel {
 		this.visibleItems = [];
 		for (let si = 0; si < this.servers.length; si++) {
 			const server = this.servers[si];
-			if (query && this.authOnly) {
-				const score = mode === "name" ? fuzzyScore(query, server.name) : 0;
-				if (score > 0) {
-					this.visibleItems.push({ type: "server", serverIndex: si });
-				}
-				continue;
-			}
-
-			this.visibleItems.push({ type: "server", serverIndex: si });
+			const serverMatches = mode === "name" && fuzzyScore(query, server.name) > 0;
+			const matchingTools: number[] = [];
 			if (server.expanded || query) {
 				for (let ti = 0; ti < server.tools.length; ti++) {
 					const tool = server.tools[ti];
@@ -350,20 +339,16 @@ class McpPanel {
 								: fuzzyScore(query, tool.description);
 						if (score === 0) continue;
 					}
-					this.visibleItems.push({ type: "tool", serverIndex: si, toolIndex: ti });
+					matchingTools.push(ti);
 				}
 			}
-		}
 
-		if (query && !this.authOnly) {
-			this.visibleItems = this.visibleItems.filter((item) => {
-				if (item.type === "server") {
-					return this.visibleItems.some(
-						(other) => other.type === "tool" && other.serverIndex === item.serverIndex,
-					);
-				}
-				return true;
-			});
+			if (!query || serverMatches || matchingTools.length > 0) {
+				this.visibleItems.push({ type: "server", serverIndex: si });
+			}
+			for (const toolIndex of matchingTools) {
+				this.visibleItems.push({ type: "tool", serverIndex: si, toolIndex });
+			}
 		}
 	}
 
@@ -499,7 +484,7 @@ class McpPanel {
 
 		if (matchesKey(data, "space")) {
 			const item = this.visibleItems[this.cursorIndex];
-			if (item && !this.authOnly) this.toggleItem(item);
+			if (item) this.toggleItem(item);
 			return;
 		}
 
@@ -508,7 +493,7 @@ class McpPanel {
 			if (!item) return;
 			const server = this.servers[item.serverIndex];
 			if (item.type === "server") {
-				if (this.authOnly || server.connectionStatus === "needs-auth") {
+				if (server.connectionStatus === "needs-auth") {
 					this.authenticateServer(server);
 					return;
 				}
@@ -564,7 +549,6 @@ class McpPanel {
 		}
 
 		if (printableChar(data) === "?") {
-			if (this.authOnly) return;
 			this.descSearchActive = true;
 			this.descQuery = "";
 			this.rebuildVisibleItems();
@@ -613,8 +597,13 @@ class McpPanel {
 			.then((result) => {
 				server.connectionStatus = this.callbacks.getConnectionStatus(server.name);
 				const message = sanitizeDisplayText(result.message);
+				if (result.ok && server.connectionStatus === "connected") {
+					const entry = this.callbacks.refreshCacheAfterReconnect(server.name);
+					if (entry) this.rebuildServerTools(server, entry);
+					server.hasCachedData = true;
+				}
 				this.authNotice = result.ok
-					? `OAuth finished for ${serverName}. Run reconnect if it is still idle.`
+					? `OAuth authenticated and connected for ${serverName}.`
 					: `OAuth failed for ${serverName}${message ? `: ${message}` : ". Check the notification for details."}`;
 				this.authInFlight = null;
 				this.tui.requestRender();
@@ -629,7 +618,6 @@ class McpPanel {
 	}
 
 	private toggleItem(item: VisibleItem): void {
-		if (this.authOnly) return;
 		const server = this.servers[item.serverIndex];
 		if (item.type === "server") {
 			const newState = !server.tools.every((t) => t.isDirect);
@@ -748,16 +736,16 @@ class McpPanel {
 		const bold = (s: string) => this.popupTheme.bold?.(s) ?? `\x1b[1m${s}\x1b[22m`;
 		const italic = (s: string) => `\x1b[3m${s}\x1b[23m`;
 		const inverse = (s: string) => `\x1b[7m${s}\x1b[27m`;
+		const guide = (key: string, action: string) =>
+			fg(t.selected, italic(key)) + fg(t.hint, ` ${action}`);
 
 		// Keep full text; frameModal wraps and pages it. Pre-truncating here would
 		// make the omitted tail irrecoverable and invisible to textTruncated.
 		const row = (content: string) => sanitizeRowContent(content);
 		const emptyRow = () => "";
 
-		const title = this.authOnly ? "MCP OAuth" : "MCP servers";
-		const subtitle = this.authOnly
-			? "authenticate external MCP services"
-			: "servers · direct tools · estimated prompt cost";
+		const title = "MCP servers";
+		const subtitle = "servers · direct tools · estimated prompt cost";
 		header.push(fg(t.title, `${icon("mcp")}  ${title}`));
 		header.push(fg(t.hint, subtitle));
 		header.push(fg(t.description, this.descSearchActive ? "Description search:" : "Search:"));
@@ -779,18 +767,7 @@ class McpPanel {
 
 		if (this.servers.length === 0) {
 			body.push(emptyRow());
-			body.push(
-				row(
-					fg(
-						t.hint,
-						italic(
-							this.authOnly
-								? "No OAuth-capable MCP servers configured."
-								: "No MCP servers configured.",
-						),
-					),
-				),
-			);
+			body.push(row(fg(t.hint, italic("No MCP servers configured."))));
 			body.push(emptyRow());
 		} else {
 			const total = this.visibleItems.length;
@@ -832,48 +809,35 @@ class McpPanel {
 					: fg(t.hint, "  Keep & Close  ");
 			footer.push(row(`Discard unsaved changes?  ${discardBtn}   ${keepBtn}`));
 		} else {
-			if (this.authOnly) {
-				footer.push(row(fg(t.description, "select a server to authenticate")));
-			} else {
-				const directCount = this.servers.reduce(
-					(sum, s) => sum + s.tools.filter((t) => t.isDirect).length,
-					0,
-				);
-				const totalTokens = this.servers.reduce(
-					(sum, s) =>
-						sum + s.tools.filter((t) => t.isDirect).reduce((ts, t) => ts + t.estimatedTokens, 0),
-					0,
-				);
-				const stats =
-					directCount > 0
-						? `${directCount} direct  ~${totalTokens.toLocaleString()} tokens`
-						: "no direct tools";
-				footer.push(
-					row(fg(t.description, stats + (this.dirty ? fg(t.needsAuth, "  (unsaved)") : ""))),
-				);
-			}
+			const directCount = this.servers.reduce(
+				(sum, s) => sum + s.tools.filter((t) => t.isDirect).length,
+				0,
+			);
+			const totalTokens = this.servers.reduce(
+				(sum, s) =>
+					sum + s.tools.filter((t) => t.isDirect).reduce((ts, t) => ts + t.estimatedTokens, 0),
+				0,
+			);
+			const stats =
+				directCount > 0
+					? `${directCount} direct  ~${totalTokens.toLocaleString()} tokens`
+					: "no direct tools";
+			footer.push(
+				row(fg(t.description, stats + (this.dirty ? fg(t.needsAuth, "  (unsaved)") : ""))),
+			);
 		}
 
-		footer.push(emptyRow());
-		const hints = this.authOnly
-			? [
-					`${italic("↑↓")} navigate`,
-					`${italic("⏎")} auth`,
-					`${italic("ctrl+a")} auth`,
-					`${italic("esc")} clear/close`,
-					`${italic("ctrl+c")} quit`,
-				]
-			: [
-					`${italic("↑↓")} navigate`,
-					`${italic("space")} toggle`,
-					`${italic("⏎")} expand/auth`,
-					`${italic("ctrl+a")} auth`,
-					`${italic("ctrl+r")} reconnect`,
-					`${italic("?")} desc search`,
-					`${italic("ctrl+s")} save`,
-					`${italic("esc")} clear/close`,
-					`${italic("ctrl+c")} quit`,
-				];
+		const hints = [
+			guide("↑↓", "navigate"),
+			guide("space", "toggle"),
+			guide("⏎", "expand/auth"),
+			guide("ctrl+a", "auth"),
+			guide("ctrl+r", "reconnect"),
+			guide("?", "desc search"),
+			guide("ctrl+s", "save"),
+			guide("esc", "clear/close"),
+			guide("ctrl+c", "quit"),
+		];
 		const gap = "  ";
 		const gapW = 2;
 		const maxW = innerW - 2;
@@ -883,7 +847,7 @@ class McpPanel {
 			const hw = visibleWidth(hint);
 			const needed = curW === 0 ? hw : gapW + hw;
 			if (curW > 0 && curW + needed > maxW) {
-				footer.push(row(fg(t.hint, curLine)));
+				footer.push(row(curLine));
 				curLine = hint;
 				curW = hw;
 			} else {
@@ -891,7 +855,7 @@ class McpPanel {
 				curW += needed;
 			}
 		}
-		if (curLine) footer.push(row(fg(t.hint, curLine)));
+		if (curLine) footer.push(row(curLine));
 
 		const result = frameModal({
 			width: mw,
@@ -913,55 +877,61 @@ class McpPanel {
 	private renderServerRow(server: ServerState, isCursor: boolean): string {
 		const t = this.t;
 		const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
+		const mute = (s: string) => fg(t.description, s);
+		const separator = mute(" · ");
 
-		const expandIcon = server.expanded ? "▾" : "▸";
-		const prefix = isCursor
-			? fg(t.selected, expandIcon)
-			: fg(t.border, server.expanded ? expandIcon : "·");
+		const marker = isCursor ? fg(t.selected, "▶") : " ";
+		const expandIcon = fg(t.description, server.expanded ? "▾" : "▸");
+		const directCount = server.tools.filter((tool) => tool.isDirect).length;
+		const totalCount = server.tools.length;
+		let directIcon = mute("○");
+		if (directCount === totalCount && totalCount > 0) {
+			directIcon = fg(t.direct, "●");
+		} else if (directCount > 0) {
+			directIcon = fg(t.needsAuth, "◐");
+		}
 
 		const serverName = sanitizeDisplayText(server.name);
+		const needsAuth = server.connectionStatus === "needs-auth";
+		const name = needsAuth
+			? fg(t.hint, serverName)
+			: isCursor
+				? bold(fg(t.selected, serverName))
+				: serverName;
 		const importKind = sanitizeDisplayText(server.importKind ?? "import");
-		const nameStr = isCursor ? bold(fg(t.selected, serverName)) : serverName;
-		const importLabel = server.source === "import" ? fg(t.description, ` (${importKind})`) : "";
-		const statusLabel = this.renderConnectionStatus(server);
+		const importText = server.source === "import" ? ` (${importKind})` : "";
+		const importLabel = importText ? mute(importText) : "";
+		const widestName = this.servers.reduce((width, candidate) => {
+			const candidateName = sanitizeDisplayText(candidate.name);
+			const candidateImport =
+				candidate.source === "import"
+					? ` (${sanitizeDisplayText(candidate.importKind ?? "import")})`
+					: "";
+			return Math.max(width, visibleWidth(candidateName + candidateImport));
+		}, 0);
+		const namePadding = " ".repeat(Math.max(0, widestName - visibleWidth(serverName + importText)));
 
-		if (!server.hasCachedData && !this.authOnly) {
-			return `${prefix}   ${nameStr}${importLabel}  ${fg(t.description, "(not cached)")}${statusLabel}`;
-		}
+		const directCell = mute(`${directCount}/${totalCount}`.padStart(5));
+		const tokenCount = server.tools
+			.filter((tool) => tool.isDirect)
+			.reduce((sum, tool) => sum + tool.estimatedTokens, 0);
+		const tokenCell =
+			tokenCount > 0 ? mute(`~${tokenCount.toLocaleString()}`.padStart(7)) : mute("—".padStart(7));
+		const cacheCell = server.hasCachedData ? mute("cached") : mute("not cached");
+		const statusCell = this.renderConnectionStatus(server);
 
-		const directCount = server.tools.filter((t) => t.isDirect).length;
-		const totalCount = server.tools.length;
-		let toggleIcon = fg(t.description, "○");
-		if (directCount === totalCount && totalCount > 0) {
-			toggleIcon = fg(t.direct, "●");
-		} else if (directCount > 0) {
-			toggleIcon = fg(t.needsAuth, "◐");
-		}
-
-		let toolInfo = "";
-		if (totalCount > 0) {
-			toolInfo = `${directCount}/${totalCount}`;
-			if (directCount > 0) {
-				const tokens = server.tools
-					.filter((t) => t.isDirect)
-					.reduce((s, t) => s + t.estimatedTokens, 0);
-				toolInfo += `  ~${tokens.toLocaleString()}`;
-			}
-			toolInfo = fg(t.description, toolInfo);
-		}
-
-		return `${prefix} ${toggleIcon} ${nameStr}${importLabel}  ${toolInfo}${statusLabel}`;
+		return `${marker} ${expandIcon} ${directIcon} ${name}${importLabel}${namePadding}  ${directCell}${separator}${tokenCell}${separator}${cacheCell}${statusCell}`;
 	}
 
 	private renderConnectionStatus(server: ServerState): string {
 		const t = this.t;
-		if (this.authInFlight === server.name) return `  ${fg(t.needsAuth, "authenticating")}`;
-		if (server.connectionStatus === "needs-auth") return `  ${fg(t.needsAuth, "needs auth")}`;
-		if (server.connectionStatus === "connecting") return `  ${fg(t.needsAuth, "connecting")}`;
-		if (server.connectionStatus === "failed") return `  ${fg(t.cancel, "failed")}`;
-		if (this.authOnly && server.connectionStatus === "connected")
-			return `  ${fg(t.direct, "connected")}`;
-		if (this.authOnly) return `  ${fg(t.description, "idle")}`;
+		const separator = fg(t.description, " · ");
+		if (this.authInFlight === server.name)
+			return `${separator}${fg(t.needsAuth, "authenticating")}`;
+		if (server.connectionStatus === "needs-auth") return `${separator}${fg(t.hint, "needs auth")}`;
+		if (server.connectionStatus === "connecting")
+			return `${separator}${fg(t.needsAuth, "connecting")}`;
+		if (server.connectionStatus === "failed") return `${separator}${fg(t.cancel, "failed")}`;
 		return "";
 	}
 
@@ -995,7 +965,6 @@ export function createMcpPanel(
 	done: (result: McpPanelResult) => void,
 	options?: {
 		noticeLines?: string[];
-		authOnly?: boolean;
 		keybindings?: PanelKeybindings;
 		theme?: McpPopupTheme;
 	},

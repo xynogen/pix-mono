@@ -6,9 +6,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import {
-	authenticateServer,
 	logoutServer,
-	openMcpAuthPanel,
 	openMcpPanel,
 	openMcpSetup,
 	reconnectServers,
@@ -259,37 +257,6 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 					}
 					break;
 			}
-		},
-	});
-
-	pi.registerCommand("mcp-auth", {
-		description: "Authenticate with an MCP server (OAuth)",
-		handler: async (args, ctx) => {
-			const serverName = args?.trim();
-			if (!serverName && !ctx.hasUI) {
-				return;
-			}
-
-			if (!state && initPromise) {
-				try {
-					state = await initPromise;
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
-					return;
-				}
-			}
-			if (!state) {
-				if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
-				return;
-			}
-
-			if (!serverName) {
-				await openMcpAuthPanel(state, pi, ctx, earlyConfigPath);
-				return;
-			}
-
-			await authenticateServer(serverName, state.config, ctx);
 		},
 	});
 

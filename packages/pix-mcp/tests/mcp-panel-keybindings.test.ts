@@ -112,7 +112,7 @@ describe("mcp-panel custom keybindings", () => {
 			callbacks,
 			{ requestRender: () => {} },
 			() => {},
-			{ authOnly: true, keybindings: createEmacsKeybindings() },
+			{ keybindings: createEmacsKeybindings() },
 		);
 
 		panel.handleInput(CTRL_N);
@@ -136,7 +136,7 @@ describe("mcp-panel custom keybindings", () => {
 			callbacks,
 			{ requestRender: () => {} },
 			() => {},
-			{ authOnly: true, keybindings: createEmacsKeybindings() },
+			{ keybindings: createEmacsKeybindings() },
 		);
 
 		panel.handleInput(DOWN);
@@ -155,7 +155,7 @@ describe("mcp-panel custom keybindings", () => {
 			callbacks,
 			{ requestRender: () => {} },
 			() => {},
-			{ authOnly: true },
+			{},
 		);
 
 		panel.handleInput(CTRL_N);
@@ -186,7 +186,7 @@ describe("mcp-setup-panel custom keybindings", () => {
 			theme,
 		);
 
-		const lines = panel.render(92);
+		const lines = panel.render(120);
 
 		expect(lines[0]).toContain("<bg:customMessageBg>");
 		expect(lines[0]).toContain("<fg:accent>╭");
@@ -194,7 +194,9 @@ describe("mcp-setup-panel custom keybindings", () => {
 		expect(lines.join("\n")).toContain("<fg:accent><b>");
 		expect(lines.join("\n")).toContain("MCP setup</b></fg>");
 		expect(lines.join("\n")).toContain("discover · import · configure external MCP servers");
-		expect(lines.join("\n")).toContain("↑↓ navigate · enter select · esc back · ctrl+c close");
+		expect(lines.join("\n")).toContain("<fg:text>↑↓</fg><fg:dim> navigate</fg>");
+		expect(lines.join("\n")).toContain("<fg:text>enter</fg>");
+		expect(lines.join("\n")).toContain("<fg:text>esc</fg><fg:dim> back</fg>");
 		panel.dispose();
 	});
 

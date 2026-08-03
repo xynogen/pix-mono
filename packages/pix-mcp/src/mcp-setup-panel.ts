@@ -456,6 +456,9 @@ export class McpSetupPanel {
 	render(width: number): string[] {
 		const mw = modalWidth(width);
 		const innerW = mw - 4;
+		const guide = (key: string, action: string) =>
+			this.popupTheme.fg("text", key) + fg(this.t.hint, ` ${action}`);
+		const guideSep = fg(this.t.hint, " · ");
 		const header: string[] = [];
 		header.push(this.padLine(fg(this.t.title, `${icon("mcp")}  MCP setup`), innerW));
 		header.push(
@@ -496,8 +499,15 @@ export class McpSetupPanel {
 			header,
 			body,
 			footer: [
-				fg(this.t.hint, "↑↓ navigate · enter select · esc back · ctrl+c close"),
-				fg(this.t.hint, "←→/PgUp/PgDn inspect overflow"),
+				"",
+				guide("↑↓", "navigate") +
+					guideSep +
+					guide("enter", "select") +
+					guideSep +
+					guide("esc", "back") +
+					guideSep +
+					guide("ctrl+c", "close"),
+				guide("←→/PgUp/PgDn", "inspect overflow"),
 			],
 			bodyOffset: this.pager.bodyOffset,
 			selectedBodyLine: this.pager.selectedLine(selectedBodyLine),

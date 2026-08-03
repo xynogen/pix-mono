@@ -1,8 +1,16 @@
 import { describe, expect, it, mock } from "bun:test";
 
 const mocks = {
-	authenticate: mock(() => {}),
-	removeAuth: mock(() => {}),
+	authenticate: mock(
+		async (
+			_name: string,
+			_url: string,
+			_definition: unknown,
+			_options?: { onAuthorizationUrl?: (authorizationUrl: string) => void | Promise<void> },
+		): Promise<string> => "authenticated",
+	),
+	lazyConnect: mock(async (_state: unknown, _serverName: string): Promise<boolean> => true),
+	removeAuth: mock((_serverName: string): void => {}),
 };
 
 mock.module("../src/mcp-auth-flow.ts", () => ({
@@ -14,30 +22,40 @@ mock.module("../src/mcp-auth-flow.ts", () => ({
 
 mock.module("../src/init.ts", () => ({
 	getFailureAgeSeconds: mock(() => null),
-	lazyConnect: mock(() => {}),
+	lazyConnect: mocks.lazyConnect,
 	updateMetadataCache: mock(() => {}),
 	updateStatusBar: mock(() => {}),
 }));
 
 describe("authenticateServer", () => {
-	it("surfaces the exact OAuth URL through UI notification", async () => {
+	it("surfaces the exact OAuth URL and reconnects the server", async () => {
 		const authorizationUrl =
 			"https://auth.example.com/authorize?resource=https%3A%2F%2Fmcp.sentry.dev%2Fmcp";
 		mocks.authenticate.mockImplementationOnce(async (_name, _url, _definition, options) => {
-			await options.onAuthorizationUrl(authorizationUrl);
+			await options?.onAuthorizationUrl?.(authorizationUrl);
 			return "authenticated";
 		});
+		mocks.lazyConnect.mockResolvedValueOnce(true);
 		const ui = { notify: mock(() => {}), setStatus: mock(() => {}) };
-		const { authenticateServer } = await import("../src/commands.ts");
-
-		const result = await authenticateServer(
-			"sentry",
-			{
+		const close = mock().mockResolvedValue(undefined);
+		const state = {
+			config: {
 				mcpServers: {
 					sentry: { url: "https://mcp.sentry.dev/mcp", auth: "oauth" },
 				},
 			},
-			{ hasUI: true, ui } as any,
+			manager: { close },
+			failureTracker: new Map(),
+		};
+		const { authenticateServer } = await import("../src/commands.ts");
+
+		const result = await authenticateServer(
+			"sentry",
+			state as any,
+			{
+				hasUI: true,
+				ui,
+			} as any,
 		);
 
 		expect(result.ok).toBe(true);
@@ -48,5 +66,8 @@ describe("authenticateServer", () => {
 			{ onAuthorizationUrl: expect.any(Function) },
 		);
 		expect(ui.notify).toHaveBeenCalledWith(expect.stringContaining(authorizationUrl), "info");
+		expect(close).toHaveBeenCalledWith("sentry");
+		expect(mocks.lazyConnect).toHaveBeenCalledWith(state, "sentry");
+		expect(result.message).toContain("authenticated and connected");
 	});
 });

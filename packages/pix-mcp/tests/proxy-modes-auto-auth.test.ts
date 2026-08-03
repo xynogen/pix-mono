@@ -179,9 +179,7 @@ describe("proxy auto auth", () => {
 		expect(result.content[0]?.type === "text" ? result.content[0].text : "").toContain(
 			"auth-start",
 		);
-		expect(result.content[0]?.type === "text" ? result.content[0].text : "").toContain(
-			"/mcp-auth demo",
-		);
+		expect(result.content[0]?.type === "text" ? result.content[0].text : "").toContain("open /mcp");
 	});
 
 	it("uses custom authRequiredMessage for non-ui autoAuth failures", async () => {

@@ -117,7 +117,7 @@ export async function reconnectServers(
 			const connection = await state.manager.connect(name, definition);
 			if (connection.status === "needs-auth") {
 				if (ctx.hasUI) {
-					ctx.ui.notify(`MCP: ${name} requires OAuth. Run /mcp-auth ${name} first.`, "warning");
+					ctx.ui.notify(`MCP: ${name} requires OAuth. Open /mcp and select it.`, "warning");
 				}
 				continue;
 			}
@@ -157,13 +157,13 @@ export async function reconnectServers(
 
 export async function authenticateServer(
 	serverName: string,
-	config: McpConfig,
+	state: McpExtensionState,
 	ctx: ExtensionContext,
 ): Promise<McpAuthResult> {
 	if (!ctx.hasUI)
 		return { ok: false, message: "OAuth authentication requires an interactive session." };
 
-	const definition = config.mcpServers[serverName];
+	const definition = state.config.mcpServers[serverName];
 	if (!definition) {
 		const message = `Server "${serverName}" not found in config`;
 		ctx.ui.notify(message, "error");
@@ -199,12 +199,17 @@ export async function authenticateServer(
 		});
 
 		if (status === "authenticated") {
-			const message = `OAuth authentication successful for "${serverName}"! Run /mcp reconnect ${serverName} to connect with the new token.`;
-			ctx.ui.notify(
-				`OAuth authentication successful for "${serverName}"!\n` +
-					`Run /mcp reconnect ${serverName} to connect with the new token.`,
-				"info",
-			);
+			await state.manager.close(serverName);
+			state.failureTracker.delete(serverName);
+			const connected = await lazyConnect(state, serverName);
+			if (!connected) {
+				const message = `OAuth authentication succeeded for "${serverName}", but reconnect failed.`;
+				ctx.ui.notify(message, "warning");
+				return { ok: false, message };
+			}
+
+			const message = `OAuth authenticated and connected for "${serverName}".`;
+			ctx.ui.notify(message, "info");
 			return { ok: true, message };
 		}
 
@@ -236,7 +241,7 @@ export async function logoutServer(
 	await state.manager.close(serverName);
 	updateStatusBar(state);
 
-	const message = `OAuth credentials cleared for "${serverName}". Run /mcp-auth ${serverName} to authenticate again.`;
+	const message = `OAuth credentials cleared for "${serverName}". Open /mcp to authenticate again.`;
 	if (ctx.hasUI) ctx.ui.notify(message, "info");
 	return { ok: true, message };
 }
@@ -357,7 +362,7 @@ function buildMcpPanelCallbacks(
 			const definition = config.mcpServers[serverName];
 			return definition ? supportsOAuth(definition) : false;
 		},
-		authenticate: (serverName: string) => authenticateServer(serverName, config, ctx),
+		authenticate: (serverName: string) => authenticateServer(serverName, state, ctx),
 		getConnectionStatus: (serverName: string) => {
 			const definition = config.mcpServers[serverName];
 			const connection = state.manager.getConnection(serverName);
@@ -438,55 +443,4 @@ export async function openMcpPanel(
 	}
 
 	return { configChanged };
-}
-
-export async function openMcpAuthPanel(
-	state: McpExtensionState,
-	pi: ExtensionAPI,
-	ctx: ExtensionContext,
-	configOverridePath?: string,
-): Promise<PanelFlowResult> {
-	if (!ctx.hasUI) return { configChanged: false };
-
-	const config = state.config;
-	const oauthServers = Object.entries(config.mcpServers).filter(([, definition]) =>
-		supportsOAuth(definition),
-	);
-	if (oauthServers.length === 0) {
-		ctx.ui.notify("No OAuth-capable MCP servers are configured.", "warning");
-		return { configChanged: false };
-	}
-
-	const cache = loadMetadataCache();
-	const configPath = (pi.getFlag("mcp-config") as string | undefined) ?? configOverridePath;
-	const provenanceMap = getServerProvenance(configPath, ctx.cwd);
-	const callbacks = buildMcpPanelCallbacks(state, config, ctx);
-	const { createMcpPanel } = await import("./mcp-panel.ts");
-
-	await new Promise<void>((resolve) => {
-		ctx.ui.custom(
-			(tui, theme, keybindings, done) => {
-				return createMcpPanel(
-					config,
-					cache,
-					provenanceMap,
-					callbacks,
-					tui,
-					() => {
-						done(undefined);
-						resolve();
-					},
-					{
-						authOnly: true,
-						keybindings,
-						theme,
-						noticeLines: ["Select an OAuth MCP server and press Enter or ctrl+a to authenticate."],
-					},
-				);
-			},
-			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
-		);
-	});
-
-	return { configChanged: false };
 }

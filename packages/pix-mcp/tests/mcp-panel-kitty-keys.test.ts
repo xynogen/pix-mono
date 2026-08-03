@@ -82,9 +82,9 @@ for (const { name, enc } of ENCODINGS) {
 			const text = plain(panel.render(100));
 			// The query line shows what was typed (cursor char follows it).
 			expect(text).toContain("al│");
-			// The matching server is highlighted with the ▸ match marker.
-			expect(text).toMatch(/▸.*alpha/);
-			expect(text).not.toMatch(/▸.*bravo/);
+			// The matching server is highlighted with the selected-row marker.
+			expect(text).toMatch(/▶.*alpha/);
+			expect(text).not.toMatch(/▶.*bravo/);
 			panel.dispose();
 		});
 
