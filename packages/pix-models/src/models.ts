@@ -286,6 +286,14 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				1,
 			);
 
+			// Widest cost string so the cost column pads to a common width and the
+			// following ⚡score/stars stay column-aligned (e.g. "10.00/50.00" is 11
+			// chars — a fixed pad of 10 shifted those rows right by one).
+			const maxCostWidth = Math.max(
+				...dedupedRows.map((r) => fmtCost(r.dev).length),
+				"free".length,
+			);
+
 			// Mute low-info parts (separators, padding, #, ☆) so the actual values pop.
 			const mute = (s: string) => theme.fg("muted", s);
 			const sep = mute(" · ");
@@ -343,11 +351,11 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				const rawCost = fmtCost(dev);
 				let costSeg: string;
 				if (rawCost === "—") {
-					costSeg = theme.fg("dim", "—".padEnd(10));
+					costSeg = theme.fg("dim", "—".padEnd(maxCostWidth));
 				} else if (rawCost === "free") {
-					costSeg = mute("free".padEnd(10));
+					costSeg = mute("free".padEnd(maxCostWidth));
 				} else {
-					costSeg = theme.fg("success", rawCost.padEnd(10));
+					costSeg = theme.fg("success", rawCost.padEnd(maxCostWidth));
 				}
 				let benchSeg = "";
 				if (bench) {
