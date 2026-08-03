@@ -523,6 +523,8 @@ export class AskQuestionnaire extends Container {
 		let footer: string[] = [];
 
 		const row = (content: string): string => truncateToWidth(content, width, "");
+		const guide = (key: string, action: string) => t.fg("text", key) + t.fg("dim", ` ${action}`);
+		const guideSep = t.fg("dim", " • ");
 
 		// Tab bar — rendered as the framed top edge (frameLines `top`).
 		let top: string | undefined;
@@ -558,7 +560,17 @@ export class AskQuestionnaire extends Container {
 					.render(width)
 					.map((line) => truncateToWidth(line, width, "")),
 			);
-			footer = [row(dim(t)("PgUp/PgDn inspect • enter submit • esc back • ctrl+c cancel"))];
+			footer = [
+				row(
+					guide("PgUp/PgDn", "inspect") +
+						guideSep +
+						guide("enter", "submit") +
+						guideSep +
+						guide("esc", "back") +
+						guideSep +
+						guide("ctrl+c", "cancel"),
+				),
+			];
 			return this.frame(mw, header, body, footer, top);
 		}
 
@@ -588,11 +600,15 @@ export class AskQuestionnaire extends Container {
 		}
 
 		// Footer hints
-		const navHint = this.params.questions.length > 1 ? "↑↓ nav • ←→ question" : "↑↓ nav";
-		const hintParts = isMulti
-			? [`${navHint} • space toggle • enter commit • esc clear`, "ctrl+c cancel"]
-			: [`${navHint} • type filter • enter select • esc clear`, "ctrl+c cancel"];
-		footer = [row(dim(t)(`${hintParts.join(" • ")} • PgUp/PgDn inspect`))];
+		const hints: Array<[string, string]> = [["↑↓", "nav"]];
+		if (this.params.questions.length > 1) hints.push(["←→", "question"]);
+		if (isMulti) {
+			hints.push(["space", "toggle"], ["enter", "commit"]);
+		} else {
+			hints.push(["type", "filter"], ["enter", "select"]);
+		}
+		hints.push(["esc", "clear"], ["ctrl+c", "cancel"], ["PgUp/PgDn", "inspect"]);
+		footer = [row(hints.map(([key, action]) => guide(key, action)).join(guideSep))];
 
 		return this.frame(mw, header, body, footer, top);
 	}
@@ -610,9 +626,9 @@ export class AskQuestionnaire extends Container {
 			width: outerWidth,
 			maxHeight: terminalModalHeight(this.tui.terminal.rows),
 			minHeight: MIN_MODAL_HEIGHT,
-			header,
+			header: [...header, ""],
 			body,
-			footer,
+			footer: ["", ...footer],
 			bodyOffset: this.pager.bodyOffset,
 			selectedBodyRange:
 				this.selectedOptionRows === undefined

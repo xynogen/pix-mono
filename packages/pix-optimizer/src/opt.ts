@@ -124,6 +124,9 @@ export function registerOptCommand(
 					kb: KeybindingsManager,
 					done: (v: null) => void,
 				) => {
+					const guide = (key: string, action: string) =>
+						theme.fg("text", key) + theme.fg("dim", ` ${action}`);
+					const guideSep = theme.fg("dim", " · ");
 					let selected = 0;
 					const pager = new ModalPager();
 
@@ -166,7 +169,13 @@ export function registerOptCommand(
 									"",
 									theme.fg("dim", helpSummary(handles[TOOL_ORDER[selected] as OptimizerTool].help)),
 									"",
-									theme.fg("dim", "←→ change · ↑↓ move · PgUp/PgDn inspect · esc close"),
+									guide("←→", "change") +
+										guideSep +
+										guide("↑↓", "move") +
+										guideSep +
+										guide("PgUp/PgDn", "inspect") +
+										guideSep +
+										guide("esc", "close"),
 								],
 								bodyOffset: pager.bodyOffset,
 								selectedBodyLine: pager.selectedLine(selected),

@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-core",
-	"version": "0.4.53",
+	"version": "0.4.56",
 	"description": "Pi extension bundle \u2014 installs and activates all core pix-* extensions",
 	"type": "module",
 	"main": "src/extension.ts",
@@ -38,16 +38,16 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.4.0",
+		"@xynogen/pix-runtime": "^0.4.1",
 		"@xynogen/pix-data": "^0.4.1",
 		"@xynogen/pix-pretty": "^1.8.1",
 		"@xynogen/pix-welcome": "^0.1.18",
 		"@xynogen/pix-footer": "^0.1.20",
 		"@xynogen/pix-diagnostics": "^0.1.10",
-		"@xynogen/pix-display": "^0.1.13",
+		"@xynogen/pix-display": "^0.1.14",
 		"@xynogen/pix-prompts": "^0.3.5",
 		"@xynogen/pix-skills": "^0.7.5",
-		"@xynogen/pix-models": "^0.1.24",
+		"@xynogen/pix-models": "^0.1.25",
 		"@xynogen/pix-update": "^0.1.17",
 		"@xynogen/pix-commands": "^0.2.5",
 		"@xynogen/pix-nudge": "^0.1.13",
@@ -59,8 +59,8 @@
 		"@xynogen/pix-ls": "^0.1.20",
 		"@xynogen/pix-bash": "^0.1.18",
 		"@xynogen/pix-todo": "^0.1.20",
-		"@xynogen/pix-ask": "^0.2.13",
-		"@xynogen/pix-optimizer": "^1.1.20",
+		"@xynogen/pix-ask": "^0.2.14",
+		"@xynogen/pix-optimizer": "^1.1.21",
 		"@xynogen/pix-gate": "^0.2.2",
 		"@xynogen/pix-subagent": "^0.6.3"
 	},

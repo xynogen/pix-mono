@@ -343,6 +343,9 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 			(tui: TUI, theme: Theme, keybindings: KeybindingsManager, done: (r: null) => void) => {
 				const accent = "accent";
 				const mute = (s: string) => theme.fg("muted", s);
+				const guide = (key: string, action: string) =>
+					theme.fg("text", key) + theme.fg("dim", ` ${action}`);
+				const guideSep = theme.fg("dim", " · ");
 
 				type RowState = "active" | "gated";
 				const stateOf = (name: string): RowState => (ops.isActive(name) ? "active" : "gated");
@@ -449,12 +452,19 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 					render(w: number) {
 						const mw = modalWidth(w);
 						const inner = mw - 4; // CHROME = 2 border + 2 padding
-						const footer = statusText ? [statusText] : [];
+						const footer = statusText ? ["", statusText] : [""];
 						footer.push(
-							theme.fg(
-								"dim",
-								"↑↓ navigate · ←→/PgUp/PgDn inspect · e enable · d disable · space toggle · esc close",
-							),
+							guide("↑↓", "navigate") +
+								guideSep +
+								guide("←→/PgUp/PgDn", "inspect") +
+								guideSep +
+								guide("e", "enable") +
+								guideSep +
+								guide("d", "disable") +
+								guideSep +
+								guide("space", "toggle") +
+								guideSep +
+								guide("esc", "close"),
 						);
 						const result = frameModal({
 							width: mw,
@@ -464,6 +474,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 								theme.fg(accent, theme.bold("🧰  Toolbox")),
 								theme.fg("muted", "Search:"),
 								...search.render(inner),
+								"",
 							],
 							body: list.render(inner),
 							selectedBodyRange: pager.selectedRange({

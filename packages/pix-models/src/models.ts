@@ -289,6 +289,9 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			// Mute low-info parts (separators, padding, #, ☆) so the actual values pop.
 			const mute = (s: string) => theme.fg("muted", s);
 			const sep = mute(" · ");
+			const guide = (key: string, action: string) =>
+				theme.fg("text", key) + theme.fg("dim", ` ${action}`);
+			const guideSep = theme.fg("dim", " · ");
 
 			// Track rank per item value so fuzzy results can prioritize ranked models.
 			const rankByValue = new Map<string, number>();
@@ -435,7 +438,11 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					? theme.getThinkingBorderColor(resolved)(label)
 					: theme.fg("dim", label);
 				return (
-					theme.fg("muted", "Thinking: ") + coloredLabel + theme.fg("dim", "  (shift+←/→ adjust)")
+					theme.fg("muted", "Thinking: ") +
+					coloredLabel +
+					theme.fg("dim", "  (") +
+					guide("shift+←/→", "adjust") +
+					theme.fg("dim", ")")
 				);
 			};
 
@@ -451,8 +458,8 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 							theme.fg(accent, theme.bold(`${icon("picker.model")}  Select model`)),
 							theme.fg("dim", "context · pricing · coding rank & score from modelgrep.com"),
 							thinkLine(),
-							theme.fg("muted", "Search:"),
 							...search.render(inner),
+							"",
 						],
 						body: list.render(inner),
 						selectedBodyRange: (() => {
@@ -463,10 +470,15 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 							});
 						})(),
 						footer: [
-							theme.fg(
-								"dim",
-								"fuzzy search · ↑↓ navigate · ←→/PgUp/PgDn inspect · shift+←/→ thinking · enter select · esc cancel",
-							),
+							"",
+							theme.fg("dim", "fuzzy search") +
+								guideSep +
+								guide("↑↓", "navigate") +
+								guideSep +
+								guide("←→/PgUp/PgDn", "inspect") +
+								guideSep +
+								guide("shift+←/→", "thinking"),
+							guide("enter", "select") + guideSep + guide("esc", "cancel"),
 						],
 						bodyOffset: pager.bodyOffset,
 						color: (s) => theme.fg(accent, s),

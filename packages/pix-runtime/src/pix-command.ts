@@ -129,6 +129,9 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					kb: KeybindingsManager,
 					done: (v: null) => void,
 				) => {
+					const guide = (key: string, action: string) =>
+						theme.fg("text", key) + theme.fg("dim", ` ${action}`);
+					const guideSep = theme.fg("dim", " · ");
 					let selected = 0;
 					let bodyOffset = 0;
 					let visibleBodyLines = 1;
@@ -177,7 +180,13 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								body,
 								footer: [
 									"",
-									theme.fg("dim", "←→ change · ↑↓ move · PgUp/PgDn inspect · esc close"),
+									guide("←→", "change") +
+										guideSep +
+										guide("↑↓", "move") +
+										guideSep +
+										guide("PgUp/PgDn", "inspect") +
+										guideSep +
+										guide("esc", "close"),
 								],
 								bodyOffset,
 								selectedBodyLine: inspectingPage ? undefined : settingBodyLines[selected],

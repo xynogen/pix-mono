@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-ask",
-	"version": "0.2.13",
+	"version": "0.2.14",
 	"description": "Pi tool — structured questionnaire UI (ask_user)",
 	"type": "module",
 	"main": "src/index.ts",
