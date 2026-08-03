@@ -10,7 +10,7 @@ See `DESIGN.md` for the full contract.
 ## What it does
 
 - Versioned, sparse `pix.json` (`$version: 1`) — defaults resolve in code.
-- Typed sections: `collapse`, `pretty`, `io`, `optimizer`, `gate`.
+- Typed sections: `collapse`, `pretty`, `io`, `compaction`, `optimizer`, `gate`.
 - Atomic writes behind a serialized in-process queue and a short-lived
   cross-process lock. A failed write leaves the old file intact.
 - Immutable, deeply frozen config snapshots with a monotonic revision.
@@ -48,6 +48,13 @@ Set `io.timeoutSec` in `~/.pi/agent/pix.json`, or change **Network → timeout (
 with `/pix`. The default is 30 seconds. It applies to Pix network operations,
 including remote skills, web fetch/search/transcription, MCP requests and
 connection bootstrap, background model-data refreshes, and update downloads.
+
+Set `compaction.triggerPercent` in `~/.pi/agent/pix.json`, or change **Compaction →
+Trigger (% ctx)** with `/pix`. It is the context-window usage percent (0–100) that
+fires compaction; the default is `60` and `0` disables the self-trigger (pi decides
+when to compact). The `/pix` picker offers 0, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70,
+80, 90. Low values matter because the threshold scales with the active model's
+context window (a 1M-context model vs a 200K one). pix-core consumes this setting.
 
 Collapse policy helpers:
 
