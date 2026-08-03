@@ -10,11 +10,11 @@
  *      below. Edit the prompt/format to experiment.
  *
  *   2. Trigger — ours when `compaction.triggerPercent > 0`. After each settled
- *      turn we read live context usage and call ctx.compact() once usage
- *      reaches that percent of the active model's context window. Since it
- *      scales with the model, it fires before pi's reserveTokens threshold in
- *      practice — effectively replacing pi's trigger while pi's own threshold
- *      stays as an overflow safety net. `triggerPercent === 0` disables it: we
+ *      turn we read live context usage and call ctx.compact() once token usage
+ *      reaches the larger of that percentage of the active model's context
+ *      window and `compaction.minimumTokens`. This prevents low percentages on
+ *      smaller models from compacting too early. Pi's own threshold stays as an
+ *      overflow safety net. `triggerPercent === 0` disables our trigger: we
  *      keep our prompt but let pi decide when to compact.
  *
  * After a self-triggered compaction we send a short user message (RESUME_NUDGE)
@@ -59,6 +59,14 @@ ${conversation}
 };
 
 const MAX_SUMMARY_TOKENS = 8192;
+
+export function compactionThresholdTokens(
+	contextWindow: number,
+	triggerPercent: number,
+	minimumTokens: number,
+): number {
+	return Math.max(minimumTokens, Math.ceil((contextWindow * triggerPercent) / 100));
+}
 
 // Sent as a user message after a self-triggered compaction so the agent picks
 // its task back up on its own. Kept short — the freshly written summary already
@@ -144,16 +152,18 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 	let compacting = false;
 	pi.on("agent_settled", (_event, ctx) => {
 		if (compacting) return;
-		const { triggerPercent } = config(compactionSection);
+		const { triggerPercent, minimumTokens } = config(compactionSection);
 		if (triggerPercent <= 0) return;
 
 		const usage = ctx.getContextUsage?.();
-		const percent = usage?.percent;
-		if (percent == null || percent < triggerPercent) return;
+		if (!usage || usage.tokens === null) return;
+		const tokens = usage.tokens;
+		const threshold = compactionThresholdTokens(usage.contextWindow, triggerPercent, minimumTokens);
+		if (tokens < threshold) return;
 
 		compacting = true;
 		ctx.ui.notify(
-			`Compaction: ${Math.round(percent)}% ctx ≥ ${triggerPercent}% threshold — compacting`,
+			`Compaction: ${tokens.toLocaleString()} tok ≥ ${threshold.toLocaleString()} tok threshold (${triggerPercent}% ctx, ${minimumTokens.toLocaleString()} floor) — compacting`,
 			"info",
 		);
 		ctx.compact({

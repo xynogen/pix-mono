@@ -3,23 +3,34 @@ import { defineSection, isObj } from "../schema.ts";
 /**
  * Custom compaction config. pix-core always replaces pi's built-in compaction
  * summary. When `triggerPercent > 0` it also drives its own trigger from live
- * context usage — firing once usage reaches that percent of the ACTIVE model's
- * context window, so the threshold scales with whatever model you pick. `0`
- * disables the self-trigger (pi decides when to compact).
+ * context usage. The effective threshold is the larger of that percentage of
+ * the active model's context window and `minimumTokens`. `0` disables the
+ * self-trigger (pi decides when to compact).
  */
 export interface CompactionConfig {
 	/** Context-window usage percent that fires compaction; 0 = off. */
 	triggerPercent: number;
+	/** Absolute floor for a percentage-based trigger. */
+	minimumTokens: number;
 }
+
+const MINIMUM_TOKEN_FLOOR = 100_000;
 
 const DEFAULTS: Readonly<CompactionConfig> = {
 	triggerPercent: 60,
+	minimumTokens: MINIMUM_TOKEN_FLOOR,
 };
 
 /** Clamp to [0, 100]; non-numbers fall back. */
 function pctOr(v: unknown, fallback: number): number {
 	if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
 	return Math.min(100, Math.max(0, v));
+}
+
+/** Require a finite token floor of at least 100k. */
+function minimumTokensOr(v: unknown, fallback: number): number {
+	if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+	return Math.max(MINIMUM_TOKEN_FLOOR, Math.round(v));
 }
 
 export const compactionSection = defineSection<"compaction", CompactionConfig>({
@@ -29,6 +40,7 @@ export const compactionSection = defineSection<"compaction", CompactionConfig>({
 		if (!isObj(raw)) return { ...DEFAULTS };
 		return {
 			triggerPercent: pctOr(raw.triggerPercent, DEFAULTS.triggerPercent),
+			minimumTokens: minimumTokensOr(raw.minimumTokens, DEFAULTS.minimumTokens),
 		};
 	},
 });

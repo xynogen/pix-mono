@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getKeybindings, setKittyProtocolActive } from "@earendil-works/pi-tui";
 import { registerPixCommand } from "./pix-command.ts";
+import { compactionSection } from "./sections/compaction.ts";
 import { ioSection } from "./sections/io.ts";
 import { prettySection } from "./sections/pretty.ts";
 import { createIsolatedRuntime, type IsolatedRuntime } from "./testing.ts";
@@ -50,6 +51,7 @@ interface Driver {
 	closed(): boolean;
 	iconsValue(): string;
 	timeoutValue(): number;
+	minimumTokensValue(): number;
 	cleanup(): void;
 }
 
@@ -123,6 +125,7 @@ async function openOverlay(): Promise<Driver> {
 		// First row is Pretty/icons; read the live value through the runtime.
 		iconsValue: () => iso.runtime.get(prettySection).icons,
 		timeoutValue: () => iso.runtime.get(ioSection).timeoutSec,
+		minimumTokensValue: () => iso.runtime.get(compactionSection).minimumTokens,
 		cleanup: () => iso.cleanup(),
 	};
 }
@@ -221,6 +224,19 @@ describe("/pix network timeout", () => {
 		d.feed(KEYS.right.legacy);
 		await d.settle();
 		expect(d.timeoutValue()).toBe(10);
+	});
+});
+
+describe("/pix compaction floor", () => {
+	it("offers 100k through 600k and defaults to 100k", async () => {
+		const d = await openOverlay();
+		for (let i = 0; i < 6; i++) d.feed(KEYS.down.legacy);
+		expect(d.cursorLine()).toContain("Minimum tokens");
+		expect(d.cursorLine()).toContain("100k");
+		expect(d.minimumTokensValue()).toBe(100_000);
+		d.feed(KEYS.right.legacy);
+		await d.settle();
+		expect(d.minimumTokensValue()).toBe(150_000);
 	});
 });
 

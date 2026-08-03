@@ -87,6 +87,14 @@ const SETTINGS: SettingRow<unknown>[] = [
 		patch: (value) => ({ triggerPercent: Number(value) }),
 	}),
 	row({
+		section: "Compaction",
+		label: "Minimum tokens",
+		handle: compactionSection,
+		values: ["100k", "150k", "200k", "300k", "400k", "500k", "600k"],
+		read: (v) => `${v.minimumTokens / 1000}k`,
+		patch: (value) => ({ minimumTokens: Number.parseInt(value, 10) * 1000 }),
+	}),
+	row({
 		section: "Gate",
 		label: "Guardrails",
 		handle: gateSection,

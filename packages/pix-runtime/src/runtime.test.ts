@@ -6,6 +6,7 @@ import type { StorageAdapter } from "./persistence.ts";
 import { createRuntime } from "./runtime.ts";
 import { stripDefaults } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
+import { compactionSection } from "./sections/compaction.ts";
 import { gateSection } from "./sections/gate.ts";
 import { ioSection } from "./sections/io.ts";
 import { optimizerSection } from "./sections/optimizer.ts";
@@ -32,6 +33,7 @@ describe("schema and normalization", () => {
 		const { runtime } = fresh();
 		expect(runtime.get(prettySection).icons).toBe("nerd");
 		expect(runtime.get(collapseSection).enabled).toBe(true);
+		expect(runtime.get(compactionSection).minimumTokens).toBe(100_000);
 		expect(runtime.get(gateSection).guardrails).toBe("on");
 		expect(runtime.get(ioSection).timeoutSec).toBe(30);
 		expect(runtime.get(optimizerSection).rtk).toBe("on");
@@ -46,6 +48,23 @@ describe("schema and normalization", () => {
 		writeFileSync(join(agentDir, "pix.json"), JSON.stringify({ io: { timeoutSec: 0 } }));
 		await runtime.reload();
 		expect(runtime.get(ioSection).timeoutSec).toBe(30);
+	});
+
+	it("enforces a 100k minimum compaction floor", async () => {
+		const { runtime, agentDir } = fresh();
+		writeFileSync(
+			join(agentDir, "pix.json"),
+			JSON.stringify({ compaction: { minimumTokens: 300_000 } }),
+		);
+		await runtime.reload();
+		expect(runtime.get(compactionSection).minimumTokens).toBe(300_000);
+
+		writeFileSync(
+			join(agentDir, "pix.json"),
+			JSON.stringify({ compaction: { minimumTokens: 30_000 } }),
+		);
+		await runtime.reload();
+		expect(runtime.get(compactionSection).minimumTokens).toBe(100_000);
 	});
 
 	it("ignores the removed gate.disableDefaults field", async () => {
