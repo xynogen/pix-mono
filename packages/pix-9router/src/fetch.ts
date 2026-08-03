@@ -304,10 +304,12 @@ export default function registerFetch(pi: ExtensionAPI): void {
 		),
 		parameters: Type.Object({
 			url: Type.String({ description: "URL to fetch" }),
-			format: StringEnum(["markdown", "text", "html"] as const, {
-				description:
-					'Required choice. Enter exactly "markdown" for readable Markdown, "text" for plain text, or "html" for raw HTML.',
-			}),
+			format: Type.Optional(
+				StringEnum(["markdown", "text", "html"] as const, {
+					description:
+						'Optional choice. Enter exactly "markdown" for readable Markdown, "text" for plain text, or "html" for raw HTML. Default is "markdown".',
+				})
+			),
 			max_characters: Type.Optional(
 				Type.Number({
 					description: "Max characters (default 1000, 0 = unlimited)",
