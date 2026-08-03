@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { splitThinking, stripPartialTailTag } from "../src/thinking.js";
+import { normalizeThinkingOrder, splitThinking, stripPartialTailTag } from "../src/thinking.js";
 
 type Block = { type: string; text?: string; thinking?: string };
 
@@ -18,6 +18,45 @@ function texts(blocks: Block[]): string[] {
 function thinkings(blocks: Block[]): string[] {
 	return blocks.filter((b) => b.type === "thinking").map((b) => b.thinking ?? "");
 }
+
+describe("normalizeThinkingOrder", () => {
+	it("moves provider-native thinking before text when reasoning arrives late", () => {
+		const text = { type: "text", text: "Visible answer" };
+		const thinking = {
+			type: "thinking",
+			thinking: "Late reasoning",
+			thinkingSignature: "reasoning_content",
+		};
+
+		expect(normalizeThinkingOrder([text, thinking])).toEqual([thinking, text]);
+	});
+
+	it("does not move thinking across a tool call", () => {
+		const before = { type: "text", text: "Before tool" };
+		const tool = { type: "toolCall", id: "call-1" };
+		const after = { type: "text", text: "After tool" };
+		const thinking = {
+			type: "thinking",
+			thinking: "Next segment reasoning",
+			thinkingSignature: "reasoning_content",
+		};
+
+		expect(normalizeThinkingOrder([before, tool, after, thinking])).toEqual([
+			before,
+			tool,
+			thinking,
+			after,
+		]);
+	});
+
+	it("keeps an already-correct segment unchanged", () => {
+		const thinking = { type: "thinking", thinking: "Reasoning" };
+		const text = { type: "text", text: "Answer" };
+		const blocks = [thinking, text];
+
+		expect(normalizeThinkingOrder(blocks)).toBe(blocks);
+	});
+});
 
 describe("splitThinking", () => {
 	describe("closed thinking blocks", () => {

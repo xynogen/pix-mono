@@ -57,6 +57,7 @@ interface TextBlock {
 interface ThinkingBlock {
 	type: "thinking";
 	thinking: string;
+	thinkingSignature?: string;
 }
 type Block = TextBlock | ThinkingBlock | { type: string; [k: string]: unknown };
 interface Msg {
@@ -143,8 +144,56 @@ function splitThinking(text: string): Block[] {
 	return blocks.length > 0 ? blocks : [{ type: "text", text: "" }];
 }
 
+function isSignedThinking(block: Block): block is ThinkingBlock {
+	return (
+		block.type === "thinking" &&
+		typeof block.thinkingSignature === "string" &&
+		block.thinkingSignature.length > 0
+	);
+}
+
+/**
+ * Providers can stream visible text before their native reasoning channel. Pi
+ * preserves arrival order, which leaves a signed thinking block below the
+ * answer. Move signed provider reasoning ahead of text within each contiguous
+ * assistant segment, but never across tool calls or other structural blocks.
+ */
+function normalizeThinkingOrder(content: Block[]): Block[] {
+	let normalized: Block[] | undefined;
+	let segmentStart = 0;
+
+	const normalizeSegment = (end: number): void => {
+		const segment = content.slice(segmentStart, end);
+		const firstText = segment.findIndex((block) => block.type === "text");
+		const hasLateThinking = segment.some(
+			(block, index) => index > firstText && firstText >= 0 && isSignedThinking(block),
+		);
+		if (!hasLateThinking) {
+			if (normalized) normalized.push(...segment);
+			return;
+		}
+
+		normalized ??= content.slice(0, segmentStart);
+		normalized.push(
+			...segment.filter(isSignedThinking),
+			...segment.filter((block) => !isSignedThinking(block)),
+		);
+	};
+
+	for (let index = 0; index <= content.length; index++) {
+		const block = content[index];
+		if (block && (block.type === "text" || block.type === "thinking")) continue;
+
+		normalizeSegment(index);
+		if (normalized && block) normalized.push(block);
+		segmentStart = index + 1;
+	}
+
+	return normalized ?? content;
+}
+
 // Export for testing
-export { splitThinking, stripPartialTailTag };
+export { normalizeThinkingOrder, splitThinking, stripPartialTailTag };
 
 export default function thinkingExtension(pi: ExtensionAPI) {
 	// Live conversion during streaming: rebuild the event's message so a native
@@ -157,12 +206,11 @@ export default function thinkingExtension(pi: ExtensionAPI) {
 		const msg = ev.message;
 		if (msg?.role !== "assistant" || !Array.isArray(msg.content)) return;
 
-		// Only text stream events can change text blocks; skip toolcall/thinking
-		// channel deltas to avoid pointless re-renders.
 		const streamType = ev.assistantMessageEvent?.type;
-		if (streamType && !streamType.startsWith("text_")) return;
+		if (streamType && !streamType.startsWith("text_") && !streamType.startsWith("thinking_"))
+			return;
 
-		msg.content = msg.content.flatMap((block): Block[] => {
+		const content = msg.content.flatMap((block): Block[] => {
 			if (block.type !== "text") return [block];
 			const tb = block as TextBlock;
 			if (typeof tb.text !== "string" || !tb.text.includes("<")) return [block];
@@ -173,6 +221,7 @@ export default function thinkingExtension(pi: ExtensionAPI) {
 			// New objects — never mutate the provider's accumulating block.
 			return splitThinking(stripped);
 		});
+		msg.content = normalizeThinkingOrder(content);
 	});
 
 	pi.on("message_end", (event) => {
@@ -180,7 +229,7 @@ export default function thinkingExtension(pi: ExtensionAPI) {
 		if (msg?.role !== "assistant" || !Array.isArray(msg.content)) return;
 
 		let changed = false;
-		const content = msg.content.flatMap((block): Block[] => {
+		const splitContent = msg.content.flatMap((block): Block[] => {
 			if (block.type !== "text") return [block];
 			const tb = block as TextBlock;
 			if (typeof tb.text !== "string") return [block];
@@ -188,6 +237,8 @@ export default function thinkingExtension(pi: ExtensionAPI) {
 			changed = true;
 			return splitThinking(tb.text);
 		});
+		const content = normalizeThinkingOrder(splitContent);
+		changed ||= content !== splitContent;
 
 		// Return the replacement so the native thinking blocks are persisted.
 		// Persistence note: this rewrites leaked reasoning from `text` into real
