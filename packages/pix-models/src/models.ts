@@ -102,8 +102,8 @@ export function normalizeModelText(s: string): string {
 // ─── Thinking level control ──────────────────────────────────────────────────
 
 /**
- * Canonical thinking levels, ascending. Shift+←/→ in the picker steps through this
- * list; pi.setThinkingLevel() clamps to what the active model actually supports,
+ * Canonical thinking levels, ascending. ←/→ in the picker steps through this list;
+ * pi.setThinkingLevel() clamps to what the active model actually supports,
  * so visiting an unsupported rung is harmless (it lands on the nearest allowed).
  */
 export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
@@ -277,7 +277,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 	// items built inside the custom() factory so we have theme access for colors
 
 	const result = await ctx.ui.custom<string | null>(
-		(tui, theme, kb, done) => {
+		(tui, theme, _kb, done) => {
 			const accent = "accent";
 
 			// Find max rank width across all benchmarked rows for # padding
@@ -420,7 +420,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				internal.invalidate();
 			};
 
-			// Live thinking-level readout. Shift+←/→ mutates the session immediately via
+			// Live thinking-level readout. ←/→ mutates the session immediately via
 			// pi.setThinkingLevel(); we mirror pi.getThinkingLevel() so the header
 			// reflects the clamped result (model may not support every rung).
 			//
@@ -441,7 +441,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					theme.fg("muted", "Thinking: ") +
 					coloredLabel +
 					theme.fg("dim", "  (") +
-					guide("shift+←/→", "adjust") +
+					guide("←/→", "adjust") +
 					theme.fg("dim", ")")
 				);
 			};
@@ -471,14 +471,13 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						})(),
 						footer: [
 							"",
-							theme.fg("dim", "fuzzy search") +
+							guide("↑↓", "navigate") +
 								guideSep +
-								guide("↑↓", "navigate") +
+								guide("←/→", "thinking") +
 								guideSep +
-								guide("←→/PgUp/PgDn", "inspect") +
+								guide("enter", "select") +
 								guideSep +
-								guide("shift+←/→", "thinking"),
-							guide("enter", "select") + guideSep + guide("esc", "cancel"),
+								guide("esc", "cancel"),
 						],
 						bodyOffset: pager.bodyOffset,
 						color: (s) => theme.fg(accent, s),
@@ -493,20 +492,15 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					search.invalidate();
 				},
 				handleInput(data: string) {
-					if (pager.handleInput(data, kb, true)) {
-						tui.requestRender();
-						return;
-					}
 					// Detect keys via pi-tui's own parser — the same recognition
 					// SelectList uses. Arrows arrive as named keys ("up"/"down"),
 					// not raw escape sequences, so string-equality checks fail.
 					const isNav = matchesKey(data, "up") || matchesKey(data, "down");
-					// Shift+←/→ tunes the ACTIVE session model's thinking level without
-					// stealing plain ←/→ cursor movement from search. setThinkingLevel clamps
-					// to model capability, so unsupported rungs land on the nearest allowed.
+					// ←/→ tunes the ACTIVE session model's thinking level. setThinkingLevel
+					// clamps to model capability, so unsupported rungs land on the nearest allowed.
 					let dir: -1 | 1 | 0 = 0;
-					if (matchesKey(data, Key.shift(Key.left))) dir = -1;
-					else if (matchesKey(data, Key.shift(Key.right))) dir = 1;
+					if (matchesKey(data, Key.left)) dir = -1;
+					else if (matchesKey(data, Key.right)) dir = 1;
 					if (dir !== 0) {
 						const cur = pi.getThinkingLevel?.() || localLevel || "medium";
 						localLevel = stepEffectiveThinkingLevel(cur, dir, (candidate) => {
