@@ -245,13 +245,13 @@ export default function registerFetch(pi: ExtensionAPI): void {
 				StringEnum(["markdown", "text", "html"] as const, {
 					description:
 						'Optional choice. Enter exactly "markdown" for readable Markdown, "text" for plain text, or "html" for raw HTML. Default is "markdown".',
-				})
+				}),
 			),
 			max_characters: Type.Optional(
 				Type.Number({
 					description: "Max characters (default 1000, 0 = unlimited)",
 					default: 1000,
-				})
+				}),
 			),
 		}),
 
