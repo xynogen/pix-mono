@@ -31,7 +31,9 @@ export { CONFIG_FORMAT_VERSION, defineSection } from "./schema.ts";
 export {
 	builtinSections,
 	type CollapseConfig,
+	type CompactionConfig,
 	collapseSection,
+	compactionSection,
 	type GateConfig,
 	type GateRuleConfig,
 	gateSection,

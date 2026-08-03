@@ -18,6 +18,7 @@ import {
 import type { PixRuntime } from "./runtime.ts";
 import type { DeepPartial, SectionHandle } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
+import { compactionSection } from "./sections/compaction.ts";
 import { gateSection } from "./sections/gate.ts";
 import { ioSection } from "./sections/io.ts";
 import { prettySection } from "./sections/pretty.ts";
@@ -76,6 +77,14 @@ const SETTINGS: SettingRow<unknown>[] = [
 		values: ["30", "10", "60", "120", "300"],
 		read: (v) => String(v.timeoutSec),
 		patch: (value) => ({ timeoutSec: Number(value) }),
+	}),
+	row({
+		section: "Compaction",
+		label: "Trigger (% ctx)",
+		handle: compactionSection,
+		values: ["0", "50", "55", "60", "65", "70", "75", "80", "85", "90", "95"],
+		read: (v) => String(v.triggerPercent),
+		patch: (value) => ({ triggerPercent: Number(value) }),
 	}),
 	row({
 		section: "Gate",

@@ -1,4 +1,5 @@
 export { type CollapseConfig, collapseSection } from "./collapse.ts";
+export { type CompactionConfig, compactionSection } from "./compaction.ts";
 export {
 	type GateConfig,
 	type GateRuleConfig,
@@ -22,6 +23,7 @@ export {
 } from "./pretty.ts";
 
 import { collapseSection } from "./collapse.ts";
+import { compactionSection } from "./compaction.ts";
 import { gateSection } from "./gate.ts";
 import { ioSection } from "./io.ts";
 import { optimizerSection } from "./optimizer.ts";
@@ -34,4 +36,5 @@ export const builtinSections = [
 	ioSection,
 	optimizerSection,
 	gateSection,
+	compactionSection,
 ] as const;

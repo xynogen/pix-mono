@@ -38,6 +38,7 @@ import registerTodo from "@xynogen/pix-todo/src/index.ts";
 import registerUpdate from "@xynogen/pix-update/src/extension.ts";
 import registerWelcome from "@xynogen/pix-welcome/src/extension.ts";
 import registerWrite from "@xynogen/pix-write/src/extension.ts";
+import registerCompaction from "./compaction.ts";
 
 // Members accept either the full `ExtensionAPI` or pix-pretty's looser
 // `PiPrettyApi` view of it. `ExtensionAPI` satisfies both, so we erase the
@@ -76,6 +77,9 @@ const MEMBERS: Factory[] = [
 	registerOptimizer,
 	registerGate,
 	registerSubagent,
+	// Custom compaction: replaces pi's built-in summary + trigger (reads
+	// compaction section; runs after runtime is live).
+	registerCompaction,
 ];
 
 export default function (pi: ExtensionAPI): void {
