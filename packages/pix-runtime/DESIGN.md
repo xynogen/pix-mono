@@ -132,7 +132,6 @@ interface PixConfigV1 {
   optimizer: {
     caveman: "off" | "lite" | "full" | "ultra" | "micro"; // default off
     rtk: "off" | "on";                                      // default on
-    toon: "off" | "on";                                     // default on
     ponytail: "off" | "lite" | "full" | "ultra";          // default off
   };
   gate: {

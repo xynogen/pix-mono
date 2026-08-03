@@ -25,7 +25,7 @@ const LEGACY_DIFF_COLOR_KEYS = [
 	"fgDel",
 ] as const;
 
-const OPTIMIZER_KEYS = ["caveman", "rtk", "toon", "ponytail"] as const;
+const OPTIMIZER_KEYS = ["caveman", "rtk", "ponytail"] as const;
 
 export interface MigrationResult {
 	document: RawDocument;
@@ -80,6 +80,14 @@ export function migrate(input: RawDocument, ctx: ParseContext): MigrationResult 
 		doc.pretty = pretty;
 	}
 
+	// TOON is now an on-demand pix-skills capability, not optimizer state.
+	if (isObj(doc.optimizer) && "toon" in doc.optimizer) {
+		doc.optimizer = Object.fromEntries(
+			Object.entries(doc.optimizer).filter(([key]) => key !== "toon"),
+		);
+		changed = true;
+	}
+
 	if (doc.$version !== CONFIG_FORMAT_VERSION) {
 		doc.$version = CONFIG_FORMAT_VERSION;
 		changed = true;
@@ -128,6 +136,7 @@ export function importOptimizerSidecar(
 	}
 	if (changed) doc.optimizer = existing;
 
+	const hasLegacyToon = typeof raw.toon === "string";
 	const archive = () => {
 		let target = `${sidecarPath}.migrated-v1`;
 		if (existsSync(target)) target = `${target}.${Date.now()}`;
@@ -138,5 +147,5 @@ export function importOptimizerSidecar(
 		}
 	};
 
-	return { changed, archive };
+	return { changed: changed || hasLegacyToon, archive };
 }

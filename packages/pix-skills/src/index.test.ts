@@ -39,6 +39,18 @@ description: Split, write, and maintain commits.
 # Commit Directive
 body...`;
 
+describe("bundled TOON skill", () => {
+	it("is model-discoverable on demand and owns the jq + TOON workflow", async () => {
+		const skill = await Bun.file(new URL("../skills/toon-json.md", import.meta.url)).text();
+
+		expect(extractName(skill)).toBe("toon-json");
+		expect(extractDescription(skill)).toContain("information-dense JSON");
+		expect(skill).toContain("disable-model-invocation: true");
+		expect(skill).toContain("jq '.data'");
+		expect(skill).toContain("toon -d");
+	});
+});
+
 describe("extractName", () => {
 	it("reads name from YAML frontmatter", () => {
 		expect(extractName(FRONTMATTER)).toBe("commit");

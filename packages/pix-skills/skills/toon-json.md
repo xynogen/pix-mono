@@ -1,17 +1,18 @@
 ---
-name: toon
-description: Manipulate information-dense JSON efficiently with jq + TOON. Use when fetching/reading large or repetitive JSON (LLM schemas, OpenAPI specs, API responses, datasets, config dumps) into context. Query/reshape with jq, compress to TOON to cut tokens, decode back to JSON only when a strict contract needs it.
+name: toon-json
+description: Manipulate information-dense JSON efficiently with jq + TOON. Use when fetching or reading large, repetitive JSON such as LLM schemas, OpenAPI specs, API responses, datasets, and config dumps. Query and reshape with jq, compress to TOON for context, and decode back only when a strict JSON contract requires it.
 disable-model-invocation: true
 ---
 
 # TOON + jq: Dense JSON Workflow
 
 ## Goal
+
 Carry only the JSON slice you need, in the cheapest encoding. Query with `jq`,
 compress with `toon`, and round-trip back to JSON **only** when a contract
 requires strict JSON.
 
-TOON (Token-Oriented Object Notation, https://github.com/toon-format/spec) is a
+TOON (Token-Oriented Object Notation, <https://github.com/toon-format/spec>) is a
 line-oriented encoding of the JSON data model. Uniform arrays of objects declare
 their keys once and stream bare rows, so token cost drops sharply on tabular and
 dense data.
@@ -37,6 +38,7 @@ cat data.toon | toon --decode
 or `-d` (decode TOON→JSON).
 
 ### Useful flags
+
 - `--stats` — print token/byte statistics for the conversion
 - `--delimiter=,|\t|"|"` — array delimiter (comma default; tab/pipe can tokenize better)
 - `--keyFolding=safe` — collapse single-key nesting chains
@@ -58,6 +60,7 @@ TOON is not always smaller. Pick based on shape:
 Rule of thumb: **TOON for reading dense data into context. JSON for contracts.**
 
 ## When NOT to use TOON
+
 - Anything sent to or stored by an API that expects JSON.
 - Data a downstream tool/parser must consume as strict JSON.
 - Deeply nested config trees or highly irregular structures.
@@ -73,6 +76,7 @@ LLM model list (uniform array → great TOON candidate):
 ```bash
 curl -s https://api.example.com/v1/models | jq '.data | map({id, owned_by, context})' | toon
 ```
+
 ```
 [3]{id,owned_by,context}:
   gpt-x,acme,128000
@@ -96,6 +100,7 @@ curl -s -X POST https://api.example.com/ingest -d "$RESHAPED"
 ```
 
 ## Checklist
+
 1. **Query** — narrow with `jq` to the exact slice needed.
 2. **Decide** — uniform/tabular/shallow → TOON; nested/array-of-arrays/contract → JSON.
 3. **Compress** — `| toon` (add `--stats` to confirm savings).

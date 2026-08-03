@@ -2,8 +2,8 @@
  * opt.ts — the single `/optimizer` command: an interactive overlay that fronts
  * every optimizer tool.
  *
- * caveman / rtk / toon / ponytail each register their own lifecycle hooks but
- * expose an OptimizerHandle (name · values · current() · run()). This overlay
+ * caveman / rtk / ponytail each register their own lifecycle hooks but expose
+ * an OptimizerHandle (name · values · current() · run()). This overlay
  * renders one SettingsList row per tool:
  *
  *   ↑↓  move between tools
@@ -30,7 +30,7 @@ const MIN_CONTENT = 28;
 const MAX_CONTENT = 60;
 
 /** Fixed render order — matches the status-bar cell. */
-const TOOL_ORDER: readonly OptimizerTool[] = ["caveman", "rtk", "toon", "ponytail"];
+const TOOL_ORDER: readonly OptimizerTool[] = ["caveman", "rtk", "ponytail"];
 
 /** Strip the leading "name [args] — " prefix from a handle's help string. */
 function helpSummary(help: string): string {
@@ -74,7 +74,7 @@ export function registerOptCommand(
 	_status: OptimizerStatus,
 ): void {
 	pi.registerCommand("optimizer", {
-		description: "pix-optimizer: caveman / rtk / toon / ponytail tools",
+		description: "pix-optimizer: caveman / rtk / ponytail tools",
 		handler: async (_args, ctx) => {
 			const ui = ctx.ui as unknown as {
 				theme: {

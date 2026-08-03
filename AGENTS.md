@@ -203,7 +203,7 @@ Owned by `pix-runtime` (init/reload/flush + the `/pix` settings command). Auto-c
 |---|---|
 | `collapse` | pix-bash, pix-read, pix-grep, pix-edit, pix-write, pix-find, pix-ls, pix-todo, pix-sudo, pix-skills, pix-subagent, pix-9router |
 | `pretty` | pix-pretty (icons, preview/render limits, diff split thresholds) |
-| `optimizer` | pix-optimizer (caveman/rtk/toon/ponytail state) |
+| `optimizer` | pix-optimizer (caveman/rtk/ponytail state) |
 | `gate` | pix-gate (rules, auto-approve patterns) |
 
 Loader: `@xynogen/pix-runtime/config` (sections in `@xynogen/pix-runtime/sections`) · Collapse: `@xynogen/pix-runtime/collapse`. Full schema in `packages/pix-runtime/README.md`.

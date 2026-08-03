@@ -164,7 +164,7 @@ as `/skill:<name>` slash commands.
 | `task` | Task orchestration and ambiguity resolution |
 | `test` | Test execution, analysis, and failure resolution via TDD |
 | `tldr` | Maximum-density technical summary, zero filler |
-| `toon` | Handle information-dense JSON with jq + TOON compression |
+| `toon-json` | On-demand jq + TOON workflow for information-dense JSON |
 | `ui` | UI/UX design and implementation guidance for frontends |
 | `verify` | Verification before completion — confirm it's actually fixed |
 | `subagent` | Plan, decompose, and fan out independent units to cheaper parallel subagent workers |

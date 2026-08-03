@@ -68,7 +68,6 @@ async function openOverlay(): Promise<Driver> {
 	const handles: Record<OptimizerTool, OptimizerHandle> = {
 		caveman: mk("caveman", "off", ["off", "lite", "full", "ultra", "micro"]),
 		rtk: mk("rtk", "off", ["off", "on"]),
-		toon: mk("toon", "off", ["off", "on"]),
 		ponytail: mk("ponytail", "off", ["off", "lite", "full", "ultra"]),
 	};
 
@@ -134,13 +133,7 @@ async function openOverlay(): Promise<Driver> {
 			// The selected row is the one rendered with the "→" cursor.
 			const rows = comp
 				.render()
-				.filter(
-					(l) =>
-						l.includes("caveman") ||
-						l.includes("rtk") ||
-						l.includes("toon") ||
-						l.includes("ponytail"),
-				);
+				.filter((l) => l.includes("caveman") || l.includes("rtk") || l.includes("ponytail"));
 			return rows.findIndex((l) => l.includes("→"));
 		},
 		closed: () => closed,
@@ -163,7 +156,7 @@ for (const enc of ENCODINGS) {
 		it("up arrow wraps from first row to last", async () => {
 			const d = await openOverlay();
 			d.feed(KEYS.up[enc]);
-			expect(d.selectedRow()).toBe(3);
+			expect(d.selectedRow()).toBe(2);
 		});
 
 		it("vim j/k move selection", async () => {

@@ -42,13 +42,13 @@ Shared dependencies pulled in automatically — install directly only if you nee
 | [`@xynogen/pix-diagnostics`](packages/pix-diagnostics) | Compact LSP diagnostic widget — recent files list, overrides pi-lens |
 | [`@xynogen/pix-display`](packages/pix-display) | Paste chip rendering (`[paste image #1]`) + leaked `<think>` tag → native thinking blocks |
 | [`@xynogen/pix-prompts`](packages/pix-prompts) | System-prompt injection — bundled `AGENT.md` baseline + repo directive files |
-| [`@xynogen/pix-skills`](packages/pix-skills) | `read_skills` discovery and loader — names-only listing, description and full-instruction loading, reference reads, and safe bundled resource copies |
+| [`@xynogen/pix-skills`](packages/pix-skills) | `read_skills` discovery and loader — names-only listing, description and full-instruction loading, reference reads, safe bundled resource copies, and on-demand TOON guidance |
 
 **Behaviour**
 
 | Package | Description |
 | --- | --- |
-| [`@xynogen/pix-optimizer`](packages/pix-optimizer) | Caveman mode + RTK tool rewriting + jq/TOON JSON compression + ponytail lazy-dev mode (`/optimizer` overlay) |
+| [`@xynogen/pix-optimizer`](packages/pix-optimizer) | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/optimizer` overlay) |
 | [`@xynogen/pix-gate`](packages/pix-gate) | Permission gate for dangerous bash + path commands — 4 severity tiers (block/critical/dangerous/risky) + sudo redirect, configurable |
 | [`@xynogen/pix-subagent`](packages/pix-subagent) | Sub-agent spawning — 3 tools (`agent`, `agent_result`, `agent_steer`), live model widget, work-splitting |
 

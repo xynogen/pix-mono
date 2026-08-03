@@ -1,13 +1,15 @@
 # pix-optimizer
 
-Token-optimization suite for Pi Coding Agent. Four tools wired into one
+Token-optimization suite for Pi Coding Agent. Three tools wired into one
 extension via `src/index.ts`, fronted by a single `/optimizer` command and one
 shared status-bar cell:
 
 - **Caveman** (`Cv`) — terse-output system prompt
 - **RTK** (`Rk`) — prefixes shell commands with `rtk` + injects RTK prompt
-- **TOON** (`Tn`) — jq + TOON guidance for dense JSON (skill lives in pix-skills)
 - **Ponytail** (`Pt`) — lazy-senior-dev system prompt (minimal code, YAGNI)
+
+TOON guidance lives exclusively in the on-demand `toon-json` skill bundled by
+`@xynogen/pix-skills`; it is no longer optimizer state or prompt injection.
 
 ## Command
 
@@ -21,11 +23,11 @@ There is no text-arg form: the overlay is the only UI. Selecting a value calls
 the tool's `run()` handler, which persists the new value and repaints the
 shared status cell. Headless/test fallbacks print a plain status summary.
 
-State persists to `~/.pi/agent/optimizer.json` (caveman/rtk/toon/ponytail). **Initial values** for a new session can be set in the `optimizer` section of `~/.pi/agent/pix.json` — the runtime toggle via `/optimizer` still persists changes to `optimizer.json` as before.
+State persists to `~/.pi/agent/optimizer.json` (caveman/rtk/ponytail). **Initial values** for a new session can be set in the `optimizer` section of `~/.pi/agent/pix.json` — the runtime toggle via `/optimizer` still persists changes to `optimizer.json` as before.
 
 ## Status bar
 
-A single cell always shows all four tool icons in a fixed order, color-coded by
+A single cell always shows all three tool icons in a fixed order, color-coded by
 state: **accent** when the tool is enabled, **dim** when disabled.
 
 ### Icon style (Nerd Font, Unicode, or ASCII)
@@ -37,15 +39,11 @@ font (e.g. MesloLGS NF). Terminals without one render them as missing-glyph
 | Mode | Glyphs | Needs Nerd Font? |
 |---|---|---|
 | `nerd` (default) | Nerd Font PUA glyphs | yes |
-| `unicode` | `♤ ♡ ♢ ♧` (outline card suits) | no |
-| `ascii` | `Cv Rk Tn Pt` | no |
+| `unicode` | `♤ ♡ ♧` (outline card suits) | no |
+| `ascii` | `Cv Rk Pt` | no |
 
-Switch the style live from the **`/optimizer` overlay** — a fifth `icons` row
-at the bottom cycles `nerd → unicode → ascii` with `←→`; the choice persists to
-`~/.pi/agent/optimizer.json`.
-
-Icons follow the **global** `pix-pretty` mode — set via `/pix` or `PRETTY_ICONS`
-env var. The optimizer no longer has its own toggle.
+Icons follow the **global** `pix-pretty` mode. Set it via `/pix` or the
+`PRETTY_ICONS` environment variable; the optimizer has no separate icon toggle.
 
 ## Features
 
@@ -84,23 +82,6 @@ Two layers, both active automatically:
 cargo install rtk-ai
 ```
 
-### TOON / JSON Compression (`Tn`)
-
-Guidance for handling information-dense JSON via `jq` (query/reshape) and
-`toon` (compress). The system-prompt nudge is injected **only when the user
-prompt mentions JSON** (`json`/`jsonl`/`jq`/`toon`/`openapi`/…). TOON shines
-on uniform/tabular arrays; deeply nested or array-of-arrays data and API
-contracts stay as JSON.
-
-The `toon-json` skill (full workflow + when-NOT-to-use guidance) is bundled in
-`pix-skills` and auto-discovered from there.
-
-**Requirement:** `jq` and `toon` on `PATH`.
-
-```bash
-npm i -g @toon-format/cli
-```
-
 ### Ponytail Mode (`Pt`)
 
 "Lazy senior dev" mode. Governs **what** the agent builds (minimal code,
@@ -115,8 +96,8 @@ works. Validation, error handling, security, and accessibility are never cut.
 | full  | The ladder enforced (default)        |
 | ultra | YAGNI extremist                      |
 
-**No install required** — pure prompt injection, no external binary or PATH
-dependency (unlike RTK and TOON).
+**No install required** — pure prompt injection, with no external binary or
+PATH dependency.
 
 ## Configuration via `pix.json`
 
@@ -127,7 +108,6 @@ Set the initial optimizer state for new sessions in `~/.pi/agent/pix.json`. Thes
   "optimizer": {
     "caveman": "lite",   // off | lite | full | ultra | micro
     "rtk":     true,
-    "toon":    false,
     "ponytail": "off"   // off | lite | full | ultra
   }
 }
@@ -149,18 +129,17 @@ pi install npm:@xynogen/pix-optimizer
 
 | File              | Role                                                      |
 |-------------------|-----------------------------------------------------------|
-| `src/index.ts`    | Wires the four tools + shared status, registers `/optimizer` |
+| `src/index.ts`    | Wires the three tools + shared status, registers `/optimizer` |
 | `src/opt.ts`      | The `/optimizer` overlay UI (keyboard nav + cycling)     |
 | `src/status.ts`   | Shared status-bar cell (`toolIcon()` → shared `pix-pretty` catalog) |
 | `src/caveman.ts`  | Caveman logic, levels, prompt                            |
 | `src/rtk.ts`      | RTK prompt + bash command rewriting                       |
-| `src/json.ts`     | jq+TOON guidance, heuristics, system-prompt injection     |
 | `src/ponytail.ts` | Ponytail logic, levels, prompt                            |
 | `src/persist.ts`  | Disk-backed `~/.pi/agent/optimizer.json` persistence; seeds initial state from `pix.json` |
 | `src/tool-result-filter.ts` | Strips model-guidance warnings from tool_result |
 
 Each tool registers its own lifecycle hooks and exposes an `OptimizerHandle`
-that `/optimizer` dispatches to. All four share one `OptimizerStatus`.
+that `/optimizer` dispatches to. All three share one `OptimizerStatus`.
 
 ## Development
 

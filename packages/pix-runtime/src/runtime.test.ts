@@ -180,6 +180,16 @@ describe("migration", () => {
 		expect((pretty.diff as Record<string, unknown>).splitMinWidth).toBe(170);
 	});
 
+	it("removes legacy optimizer TOON state", () => {
+		const { document, changed } = migrate(
+			{ $version: 1, optimizer: { caveman: "lite", toon: "on", rtk: "on" } },
+			{ diagnostic: () => {} },
+		);
+
+		expect(changed).toBe(true);
+		expect(document.optimizer).toEqual({ caveman: "lite", rtk: "on" });
+	});
+
 	it("imports optimizer.json once and archives it", async () => {
 		const { runtime, agentDir } = fresh();
 		writeFileSync(
@@ -191,6 +201,22 @@ describe("migration", () => {
 		expect(runtime.get(optimizerSection).rtk).toBe("off");
 		expect(existsSync(join(agentDir, "optimizer.json"))).toBe(false);
 		expect(existsSync(join(agentDir, "optimizer.json.migrated-v1"))).toBe(true);
+	});
+
+	it("archives a legacy sidecar containing only TOON state", async () => {
+		const { runtime, agentDir } = fresh();
+		writeFileSync(join(agentDir, "pix.json"), JSON.stringify({ $version: 1 }));
+		writeFileSync(join(agentDir, "optimizer.json"), JSON.stringify({ toon: "on" }));
+
+		await runtime.init();
+
+		expect(existsSync(join(agentDir, "optimizer.json"))).toBe(false);
+		expect(existsSync(join(agentDir, "optimizer.json.migrated-v1"))).toBe(true);
+		expect(runtime.get(optimizerSection)).toEqual({
+			caveman: "off",
+			rtk: "on",
+			ponytail: "off",
+		});
 	});
 
 	it("canonical optimizer value wins a sidecar conflict", async () => {

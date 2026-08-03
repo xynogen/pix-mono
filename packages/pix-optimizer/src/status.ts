@@ -1,15 +1,11 @@
 /**
  * status.ts — shared status-bar indicator for the optimizer suite.
  *
- * caveman / rtk / toon / ponytail each toggle independently, but they're all the same
- * class of thing (token-optimization tools), so they share ONE status cell
- * instead of three. Each tool reports its on/off state into a single registry;
- * the cell renders ALL four icons in a fixed order — accent-colored when the
- * tool is enabled, dim when disabled. The cell is never empty.
- *
- *   all on:        all four accent
- *   caveman off:   caveman dim, rest accent
- *   all off:       all four dim
+ * caveman / rtk / ponytail each toggle independently, but they're all the same
+ * class of thing (token-optimization tools), so they share ONE status cell.
+ * Each tool reports its on/off state into a single registry; the cell renders
+ * all three icons in a fixed order — accent-colored when enabled, dim when
+ * disabled. The cell is never empty.
  */
 
 import type {
@@ -20,12 +16,12 @@ import type {
 import { type IconKey, icon, onIconModeChange } from "@xynogen/pix-pretty/icon-catalog";
 
 /**
- * Each optimizer tool (caveman/rtk/toon/ponytail) exposes a handle so the
- * single `/optimizer` overlay can render one row per tool and apply value
- * changes without knowing the tool's internals.
+ * Each optimizer tool (caveman/rtk/ponytail) exposes a handle so the single
+ * `/optimizer` overlay can render one row per tool and apply value changes
+ * without knowing the tool's internals.
  */
 export interface OptimizerHandle {
-	/** Tool name, e.g. "caveman" / "rtk" / "toon". */
+	/** Tool name, e.g. "caveman" / "rtk" / "ponytail". */
 	name: OptimizerTool;
 	/** One-line summary shown in the overlay row. */
 	help: string;
@@ -41,7 +37,7 @@ export interface OptimizerHandle {
 export const STATUS_KEY = "pix-optimizer";
 
 /** Tools that participate in the shared indicator, in render order. */
-export type OptimizerTool = "caveman" | "rtk" | "toon" | "ponytail";
+export type OptimizerTool = "caveman" | "rtk" | "ponytail";
 
 /**
  * Icons come from the shared pix-pretty catalog and follow the ONE global icon
@@ -52,7 +48,6 @@ export type OptimizerTool = "caveman" | "rtk" | "toon" | "ponytail";
 const TOOL_ICON_KEY: Record<OptimizerTool, IconKey> = {
 	caveman: "opt.caveman",
 	rtk: "opt.rtk",
-	toon: "opt.toon",
 	ponytail: "opt.ponytail",
 };
 
@@ -62,7 +57,7 @@ export function toolIcon(tool: OptimizerTool): string {
 }
 
 /** Fixed left-to-right order of icons in the cell. */
-const TOOL_ORDER: readonly OptimizerTool[] = ["caveman", "rtk", "toon", "ponytail"];
+const TOOL_ORDER: readonly OptimizerTool[] = ["caveman", "rtk", "ponytail"];
 
 /** Theme color for enabled icons. */
 const ENABLED_COLOR: ThemeColor = "accent";
@@ -74,7 +69,7 @@ export type Colorize = (color: ThemeColor, text: string) => string;
 
 /**
  * Build the colored status string for a set of tool states. ALL tool icons are
- * always shown, in TOOL_ORDER; each is accent-colored when its tool is enabled
+ * always shown in TOOL_ORDER; each is accent-colored when its tool is enabled
  * and dim when disabled. Glyphs resolve against the active global icon mode
  * (see /pix). `color` applies the theme color (e.g. theme.fg).
  *
@@ -93,7 +88,7 @@ export function renderStatus(
 /**
  * Shared registry: each tool calls `set(tool, enabled)` whenever its state
  * changes, then the combined cell is re-rendered. A single registry instance
- * is created per extension load and passed to caveman/rtk/json.
+ * is created per extension load and passed to caveman/rtk/ponytail.
  */
 export class OptimizerStatus {
 	private states: Partial<Record<OptimizerTool, boolean>> = {};

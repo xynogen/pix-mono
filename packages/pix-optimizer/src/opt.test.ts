@@ -14,7 +14,6 @@ function fakeHandles(): Record<OptimizerTool, OptimizerHandle> {
 	return {
 		caveman: mk("caveman", "full", ["off", "lite", "full", "ultra", "micro"]),
 		rtk: mk("rtk", "on", ["off", "on"]),
-		toon: mk("toon", "off", ["off", "on"]),
 		ponytail: mk("ponytail", "off", ["off", "lite", "full", "ultra"]),
 	};
 }
@@ -49,7 +48,7 @@ describe("buildOptHelp", () => {
 		const help = buildOptHelp(fakeHandles());
 		expect(help).toContain("caveman: full");
 		expect(help).toContain("rtk: on");
-		expect(help).toContain("toon: off");
+		expect(help).not.toContain("toon");
 		expect(help).toContain("ponytail: off");
 		expect(help).toContain("caveman help");
 	});
