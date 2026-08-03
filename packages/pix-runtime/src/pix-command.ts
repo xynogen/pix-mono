@@ -82,7 +82,7 @@ const SETTINGS: SettingRow<unknown>[] = [
 		section: "Compaction",
 		label: "Trigger (% ctx)",
 		handle: compactionSection,
-		values: ["0", "50", "55", "60", "65", "70", "75", "80", "85", "90", "95"],
+		values: ["0", "5", "10", "15", "20", "25", "30", "40", "50", "60", "70", "80", "90"],
 		read: (v) => String(v.triggerPercent),
 		patch: (value) => ({ triggerPercent: Number(value) }),
 	}),
