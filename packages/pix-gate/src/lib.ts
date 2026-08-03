@@ -280,7 +280,7 @@ export function classifyPath(
 export function extractPathsFromBash(cmd: string): string[] {
 	const out: string[] = [];
 	const re =
-		/(?:^|[\s=><|;&"'`(])((?:\.\.\/|\/|~\/|\.)[^\s"'`<>|;&)]+|\.env(?:\.[A-Za-z0-9_-]+)?|[A-Za-z0-9_./-]+\.(?:pem|key|p12|pfx|crt|cer|env|envrc|netrc))/g;
+		/(?:^|[\s=><|;&"'`(])((?:\.\.\/|\.\/|\/|~\/)[^\s"'`<>|;&)]+|\.env(?:\.[A-Za-z0-9_-]+)?|[A-Za-z0-9_./-]+\.(?:pem|key|p12|pfx|crt|cer|env|envrc|netrc))/g;
 	for (const m of cmd.matchAll(re)) out.push(m[1] ?? "");
 	return out;
 }

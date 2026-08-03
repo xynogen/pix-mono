@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildRules, classify, DEFAULT_RULES, isSudoCommand } from "./lib.ts";
+import { buildRules, classify, DEFAULT_RULES, extractPathsFromBash, isSudoCommand } from "./lib.ts";
 
 // ── isSudoCommand ─────────────────────────────────────────────────────────────
 
@@ -99,6 +99,21 @@ describe("classify", () => {
 	test("critical takes priority over dangerous", () => {
 		// rm -rf / matches both critical and dangerous rm patterns
 		expect(classify("rm -rf /", rules)?.severity).toBe("critical");
+	});
+});
+
+// ── extractPathsFromBash ─────────────────────────────────────────────────────
+
+describe("extractPathsFromBash", () => {
+	test("does not treat the jq .key selector as a key file", () => {
+		expect(extractPathsFromBash("jq '.key' data.json")).toEqual([]);
+		expect(extractPathsFromBash("jq -r '.key' data.json")).toEqual([]);
+	});
+
+	test("still extracts key file paths", () => {
+		expect(extractPathsFromBash("cat private.key")).toContain("private.key");
+		expect(extractPathsFromBash("cat .private.key")).toContain(".private.key");
+		expect(extractPathsFromBash("jq '.' .private.key")).toContain(".private.key");
 	});
 });
 
