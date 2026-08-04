@@ -31,6 +31,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { BOLD, FG_BLUE, FG_DIM, FG_GREEN, RST } from "@xynogen/pix-pretty/ansi";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { readClipboardImageToFile } from "./clipboard-image.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -231,6 +232,26 @@ export class ChipEditor extends Editor {
 			this.imageIds.clear();
 			base();
 		};
+	}
+
+	/**
+	 * Intercept Ctrl+V for clipboard-image capture before the base Editor sees
+	 * it. The questionnaire runs as an overlay, so Pi's app-level paste-image
+	 * handler never fires here; we replicate it. On an image hit we spill the
+	 * bytes to a temp file and insert its path, which `insertTextAtCursor` turns
+	 * into an image chip. No image (or non-Linux, no tool) → fall through so the
+	 * base Editor handles Ctrl+V as ordinary input / text paste.
+	 */
+	override handleInput(data: string): void {
+		// Ctrl+V — single 0x16 byte (win32 uses Alt+V, unreachable in this TUI).
+		if (data === "\x16") {
+			const filePath = readClipboardImageToFile();
+			if (filePath) {
+				this.insertTextAtCursor(filePath);
+				return;
+			}
+		}
+		super.handleInput(data);
 	}
 
 	override render(width: number): string[] {
