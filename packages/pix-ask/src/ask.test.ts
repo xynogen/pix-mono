@@ -83,24 +83,29 @@ describe("sentinelsFor", () => {
 		expect(r[0]?.label).toBe("Type something.");
 	});
 
-	test('single-select with preview appends nothing (only "Chat about this" is separate)', () => {
+	test('single-select WITH preview still appends "Type something."', () => {
 		const r = sentinelsFor(qWithPreview);
-		expect(r).toHaveLength(0);
-	});
-
-	test('multi-select appends "Next"', () => {
-		const r = sentinelsFor(qMulti);
 		expect(r).toHaveLength(1);
-		expect(r[0]?.kind).toBe("next");
-		expect(r[0]?.label).toBe("Next");
+		expect(r[0]?.kind).toBe("other");
+		expect(r[0]?.label).toBe("Type something.");
 	});
 
-	test("multi-select never appends Type something.", () => {
-		const r = sentinelsFor({ ...qMulti, multiSelect: true });
-		expect(r.every((s) => s.kind !== "other")).toBe(true);
+	test('multi-select appends "Type something." then "Confirm" at the bottom', () => {
+		const r = sentinelsFor(qMulti);
+		expect(r).toHaveLength(2);
+		expect(r[0]?.kind).toBe("other");
+		expect(r[0]?.label).toBe("Type something.");
+		expect(r[1]?.kind).toBe("next");
+		expect(r[1]?.label).toBe("Confirm");
 	});
 
-	test("empty options still gets freeform sentinel (no preview = single-select)", () => {
+	test("every question type offers freeform (user can reject all options)", () => {
+		for (const q of [qSingle, qSingleNoPreview, qWithPreview, qMulti]) {
+			expect(sentinelsFor(q).some((s) => s.kind === "other")).toBe(true);
+		}
+	});
+
+	test("empty options still gets freeform sentinel", () => {
 		const r = sentinelsFor({ question: "?", header: "X", options: [] });
 		expect(r).toHaveLength(1);
 		expect(r[0]?.kind).toBe("other");

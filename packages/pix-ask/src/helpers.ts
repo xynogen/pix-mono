@@ -23,13 +23,18 @@ export function hasAnyPreview(q: QuestionData): boolean {
 	return q.options.some((o) => typeof o.preview === "string" && o.preview.length > 0);
 }
 
-/** Which sentinel rows are auto-appended for a question. */
+/**
+ * Which sentinel rows are auto-appended for a question.
+ *
+ * Freeform ("Type something.") is ALWAYS offered so the user can reject every
+ * option and answer in their own words — regardless of preview or multi-select.
+ * Multi-select additionally gets a "Confirm" row to commit the checked options.
+ */
 export function sentinelsFor(q: QuestionData): Array<{ kind: string; label: string }> {
 	const out: Array<{ kind: string; label: string }> = [];
+	out.push({ kind: "other", label: SENTINEL_FREEFORM });
 	if (q.multiSelect) {
 		out.push({ kind: "next", label: SENTINEL_NEXT });
-	} else if (!hasAnyPreview(q)) {
-		out.push({ kind: "other", label: SENTINEL_FREEFORM });
 	}
 	return out;
 }

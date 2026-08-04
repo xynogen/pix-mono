@@ -93,6 +93,79 @@ for (const { name, enc } of ENCODINGS) {
 	});
 }
 
+// ── Freeform override (regardless of question type) ───────────────────
+
+const DOWN = "\x1b[B";
+const ENTER = "\r";
+
+/** Drive an arbitrary questionnaire and collect its result. */
+function drive(params: Params): {
+	feed(data: string): void;
+	result(): QuestionnaireResult | null | undefined;
+} {
+	let result: QuestionnaireResult | null | undefined;
+	const kb = new KeybindingsManager(TUI_KEYBINDINGS);
+	const q = new AskQuestionnaire(params, tui, theme, kb, (r) => {
+		result = r;
+	});
+	return { feed: (d) => q.handleInput(d), result: () => result };
+}
+
+/** Navigate to the freeform ("Type something.") row, open it, type, submit. */
+function overrideWith(d: { feed(data: string): void }, rowsToFreeform: number, text: string): void {
+	for (let i = 0; i < rowsToFreeform; i++) d.feed(DOWN);
+	d.feed(ENTER); // commitAnswer → open editor
+	for (const ch of text) d.feed(ch);
+	d.feed(ENTER); // editor submit → handleFreeformSubmit
+}
+
+describe("freeform override", () => {
+	it("single-select with preview can be overridden by typing", () => {
+		const params = {
+			questions: [
+				{
+					question: "Pick a component?",
+					header: "Component",
+					options: [
+						{ label: "Button", description: "clickable", preview: "<Button/>" },
+						{ label: "Card", description: "container", preview: "<Card/>" },
+					],
+				},
+			],
+		} as Params;
+		const d = drive(params);
+		// rows: [Button, Card, Type something.] → 2 downs reach freeform
+		overrideWith(d, 2, "my own component");
+		const res = d.result();
+		expect(res?.cancelled).toBe(false);
+		expect(res?.answers[0]?.kind).toBe("custom");
+		expect(res?.answers[0]?.answer).toBe("my own component");
+	});
+
+	it("multi-select can be overridden by typing instead of choosing options", () => {
+		const params = {
+			questions: [
+				{
+					question: "Which features?",
+					header: "Features",
+					options: [
+						{ label: "Auth", description: "login" },
+						{ label: "Search", description: "find" },
+					],
+					multiSelect: true,
+				},
+			],
+		} as Params;
+		const d = drive(params);
+		// rows: [Auth, Search, Type something., Next] → 2 downs reach freeform
+		overrideWith(d, 2, "none of these, do X");
+		const res = d.result();
+		expect(res?.cancelled).toBe(false);
+		expect(res?.answers[0]?.kind).toBe("custom");
+		expect(res?.answers[0]?.answer).toBe("none of these, do X");
+	});
+});
+
 describe("questionnaire keys (non-ASCII input)", () => {
 	it("accented characters reach the search query (legacy bytes)", () => {
 		const d = open();

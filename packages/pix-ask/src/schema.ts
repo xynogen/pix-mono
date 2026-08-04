@@ -10,7 +10,7 @@ export const MAX_LABEL_LENGTH = 60;
 
 export const SENTINEL_FREEFORM = "Type something.";
 export const SENTINEL_CHAT = "Chat about this";
-export const SENTINEL_NEXT = "Next";
+export const SENTINEL_NEXT = "Confirm";
 
 export const SPLIT_PANE_MIN_WIDTH = 84;
 export const SEPARATOR = " │ ";

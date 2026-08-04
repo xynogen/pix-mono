@@ -2,7 +2,6 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import {
 	Container,
 	decodeKittyPrintable,
-	Editor,
 	fuzzyFilter,
 	Key,
 	type KeybindingsManager,
@@ -19,6 +18,7 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { ChipEditor } from "./chip-editor.js";
 import { dim } from "./components.js";
 import { checkboxGlyphs, selectionGlyph } from "./glyphs.js";
 import { safeMarkdownTheme, sentinelsFor } from "./helpers.js";
@@ -57,7 +57,7 @@ export class AskQuestionnaire extends Container {
 	private selectedOptionIndex = 0;
 	private multiChecked = new Set<number>();
 	private inputMode = false;
-	private editor?: Editor;
+	private editor?: ChipEditor;
 	private mdTheme = safeMarkdownTheme();
 	private pager = new ModalPager();
 	private selectedOptionRows: { start: number; end: number } | undefined;
@@ -119,9 +119,9 @@ export class AskQuestionnaire extends Container {
 
 	// ── Layout ─────────────────────────────────────────────────────────
 
-	private ensureEditor(): Editor {
+	private ensureEditor(): ChipEditor {
 		if (this.editor) return this.editor;
-		const editor = new Editor(this.tui, {
+		const editor = new ChipEditor(this.tui, {
 			borderColor: (s: string) => this.theme.fg("accent", s),
 			selectList: {
 				selectedPrefix: (s: string) => this.theme.fg("accent", s),
@@ -449,6 +449,9 @@ export class AskQuestionnaire extends Container {
 			if (!item) continue;
 			const sel = i === this.selectedOptionIndex;
 			const ptr = sel ? t.fg("accent", "→") : " ";
+
+			// Visually separate the "Confirm" commit row from the choices above it.
+			if (item.kind === "next" && lines.length > 0) lines.push("");
 
 			const itemStart = lines.length;
 			if (item.kind === "option" && item.option) {
