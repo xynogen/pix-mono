@@ -21,7 +21,7 @@
       "dependencies": {
         "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.21",
-        "@xynogen/pix-runtime": "^0.2.0",
+        "@xynogen/pix-runtime": "^0.4.0",
         "typebox": "^1.1.38",
       },
       "peerDependencies": {
@@ -32,10 +32,10 @@
     },
     "packages/pix-ask": {
       "name": "@xynogen/pix-ask",
-      "version": "0.2.13",
+      "version": "0.2.15",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.7.9",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
         "typebox": "^1.1.38",
       },
       "peerDependencies": {
@@ -47,9 +47,9 @@
       "name": "@xynogen/pix-bash",
       "version": "0.1.18",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.4",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -60,7 +60,7 @@
       "name": "@xynogen/pix-commands",
       "version": "0.2.5",
       "dependencies": {
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-ai": "*",
@@ -70,35 +70,36 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.4.52",
+      "version": "0.4.59",
       "dependencies": {
-        "@xynogen/pix-ask": "^0.2.9",
-        "@xynogen/pix-bash": "^0.1.15",
-        "@xynogen/pix-commands": "^0.2.2",
-        "@xynogen/pix-data": "^0.3.5",
-        "@xynogen/pix-diagnostics": "^0.1.7",
-        "@xynogen/pix-display": "^0.1.13",
-        "@xynogen/pix-edit": "^0.1.18",
-        "@xynogen/pix-find": "^0.1.17",
-        "@xynogen/pix-footer": "^0.1.17",
-        "@xynogen/pix-gate": "^0.1.15",
-        "@xynogen/pix-grep": "^0.1.17",
-        "@xynogen/pix-ls": "^0.1.17",
-        "@xynogen/pix-models": "^0.1.20",
-        "@xynogen/pix-nudge": "^0.1.10",
-        "@xynogen/pix-optimizer": "^1.1.19",
-        "@xynogen/pix-pretty": "^1.7.24",
-        "@xynogen/pix-prompts": "^0.3.2",
-        "@xynogen/pix-read": "^0.1.17",
-        "@xynogen/pix-runtime": "^0.1.2",
-        "@xynogen/pix-skills": "^0.7.2",
-        "@xynogen/pix-subagent": "^0.5.8",
-        "@xynogen/pix-todo": "^0.1.17",
-        "@xynogen/pix-update": "^0.1.14",
-        "@xynogen/pix-welcome": "^0.1.15",
-        "@xynogen/pix-write": "^0.1.16",
+        "@xynogen/pix-ask": "^0.2.14",
+        "@xynogen/pix-bash": "^0.1.18",
+        "@xynogen/pix-commands": "^0.2.5",
+        "@xynogen/pix-data": "^0.4.1",
+        "@xynogen/pix-diagnostics": "^0.1.10",
+        "@xynogen/pix-display": "^0.1.14",
+        "@xynogen/pix-edit": "^0.1.21",
+        "@xynogen/pix-find": "^0.1.20",
+        "@xynogen/pix-footer": "^0.1.20",
+        "@xynogen/pix-gate": "^0.2.2",
+        "@xynogen/pix-grep": "^0.1.20",
+        "@xynogen/pix-ls": "^0.1.20",
+        "@xynogen/pix-models": "^0.1.27",
+        "@xynogen/pix-nudge": "^0.1.13",
+        "@xynogen/pix-optimizer": "^1.1.22",
+        "@xynogen/pix-pretty": "^1.8.1",
+        "@xynogen/pix-prompts": "^0.3.5",
+        "@xynogen/pix-read": "^0.1.20",
+        "@xynogen/pix-runtime": "^0.5.1",
+        "@xynogen/pix-skills": "^0.7.6",
+        "@xynogen/pix-subagent": "^0.6.3",
+        "@xynogen/pix-todo": "^0.1.20",
+        "@xynogen/pix-update": "^0.1.17",
+        "@xynogen/pix-welcome": "^0.1.18",
+        "@xynogen/pix-write": "^0.1.19",
       },
       "peerDependencies": {
+        "@earendil-works/pi-ai": "*",
         "@earendil-works/pi-coding-agent": "*",
         "@earendil-works/pi-tui": "*",
       },
@@ -118,7 +119,7 @@
       "name": "@xynogen/pix-diagnostics",
       "version": "0.1.10",
       "dependencies": {
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -127,7 +128,7 @@
     },
     "packages/pix-display": {
       "name": "@xynogen/pix-display",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.7.9",
       },
@@ -140,9 +141,9 @@
       "name": "@xynogen/pix-edit",
       "version": "0.1.21",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.4",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -153,9 +154,9 @@
       "name": "@xynogen/pix-find",
       "version": "0.1.20",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.4",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -165,9 +166,9 @@
       "name": "@xynogen/pix-footer",
       "version": "0.1.20",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.0",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.9",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -176,11 +177,11 @@
     },
     "packages/pix-gate": {
       "name": "@xynogen/pix-gate",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "dependencies": {
         "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.9",
-        "@xynogen/pix-runtime": "^0.2.0",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -191,9 +192,9 @@
       "name": "@xynogen/pix-grep",
       "version": "0.1.20",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.4",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -207,9 +208,9 @@
       "name": "@xynogen/pix-ls",
       "version": "0.1.20",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.4",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -218,7 +219,7 @@
     },
     "packages/pix-mcp": {
       "name": "@xynogen/pix-mcp",
-      "version": "0.1.5",
+      "version": "0.2.0",
       "bin": {
         "pix-mcp": "cli.ts",
       },
@@ -244,11 +245,11 @@
     },
     "packages/pix-models": {
       "name": "@xynogen/pix-models",
-      "version": "0.1.24",
+      "version": "0.1.27",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.0",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.9",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -259,7 +260,7 @@
       "name": "@xynogen/pix-nudge",
       "version": "0.1.13",
       "dependencies": {
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -267,7 +268,7 @@
     },
     "packages/pix-optimizer": {
       "name": "@xynogen/pix-optimizer",
-      "version": "1.1.20",
+      "version": "1.1.22",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.7.22",
       },
@@ -296,7 +297,7 @@
       "name": "@xynogen/pix-prompts",
       "version": "0.3.5",
       "dependencies": {
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -306,9 +307,9 @@
       "name": "@xynogen/pix-read",
       "version": "0.1.20",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.4",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -317,7 +318,7 @@
     },
     "packages/pix-runtime": {
       "name": "@xynogen/pix-runtime",
-      "version": "0.4.0",
+      "version": "0.5.1",
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
         "@earendil-works/pi-tui": "*",
@@ -325,12 +326,12 @@
     },
     "packages/pix-skills": {
       "name": "@xynogen/pix-skills",
-      "version": "0.7.5",
+      "version": "0.7.6",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.2",
-        "@xynogen/pix-gate": "^0.1.13",
+        "@xynogen/pix-data": "^0.4.0",
+        "@xynogen/pix-gate": "^0.2.0",
         "@xynogen/pix-pretty": "^1.7.20",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -341,9 +342,9 @@
       "name": "@xynogen/pix-subagent",
       "version": "0.6.3",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.0",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.13",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
         "typebox": "^1.1.38",
       },
       "peerDependencies": {
@@ -358,7 +359,7 @@
       "dependencies": {
         "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.2.0",
+        "@xynogen/pix-runtime": "^0.4.0",
         "typebox": "^1.1.38",
       },
       "peerDependencies": {
@@ -374,9 +375,9 @@
       "name": "@xynogen/pix-todo",
       "version": "0.1.20",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.2",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.20",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
         "typebox": "^1.1.38",
       },
       "peerDependencies": {
@@ -386,7 +387,7 @@
     },
     "packages/pix-toolbox": {
       "name": "@xynogen/pix-toolbox",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.7.9",
       },
@@ -400,7 +401,7 @@
       "version": "0.1.17",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.7.9",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -412,7 +413,7 @@
       "version": "0.1.18",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.7.9",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -423,9 +424,9 @@
       "name": "@xynogen/pix-write",
       "version": "0.1.19",
       "dependencies": {
-        "@xynogen/pix-data": "^0.3.4",
+        "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.7.22",
-        "@xynogen/pix-runtime": "^0.1.1",
+        "@xynogen/pix-runtime": "^0.4.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -1094,6 +1095,56 @@
     "@earendil-works/pi-coding-agent/chalk": ["chalk@5.6.2", "", {}, "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="],
 
     "@earendil-works/pi-coding-agent/typebox": ["typebox@1.1.38", "", {}, "sha512-pZ0aQPmMmXoUvSbeuWf/Hzsc+avNw/Zd6VeE8CFgkVGWyuHPJvqeJJDeJqLve+K70LvjYIoleGcoJHPT17cWoA=="],
+
+    "@xynogen/pix-9router/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-ask/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-bash/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-commands/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-data/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-diagnostics/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-edit/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-find/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-footer/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-gate/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-grep/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-ls/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-mcp/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-models/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-nudge/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-pretty/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-prompts/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-read/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-skills/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-subagent/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-sudo/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-todo/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-update/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-welcome/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
+
+    "@xynogen/pix-write/@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.4.2", "", { "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" } }, "sha512-u2VYD1gzOEBgxWhouMOrW6lzwymFXk2+nIfo8wYxuqWbQe17JaqQmM6499B4TDBlOQhXKa/K21HYvNXhR0ayrg=="],
 
     "body-parser/content-type": ["content-type@2.0.0", "", {}, "sha512-j/O/d7GcZCyNl7/hwZAb606rzqkyvaDctLmckbxLzHvFBzTJHuGEdodATcP3yIRoDrLHkIATJuvzbFlp/ki2cQ=="],
 

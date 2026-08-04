@@ -59,7 +59,7 @@
 		"@xynogen/pix-ls": "^0.1.20",
 		"@xynogen/pix-bash": "^0.1.18",
 		"@xynogen/pix-todo": "^0.1.20",
-		"@xynogen/pix-ask": "^0.2.14",
+		"@xynogen/pix-ask": "^0.2.15",
 		"@xynogen/pix-optimizer": "^1.1.22",
 		"@xynogen/pix-gate": "^0.2.2",
 		"@xynogen/pix-subagent": "^0.6.3"
