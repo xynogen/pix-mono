@@ -121,16 +121,20 @@ export class AskQuestionnaire extends Container {
 
 	private ensureEditor(): ChipEditor {
 		if (this.editor) return this.editor;
-		const editor = new ChipEditor(this.tui, {
-			borderColor: (s: string) => this.theme.fg("accent", s),
-			selectList: {
-				selectedPrefix: (s: string) => this.theme.fg("accent", s),
-				selectedText: (s: string) => this.theme.fg("accent", s),
-				description: (s: string) => this.theme.fg("muted", s),
-				scrollInfo: (s: string) => this.theme.fg("dim", s),
-				noMatch: (s: string) => this.theme.fg("warning", s),
+		const editor = new ChipEditor(
+			this.tui,
+			{
+				borderColor: (s: string) => this.theme.fg("accent", s),
+				selectList: {
+					selectedPrefix: (s: string) => this.theme.fg("accent", s),
+					selectedText: (s: string) => this.theme.fg("accent", s),
+					description: (s: string) => this.theme.fg("muted", s),
+					scrollInfo: (s: string) => this.theme.fg("dim", s),
+					noMatch: (s: string) => this.theme.fg("warning", s),
+				},
 			},
-		});
+			this.keybindings,
+		);
 		editor.disableSubmit = false;
 		editor.onSubmit = (text: string) => this.handleFreeformSubmit(text);
 		editor.focused = true;

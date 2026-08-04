@@ -25,6 +25,7 @@
 import {
 	Editor,
 	type EditorTheme,
+	type KeybindingsManager,
 	type TUI,
 	truncateToWidth,
 	visibleWidth,
@@ -182,9 +183,11 @@ function chip(color: string, glyph: string, label: string, meta: string): string
  */
 export class ChipEditor extends Editor {
 	private readonly imageIds = new Set<number>();
+	private readonly keybindings?: KeybindingsManager;
 
-	constructor(tui: TUI, theme: EditorTheme) {
+	constructor(tui: TUI, theme: EditorTheme, keybindings?: KeybindingsManager) {
 		super(tui, theme);
+		this.keybindings = keybindings;
 		this.patchHandlePaste();
 		this.patchExpandPasteMarkers();
 		this.patchSubmitValue();
@@ -235,16 +238,17 @@ export class ChipEditor extends Editor {
 	}
 
 	/**
-	 * Intercept Ctrl+V for clipboard-image capture before the base Editor sees
-	 * it. The questionnaire runs as an overlay, so Pi's app-level paste-image
-	 * handler never fires here; we replicate it. On an image hit we spill the
+	 * Intercept the paste-image key for clipboard-image capture before the base
+	 * Editor sees it. The questionnaire runs as an overlay, so Pi's app-level
+	 * paste-image handler never fires here; we replicate it. The key is resolved
+	 * through the app KeybindingsManager (honoring user remaps and Kitty
+	 * encoding) rather than a raw byte compare. On an image hit we spill the
 	 * bytes to a temp file and insert its path, which `insertTextAtCursor` turns
-	 * into an image chip. No image (or non-Linux, no tool) → fall through so the
-	 * base Editor handles Ctrl+V as ordinary input / text paste.
+	 * into an image chip. No image (or no keybindings/tool) → fall through so the
+	 * base Editor handles the key as ordinary input / text paste.
 	 */
 	override handleInput(data: string): void {
-		// Ctrl+V — single 0x16 byte (win32 uses Alt+V, unreachable in this TUI).
-		if (data === "\x16") {
+		if (this.keybindings?.matches(data, "app.clipboard.pasteImage")) {
 			const filePath = readClipboardImageToFile();
 			if (filePath) {
 				this.insertTextAtCursor(filePath);

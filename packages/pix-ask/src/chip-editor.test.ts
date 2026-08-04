@@ -1,18 +1,35 @@
 /**
- * chip-editor.test.ts — pure-function tests for paste-chip rendering and
- * image-path marker rewriting used by the questionnaire freeform editor.
- *
- * The TUI ChipEditor class is not instantiated here (needs a live TUI); we test
- * the exported helpers that carry the actual logic.
+ * chip-editor.test.ts — tests for paste-chip rendering, image-path marker
+ * rewriting, and the keybinding-gated clipboard-image capture used by the
+ * questionnaire freeform editor.
  */
 
 import { describe, expect, test } from "bun:test";
 import {
+	type EditorTheme,
+	KeybindingsManager,
+	type TUI,
+	TUI_KEYBINDINGS,
+} from "@earendil-works/pi-tui";
+import {
+	ChipEditor,
 	endsWithMarker,
 	expandPasteMarkers,
 	replaceImagePaths,
 	restyleMarkers,
 } from "./chip-editor.ts";
+
+const stubTui = { requestRender: () => {}, terminal: { rows: 40, cols: 100 } } as unknown as TUI;
+const stubTheme: EditorTheme = {
+	borderColor: (s: string) => s,
+	selectList: {
+		selectedPrefix: (s: string) => s,
+		selectedText: (s: string) => s,
+		description: (s: string) => s,
+		scrollInfo: (s: string) => s,
+		noMatch: (s: string) => s,
+	},
+};
 
 const stripAnsi = (s: string): string => s.replace(/\x1b\[[0-9;]*m/g, "");
 
@@ -126,5 +143,45 @@ describe("restyleMarkers", () => {
 	test("plain text passes through unchanged", () => {
 		const line = "just regular text with no paste markers";
 		expect(restyleMarkers(line, new Set())).toBe(line);
+	});
+});
+
+// ── ChipEditor clipboard-image keybinding ─────────────────────────────
+
+describe("ChipEditor paste-image key routing", () => {
+	// Runtime app manager = TUI defaults + the paste-image binding Pi merges in.
+	const appKb = () =>
+		new KeybindingsManager({
+			...TUI_KEYBINDINGS,
+			"app.clipboard.pasteImage": { defaultKeys: "ctrl+v", description: "Paste image" },
+		});
+
+	test("constructs headlessly with an app keybindings manager", () => {
+		const ed = new ChipEditor(stubTui, stubTheme, appKb());
+		ed.handleInput("a");
+		expect(ed.getText()).toBe("a");
+	});
+
+	test("a non-paste-image key is typed as ordinary text", () => {
+		const ed = new ChipEditor(stubTui, stubTheme, appKb());
+		ed.handleInput("x");
+		ed.handleInput("y");
+		expect(ed.getText()).toBe("xy");
+	});
+
+	test("Ctrl+V with an empty clipboard falls through to the base editor", () => {
+		// No image on the clipboard (or no tool) → the key is not consumed as an
+		// image; the base editor handles it, leaving the buffer unchanged.
+		const ed = new ChipEditor(stubTui, stubTheme, appKb());
+		const before = ed.getText();
+		ed.handleInput("\x16");
+		expect(ed.getText()).toBe(before);
+	});
+
+	test("without a keybindings manager, Ctrl+V is never treated as paste-image", () => {
+		const ed = new ChipEditor(stubTui, stubTheme);
+		const before = ed.getText();
+		ed.handleInput("\x16");
+		expect(ed.getText()).toBe(before);
 	});
 });
