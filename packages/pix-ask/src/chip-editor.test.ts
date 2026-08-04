@@ -7,7 +7,12 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { endsWithMarker, replaceImagePaths, restyleMarkers } from "./chip-editor.ts";
+import {
+	endsWithMarker,
+	expandPasteMarkers,
+	replaceImagePaths,
+	restyleMarkers,
+} from "./chip-editor.ts";
 
 const stripAnsi = (s: string): string => s.replace(/\x1b\[[0-9;]*m/g, "");
 
@@ -56,6 +61,38 @@ describe("replaceImagePaths", () => {
 		const out = replaceImagePaths("~/a.jpg and /b/c.webp", internals, imageIds);
 		expect(out).toBe("[paste #1 7 chars] and [paste #2 9 chars]");
 		expect([...imageIds].sort()).toEqual([1, 2]);
+	});
+});
+
+// ── expandPasteMarkers (<paste> boundary) ─────────────────────────────
+
+describe("expandPasteMarkers", () => {
+	test("text paste expands wrapped in <paste>…</paste>", () => {
+		const pastes = new Map<number, string>([[1, "line1\nline2\nblob"]]);
+		const out = expandPasteMarkers("before [paste #1 +12 lines] after", pastes);
+		expect(out).toBe("before <paste>line1\nline2\nblob</paste> after");
+	});
+
+	test("image path paste expands wrapped in <paste>…</paste>", () => {
+		const internals = { pastes: new Map<number, string>(), pasteCounter: 0 };
+		const imageIds = new Set<number>();
+		const withMarker = replaceImagePaths("/tmp/shot.png", internals, imageIds);
+		const out = expandPasteMarkers(withMarker, internals.pastes);
+		expect(out).toBe("<paste>/tmp/shot.png</paste>");
+	});
+
+	test("adjacent pastes stay separated by their own boundaries", () => {
+		const pastes = new Map<number, string>([
+			[1, "AAA"],
+			[2, "BBB"],
+		]);
+		const out = expandPasteMarkers("[paste #1 3 chars][paste #2 3 chars]", pastes);
+		expect(out).toBe("<paste>AAA</paste><paste>BBB</paste>");
+	});
+
+	test("text without markers passes through unchanged", () => {
+		const out = expandPasteMarkers("plain text", new Map());
+		expect(out).toBe("plain text");
 	});
 });
 

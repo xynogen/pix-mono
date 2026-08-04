@@ -34,6 +34,12 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
+// Boundary wrapper injected around each expanded paste so the model sees an
+// explicit start/end per blob instead of adjacent pastes merged into one wall.
+// Applies to text and image pastes alike.
+const PASTE_OPEN = "<paste>";
+const PASTE_CLOSE = "</paste>";
+
 const IMAGE_EXTS = new Set([
 	".png",
 	".jpg",
@@ -76,6 +82,31 @@ function makeMarker(id: number, charCount: number): string {
 /** True when `text` ends with a Pi paste marker (chip). */
 export function endsWithMarker(text: string): boolean {
 	return /\[paste #\d+[^\]]*\]$/.test(text);
+}
+
+/** Mirror of the base Editor's paste-marker grammar, scoped to one id. */
+function markerReFor(pasteId: number): RegExp {
+	// pasteId is a numeric Map key; coerce to an integer literal so the pattern
+	// is provably digits-only (no injection / ReDoS surface).
+	const id = Math.trunc(pasteId);
+	return new RegExp(`\\[paste #${id}( (\\+\\d+ lines|\\d+ chars))?\\]`, "g");
+}
+
+/**
+ * Expand every paste marker in `text` to its content wrapped in
+ * `<paste>…</paste>`. Mirrors the base Editor's expansion loop but adds a
+ * boundary per blob (text and image alike) so adjacent pastes can't merge into
+ * one indistinguishable wall in the model-facing text.
+ */
+export function expandPasteMarkers(text: string, pastes: Map<number, string>): string {
+	let result = text;
+	for (const [pasteId, pasteContent] of pastes) {
+		result = result.replace(
+			markerReFor(pasteId),
+			() => `${PASTE_OPEN}${pasteContent}${PASTE_CLOSE}`,
+		);
+	}
+	return result;
 }
 
 function compactNumber(raw: string): string {
@@ -154,7 +185,21 @@ export class ChipEditor extends Editor {
 	constructor(tui: TUI, theme: EditorTheme) {
 		super(tui, theme);
 		this.patchHandlePaste();
+		this.patchExpandPasteMarkers();
 		this.patchSubmitValue();
+	}
+
+	/**
+	 * Patch `expandPasteMarkers` (TS-private on the base Editor, runtime-public
+	 * JS) so every paste expands to its content wrapped in `<paste>…</paste>`.
+	 * The base inlines content raw, letting adjacent pastes merge into one
+	 * indistinguishable wall; the boundary gives the model an explicit start/end
+	 * per blob — text and image path alike.
+	 */
+	private patchExpandPasteMarkers(): void {
+		const internals = this as unknown as EditorInternals;
+		const self = this as unknown as { expandPasteMarkers(text: string): string };
+		self.expandPasteMarkers = (text: string): string => expandPasteMarkers(text, internals.pastes);
 	}
 
 	override insertTextAtCursor(text: string): void {
