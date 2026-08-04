@@ -4,6 +4,7 @@ import registerSearch from "./search.ts";
 
 function captureParameters(register: (pi: never) => void): {
 	properties: Record<string, { type?: string; enum?: string[]; description?: string }>;
+	required?: string[];
 } {
 	let parameters: unknown;
 	register({
@@ -14,6 +15,7 @@ function captureParameters(register: (pi: never) => void): {
 	if (!parameters) throw new Error("tool parameters not captured");
 	return parameters as {
 		properties: Record<string, { type?: string; enum?: string[]; description?: string }>;
+		required?: string[];
 	};
 }
 
@@ -36,5 +38,23 @@ describe("enum-like tool parameters", () => {
 		expect(format.enum).toEqual(["markdown", "text", "html"]);
 		expect(format.description).toContain('exactly "markdown"');
 		expect(format.description).toContain('"html"');
+	});
+});
+
+describe("fetch parameter requiredness", () => {
+	test("only url is required; format is optional and defaults to markdown", () => {
+		const params = captureParameters(registerFetch);
+
+		// url must be required, format must NOT be — this is the exact validator
+		// bug the optionality fix addresses (executeFetch already defaults format
+		// to "markdown"), so guard against a regression back to a required format.
+		expect(params.required).toEqual(["url"]);
+		expect(params.required).not.toContain("format");
+
+		// format stays a fully described enum in properties even while optional.
+		const format = params.properties.format;
+		if (!format) throw new Error("format schema not found");
+		expect(format.enum).toEqual(["markdown", "text", "html"]);
+		expect(format.description?.toLowerCase()).toContain("default");
 	});
 });

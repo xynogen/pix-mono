@@ -101,6 +101,30 @@ describe("fetch execution metadata", () => {
 		expect(result.content).toEqual(originalContent);
 	});
 
+	it("defaults format to markdown when omitted (schema now optional)", async () => {
+		let sentFormat: unknown;
+		const raw = JSON.stringify({ url: "https://example.com", content: { text: "hello" } });
+		const result = await executeFetch(
+			// No `format` — valid now that the schema no longer requires it.
+			{ url: "https://example.com" },
+			undefined,
+			undefined,
+			{
+				apiPost: async (_path, body) => {
+					sentFormat = (body as { format?: unknown }).format;
+					return raw;
+				},
+				curl: async () => {
+					throw new Error("curl should not run");
+				},
+			},
+		);
+
+		// The default flows through to both the API request and the metadata.
+		expect(sentFormat).toBe("markdown");
+		expect(result.details).toMatchObject({ outcome: "success", format: "markdown" });
+	});
+
 	it("reports curl fallback metadata while preserving the fallback banner", async () => {
 		const result = await executeFetch(
 			{ url: "https://example.com", format: "html", max_characters: 1000 },
