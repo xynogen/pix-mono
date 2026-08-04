@@ -46,6 +46,9 @@
 		"bun": ">=1.1.0"
 	},
 	"overrides": {
-		"protobufjs": "7.6.5"
+		"protobufjs": "7.6.5",
+		"fast-uri": "3.1.5",
+		"brace-expansion": "5.0.9",
+		"undici": "8.9.0"
 	}
 }
