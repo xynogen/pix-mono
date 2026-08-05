@@ -50,7 +50,7 @@ describe("schema and normalization", () => {
 		expect(runtime.get(ioSection).timeoutSec).toBe(30);
 	});
 
-	it("enforces a 100k minimum compaction floor", async () => {
+	it("enforces a 25k minimum compaction floor", async () => {
 		const { runtime, agentDir } = fresh();
 		writeFileSync(
 			join(agentDir, "pix.json"),
@@ -59,12 +59,21 @@ describe("schema and normalization", () => {
 		await runtime.reload();
 		expect(runtime.get(compactionSection).minimumTokens).toBe(300_000);
 
+		// 30k is above the 25k floor — passes through untouched.
 		writeFileSync(
 			join(agentDir, "pix.json"),
 			JSON.stringify({ compaction: { minimumTokens: 30_000 } }),
 		);
 		await runtime.reload();
-		expect(runtime.get(compactionSection).minimumTokens).toBe(100_000);
+		expect(runtime.get(compactionSection).minimumTokens).toBe(30_000);
+
+		// Below the floor clamps up to 25k.
+		writeFileSync(
+			join(agentDir, "pix.json"),
+			JSON.stringify({ compaction: { minimumTokens: 10_000 } }),
+		);
+		await runtime.reload();
+		expect(runtime.get(compactionSection).minimumTokens).toBe(25_000);
 	});
 
 	it("ignores the removed gate.disableDefaults field", async () => {

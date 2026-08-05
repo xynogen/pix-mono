@@ -14,11 +14,12 @@ export interface CompactionConfig {
 	minimumTokens: number;
 }
 
-const MINIMUM_TOKEN_FLOOR = 100_000;
+const MINIMUM_TOKEN_FLOOR = 25_000;
+const MINIMUM_TOKEN_DEFAULT = 100_000;
 
 const DEFAULTS: Readonly<CompactionConfig> = {
 	triggerPercent: 60,
-	minimumTokens: MINIMUM_TOKEN_FLOOR,
+	minimumTokens: MINIMUM_TOKEN_DEFAULT,
 };
 
 /** Clamp to [0, 100]; non-numbers fall back. */
@@ -27,7 +28,7 @@ function pctOr(v: unknown, fallback: number): number {
 	return Math.min(100, Math.max(0, v));
 }
 
-/** Require a finite token floor of at least 100k. */
+/** Require a finite token floor of at least 25k. */
 function minimumTokensOr(v: unknown, fallback: number): number {
 	if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
 	return Math.max(MINIMUM_TOKEN_FLOOR, Math.round(v));

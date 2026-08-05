@@ -37,6 +37,17 @@ function row<T>(r: SettingRow<T>): SettingRow<unknown> {
 	return r as SettingRow<unknown>;
 }
 
+/** Render a token count as a compact label: 1_000_000 → "1M", 150_000 → "150k". */
+function formatTokens(tokens: number): string {
+	return tokens % 1_000_000 === 0 ? `${tokens / 1_000_000}M` : `${tokens / 1000}k`;
+}
+
+/** Parse a compact token label ("1M", "150k") back to an absolute count. */
+function parseTokens(label: string): number {
+	const n = Number.parseFloat(label);
+	return /m$/i.test(label) ? n * 1_000_000 : n * 1000;
+}
+
 const SETTINGS: SettingRow<unknown>[] = [
 	row({
 		section: "Pretty",
@@ -90,9 +101,9 @@ const SETTINGS: SettingRow<unknown>[] = [
 		section: "Compaction",
 		label: "Minimum tokens",
 		handle: compactionSection,
-		values: ["100k", "150k", "200k", "300k", "400k", "500k", "600k"],
-		read: (v) => `${v.minimumTokens / 1000}k`,
-		patch: (value) => ({ minimumTokens: Number.parseInt(value, 10) * 1000 }),
+		values: ["25k", "50k", "100k", "150k", "200k", "300k", "400k", "600k", "800k", "1M"],
+		read: (v) => formatTokens(v.minimumTokens),
+		patch: (value) => ({ minimumTokens: parseTokens(value) }),
 	}),
 	row({
 		section: "Gate",
@@ -114,7 +125,7 @@ function buildSummary(runtime: PixRuntime): string {
 			lastSection = row.section;
 		}
 		const value = row.read(runtime.get(row.handle));
-		const isDefault = value === row.values[0];
+		const isDefault = value === row.read(row.handle.defaults);
 		lines.push(`  ${row.label}: ${value}${isDefault ? "" : " *"}`);
 	}
 	return lines.join("\n");
@@ -186,7 +197,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								const cursor = sel ? theme.fg("accent", "→") : " ";
 								const label = theme.fg(sel ? "accent" : "text", row.label.padEnd(labelW));
 								const value = row.read(runtime.get(row.handle));
-								const isDefault = value === row.values[0];
+								const isDefault = value === row.read(row.handle.defaults);
 								settingBodyLines[i] = body.length;
 								body.push(`${cursor} ${label}  ${theme.fg(isDefault ? "dim" : "success", value)}`);
 							}

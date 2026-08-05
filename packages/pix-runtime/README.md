@@ -58,8 +58,9 @@ to calculate the trigger; the default is `60` and `0` disables the self-trigger
 `compaction.minimumTokens` is the absolute floor for that calculation. The
 effective threshold is `max(contextWindow × triggerPercent, minimumTokens)`, so
 a 300K-context model at 10% waits for 100K tokens instead of compacting at 30K.
-The default floor is 100K; `/pix` offers 100K, 150K, 200K, 300K, 400K, 500K, and
-600K. pix-core consumes both settings.
+The default floor is 100K and the hard minimum is 25K (values below clamp up);
+`/pix` offers 25K, 50K, 100K, 150K, 200K, 300K, 400K, 600K, 800K, and 1M.
+pix-core consumes both settings.
 
 Collapse policy helpers:
 

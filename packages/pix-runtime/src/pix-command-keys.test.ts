@@ -228,15 +228,24 @@ describe("/pix network timeout", () => {
 });
 
 describe("/pix compaction floor", () => {
-	it("offers 100k through 600k and defaults to 100k", async () => {
+	it("offers 25k through 600k and defaults to 100k", async () => {
 		const d = await openOverlay();
 		for (let i = 0; i < 6; i++) d.feed(KEYS.down.legacy);
 		expect(d.cursorLine()).toContain("Minimum tokens");
 		expect(d.cursorLine()).toContain("100k");
 		expect(d.minimumTokensValue()).toBe(100_000);
+		// 100k → 150k (next option up).
 		d.feed(KEYS.right.legacy);
 		await d.settle();
 		expect(d.minimumTokensValue()).toBe(150_000);
+		// Left steps back to 100k.
+		d.feed(KEYS.left.legacy);
+		await d.settle();
+		expect(d.minimumTokensValue()).toBe(100_000);
+		// Left again to 50k (the new low options are reachable).
+		d.feed(KEYS.left.legacy);
+		await d.settle();
+		expect(d.minimumTokensValue()).toBe(50_000);
 	});
 });
 
