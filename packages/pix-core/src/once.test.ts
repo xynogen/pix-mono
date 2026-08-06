@@ -152,7 +152,7 @@ describe("member factory dedupe (pix-commands)", () => {
 			registerCommand(name: string) {
 				commandNames.push(name);
 			},
-			registerMessageRenderer() {},
+			registerEntryRenderer() {},
 			on() {},
 		} as never;
 		return { pi, commandNames };

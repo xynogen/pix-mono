@@ -25,40 +25,13 @@ export function addUsage(into: LifetimeUsage, delta: LifetimeUsage): void {
 	into.cacheWrite += delta.cacheWrite;
 }
 
-/** Minimal shape we read from upstream `getSessionStats()`. */
-export type SessionStatsLike = {
-	tokens: { input: number; output: number; cacheWrite: number };
-	contextUsage?: { tokens?: number | null; contextWindow?: number; percent: number | null };
-};
-export type SessionLike = { getSessionStats(): SessionStatsLike };
-
-/** Context usage snapshot: estimated used tokens, window size, percent. */
-export type ContextUsageLike = {
-	tokens: number | null;
-	contextWindow: number | null;
-	percent: number | null;
-};
-
-/** Full context usage, or null when unavailable. */
-export function getSessionContextUsage(session: SessionLike | undefined): ContextUsageLike | null {
-	if (!session) return null;
-	try {
-		const cu = session.getSessionStats().contextUsage;
-		if (!cu) return null;
-		return {
-			tokens: cu.tokens ?? null,
-			contextWindow: cu.contextWindow ?? null,
-			percent: cu.percent ?? null,
-		};
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Context-window utilization (0–100), or null when unavailable
- * (no model contextWindow, or post-compaction before the next response).
- */
-export function getSessionContextPercent(session: SessionLike | undefined): number | null {
-	return getSessionContextUsage(session)?.percent ?? null;
-}
+// Session-stats shapes + readers now live in @xynogen/pix-pretty/widget-format
+// (shared with pix-commands' /btw widget). Re-exported here so existing
+// `from "./usage.ts"` imports keep resolving.
+export {
+	type ContextUsageLike,
+	getSessionContextPercent,
+	getSessionContextUsage,
+	type SessionLike,
+	type SessionStatsLike,
+} from "@xynogen/pix-pretty/widget-format";

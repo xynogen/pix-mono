@@ -23,8 +23,16 @@
 import { defineTool, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { lookupBenchmark } from "@xynogen/pix-data";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { formatCollapsedToolRow, hideCollapsedToolCall } from "@xynogen/pix-pretty/utils";
+import {
+	describeActivity,
+	formatContext,
+	formatMs,
+	formatSpeed,
+	formatToolUses,
+	formatTurns,
+	SPINNER,
+} from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import type { AgentManager } from "./agent-manager.ts";
@@ -50,7 +58,7 @@ import type {
 	AgentUtilityResultDetails,
 	LifetimeUsage,
 } from "./types.ts";
-import { type ContextUsageLike, getSessionContextUsage, type SessionLike } from "./usage.ts";
+import { getSessionContextUsage, type SessionLike } from "./usage.ts";
 
 // ── Types shared with ui/widget.ts (widget imports from here to avoid circular) ─
 
@@ -102,70 +110,23 @@ export interface AgentDetails {
 	error?: string;
 }
 
-// ── Formatting helpers (also exported for ui/widget.ts) ──────────────────────
-
-export const SPINNER = [
-	"\u280b",
-	"\u2819",
-	"\u2839",
-	"\u2838",
-	"\u283c",
-	"\u2834",
-	"\u2826",
-	"\u2827",
-	"\u2807",
-	"\u280f",
-];
-
-export function formatTokens(count: number): string {
-	const t = icon("tokens");
-	if (count >= 1_000_000) return `${t} ${(count / 1_000_000).toFixed(1)}M token`;
-	if (count >= 1_000) return `${t} ${(count / 1_000).toFixed(1)}k token`;
-	return `${t} ${count} token`;
-}
-
-/** Compact token count: 500 → "500", 30_100 → "30.1K", 1_000_000 → "1.00M". */
-export function fmtTokenCount(n: number): string {
-	if (n < 1_000) return `${n}`;
-	if (n < 1_000_000) return `${(n / 1_000).toFixed(1)}K`;
-	return `${(n / 1_000_000).toFixed(2)}M`;
-}
-
-/**
- * Format context-window utilization: "󰉿 30.1K/1.00M (3%)".
- * Falls back to "󰉿 3% ctx" when the window size is unknown.
- * Returns "" when percent is null/unavailable (caller should skip the segment).
- */
-export function formatContext(usage: ContextUsageLike | null | undefined): string {
-	if (usage?.percent == null) return "";
-	const t = icon("tokens");
-	const pct = Math.round(usage.percent);
-	if (!usage.contextWindow) return `${t} ${pct}% ctx`;
-	const used = usage.tokens ?? Math.round((usage.percent / 100) * usage.contextWindow);
-	return `${t} ${fmtTokenCount(used)}/${fmtTokenCount(usage.contextWindow)} (${pct}%)`;
-}
-
-export function formatTurns(turnCount: number, maxTurns?: number | null): string {
-	const t = icon("turns");
-	return maxTurns != null ? `${t} ${turnCount}≤${maxTurns}` : `${t} ${turnCount}`;
-}
-
-export function formatToolUses(count: number): string {
-	return `${icon("tools")} ${count}`;
-}
-
-export function formatMs(ms: number): string {
-	return `${(ms / 1000).toFixed(1)}s`;
-}
-
-/**
- * Output tokens per second over a duration. "" when either input is
- * non-positive (no work / zero elapsed) so callers can skip the segment.
- */
-export function formatSpeed(outputTokens: number, durationMs: number): string {
-	if (outputTokens <= 0 || durationMs <= 0) return "";
-	return `${Math.round(outputTokens / (durationMs / 1000))} t/s`;
-}
+// ── Formatting helpers (shared, re-exported for ui/widget.ts + back-compat) ──
+// SPINNER, formatTokens, fmtTokenCount, formatContext, formatTurns,
+// formatToolUses, formatMs, formatSpeed, TOOL_DISPLAY, describeActivity now
+// live in @xynogen/pix-pretty/widget-format. Re-exported here so existing
+// `from "../tools.ts"` imports keep resolving.
+export {
+	describeActivity,
+	fmtTokenCount,
+	formatContext,
+	formatMs,
+	formatSpeed,
+	formatTokens,
+	formatToolUses,
+	formatTurns,
+	SPINNER,
+	TOOL_DISPLAY,
+} from "@xynogen/pix-pretty/widget-format";
 
 /** Render the agent call header and, until auto-collapse, its task prompt. */
 export function formatAgentCall(
@@ -188,46 +149,6 @@ export function formatAgentCall(
 	// renderCall replaces Pi's default argument renderer. Initially retain the
 	// task context, then let the shared pix collapse timer reduce it to the header.
 	return showPrompt && prompt ? `${header}\n${theme.fg("dim", JSON.stringify(prompt))}` : header;
-}
-
-// ── Activity description (shared with ui/widget.ts) ──────────────────────────
-
-export const TOOL_DISPLAY: Record<string, string> = {
-	read: "reading",
-	bash: "running command",
-	edit: "editing",
-	write: "writing",
-	grep: "searching",
-	find: "finding files",
-	ls: "listing",
-};
-
-/**
- * Live tail of agent output: latest non-empty line, tail-anchored to `len`
- * chars (keeps the moving edge, not the stale first line).
- */
-function truncateLine(text: string, len = 16): string {
-	const lines = text.split("\n").filter((l) => l.trim());
-	const line = lines.length ? (lines[lines.length - 1] ?? "").trim() : "";
-	if (line.length <= len) return line;
-	return `\u2026${line.slice(-len)}`;
-}
-
-export function describeActivity(activeTools: Map<string, string>, responseText?: string): string {
-	if (activeTools.size > 0) {
-		const groups = new Map<string, number>();
-		for (const toolName of activeTools.values()) {
-			const action = TOOL_DISPLAY[toolName] ?? toolName;
-			groups.set(action, (groups.get(action) ?? 0) + 1);
-		}
-		const parts: string[] = [];
-		for (const [action, count] of groups) {
-			parts.push(count > 1 ? `${action} ${count}\u00d7` : action);
-		}
-		return `${parts.join(", ")}\u2026`;
-	}
-	if (responseText?.trim()) return truncateLine(responseText);
-	return "thinking\u2026";
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

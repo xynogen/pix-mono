@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterBtwMessages, registerBtw, shortModelName, summarizeLiveText } from "./index.ts";
+import { registerBtw, shortModelName } from "./index.ts";
 
 describe("BTW display helpers", () => {
 	test("prefers model display name and falls back to id", () => {
@@ -7,48 +7,40 @@ describe("BTW display helpers", () => {
 		expect(shortModelName({ id: "id", name: "  " })).toBe("id");
 	});
 
-	test("summarizes streaming output on one bounded line", () => {
-		expect(summarizeLiveText("hello\n\nworld", 20)).toBe("hello world");
-		expect(summarizeLiveText("abcdefghij", 6)).toBe("abcde…");
-		expect(summarizeLiveText("   ")).toBe("thinking…");
-	});
-
-	test("filters BTW cards from LLM context without affecting the transcript", () => {
-		const messages = [
-			{ role: "user", content: "main question" },
-			{ role: "custom", customType: "pix-btw-answer", content: "aside" },
-			{ role: "custom", customType: "other", content: "keep" },
-		];
-		expect(filterBtwMessages(messages)).toEqual([
-			{ role: "user", content: "main question" },
-			{ role: "custom", customType: "other", content: "keep" },
-		]);
-		expect(messages).toHaveLength(3);
-	});
-
-	test("does not defer an empty card flush after agent_end", async () => {
-		const handlers = new Map<string, (...args: any[]) => unknown>();
+	test("registers a display-only entry renderer, never a context-bearing message renderer", () => {
+		let entryRenderer: string | undefined;
+		let messageRenderer: string | undefined;
 		const pi = {
-			on(event: string, handler: (...args: any[]) => unknown) {
-				handlers.set(event, handler);
-			},
+			on() {},
 			registerCommand() {},
-			registerMessageRenderer() {},
+			registerEntryRenderer(name: string) {
+				entryRenderer = name;
+			},
+			registerMessageRenderer(name: string) {
+				messageRenderer = name;
+			},
 		} as any;
 		registerBtw(pi);
 
-		let idleChecks = 0;
-		handlers.get("agent_end")?.(
-			{},
-			{
-				isIdle() {
-					idleChecks++;
-					throw new Error("stale extension context");
-				},
-			},
-		);
-		await Bun.sleep(10);
+		// pix-btw-answer must be a CustomEntry (display-only, never in LLM context),
+		// not a CustomMessageEntry — that is what lets the card land mid-stream.
+		expect(entryRenderer).toBe("pix-btw-answer");
+		expect(messageRenderer).toBeUndefined();
+	});
 
-		expect(idleChecks).toBe(0);
+	test("does not register a context handler (BTW cards never enter LLM context)", () => {
+		const events: string[] = [];
+		const pi = {
+			on(event: string) {
+				events.push(event);
+			},
+			registerCommand() {},
+			registerEntryRenderer() {},
+		} as any;
+		registerBtw(pi);
+
+		// A CustomEntry is ignored by buildSessionContext, so there is nothing to
+		// strip — the old pi.on("context", filterBtwMessages) hack is gone.
+		expect(events).not.toContain("context");
 	});
 });

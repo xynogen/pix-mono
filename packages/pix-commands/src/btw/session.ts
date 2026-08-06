@@ -32,10 +32,16 @@ export interface BtwRunOptions {
 	onTextDelta?: (delta: string, fullText: string) => void;
 	onToolStart?: (toolName: string) => void;
 	onToolEnd?: (toolName: string) => void;
+	/** Called after each completed turn with the running turn count. */
+	onTurnEnd?: (turnCount: number) => void;
+	/** Called once per assistant message_end with that message's output tokens. */
+	onOutputTokens?: (outputTokens: number) => void;
 }
 
 export interface BtwRunResult {
 	text: string;
+	/** Reasoning/thinking captured from the child session (empty when none). */
+	thinking: string;
 	session: AgentSession;
 }
 
@@ -140,19 +146,38 @@ export async function runBtw(options: BtwRunOptions): Promise<BtwRunResult> {
 	options.onSession?.(session);
 
 	let text = "";
+	let thinking = "";
+	let turnCount = 0;
 	const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
-		if (event.type === "message_start" && event.message.role === "assistant") text = "";
-		if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
-			text += event.assistantMessageEvent.delta;
-			options.onTextDelta?.(event.assistantMessageEvent.delta, text);
+		if (event.type === "message_start" && event.message.role === "assistant") {
+			text = "";
+			thinking = "";
+		}
+		if (event.type === "message_update") {
+			const ev = event.assistantMessageEvent;
+			if (ev.type === "text_delta") {
+				text += ev.delta;
+				options.onTextDelta?.(ev.delta, text);
+			} else if (ev.type === "thinking_delta") {
+				thinking += ev.delta;
+			}
 		}
 		if (event.type === "tool_execution_start") options.onToolStart?.(event.toolName);
 		if (event.type === "tool_execution_end") options.onToolEnd?.(event.toolName);
+		if (event.type === "turn_end") options.onTurnEnd?.(++turnCount);
+		if (event.type === "message_end" && event.message.role === "assistant") {
+			const output = event.message.usage?.output;
+			if (typeof output === "number" && output > 0) options.onOutputTokens?.(output);
+		}
 	});
 
 	try {
 		await session.prompt(question, { source: "extension" });
-		return { text: text.trim() || lastAssistantText(session.messages), session };
+		return {
+			text: text.trim() || lastAssistantText(session.messages),
+			thinking: thinking.trim(),
+			session,
+		};
 	} catch (error) {
 		session.dispose();
 		throw error;

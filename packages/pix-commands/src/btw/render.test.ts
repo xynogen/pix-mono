@@ -5,9 +5,9 @@ import { type BtwMessageDetails, formatDuration, registerBtwRenderer } from "./r
 const stripAnsi = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, "");
 
 function captureRenderer() {
-	let renderer: ((message: unknown, options: unknown, theme: unknown) => unknown) | undefined;
+	let renderer: ((entry: unknown, options: unknown, theme: unknown) => unknown) | undefined;
 	const pi = {
-		registerMessageRenderer(_name: string, fn: typeof renderer) {
+		registerEntryRenderer(_name: string, fn: typeof renderer) {
 			renderer = fn;
 		},
 	} as unknown as ExtensionAPI;
@@ -26,9 +26,13 @@ const theme = {
 	bold: (text: string) => text,
 };
 
-function render(details: BtwMessageDetails): string {
+function render(details: BtwMessageDetails, expanded = false): string {
 	const renderer = captureRenderer();
-	const component = renderer({ details, content: details.answer }, { expanded: false }, theme) as {
+	const component = renderer(
+		{ type: "custom", customType: "pix-btw-answer", data: details },
+		{ expanded },
+		theme,
+	) as {
 		render(width: number): string[];
 	};
 	return stripAnsi(component.render(80).join("\n"));
@@ -46,6 +50,7 @@ describe("BTW renderer", () => {
 		const output = render({
 			question: "hello",
 			answer: "Hi!",
+			thinking: "",
 			model: "GPT-5.6",
 			thinkingLevel: "high",
 			durationMs: 2_100,
@@ -63,6 +68,7 @@ describe("BTW renderer", () => {
 		const output = render({
 			question: "show markdown",
 			answer: "## Heading\n\n- alpha\n- beta\n\n`code`",
+			thinking: "",
 			model: "Model",
 			thinkingLevel: "medium",
 			durationMs: 1_000,
@@ -72,5 +78,25 @@ describe("BTW renderer", () => {
 		expect(output).toContain("alpha");
 		expect(output).toContain("beta");
 		expect(output).toContain("code");
+	});
+
+	test("hides reasoning by default and reveals it when expanded", () => {
+		initTheme();
+		const details: BtwMessageDetails = {
+			question: "why",
+			answer: "Because.",
+			thinking: "first I considered the mutex",
+			model: "Model",
+			thinkingLevel: "high",
+			durationMs: 1_000,
+			toolUses: 0,
+		};
+		const collapsed = render(details, false);
+		expect(collapsed).toContain("reasoning hidden");
+		expect(collapsed).not.toContain("first I considered the mutex");
+
+		const expanded = render(details, true);
+		expect(expanded).toContain("Reasoning");
+		expect(expanded).toContain("first I considered the mutex");
 	});
 });

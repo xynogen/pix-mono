@@ -14,7 +14,7 @@ describe("pix-commands registration", () => {
 			registerCommand(name: string) {
 				commands.push(name);
 			},
-			registerMessageRenderer(name: string) {
+			registerEntryRenderer(name: string) {
 				renderers.push(name);
 			},
 			on() {},

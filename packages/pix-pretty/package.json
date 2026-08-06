@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-pretty",
-	"version": "1.8.1",
+	"version": "1.9.0",
 	"description": "Enhanced tool output rendering with syntax highlighting, file icons, tree views, diff rendering, and FFF search",
 	"type": "module",
 	"main": "src/index.ts",
@@ -21,6 +21,7 @@
 		"./fff": "./src/fff.ts",
 		"./types": "./src/types.ts",
 		"./utils": "./src/utils.ts",
+		"./widget-format": "./src/widget-format.ts",
 		"./resize": "./src/resize.ts",
 		"./context": "./src/tools/context.ts",
 		"./gate-overlay": "./src/gate-overlay.ts",

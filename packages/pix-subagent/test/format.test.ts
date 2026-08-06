@@ -381,9 +381,13 @@ test("describeActivity: groups parallel tools with count", () => {
 	expect(describeActivity(tools)).toBe("reading 3×…");
 });
 
-test("describeActivity: tails last output line to 16 chars", () => {
+test("describeActivity: tails last output line to 32 chars", () => {
+	// Default tail is 32; a 28-char last line stays untruncated.
 	const out = "first line\nwriting the batch result now";
-	expect(describeActivity(new Map(), out)).toBe("…batch result now");
+	expect(describeActivity(new Map(), out)).toBe("writing the batch result now");
+	// A last line longer than 32 chars is tail-anchored with a leading ellipsis.
+	const longOut = "first line\nwriting the very large batch result to disk now";
+	expect(describeActivity(new Map(), longOut)).toBe("…y large batch result to disk now");
 });
 
 test("describeActivity: short output untruncated", () => {

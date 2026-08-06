@@ -4,6 +4,8 @@ import { Box, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 export interface BtwMessageDetails {
 	question: string;
 	answer: string;
+	/** Captured reasoning/thinking from the child session (empty when none). */
+	thinking: string;
 	model: string;
 	thinkingLevel: string;
 	durationMs: number;
@@ -18,10 +20,13 @@ export function formatDuration(ms: number): string {
 }
 
 export function registerBtwRenderer(
-	pi: Pick<import("@earendil-works/pi-coding-agent").ExtensionAPI, "registerMessageRenderer">,
+	pi: Pick<import("@earendil-works/pi-coding-agent").ExtensionAPI, "registerEntryRenderer">,
 ): void {
-	pi.registerMessageRenderer<BtwMessageDetails>("pix-btw-answer", (message, _options, theme) => {
-		const details = message.details;
+	// A display-only CustomEntry (not a CustomMessageEntry): it never enters the
+	// main agent's LLM context and never steers the running turn, so the card can
+	// be appended the instant the side question finishes — even mid-stream.
+	pi.registerEntryRenderer<BtwMessageDetails>("pix-btw-answer", (entry, options, theme) => {
+		const details = entry.data;
 		if (!details) return undefined;
 		const failed = Boolean(details.error);
 		const icon = failed ? theme.fg("error", "✗") : theme.fg("success", "✓");
@@ -46,6 +51,19 @@ export function registerBtwRenderer(
 		if (failed) {
 			card.addChild(new Text(theme.fg("error", details.error ?? "Unknown error"), 0, 0));
 			return card;
+		}
+
+		// Reasoning is preserved but collapsed by default: shown only when the host
+		// requests the expanded view, never discarded (see AGENTS.md §3).
+		if (details.thinking) {
+			if (options.expanded) {
+				card.addChild(new Text(theme.fg("dim", theme.bold("Reasoning")), 0, 0));
+				card.addChild(new Text(theme.fg("thinkingText", details.thinking), 0, 0));
+				card.addChild(new Spacer(1));
+			} else {
+				card.addChild(new Text(theme.fg("dim", "› reasoning hidden — expand to view"), 0, 0));
+				card.addChild(new Spacer(1));
+			}
 		}
 
 		try {
