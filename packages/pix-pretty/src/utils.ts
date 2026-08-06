@@ -174,9 +174,16 @@ export function hideCollapsedToolCall(
 
 export type DimPreviewOptions = {
 	maxLines?: number;
+	/** Header line shown above the body (or above the top rule when framed).
+	 *  Pass the tool's SEMANTIC count here (e.g. `pluralize(matchCount, "match")`)
+	 *  — the same value the collapsed summary row uses — so top and collapsed
+	 *  never disagree. Do not recount the body: notices/blank lines make a body
+	 *  line-count diverge from the semantic count. */
 	header?: string;
 	/** Pattern whose matches are highlighted (green bold) inside dim lines. */
 	highlight?: string;
+	/** Wrap the body in a top/bottom rule frame (header above, overflow below), like bash/read/mcp. */
+	frame?: boolean;
 };
 
 function dimLineWithHighlight(line: string, theme: FgTheme, pattern?: string): string {
@@ -207,14 +214,25 @@ export function renderDimPreview(
 	const highlight = opts.highlight;
 	const output = normalizeLineEndings(text).trim() || "done";
 	const lines = output.split("\n");
-	const preview = lines
+	const body = lines
 		.slice(0, maxLines)
 		.map((line) => `  ${dimLineWithHighlight(line, theme, highlight)}`);
-	if (opts.header) preview.unshift(`  ${theme.fg("dim", opts.header)}`);
-	if (lines.length > maxLines) {
-		const more = pluralize(lines.length - maxLines, "more line");
-		preview.push(`  ${theme.fg("dim", `… ${more}`)}`);
+	const header = opts.header ? `  ${theme.fg("dim", opts.header)}` : undefined;
+	const overflow =
+		lines.length > maxLines
+			? `  ${theme.fg("dim", `… ${pluralize(lines.length - maxLines, "more line")}`)}`
+			: undefined;
+
+	if (opts.frame) {
+		// Same layout as bash/read/mcp: header above the top rule, body between the
+		// rules, overflow footer below the bottom rule.
+		const out = [...(header ? [header] : []), ...ruleFrame(body, overflow ? [overflow] : [])];
+		return fillToolBackground(out.join("\n"));
 	}
+
+	const preview = body;
+	if (header) preview.unshift(header);
+	if (overflow) preview.push(overflow);
 	return fillToolBackground(preview.join("\n"));
 }
 
@@ -289,6 +307,21 @@ export function shortPath(cwd: string, home: string, p: string): string {
 
 export function rule(w: number): string {
 	return `${FG_RULE}${"─".repeat(w)}${RST}`;
+}
+
+/**
+ * Frame tool output the way bash/read/sudo do: a top rule, the body lines, a
+ * bottom rule, then any footer lines (e.g. `… +N more`) below the close. The
+ * single source of the "rule top, rule bottom" invariant so every tool's result
+ * block is framed identically — MCP and the shell tools share this.
+ */
+export function ruleFrame(
+	bodyLines: string[],
+	footerLines: string[] = [],
+	width?: number,
+): string[] {
+	const r = rule(width ?? termW());
+	return [r, ...bodyLines, r, ...footerLines];
 }
 
 export function lnum(n: number, w: number): string {

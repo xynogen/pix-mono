@@ -110,7 +110,8 @@ describe("registerFindTool", () => {
 
 		expect(result?.getText()).toContain("src/one.ts");
 		expect(result?.getText()).toContain("src/two.ts");
-		expect(result?.getText()).not.toContain("2 files");
+		// Framed view shows the same semantic count as the collapsed row (no drift).
+		expect(result?.getText()).toContain("2 files");
 	});
 
 	it("collapses structured errors and restores the exact diagnostic on expansion", () => {

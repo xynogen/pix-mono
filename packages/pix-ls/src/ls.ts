@@ -20,6 +20,7 @@ import {
 	hideCollapsedToolCall,
 	renderCollapsedToolRow,
 	renderToolError,
+	ruleFrame,
 	setResultDetails,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -132,8 +133,9 @@ export function registerLsTool(
 			}
 			if (d?._type === "lsResult" && d.text) {
 				const tree = renderTree(d.text as string, d.path as string, theme);
-				const info = `${FG_DIM}${d.entryCount} entries${RST}`;
-				text.setText(fillToolBackground(`  ${info}\n${tree}`));
+				const info = `  ${FG_DIM}${d.entryCount} entries${RST}`;
+				const out = [info, ...ruleFrame(tree.split("\n"))];
+				text.setText(fillToolBackground(out.join("\n")));
 				return text;
 			}
 

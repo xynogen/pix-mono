@@ -2,7 +2,7 @@ import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/p
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
-import { formatJson, renderCollapsedToolRow, rule } from "@xynogen/pix-pretty/utils";
+import { formatJson, renderCollapsedToolRow, ruleFrame } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
@@ -208,12 +208,13 @@ class ClippedLines {
 	}
 }
 
-// Prepend the same rule() bash/read/sudo use so the leading separator under an
-// MCP tool result matches every other tool's output frame (shared FG_RULE color).
+// Frame the body with a rule top AND bottom — the same top/bottom rule frame
+// bash/read/sudo use — so an MCP result closes its output block like every other
+// tool instead of trailing off with only a leading separator.
 function separated(content: Text | ClippedLines) {
 	return {
 		invalidate: () => content.invalidate(),
-		render: (width: number) => [rule(Math.max(0, width)), ...content.render(width)],
+		render: (width: number) => ruleFrame(content.render(width), [], Math.max(0, width)),
 	};
 }
 

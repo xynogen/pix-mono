@@ -20,6 +20,7 @@ import {
 	getTextContent,
 	hideCollapsedToolCall,
 	makeTextResult,
+	pluralize,
 	renderCollapsedToolRow,
 	renderDimPreview,
 	renderToolError,
@@ -148,7 +149,9 @@ export function registerFindTool(
 			const cs = renderCtx.state as CollapseState;
 			if (!isPartial && tickCollapse("find", cs, renderCtx.invalidate, renderCtx.expanded)) {
 				const summary =
-					d?._type === "findResult" && d.matchCount != null ? `${d.matchCount} files` : "found";
+					d?._type === "findResult" && d.matchCount != null
+						? pluralize(d.matchCount, "file")
+						: "found";
 				const target = d?._type === "findResult" ? d.pattern : "";
 				const scope = d?._type === "findResult" && d.path ? ` in ${sp(d.path)}` : "";
 				text.setText(
@@ -169,7 +172,16 @@ export function registerFindTool(
 			}
 
 			const output = getTextContent(result) || "found";
-			text.setText(renderDimPreview(output, theme));
+			text.setText(
+				renderDimPreview(output, theme, {
+					frame: true,
+					// Same semantic count the collapsed row shows — one source, no drift.
+					header:
+						d?._type === "findResult" && d.matchCount != null
+							? pluralize(d.matchCount, "file")
+							: undefined,
+				}),
+			);
 			return text;
 		},
 	});

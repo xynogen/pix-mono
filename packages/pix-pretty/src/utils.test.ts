@@ -9,6 +9,7 @@ import {
 	pluralize,
 	renderCollapsedToolRow,
 	renderDimPreview,
+	ruleFrame,
 	setResultDetails,
 } from "./utils.js";
 
@@ -17,6 +18,23 @@ const ANSI = /\x1b\[[0-9;]*m/g;
 function plain(text: string): string {
 	return text.replace(ANSI, "");
 }
+
+describe("ruleFrame", () => {
+	it("wraps body with a rule top and bottom, then footer below the close", () => {
+		const out = ruleFrame(["a", "b"], ["… +3 more"], 10);
+		expect(out).toHaveLength(5);
+		expect(plain(out[0]!)).toBe("─".repeat(10)); // top rule
+		expect(out.slice(1, 3)).toEqual(["a", "b"]); // body
+		expect(plain(out[3]!)).toBe("─".repeat(10)); // bottom rule closes the block
+		expect(plain(out[4]!)).toBe("… +3 more"); // footer after the close
+	});
+
+	it("closes the block even with no footer", () => {
+		const out = ruleFrame(["only"], [], 4);
+		expect(plain(out[0]!)).toBe("────");
+		expect(plain(out.at(-1)!)).toBe("────");
+	});
+});
 
 // Minimal theme: fg() passes text through untouched.
 const theme: FgTheme = { fg: (_key, text) => text };
@@ -167,6 +185,24 @@ describe("renderDimPreview", () => {
 		const out = plain(renderDimPreview("body", theme, { header: "5 matches" }));
 		expect(out).toContain("5 matches");
 		expect(out).toContain("body");
+	});
+
+	it("frames the body with a rule top and bottom, header above the top rule", () => {
+		const out = plain(renderDimPreview("a\nb", theme, { frame: true, header: "2 files" }));
+		const lines = out.split("\n");
+		// header, top rule, a, b, bottom rule
+		expect(lines[0]).toContain("2 files");
+		expect(lines[1]).toMatch(/^─+$/); // top rule
+		expect(lines.at(-1)).toMatch(/^─+$/); // bottom rule closes the block
+	});
+
+	it("frames overflow footer below the bottom rule", () => {
+		const body = Array.from({ length: MAX_PREVIEW_LINES + 2 }, (_, i) => `L${i}`);
+		const out = plain(renderDimPreview(body.join("\n"), theme, { frame: true }));
+		const lines = out.split("\n");
+		// overflow marker is the LAST line, below the closing rule
+		expect(lines.at(-1)).toContain("… 2 more lines");
+		expect(lines.at(-2)).toMatch(/^─+$/); // bottom rule sits above the footer
 	});
 
 	it("highlights matched keyword with non-dim styling", () => {

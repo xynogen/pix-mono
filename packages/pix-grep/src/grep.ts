@@ -197,6 +197,7 @@ export function registerGrepTool(
 			const output = getTextContent(result) || "searched";
 			text.setText(
 				renderDimPreview(output, theme, {
+					frame: true,
 					header:
 						d?._type === "grepResult" ? pluralize(d.matchCount, "match", "matches") : undefined,
 					highlight: d?._type === "grepResult" ? d.pattern : undefined,

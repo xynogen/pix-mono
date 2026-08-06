@@ -25,7 +25,7 @@ import {
 	normalizeLineEndings,
 	renderCollapsedToolRow,
 	renderToolError,
-	rule,
+	ruleFrame,
 	setResultDetails,
 	termW,
 } from "@xynogen/pix-pretty/utils";
@@ -200,13 +200,16 @@ export function registerBashTool(
 				if (normalizedText) {
 					const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 					const show = lines.slice(0, maxShow);
-					const tw = termW();
-					const out: string[] = [header, rule(tw)];
-					for (const line of show) out.push(`  ${line}`);
-					out.push(rule(tw));
-					if (lineCount > maxShow) {
-						out.push(`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`);
-					}
+					const footer =
+						lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
+					const out = [
+						header,
+						...ruleFrame(
+							show.map((line) => `  ${line}`),
+							footer,
+							termW(),
+						),
+					];
 					text.setText(fillToolBackground(out.join("\n")));
 				} else {
 					text.setText(fillToolBackground(header));
