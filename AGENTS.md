@@ -69,7 +69,7 @@ packages/
   # ── Shared layers ──────────────────────────────────────────────────
   pix-data/        # Model data (modelgrep + BenchLM, cached at ~/.cache/pi)
   pix-runtime/     # pix.json config runtime (sections, atomic writes, /pix command), once() guard, collapse policy
-  pix-pretty/      # Rendering lib (highlight, diff, icons, fff) + FFF slash commands
+  pix-pretty/      # Rendering lib (highlight, diff, icons, fff, widget-format, modal-frame) + FFF slash commands
   pix-themes/      # Theme pack — 7 dark themes
   # ── UI / UX (bundled by pix-core) ─────────────────────────────────
   pix-welcome/     # ASCII π banner + startup health checks
@@ -192,6 +192,35 @@ icon("cwd")           // resolves glyph for active mode (nerd/unicode/ascii)
 - Keys are semantic roles (`"model"`, `"cwd"`, `"paste.image"`), never glyph names.
 - `PRETTY_ICONS` env seeds default; `/pix` settings command switches live (persisted to `~/.pi/agent/pix.json`).
 - New icons → add to `CATALOG` in `packages/pix-pretty/src/icon-catalog.ts` with all three variants.
+
+---
+
+## Shared Rendering & Widget Helpers
+
+**pix-pretty is the home for any rendering, layout, or display-formatting code shared by two or more packages.** It is a sanctioned shared layer, so extracting into it never breaks the Package Independence rule.
+
+This refines — it does not contradict — "prefer duplicating small utilities over adding a cross-package dep":
+
+- **One-off, package-local helper** (a bespoke summary line, a single-use parser) → keep it local; do not reach for pix-pretty.
+- **The same rendering/formatting/UI surface appears in ≥2 packages** (or you're about to copy one in) → extract it into pix-pretty and import from there. Do not leave parallel copies that drift.
+
+Before writing a new formatter, spinner, token/duration/byte formatter, activity/status line, modal, overlay, or widget layout, **grep pix-pretty first** — the primitive may already exist:
+
+```ts
+import { SPINNER, formatMs, formatTokens, fmtTokenCount, formatContext,
+         formatTurns, formatToolUses, formatSpeed, describeActivity,
+         getSessionContextUsage } from "@xynogen/pix-pretty/widget-format";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+```
+
+- `widget-format` — live-widget helpers: `SPINNER` (braille frames), token/duration formatters, `describeActivity`, session-stats readers. Shared by pix-subagent's agent widget and pix-commands' `/btw` widget.
+- `modal-frame` — rounded-border overlay primitives (`frameLines`, `modalWidth`). Used by pix-ask, pix-mcp, pix-models, pix-optimizer.
+- `gate-overlay` — the permission/confirm dialog (pix-gate, pix-sudo).
+- `icon-catalog`, `diff`/`diff-render`, `highlight`, `renderers`, `fff`, `ansi`, `utils` — see the full export map in `packages/pix-pretty/README.md`.
+
+Adding a helper to pix-pretty is a public-API addition → **minor bump** (needs approval per Key Rules). Consumers on `^1.x` carets already match a new minor, so no range edits ripple; only the packages you actually rewire (plus their pix-core pins) need patch bumps. New shared helpers must be pure and Pi-host-agnostic (accept a minimal `Theme`/`SessionLike` shape, not the full `ExtensionAPI`), and ship with unit tests in pix-pretty.
 
 ---
 
