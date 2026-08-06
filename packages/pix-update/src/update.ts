@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { openProgress, type ProgressHandle, type ProgressUI } from "@xynogen/pix-pretty/progress";
+import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
 
@@ -82,7 +83,8 @@ export function formatUpdateSummary(before: string, after: string, attempts: num
 	return attempts > 1 ? `${summary} Retried ${attempts - 1} transient failure(s).` : summary;
 }
 
-export const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+export { SPINNER } from "@xynogen/pix-pretty/widget-format";
+
 // 250ms (not 80ms): with up to 3 concurrent spinners during updateAll, a fast
 // cadence floods the TUI render queue and starves keystroke echo (typed chars
 // render out of order). 250ms still animates smoothly for a multi-minute op.

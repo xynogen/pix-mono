@@ -14,6 +14,7 @@
  */
 
 import { frameModal, MIN_MODAL_HEIGHT, modalWidth, terminalModalHeight } from "./modal-frame.js";
+import { SPINNER } from "./widget-format.js";
 
 interface ProgressTheme {
 	fg(color: string, text: string): string;
@@ -46,7 +47,6 @@ export interface ProgressHandle {
 	close(): void;
 }
 
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 // 120ms: smooth enough to read as motion, slow enough to barely touch the
 // render queue. The overlay owns input so this isn't competing with echo.
 const SPINNER_INTERVAL_MS = 120;
