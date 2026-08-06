@@ -12,6 +12,7 @@ type TestResult = AgentToolResult<TestDetails>;
 
 const collapsedOptions: ToolRenderResultOptions = { expanded: false, isPartial: false };
 const plainTheme = { fg: (_name: string, text: string) => text };
+const boldTheme = { fg: (_name: string, text: string) => text, bold: (t: string) => t };
 
 function result(content: TestResult["content"], details: TestDetails = {}): TestResult {
 	return { content, details };
@@ -62,6 +63,17 @@ describe("MCP tool call renderer", () => {
 
 	it("omits empty direct tool arguments", () => {
 		expect(formatMcpDirectToolCallLines("cf-portal_status", {})).toEqual(["cf-portal_status"]);
+	});
+
+	it("line-caps a tall pretty-printed args block with a +N note", () => {
+		// A wide object pretty-prints to >80 lines; the call row has no expand
+		// affordance, so it must collapse like the result view.
+		const wide: Record<string, number> = {};
+		for (let i = 0; i < 100; i++) wide[`k${i}`] = i;
+		const [, json = ""] = formatMcpDirectToolCallLines("big_tool", wide);
+		const lines = json.split("\n");
+		expect(lines.length).toBe(81); // 80 shown + the note line
+		expect(lines.at(-1)).toMatch(/^… \+\d+ more$/);
 	});
 });
 
@@ -174,5 +186,35 @@ describe("MCP tool result renderer", () => {
 		expect(output).toContain("line 4");
 		expect(output).not.toContain("Ctrl+O to expand");
 		expect(output).not.toContain("…");
+	});
+
+	it("collapses a successful result to a one-row summary once the timer fires", () => {
+		// A pre-collapsed state bag simulates the post-delay render, like bash/read.
+		const output = renderMcpToolResult(
+			result([{ type: "text", text: "one\ntwo\nthree" }], { tool: "list_events", server: "cf" }),
+			collapsedOptions,
+			boldTheme,
+			{ isError: false, state: { collapsed: true }, invalidate: () => {} },
+		)
+			.render(80)
+			.join("\n");
+
+		expect(output).toContain("mcp");
+		expect(output).toContain("list_events @ cf");
+		expect(output).toContain("3 lines");
+		expect(output).not.toContain("one"); // body is hidden when collapsed
+	});
+
+	it("never collapses an error result even with a collapsed state", () => {
+		const output = renderMcpToolResult(
+			result([{ type: "text", text: "Error: boom\nline 2" }], { error: "tool_error" }),
+			collapsedOptions,
+			boldTheme,
+			{ isError: false, state: { collapsed: true }, invalidate: () => {} },
+		)
+			.render(80)
+			.join("\n");
+
+		expect(output).toContain("line 2"); // full error stays visible
 	});
 });

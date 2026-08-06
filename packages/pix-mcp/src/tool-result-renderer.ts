@@ -1,6 +1,8 @@
 import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
+import { renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
+import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
 type McpToolContentBlock = AgentToolResult<McpToolResultDetails>["content"][number];
@@ -8,6 +10,14 @@ type McpToolContentBlock = AgentToolResult<McpToolResultDetails>["content"][numb
 interface RenderTheme {
 	fg: (name: string, text: string) => string;
 	bold?: (text: string) => string;
+}
+
+/** The render context Pi passes as renderResult's 4th arg. */
+interface McpRenderCtx {
+	isError?: boolean;
+	expanded?: boolean;
+	state?: CollapseState;
+	invalidate?: () => void;
 }
 
 export interface McpProxyToolCallInput {
@@ -22,10 +32,6 @@ export interface McpProxyToolCallInput {
 	action?: string;
 }
 
-interface McpToolRenderContext {
-	isError: boolean;
-}
-
 export interface McpToolResultDisplay {
 	lines: string[];
 	truncated: boolean;
@@ -38,19 +44,30 @@ function truncateText(value: string, maxChars: number): string {
 	return `${value.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
+// The call row has no expand affordance, so cap by BOTH chars (guards a single
+// huge line) and lines (guards a tall pretty-printed object), mirroring the
+// collapsed result view. Line cap reuses MAX_PREVIEW_LINES.
+function capBlock(text: string, maxChars: number): string {
+	const capped = truncateText(text, maxChars);
+	const lines = capped.split("\n");
+	if (lines.length <= MAX_PREVIEW_LINES) return capped;
+	const hidden = lines.length - MAX_PREVIEW_LINES;
+	return [...lines.slice(0, MAX_PREVIEW_LINES), `… +${hidden} more`].join("\n");
+}
+
 function formatJsonish(value: unknown, maxChars: number): string {
 	if (typeof value === "string") {
 		try {
-			return truncateText(JSON.stringify(JSON.parse(value), null, 2), maxChars);
+			return capBlock(JSON.stringify(JSON.parse(value), null, 2), maxChars);
 		} catch {
-			return truncateText(value, maxChars);
+			return capBlock(value, maxChars);
 		}
 	}
 
 	try {
-		return truncateText(JSON.stringify(value, null, 2), maxChars);
+		return capBlock(JSON.stringify(value, null, 2), maxChars);
 	} catch {
-		return truncateText(String(value), maxChars);
+		return capBlock(String(value), maxChars);
 	}
 }
 
@@ -147,21 +164,45 @@ export function formatMcpToolResultLines(
 	};
 }
 
+/** Build a collapsed one-row summary: `✓ mcp <tool@server> · N lines`. */
+function collapsedRow(
+	result: AgentToolResult<McpToolResultDetails>,
+	theme: RenderTheme & { bold: (text: string) => string },
+): string {
+	const d = result.details as Record<string, unknown>;
+	const tool = typeof d.tool === "string" ? d.tool : "";
+	const server = typeof d.server === "string" ? d.server : "";
+	let target = tool;
+	if (tool && server) target = `${tool} @ ${server}`;
+	else if (!tool) target = server;
+	const lineCount = result.content.flatMap(blockToLines).length;
+	const meta = lineCount > 0 ? `${lineCount} ${lineCount === 1 ? "line" : "lines"}` : "";
+	return renderCollapsedToolRow(theme, "mcp", target, meta);
+}
+
 export function renderMcpToolResult(
 	result: AgentToolResult<McpToolResultDetails>,
 	options: ToolRenderResultOptions,
 	theme: RenderTheme,
-	context?: McpToolRenderContext,
+	context?: McpRenderCtx,
 ) {
 	if (options.isPartial) {
 		return new Text(theme.fg("warning", "Running MCP tool..."), 0, 0);
 	}
 
 	const hasErrorDetails = Boolean(result.details.error);
-	const display = formatMcpToolResultLines(
-		result,
-		options.expanded || context?.isError === true || hasErrorDetails,
-	);
+	const isError = context?.isError === true || hasErrorDetails;
+
+	// Auto-collapse to a summary row after the delay, like bash/read. Errors are
+	// never collapsed (the timer is skipped so the failure stays visible).
+	if (!isError && context?.state && context.invalidate && theme.bold) {
+		const withBold = theme as RenderTheme & { bold: (text: string) => string };
+		if (tickCollapse("mcp", context.state, context.invalidate, options.expanded)) {
+			return new Text(collapsedRow(result, withBold), 0, 0);
+		}
+	}
+
+	const display = formatMcpToolResultLines(result, options.expanded || isError);
 	const output = display.lines
 		.map((line, i) =>
 			display.truncated && i === display.lines.length - 1
