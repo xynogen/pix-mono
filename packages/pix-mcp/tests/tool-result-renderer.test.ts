@@ -117,7 +117,9 @@ describe("MCP tool result renderer", () => {
 			result([{ type: "text", text: JSON.stringify({ ok: true }) }]),
 			{ expanded: true, isPartial: false },
 			plainTheme,
-		).render(12);
+		)
+			.render(12)
+			.map((l: string) => l.replace(/\x1b\[[0-9;]*m/g, ""));
 
 		expect(lines[0]).toBe("─".repeat(12));
 		expect(lines.slice(1).join("\n")).toContain('"ok"');

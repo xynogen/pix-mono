@@ -2,7 +2,7 @@ import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/p
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
-import { formatJson, renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
+import { formatJson, renderCollapsedToolRow, rule } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
@@ -208,13 +208,12 @@ class ClippedLines {
 	}
 }
 
-function separated(content: Text | ClippedLines, theme: RenderTheme) {
+// Prepend the same rule() bash/read/sudo use so the leading separator under an
+// MCP tool result matches every other tool's output frame (shared FG_RULE color).
+function separated(content: Text | ClippedLines) {
 	return {
 		invalidate: () => content.invalidate(),
-		render: (width: number) => [
-			theme.fg("muted", "─".repeat(Math.max(0, width))),
-			...content.render(width),
-		],
+		render: (width: number) => [rule(Math.max(0, width)), ...content.render(width)],
 	};
 }
 
@@ -305,7 +304,7 @@ export function renderMcpToolResult(
 			const footerLine = footer ? `\n${theme.fg("muted", footer)}` : "";
 			const styled = `${hl}${footerLine}${hint}`;
 			// Preview clips each line to one row; expanded wraps to show everything.
-			return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled), theme);
+			return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled));
 		}
 	}
 
@@ -318,5 +317,5 @@ export function renderMcpToolResult(
 		.join("\n");
 
 	const styled = `${output}${hint}`;
-	return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled), theme);
+	return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled));
 }
