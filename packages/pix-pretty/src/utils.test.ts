@@ -4,6 +4,7 @@ import { MAX_PREVIEW_LINES } from "./config.js";
 import type { FgTheme } from "./types.js";
 import {
 	formatCollapsedToolRow,
+	formatJson,
 	hideCollapsedToolCall,
 	pluralize,
 	renderCollapsedToolRow,
@@ -33,6 +34,55 @@ describe("pluralize", () => {
 	it("defaults plural to noun + s", () => {
 		expect(pluralize(1, "line")).toBe("1 line");
 		expect(pluralize(3, "line")).toBe("3 lines");
+	});
+});
+
+describe("formatJson", () => {
+	it("reindents a JSON string into a multiline block", () => {
+		expect(formatJson('{"a":1,"b":2}')).toBe('{\n  "a": 1,\n  "b": 2\n}');
+	});
+
+	it("reindents an object value", () => {
+		expect(formatJson({ a: 1 })).toBe('{\n  "a": 1\n}');
+	});
+
+	it("falls back to the raw string for non-JSON input", () => {
+		expect(formatJson("not json")).toBe("not json");
+	});
+
+	it("reindenting a mega JSON one-liner breaks it into short, still-valid lines", () => {
+		// A JSON one-liner is the pathological render case. Reindenting alone splits
+		// it into short lines; it must NOT be hard-wrapped (that would split string
+		// values mid-token) so the block stays valid JSON for syntax highlighting.
+		const obj = { results: Array.from({ length: 300 }, (_, i) => ({ i, name: `item-${i}` })) };
+		const mega = JSON.stringify(obj); // one long line
+		const out = formatJson(mega, { wrapWidth: 80, maxLines: 9999 });
+		expect(out.split("\n").length).toBeGreaterThan(300); // broken into many lines
+		expect(() => JSON.parse(out)).not.toThrow(); // still valid JSON → highlightable
+	});
+
+	it("hard-wraps a NON-JSON mega-line but leaves JSON untouched", () => {
+		// A genuine non-JSON one-liner (multi-KB plain string) still gets wrapped so
+		// the TUI never measures a single huge line.
+		const plain = "x".repeat(7806); // not JSON
+		const wrapped = formatJson(plain, { wrapWidth: 80, maxLines: 9999 });
+		const lines = wrapped.split("\n");
+		expect(Math.max(...lines.map((l) => l.length))).toBeLessThanOrEqual(80);
+		expect(wrapped.replace(/\n/g, "").length).toBe(plain.length); // lossless
+	});
+
+	it("caps line count with a `+N more` footer", () => {
+		const obj = Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`k${i}`, i]));
+		const out = formatJson(obj, { maxLines: 10 });
+		const lines = out.split("\n");
+		expect(lines.length).toBe(11); // 10 + footer
+		expect(lines.at(-1)).toMatch(/^… \+\d+ more$/);
+	});
+
+	it("applies a hard char ceiling as a last-resort guard", () => {
+		const out = formatJson({ blob: "y".repeat(5000) }, { maxChars: 100, maxLines: 999 });
+		expect(out.length).toBeLessThanOrEqual(100);
+		expect(out.endsWith("…")).toBe(true);
 	});
 });
 

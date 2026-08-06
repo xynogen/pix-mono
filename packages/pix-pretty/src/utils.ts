@@ -52,6 +52,77 @@ export function pluralize(count: number, noun: string, plural?: string): string 
 	return `${count} ${count === 1 ? noun : (plural ?? `${noun}s`)}`;
 }
 
+export interface FormatJsonOptions {
+	/** Hard char ceiling for the whole block; a longer block is clipped with an ellipsis. */
+	maxChars?: number;
+	/** Line ceiling; excess lines are dropped for a `… +N more` footer. Default MAX_PREVIEW_LINES. */
+	maxLines?: number;
+	/**
+	 * Fallback per-line hard-wrap for NON-JSON input only. When the value parses
+	 * as JSON, reindenting already breaks any mega-line into short lines AND the
+	 * result stays valid JSON, so callers can still syntax-highlight it — wrapping
+	 * it would split string values mid-token and defeat highlighting. This only
+	 * bites a genuine non-JSON one-liner (a multi-KB plain string) the TUI can't
+	 * wrap on its own. 0 disables.
+	 */
+	wrapWidth?: number;
+}
+
+// Hard-wrap a single line into `width`-char chunks. Preserves all characters
+// (this is wrapping, not truncation) so the data stays complete.
+function hardWrapLine(line: string, width: number): string[] {
+	if (width <= 0 || line.length <= width) return [line];
+	const out: string[] = [];
+	for (let i = 0; i < line.length; i += width) out.push(line.slice(i, i + width));
+	return out;
+}
+
+/**
+ * Pretty-print a JSON-ish value for terminal display and bound its cost.
+ *
+ * Splitting an object into short lines is itself a win: the TUI measures/wraps
+ * per line, so one huge line is the pathological case; a re-serialized object
+ * is many cheap lines even when it has more total chars.
+ *
+ * Bounds applied in order: parse+reindent → (non-JSON only) hard-wrap long
+ * lines → line cap (`… +N more`) → char cap. This shapes only the DISPLAY
+ * string; callers keep the untruncated payload for the model. The formatted
+ * JSON stays valid so callers can syntax-highlight it. Pure and host-agnostic.
+ */
+export function formatJson(value: unknown, options: FormatJsonOptions = {}): string {
+	const { maxChars, maxLines = MAX_PREVIEW_LINES, wrapWidth = 0 } = options;
+
+	let text: string;
+	let isJson = true;
+	try {
+		const parsed = typeof value === "string" ? JSON.parse(value) : value;
+		text = JSON.stringify(parsed, null, 2);
+	} catch {
+		// Not JSON (or a circular object) — fall back to a plain string, still bounded.
+		text = typeof value === "string" ? value : String(value);
+		isJson = false;
+	}
+
+	let lines = text.split("\n");
+	// Only hard-wrap non-JSON: wrapping reindented JSON would split string values
+	// mid-token and invalidate the block for downstream highlighting. JSON is
+	// already short-lined after reindent, so it never needs this guard.
+	if (wrapWidth > 0 && !isJson) lines = lines.flatMap((line) => hardWrapLine(line, wrapWidth));
+
+	if (lines.length > maxLines) {
+		const hidden = lines.length - maxLines;
+		lines = [...lines.slice(0, maxLines), `… +${hidden} more`];
+	}
+
+	let out = lines.join("\n");
+	if (maxChars !== undefined && out.length > maxChars) {
+		// Char cap is a last-resort guard (e.g. many wrapped lines under the line
+		// cap still exceeding the budget).
+		out = `${out.slice(0, Math.max(0, maxChars - 1))}…`;
+	}
+	return out;
+}
+
 export type CollapsedToolStatus = "success" | "error" | "warning";
 
 type CollapsedToolTheme = {
