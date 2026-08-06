@@ -1,6 +1,7 @@
 import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
+import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -16,8 +17,49 @@ interface RenderTheme {
 interface McpRenderCtx {
 	isError?: boolean;
 	expanded?: boolean;
-	state?: CollapseState;
+	// CollapseState plus our own async-highlight cache slots (mirrors pix-read).
+	state?: CollapseState & { _hlKey?: string; _hlText?: string };
 	invalidate?: () => void;
+}
+
+/** True when the string parses as a JSON object/array — worth highlighting. */
+function looksLikeJson(text: string): boolean {
+	const t = text.trimStart();
+	if (t[0] !== "{" && t[0] !== "[") return false;
+	try {
+		JSON.parse(text);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+type HlState = { _hlKey?: string; _hlText?: string };
+
+// JSON syntax-highlight like read/edit. hlBlock is async, so schedule it in the
+// background, cache the styled text on the render state, and invalidate to
+// repaint once ready. Returns the cached highlighted text, or null until it
+// resolves (or when `body` isn't JSON) so the caller falls back to plain style.
+function highlightedJson(
+	body: string,
+	keyPrefix: string,
+	state: HlState,
+	invalidate: () => void,
+	theme: RenderTheme,
+): string | null {
+	if (!body || !looksLikeJson(body)) return null;
+	const key = `${keyPrefix}:${body.length}:${body}`;
+	if (state._hlKey !== key) {
+		state._hlKey = key;
+		hlBlock(body, "json", theme)
+			.then((styled) => {
+				if (state._hlKey !== key) return;
+				state._hlText = styled.join("\n");
+				invalidate();
+			})
+			.catch(() => {});
+	}
+	return state._hlText ?? null;
 }
 
 export interface McpProxyToolCallInput {
@@ -119,20 +161,31 @@ export function formatMcpDirectToolCallLines(
 	return [displayName, formatJsonish(args, maxInputChars)];
 }
 
-function renderToolCallLines(lines: string[], theme: RenderTheme) {
+function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRenderCtx) {
 	const [title = "mcp", ...rest] = lines;
 	const styledTitle = theme.fg("toolTitle", theme.bold ? theme.bold(title) : title);
+
+	// The trailing lines are a pretty-printed JSON args block; highlight it.
+	if (ctx?.state && ctx.invalidate) {
+		const hl = highlightedJson(rest.join("\n"), "mcpcall", ctx.state, ctx.invalidate, theme);
+		if (hl) return new Text([styledTitle, hl].join("\n"), 0, 0);
+	}
+
 	const styledRest = rest.map((line) => theme.fg("muted", line));
 	return new Text([styledTitle, ...styledRest].join("\n"), 0, 0);
 }
 
-export function renderMcpProxyToolCall(args: McpProxyToolCallInput, theme: RenderTheme) {
-	return renderToolCallLines(formatMcpProxyToolCallLines(args), theme);
+export function renderMcpProxyToolCall(
+	args: McpProxyToolCallInput,
+	theme: RenderTheme,
+	ctx?: McpRenderCtx,
+) {
+	return renderToolCallLines(formatMcpProxyToolCallLines(args), theme, ctx);
 }
 
 export function createMcpDirectToolCallRenderer(displayName: string) {
-	return (args: Record<string, unknown>, theme: RenderTheme) => {
-		return renderToolCallLines(formatMcpDirectToolCallLines(displayName, args), theme);
+	return (args: Record<string, unknown>, theme: RenderTheme, ctx?: McpRenderCtx) => {
+		return renderToolCallLines(formatMcpDirectToolCallLines(displayName, args), theme, ctx);
 	};
 }
 
@@ -203,6 +256,22 @@ export function renderMcpToolResult(
 	}
 
 	const display = formatMcpToolResultLines(result, options.expanded || isError);
+	const hint =
+		display.truncated && !options.expanded ? `\n${theme.fg("muted", "(Ctrl+O to expand)")}` : "";
+
+	// Highlight the JSON result (only when not truncated — the muted "+N more"
+	// footer must survive, so a clipped body stays on the plain path).
+	if (!display.truncated && context?.state && context.invalidate) {
+		const hl = highlightedJson(
+			display.lines.join("\n"),
+			`mcp:${options.expanded ? "full" : "preview"}`,
+			context.state,
+			context.invalidate,
+			theme,
+		);
+		if (hl) return new Text(`${hl}${hint}`, 0, 0);
+	}
+
 	const output = display.lines
 		.map((line, i) =>
 			display.truncated && i === display.lines.length - 1
@@ -210,8 +279,6 @@ export function renderMcpToolResult(
 				: theme.fg("toolOutput", line),
 		)
 		.join("\n");
-	const hint =
-		display.truncated && !options.expanded ? `\n${theme.fg("muted", "(Ctrl+O to expand)")}` : "";
 
 	return new Text(`${output}${hint}`, 0, 0);
 }

@@ -205,6 +205,37 @@ describe("MCP tool result renderer", () => {
 		expect(output).not.toContain("one"); // body is hidden when collapsed
 	});
 
+	it("schedules JSON highlighting and repaints via invalidate", async () => {
+		const json = '{\n  "ok": true,\n  "n": 3\n}';
+		const state: Record<string, unknown> = {};
+		let invalidated = false;
+		// expanded: true skips the collapse timer so the highlight path runs.
+		const expandedOptions: ToolRenderResultOptions = { expanded: true, isPartial: false };
+		const render = () =>
+			renderMcpToolResult(
+				result([{ type: "text", text: json }], { tool: "q", server: "s" }),
+				expandedOptions,
+				boldTheme,
+				{
+					isError: false,
+					state: state as never,
+					invalidate: () => {
+						invalidated = true;
+					},
+				},
+			);
+		// First render: highlight not ready — kicks off async hlBlock, returns plain.
+		render();
+		expect(state._hlKey).toBeDefined();
+		await new Promise((r) => setTimeout(r, 20));
+		expect(invalidated).toBe(true);
+		expect(state._hlText).toBeDefined();
+		// Second render uses the cached highlighted text (still contains the keys).
+		const out = render().render(80).join("\n");
+		expect(out).toContain("ok");
+		expect(out).toContain("3");
+	});
+
 	it("never collapses an error result even with a collapsed state", () => {
 		const output = renderMcpToolResult(
 			result([{ type: "text", text: "Error: boom\nline 2" }], { error: "tool_error" }),
