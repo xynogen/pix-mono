@@ -19,6 +19,7 @@ import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { ModelsDevModel } from "@xynogen/pix-data";
 import { benchScoreColor, lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { fmtTokenCount } from "@xynogen/pix-pretty/widget-format";
 
 // ─── Pure formatting helpers ─────────────────────────────────────────
 
@@ -38,14 +39,6 @@ export function renderThinkingLevel(theme: Theme, level: string, text: string): 
 
 const execFileAsync = promisify(execFile);
 const GIT_POLL_MS = 2_000;
-
-/** Compact token formatter for cumulative session totals. */
-const fmtToken = (n: number): string =>
-	n < 1_000
-		? `${n}`
-		: n < 1_000_000
-			? `${(n / 1_000).toFixed(1)}K`
-			: `${(n / 1_000_000).toFixed(2)}M`;
 
 const shortCwd = (cwd: string): string => {
 	const base = cwd.split("/").filter(Boolean).pop();
@@ -147,7 +140,7 @@ function computeSessionTotals(entries: Iterable<unknown>): SessionTotals {
 
 /** Tokens block (in/out + cache/cost). Always returns a string; caller decides visibility. */
 function renderTokens(totals: SessionTotals, theme: Theme, dim = false): string {
-	let s = `${icon("net.in")} ${fmtToken(totals.input)} ${icon("net.out")} ${fmtToken(totals.output)}`;
+	let s = `${icon("net.in")} ${fmtTokenCount(totals.input)} ${icon("net.out")} ${fmtTokenCount(totals.output)}`;
 	if (totals.cost > 0) s += ` $${totals.cost.toFixed(3)}`;
 	return theme.fg(dim ? "dim" : "muted", s);
 }
@@ -163,8 +156,8 @@ function renderCtxUsage(
 	const pctColor = pct >= 80 ? "error" : pct >= 50 ? "warning" : "success";
 	return (
 		theme.fg("muted", `${icon("tokens")}  `) +
-		theme.fg("success", fmtToken(used)) +
-		theme.fg("muted", `/${fmtToken(usage.contextWindow)} `) +
+		theme.fg("success", fmtTokenCount(used)) +
+		theme.fg("muted", `/${fmtTokenCount(usage.contextWindow)} `) +
 		theme.fg(pctColor, `(${pct}%)`)
 	);
 }
