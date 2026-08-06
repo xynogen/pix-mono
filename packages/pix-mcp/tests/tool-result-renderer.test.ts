@@ -112,6 +112,17 @@ describe("MCP tool call renderer", () => {
 });
 
 describe("MCP tool result renderer", () => {
+	it("starts output with a separator line", () => {
+		const lines = renderMcpToolResult(
+			result([{ type: "text", text: JSON.stringify({ ok: true }) }]),
+			{ expanded: true, isPartial: false },
+			plainTheme,
+		).render(12);
+
+		expect(lines[0]).toBe("─".repeat(12));
+		expect(lines.slice(1).join("\n")).toContain('"ok"');
+	});
+
 	it("caps collapsed text at the preview limit and notes how many lines were hidden", () => {
 		// explicit cap keeps the test independent of the MAX_PREVIEW_LINES default
 		const display = formatMcpToolResultLines(
@@ -252,9 +263,9 @@ describe("MCP tool result renderer", () => {
 			boldTheme,
 			{ isError: false, state: state as never, invalidate: () => {} },
 		);
-		// Highlight IS scheduled for the preview, keyed mcp:preview.
-		expect(state._hlKey).toBeDefined();
-		expect(String(state._hlKey)).toContain("mcp:preview");
+		// Highlight IS scheduled in the preview's independent cache slot.
+		const highlights = state._highlights as Record<string, { key: string }>;
+		expect(highlights["mcp:preview"]?.key).toBeDefined();
 	});
 
 	it("highlights a TRUNCATED preview body while keeping the `+N more` footer off the highlight", async () => {
@@ -275,14 +286,82 @@ describe("MCP tool result renderer", () => {
 			);
 		render();
 		// Highlight scheduled on the truncated preview body.
-		expect(state._hlKey).toBeDefined();
-		expect(String(state._hlKey)).toContain("mcp:preview");
+		const highlights = state._highlights as Record<string, { key: string }>;
+		expect(highlights["mcp:preview"]?.key).toBeDefined();
 		// The highlighted body must NOT include the footer line.
-		expect(String(state._hlKey)).not.toContain("more");
+		expect(highlights["mcp:preview"]?.key).not.toContain("more");
 		await new Promise((r) => setTimeout(r, 30));
 		// The rendered output still carries the muted footer.
 		const out = render().render(80).join("\n");
 		expect(out).toContain("more");
+	});
+
+	it("clips a long JSON string value to one row in preview but wraps it when expanded", () => {
+		// A single long string value stays on one logical line (wrapping mid-token
+		// would break highlighting). Preview must clip it to one screen row — like
+		// pix-read — so a fat value never balloons into a tall blob. Expanded wraps.
+		const longVal = "x".repeat(600);
+		const json = JSON.stringify({ blurb: longVal });
+		const state: Record<string, unknown> = {};
+		const preview = renderMcpToolResult(
+			result([{ type: "text", text: json }], { tool: "q", server: "s" }),
+			{ expanded: false, isPartial: false },
+			boldTheme,
+			{ isError: false, state: state as never, invalidate: () => {} },
+		)
+			.render(80)
+			.map((l: string) => l.replace(/\x1b\[[0-9;]*m/g, ""));
+		// Every row fits the width and the long value is clipped, not wrapped.
+		expect(Math.max(...preview.map((l: string) => l.length))).toBeLessThanOrEqual(80);
+		expect(preview.some((l: string) => l.includes("›"))).toBe(true);
+
+		const expandedState: Record<string, unknown> = {};
+		const expanded = renderMcpToolResult(
+			result([{ type: "text", text: json }], { tool: "q", server: "s" }),
+			{ expanded: true, isPartial: false },
+			boldTheme,
+			{ isError: false, state: expandedState as never, invalidate: () => {} },
+		)
+			.render(80)
+			.map((l: string) => l.replace(/\x1b\[[0-9;]*m/g, ""));
+		// Expanded wraps the value across rows (no clip marker) — nothing hidden.
+		expect(expanded.some((l: string) => l.includes("›"))).toBe(false);
+		expect(expanded.length).toBeGreaterThan(preview.length);
+	});
+
+	it("keeps call and result highlight caches separate", async () => {
+		const state: Record<string, unknown> = {};
+		let invalidations = 0;
+		const context = {
+			isError: false,
+			expanded: true,
+			state: state as never,
+			invalidate: () => {
+				invalidations++;
+			},
+		};
+		const renderBoth = () => {
+			renderMcpProxyToolCall(
+				{ tool: "q", server: "s", args: JSON.stringify({ query: "fibery" }) },
+				boldTheme,
+				context,
+			);
+			renderMcpToolResult(
+				result([{ type: "text", text: JSON.stringify({ data: { ok: true } }) }]),
+				{ expanded: true, isPartial: false },
+				boldTheme,
+				context,
+			);
+		};
+
+		renderBoth();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		const settledInvalidations = invalidations;
+		renderBoth();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+
+		expect(settledInvalidations).toBe(2);
+		expect(invalidations).toBe(settledInvalidations);
 	});
 
 	it("schedules JSON highlighting and repaints via invalidate", async () => {
@@ -306,10 +385,11 @@ describe("MCP tool result renderer", () => {
 			);
 		// First render: highlight not ready — kicks off async hlBlock, returns plain.
 		render();
-		expect(state._hlKey).toBeDefined();
+		const highlights = state._highlights as Record<string, { key: string; text?: string }>;
+		expect(highlights["mcp:full"]?.key).toBeDefined();
 		await new Promise((r) => setTimeout(r, 20));
 		expect(invalidated).toBe(true);
-		expect(state._hlText).toBeDefined();
+		expect(highlights["mcp:full"]?.text).toBeDefined();
 		// Second render uses the cached highlighted text (still contains the keys).
 		const out = render().render(80).join("\n");
 		expect(out).toContain("ok");

@@ -1,5 +1,5 @@
 import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { formatJson, renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
@@ -17,8 +17,8 @@ interface RenderTheme {
 interface McpRenderCtx {
 	isError?: boolean;
 	expanded?: boolean;
-	// CollapseState plus our own async-highlight cache slots (mirrors pix-read).
-	state?: CollapseState & { _hlKey?: string; _hlText?: string };
+	// CollapseState plus async-highlight cache slots for each rendered surface.
+	state?: CollapseState & HlState;
 	invalidate?: () => void;
 }
 
@@ -34,32 +34,36 @@ function looksLikeJson(text: string): boolean {
 	return t[0] === "{" || t[0] === "[";
 }
 
-type HlState = { _hlKey?: string; _hlText?: string };
+type HighlightSlot = { key: string; text?: string };
+type HlState = { _highlights?: Record<string, HighlightSlot> };
 
-// JSON syntax-highlight like read/edit. hlBlock is async, so schedule it in the
-// background, cache the styled text on the render state, and invalidate to
-// repaint once ready. Returns the cached highlighted text, or null until it
-// resolves (or when `body` isn't JSON) so the caller falls back to plain style.
+// JSON syntax-highlight like read/edit. Each surface owns a cache slot because
+// Pi renders tool calls and results with the same context state. Sharing one
+// key makes both renderers invalidate each other forever when restoring history.
 function highlightedJson(
 	body: string,
-	keyPrefix: string,
+	surface: string,
 	state: HlState,
 	invalidate: () => void,
 	theme: RenderTheme,
 ): string | null {
 	if (!body || !looksLikeJson(body)) return null;
-	const key = `${keyPrefix}:${body.length}:${body}`;
-	if (state._hlKey !== key) {
-		state._hlKey = key;
+	const key = `${body.length}:${body}`;
+	state._highlights ??= {};
+	const highlights = state._highlights;
+	let slot = highlights[surface];
+	if (slot?.key !== key) {
+		slot = { key };
+		highlights[surface] = slot;
 		hlBlock(body, "json", theme)
 			.then((styled) => {
-				if (state._hlKey !== key) return;
-				state._hlText = styled.join("\n");
+				if (highlights[surface] !== slot) return;
+				slot.text = styled.join("\n");
 				invalidate();
 			})
 			.catch(() => {});
 	}
-	return state._hlText ?? null;
+	return slot.text ?? null;
 }
 
 export interface McpProxyToolCallInput {
@@ -174,21 +178,44 @@ export function createMcpDirectToolCallRenderer(displayName: string) {
 	};
 }
 
-// Result-body line width. A JSON tool result is pretty-formatted (one mega-line
-// → many short lines) and any remaining long line is hard-wrapped, so the
-// pathological single-line case that saturates the TUI render loop can never
-// reach the measurer. No line/char cap here — formatMcpToolResultLines owns the
-// preview cap, and expanded must stay complete.
-const RESULT_WRAP_WIDTH = 200;
-
+// A JSON tool result is pretty-formatted (one mega-line → many short lines) so
+// the pathological single-line case that saturates the TUI render loop can
+// never reach the measurer. Long JSON *string values* stay on one logical line
+// (wrapping them mid-token would break highlighting); the preview clips each
+// line to the terminal width at render time (see clipToWidth), exactly like
+// pix-read, so one logical line is always one screen row and the line cap is a
+// row cap. No cap here — formatMcpToolResultLines owns the preview cap and
+// expanded must stay complete.
 function blockToLines(block: McpToolContentBlock): string[] {
 	if (block.type === "text") {
-		return formatJson(block.text, {
-			wrapWidth: RESULT_WRAP_WIDTH,
-			maxLines: Number.MAX_SAFE_INTEGER,
-		}).split("\n");
+		return formatJson(block.text, { maxLines: Number.MAX_SAFE_INTEGER }).split("\n");
 	}
 	return [`[image: ${block.mimeType}]`];
+}
+
+// A component that clips each line to the viewport width at render time so one
+// logical line is always one screen row (like pix-read's truncateToWidth).
+// Without this, pi-tui wraps a long JSON string value across many rows and a
+// single fat value blows past the row cap into a tall blob. Used for the preview
+// only — expanded uses plain Text so it wraps and shows everything.
+class ClippedLines {
+	constructor(private readonly text: string) {}
+	invalidate(): void {}
+	render(width: number): string[] {
+		const lines = this.text.split("\n");
+		if (width <= 0) return lines;
+		return lines.map((line) => truncateToWidth(line, width, "›"));
+	}
+}
+
+function separated(content: Text | ClippedLines, theme: RenderTheme) {
+	return {
+		invalidate: () => content.invalidate(),
+		render: (width: number) => [
+			theme.fg("muted", "─".repeat(Math.max(0, width))),
+			...content.render(width),
+		],
+	};
 }
 
 // Collapsed MCP results reuse MAX_PREVIEW_LINES — the same preview cap bash and
@@ -276,7 +303,9 @@ export function renderMcpToolResult(
 		);
 		if (hl) {
 			const footerLine = footer ? `\n${theme.fg("muted", footer)}` : "";
-			return new Text(`${hl}${footerLine}${hint}`, 0, 0);
+			const styled = `${hl}${footerLine}${hint}`;
+			// Preview clips each line to one row; expanded wraps to show everything.
+			return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled), theme);
 		}
 	}
 
@@ -288,5 +317,6 @@ export function renderMcpToolResult(
 		)
 		.join("\n");
 
-	return new Text(`${output}${hint}`, 0, 0);
+	const styled = `${output}${hint}`;
+	return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled), theme);
 }
