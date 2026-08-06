@@ -11,6 +11,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { formatCollapsedToolRow } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
@@ -33,12 +34,16 @@ interface TodoResultDetails {
 	snapshot: TodoItem[];
 }
 
-const TODO_GLYPH: Record<TodoStatus, string> = {
-	pending: "○",
-	in_progress: "◐",
-	done: "●",
-	blocked: "⊘",
-};
+/** Resolve the status glyph at render time so a live /pix mode switch applies. */
+function todoGlyph(status: TodoStatus): string {
+	const key = {
+		pending: "status.pending",
+		in_progress: "status.running",
+		done: "status.done",
+		blocked: "status.blocked",
+	} as const;
+	return icon(key[status]);
+}
 
 /** Theme color key per status — drives both glyph and (for active) row tint. */
 const TODO_COLOR: Record<TodoStatus, string> = {
@@ -77,7 +82,7 @@ export function renderTodoLines(items: TodoItem[], theme: TodoTheme): string {
 	const head = theme.fg("accent", `Todos ${done}/${items.length} done:`);
 	const lines = items.map((t) => {
 		const color = TODO_COLOR[t.status];
-		const glyph = theme.fg(color, TODO_GLYPH[t.status]);
+		const glyph = theme.fg(color, todoGlyph(t.status));
 		const body = `${t.id}. ${t.text}`;
 		// Highlight the in-flight task so the eye lands on it first.
 		const label =
@@ -123,7 +128,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 		function todoSummary(): string {
 			if (!todos.length) return "(no todos)";
 			const done = todos.filter((t) => t.status === "done").length;
-			const lines = todos.map((t) => `${TODO_GLYPH[t.status]} ${t.id}. ${t.text}`);
+			const lines = todos.map((t) => `${todoGlyph(t.status)} ${t.id}. ${t.text}`);
 			return `Todos ${done}/${todos.length} done:\n${lines.join("\n")}`;
 		}
 

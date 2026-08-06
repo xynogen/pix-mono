@@ -8,6 +8,7 @@
  */
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	type ContextUsageLike,
 	describeActivity,
@@ -121,7 +122,7 @@ export function renderBtwWidget(
 	const truncate = (line: string) => truncateToWidth(line, width);
 	const hasActive = running.length > 0;
 	const headingColor = hasActive ? "accent" : "dim";
-	const headingIcon = hasActive ? "\u25cb" : "\u25cf"; // ○ running · ● all done
+	const headingIcon = hasActive ? icon("status.pending") : icon("status.done"); // running · all done
 	const spinner = SPINNER[frame % SPINNER.length] ?? "";
 
 	const runningLines = running.map((j) =>

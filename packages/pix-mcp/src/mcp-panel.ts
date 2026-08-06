@@ -884,11 +884,11 @@ class McpPanel {
 		const expandIcon = fg(t.description, server.expanded ? "▾" : "▸");
 		const directCount = server.tools.filter((tool) => tool.isDirect).length;
 		const totalCount = server.tools.length;
-		let directIcon = mute("○");
+		let directIcon = mute(icon("status.pending"));
 		if (directCount === totalCount && totalCount > 0) {
-			directIcon = fg(t.direct, "●");
+			directIcon = fg(t.direct, icon("status.active"));
 		} else if (directCount > 0) {
-			directIcon = fg(t.needsAuth, "◐");
+			directIcon = fg(t.needsAuth, icon("status.running"));
 		}
 
 		const serverName = sanitizeDisplayText(server.name);
@@ -939,7 +939,9 @@ class McpPanel {
 		const t = this.t;
 		const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
 
-		const toggleIcon = tool.isDirect ? fg(t.direct, "●") : fg(t.description, "○");
+		const toggleIcon = tool.isDirect
+			? fg(t.direct, icon("status.active"))
+			: fg(t.description, icon("status.pending"));
 		const cursor = isCursor ? fg(t.selected, "▸") : " ";
 		const toolName = sanitizeDisplayText(tool.name);
 		const description = sanitizeDisplayText(tool.description);

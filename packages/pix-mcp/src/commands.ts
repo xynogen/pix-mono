@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	ensureCompatibilityImports,
 	getMcpDiscoverySummary,
@@ -42,18 +43,18 @@ export async function showStatus(state: McpExtensionState, ctx: ExtensionContext
 		const toolCount = metadata?.length ?? 0;
 		const failedAgo = getFailureAgeSeconds(state, name);
 		let status = "not connected";
-		let statusIcon = "○";
+		let statusIcon = icon("status.pending");
 		let failed = false;
 
 		if (connection?.status === "connected") {
 			status = "connected";
-			statusIcon = "✓";
+			statusIcon = icon("status.ok");
 		} else if (connection?.status === "needs-auth") {
 			status = "needs auth";
-			statusIcon = "⚠";
+			statusIcon = icon("status.warn");
 		} else if (failedAgo !== null) {
 			status = `failed ${failedAgo}s ago`;
-			statusIcon = "✗";
+			statusIcon = icon("status.error");
 			failed = true;
 		} else if (metadata !== undefined) {
 			status = "cached";

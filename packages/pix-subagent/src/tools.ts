@@ -23,6 +23,7 @@
 import { defineTool, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { lookupBenchmark } from "@xynogen/pix-data";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { formatCollapsedToolRow, hideCollapsedToolCall } from "@xynogen/pix-pretty/utils";
 import {
 	describeActivity,
@@ -285,11 +286,11 @@ export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 	let status: string;
 	switch (d.status) {
 		case "completed":
-			marker = theme.fg("success", "✓");
+			marker = theme.fg("success", icon("status.ok"));
 			status = "completed";
 			break;
 		case "steered":
-			marker = theme.fg("success", "✓");
+			marker = theme.fg("success", icon("status.ok"));
 			status = "steered (turn limit)";
 			break;
 		case "stopped":
@@ -301,7 +302,7 @@ export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 			status = "aborted (max turns exceeded)";
 			break;
 		default: {
-			marker = theme.fg("error", "✗");
+			marker = theme.fg("error", icon("status.error"));
 			const reason = d.error?.replace(/\s+/g, " ").trim().slice(0, 100);
 			status = reason ? `error: ${reason}` : "error";
 			break;

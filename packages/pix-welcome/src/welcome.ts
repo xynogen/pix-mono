@@ -308,13 +308,13 @@ function checkAuth(ctx: {
 export function statusIcon(theme: Theme, status: CheckStatus): string {
 	switch (status) {
 		case "pending":
-			return theme.fg("muted", "○");
+			return theme.fg("muted", icon("status.pending"));
 		case "ok":
-			return theme.fg("success", "✓");
+			return theme.fg("success", icon("status.ok"));
 		case "warn":
-			return theme.fg("warning", "⚠");
+			return theme.fg("warning", icon("status.warn"));
 		case "error":
-			return theme.fg("error", "✗");
+			return theme.fg("error", icon("status.error"));
 	}
 }
 

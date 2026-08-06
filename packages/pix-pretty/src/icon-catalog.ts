@@ -58,6 +58,20 @@ const CATALOG = {
 	warn: { nerd: "\u26A0", unicode: "\u26A0", ascii: "!" },
 	error: { nerd: "\u2717", unicode: "\u2717", ascii: "x" },
 
+	// ── shared status glyphs (checklists, panels, markers) ────────────────
+	// nerd/unicode keep the historical literal so mixed-glyph rows stay
+	// aligned; ascii mode swaps in tofu-free tokens. `⚡` (energetic
+	// warning/killed/denied) intentionally stays a local literal — it is not
+	// part of this set.
+	"status.ok": { nerd: "\u2713", unicode: `\u2713${VS}`, ascii: "ok" },
+	"status.error": { nerd: "\u2717", unicode: `\u2717${VS}`, ascii: "x" },
+	"status.warn": { nerd: "\u26A0", unicode: `\u26A0${VS}`, ascii: "!" },
+	"status.pending": { nerd: "\u25CB", unicode: `\u25CB${VS}`, ascii: "o" },
+	"status.running": { nerd: "\u25D0", unicode: `\u25D0${VS}`, ascii: "*" },
+	"status.active": { nerd: "\u25CF", unicode: `\u25CF${VS}`, ascii: "*" },
+	"status.done": { nerd: "\u25CF", unicode: `\u25CF${VS}`, ascii: "x" },
+	"status.blocked": { nerd: "\u2298", unicode: `\u2298${VS}`, ascii: "!" },
+
 	// ── welcome banner ────────────────────────────────────────────────────
 	ready: { nerd: "\u{F0633}", unicode: `\u2713${VS}`, ascii: "ok" },
 

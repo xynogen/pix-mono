@@ -39,6 +39,32 @@ describe("icon-catalog", () => {
 		}
 	});
 
+	it("status family keeps historical nerd glyphs and gains ascii tokens", () => {
+		// nerd mode must equal the pre-catalog literals so mixed-glyph rows and
+		// existing snapshot assertions stay aligned.
+		expect(iconFor("status.ok", "nerd")).toBe("\u2713");
+		expect(iconFor("status.error", "nerd")).toBe("\u2717");
+		expect(iconFor("status.warn", "nerd")).toBe("\u26A0");
+		expect(iconFor("status.pending", "nerd")).toBe("\u25CB");
+		expect(iconFor("status.running", "nerd")).toBe("\u25D0");
+		expect(iconFor("status.active", "nerd")).toBe("\u25CF");
+		expect(iconFor("status.done", "nerd")).toBe("\u25CF");
+		expect(iconFor("status.blocked", "nerd")).toBe("\u2298");
+		// ascii mode must be tofu-free (letters/punctuation only).
+		for (const key of [
+			"status.ok",
+			"status.error",
+			"status.warn",
+			"status.pending",
+			"status.running",
+			"status.active",
+			"status.done",
+			"status.blocked",
+		] as const) {
+			expect(iconFor(key, "ascii")).toMatch(/^[\x20-\x7e]+$/);
+		}
+	});
+
 	it("unknown key fails soft to empty string", () => {
 		// @ts-expect-error exercising the runtime guard
 		expect(icon("does.not.exist")).toBe("");

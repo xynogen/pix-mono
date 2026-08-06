@@ -1,5 +1,6 @@
 import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import { Box, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 
 export interface BtwMessageDetails {
 	question: string;
@@ -29,7 +30,9 @@ export function registerBtwRenderer(
 		const details = entry.data;
 		if (!details) return undefined;
 		const failed = Boolean(details.error);
-		const icon = failed ? theme.fg("error", "✗") : theme.fg("success", "✓");
+		const statusGlyph = failed
+			? theme.fg("error", icon("status.error"))
+			: theme.fg("success", icon("status.ok"));
 		const meta = [details.model, details.thinkingLevel, formatDuration(details.durationMs)];
 		if (details.toolUses > 0) meta.push(`${details.toolUses} tools`);
 
@@ -41,7 +44,11 @@ export function registerBtwRenderer(
 		// header text embedded inside Markdown can confuse wrapping and parsing.
 		const card = new Box(1, 1, (text) => theme.bg("selectedBg", text));
 		card.addChild(
-			new Text(`${icon} ${theme.bold("BTW")} ${theme.fg("dim", `· ${meta.join(" · ")}`)}`, 0, 0),
+			new Text(
+				`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("dim", `· ${meta.join(" · ")}`)}`,
+				0,
+				0,
+			),
 		);
 		card.addChild(
 			new Text(`${theme.fg("accent", "▐")} ${theme.fg("muted", details.question)}`, 0, 0),

@@ -1,5 +1,6 @@
 import type { AgentToolResult, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { UrlElicitationRequiredError } from "@modelcontextprotocol/sdk/types.js";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { checkSync } from "recheck";
 import { abortable, throwIfAborted } from "./abort.ts";
 import {
@@ -248,22 +249,22 @@ export function executeStatus(state: McpExtensionState): ProxyToolResult {
 	let text = `MCP: ${connectedCount}/${servers.length} servers, ${totalTools} tools\n\n`;
 	for (const server of servers) {
 		if (server.status === "connected") {
-			text += `✓ ${server.name} (${server.toolCount} tools)\n`;
+			text += `${icon("status.ok")} ${server.name} (${server.toolCount} tools)\n`;
 			continue;
 		}
 		if (server.status === "needs-auth") {
-			text += `⚠ ${server.name} (needs auth)\n`;
+			text += `${icon("status.warn")} ${server.name} (needs auth)\n`;
 			continue;
 		}
 		if (server.status === "cached") {
-			text += `○ ${server.name} (${server.toolCount} tools, cached)\n`;
+			text += `${icon("status.pending")} ${server.name} (${server.toolCount} tools, cached)\n`;
 			continue;
 		}
 		if (server.status === "failed") {
-			text += `✗ ${server.name} (failed ${server.failedAgo ?? 0}s ago)\n`;
+			text += `${icon("status.error")} ${server.name} (failed ${server.failedAgo ?? 0}s ago)\n`;
 			continue;
 		}
-		text += `○ ${server.name} (not connected)\n`;
+		text += `${icon("status.pending")} ${server.name} (not connected)\n`;
 	}
 
 	if (servers.length > 0) {
