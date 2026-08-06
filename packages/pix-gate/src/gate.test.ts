@@ -110,6 +110,10 @@ describe("extractPathsFromBash", () => {
 		expect(extractPathsFromBash("jq -r '.key' data.json")).toEqual([]);
 	});
 
+	test("does not treat Object.keys as a key file", () => {
+		expect(extractPathsFromBash('node -p "Object.keys(require(x))"')).toEqual([]);
+	});
+
 	test("still extracts key file paths", () => {
 		expect(extractPathsFromBash("cat private.key")).toContain("private.key");
 		expect(extractPathsFromBash("cat .private.key")).toContain(".private.key");
