@@ -18,7 +18,11 @@ import { dirname, isAbsolute, join, relative, resolve, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
-import { formatCollapsedToolRow, hideCollapsedToolCall } from "@xynogen/pix-pretty/utils";
+import {
+	formatCollapsedToolRow,
+	hideCollapsedToolCall,
+	humanSize,
+} from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { once } from "@xynogen/pix-runtime/once";
@@ -327,11 +331,6 @@ export type SkillResultDetails =
 	| { mode: "reference"; name: string; resource: string; bytes: number }
 	| { mode: "copy"; name: string; resource: string; output: string; bytes: number };
 
-function formatBytes(bytes: number): string {
-	if (bytes < 1024) return `${bytes} B`;
-	return `${(bytes / 1024).toFixed(1)} KiB`;
-}
-
 export function formatSkillCallLabel(args: SkillCallArgs): string {
 	if (args.search) return `search · ${args.search}`;
 	if (args.source && args.name) return `remote · ${args.source}@${args.name}`;
@@ -355,9 +354,9 @@ export function formatCollapsedSkillResult(details: SkillResultDetails): string 
 		case "instructions":
 			return `${details.name} · ${details.lines} instruction lines`;
 		case "reference":
-			return `${details.name} · reference · ${formatBytes(details.bytes)}`;
+			return `${details.name} · reference · ${humanSize(details.bytes)}`;
 		case "copy":
-			return `copied · ${details.output} · ${formatBytes(details.bytes)}`;
+			return `copied · ${details.output} · ${humanSize(details.bytes)}`;
 	}
 }
 
@@ -397,9 +396,9 @@ export function formatExpandedSkillResult(details: SkillResultDetails, text: str
 			return `INSTRUCTIONS · ${details.name} · ${details.lines} lines\n${preview}`;
 		}
 		case "reference":
-			return `REFERENCE · ${details.name}\n${details.resource} · ${formatBytes(details.bytes)}\n${text}`;
+			return `REFERENCE · ${details.name}\n${details.resource} · ${humanSize(details.bytes)}\n${text}`;
 		case "copy":
-			return `COPIED · ${details.name}\n${details.resource} → ${details.output} · ${formatBytes(details.bytes)}`;
+			return `COPIED · ${details.name}\n${details.resource} → ${details.output} · ${humanSize(details.bytes)}`;
 	}
 }
 

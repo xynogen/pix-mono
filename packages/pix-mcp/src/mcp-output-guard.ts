@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { humanSize } from "@xynogen/pix-pretty/utils";
 import type { ContentBlock, McpSettings } from "./types.ts";
 
 export const DEFAULT_MCP_OUTPUT_MAX_BYTES = 50 * 1024;
@@ -267,7 +268,7 @@ function formatTruncationNotice(
 	fullOutputPath: string | undefined,
 	writeError: string | undefined,
 ): string {
-	const base = `[MCP text output truncated: original ${stats.lines.toLocaleString()} lines / ${formatSize(stats.bytes)}.`;
+	const base = `[MCP text output truncated: original ${stats.lines.toLocaleString()} lines / ${humanSize(stats.bytes)}.`;
 	if (fullOutputPath) {
 		return `${base} Full text saved to: ${fullOutputPath} — use read with offset/limit or grep to inspect.]`;
 	}
@@ -448,10 +449,4 @@ function envKillSwitch(name: string): boolean | undefined {
 	if (["0", "false", "no", "off"].includes(value)) return false;
 	if (["1", "true", "yes", "on"].includes(value)) return true;
 	return undefined;
-}
-
-function formatSize(bytes: number): string {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
