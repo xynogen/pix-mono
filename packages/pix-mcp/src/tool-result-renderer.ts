@@ -2,7 +2,7 @@ import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/p
 import { Text } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
-import { renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
+import { formatJson, renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
@@ -22,16 +22,16 @@ interface McpRenderCtx {
 	invalidate?: () => void;
 }
 
-/** True when the string parses as a JSON object/array — worth highlighting. */
+/**
+ * True when the block looks like a JSON object/array — worth highlighting.
+ * Structural check only (no JSON.parse): a truncated preview is cut mid-object
+ * and would never fully parse, but cli-highlight colors partial JSON fine
+ * (ignoreIllegals), so a full parse would wrongly disable highlighting on
+ * exactly the large results that need it.
+ */
 function looksLikeJson(text: string): boolean {
 	const t = text.trimStart();
-	if (t[0] !== "{" && t[0] !== "[") return false;
-	try {
-		JSON.parse(text);
-		return true;
-	} catch {
-		return false;
-	}
+	return t[0] === "{" || t[0] === "[";
 }
 
 type HlState = { _hlKey?: string; _hlText?: string };
@@ -80,37 +80,17 @@ export interface McpToolResultDisplay {
 }
 
 const DEFAULT_MAX_CALL_INPUT_CHARS = 1500;
-
-function truncateText(value: string, maxChars: number): string {
-	if (value.length <= maxChars) return value;
-	return `${value.slice(0, Math.max(0, maxChars - 1))}…`;
-}
-
-// The call row has no expand affordance, so cap by BOTH chars (guards a single
-// huge line) and lines (guards a tall pretty-printed object), mirroring the
-// collapsed result view. Line cap reuses MAX_PREVIEW_LINES.
-function capBlock(text: string, maxChars: number): string {
-	const capped = truncateText(text, maxChars);
-	const lines = capped.split("\n");
-	if (lines.length <= MAX_PREVIEW_LINES) return capped;
-	const hidden = lines.length - MAX_PREVIEW_LINES;
-	return [...lines.slice(0, MAX_PREVIEW_LINES), `… +${hidden} more`].join("\n");
-}
+// Hard per-line width for the mega-line guard. Typical pretty-printed JSON is
+// already short-lined, so this only bites a pathological one-liner (e.g. a
+// multi-KB single line) whose per-line measure cost would saturate the TUI.
+const CALL_WRAP_WIDTH = 200;
 
 function formatJsonish(value: unknown, maxChars: number): string {
-	if (typeof value === "string") {
-		try {
-			return capBlock(JSON.stringify(JSON.parse(value), null, 2), maxChars);
-		} catch {
-			return capBlock(value, maxChars);
-		}
-	}
-
-	try {
-		return capBlock(JSON.stringify(value, null, 2), maxChars);
-	} catch {
-		return capBlock(String(value), maxChars);
-	}
+	return formatJson(value, {
+		maxChars,
+		maxLines: MAX_PREVIEW_LINES,
+		wrapWidth: CALL_WRAP_WIDTH,
+	});
 }
 
 function hasUsefulObjectContent(value: unknown): boolean {
@@ -162,6 +142,11 @@ export function formatMcpDirectToolCallLines(
 }
 
 function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRenderCtx) {
+	// Once the result collapses to its one-row summary, the call row (title +
+	// JSON args) is redundant — blank it so only the `✓ mcp <tool> · N lines`
+	// summary remains, matching bash/read. Expanding restores the full call.
+	if (ctx?.state?.collapsed && !ctx.expanded) return new Text("", 0, 0);
+
 	const [title = "mcp", ...rest] = lines;
 	const styledTitle = theme.fg("toolTitle", theme.bold ? theme.bold(title) : title);
 
@@ -189,9 +174,19 @@ export function createMcpDirectToolCallRenderer(displayName: string) {
 	};
 }
 
+// Result-body line width. A JSON tool result is pretty-formatted (one mega-line
+// → many short lines) and any remaining long line is hard-wrapped, so the
+// pathological single-line case that saturates the TUI render loop can never
+// reach the measurer. No line/char cap here — formatMcpToolResultLines owns the
+// preview cap, and expanded must stay complete.
+const RESULT_WRAP_WIDTH = 200;
+
 function blockToLines(block: McpToolContentBlock): string[] {
 	if (block.type === "text") {
-		return block.text.split("\n");
+		return formatJson(block.text, {
+			wrapWidth: RESULT_WRAP_WIDTH,
+			maxLines: Number.MAX_SAFE_INTEGER,
+		}).split("\n");
 	}
 	return [`[image: ${block.mimeType}]`];
 }
@@ -259,17 +254,30 @@ export function renderMcpToolResult(
 	const hint =
 		display.truncated && !options.expanded ? `\n${theme.fg("muted", "(Ctrl+O to expand)")}` : "";
 
-	// Highlight the JSON result (only when not truncated — the muted "+N more"
-	// footer must survive, so a clipped body stays on the plain path).
-	if (!display.truncated && context?.state && context.invalidate) {
+	// cli-highlight the JSON body — both the preview and the expanded view.
+	// Highlighted JSON is ANSI-dense, which used to be too costly: an unshaped
+	// mega-line forced pi-tui off its ASCII fast-path and re-highlighting it each
+	// spinner frame saturated the render thread. blockToLines now pretty-formats
+	// and hard-wraps the body first, so the highlighted set is small and bounded
+	// (~0.9ms/frame even at the full 80-line preview) — affordable to highlight.
+	// A truncated preview is highlighted too: split off the muted "+N more"
+	// footer so it stays on the plain path, and highlight only the body lines
+	// above it. (Highlighting the whole result was the win the mega-line shaping
+	// bought back; skipping it on truncation left large results plain.)
+	if (context?.state && context.invalidate) {
+		const body = display.truncated ? display.lines.slice(0, -1) : display.lines;
+		const footer = display.truncated ? display.lines.at(-1) : undefined;
 		const hl = highlightedJson(
-			display.lines.join("\n"),
+			body.join("\n"),
 			`mcp:${options.expanded ? "full" : "preview"}`,
 			context.state,
 			context.invalidate,
 			theme,
 		);
-		if (hl) return new Text(`${hl}${hint}`, 0, 0);
+		if (hl) {
+			const footerLine = footer ? `\n${theme.fg("muted", footer)}` : "";
+			return new Text(`${hl}${footerLine}${hint}`, 0, 0);
+		}
 	}
 
 	const output = display.lines

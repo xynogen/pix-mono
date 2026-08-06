@@ -100,7 +100,10 @@ export function resolveBearerToken(
 }
 
 export function truncateAtWord(text: string, target: number): string {
-	if (!text || text.length <= target) return text;
+	if (!text) return text;
+	// Collapse newlines/indent so multiline descriptions render as one clean line.
+	text = text.replace(/\s+/g, " ").trim();
+	if (text.length <= target) return text;
 
 	const truncated = text.slice(0, target);
 	const lastSpace = truncated.lastIndexOf(" ");

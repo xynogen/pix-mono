@@ -4,6 +4,7 @@ import {
 	formatMcpDirectToolCallLines,
 	formatMcpProxyToolCallLines,
 	formatMcpToolResultLines,
+	renderMcpProxyToolCall,
 	renderMcpToolResult,
 } from "../src/tool-result-renderer.ts";
 
@@ -47,6 +48,39 @@ describe("MCP tool call renderer", () => {
 		expect(formatMcpProxyToolCallLines({ action: "ui-messages", server: "cf-portal" })).toEqual([
 			"mcp ui-messages",
 		]);
+	});
+
+	it("blanks the call row once collapsed so only the result summary shows", () => {
+		const args = { tool: "q", server: "s", args: JSON.stringify({ use_case: "fibery" }) };
+		// Expanded (or pre-collapse) still shows the full call + JSON args.
+		const full = renderMcpProxyToolCall(args, boldTheme, {
+			state: { collapsed: false } as never,
+			invalidate: () => {},
+		})
+			.render(80)
+			.join("\n");
+		expect(full).toContain("mcp call q @ s");
+		expect(full).toContain("use_case");
+
+		// Collapsed: call row is blank (the result renderer owns the one-line summary).
+		const collapsed = renderMcpProxyToolCall(args, boldTheme, {
+			state: { collapsed: true } as never,
+			expanded: false,
+			invalidate: () => {},
+		})
+			.render(80)
+			.join("\n");
+		expect(collapsed.trim()).toBe("");
+
+		// Re-expanding a collapsed row restores the full call.
+		const reExpanded = renderMcpProxyToolCall(args, boldTheme, {
+			state: { collapsed: true } as never,
+			expanded: true,
+			invalidate: () => {},
+		})
+			.render(80)
+			.join("\n");
+		expect(reExpanded).toContain("mcp call q @ s");
 	});
 
 	it("shows direct tool calls with JSON arguments", () => {
@@ -203,6 +237,52 @@ describe("MCP tool result renderer", () => {
 		expect(output).toContain("list_events @ cf");
 		expect(output).toContain("3 lines");
 		expect(output).not.toContain("one"); // body is hidden when collapsed
+	});
+
+	it("highlights the preview — body is pre-shaped so highlighting is cheap", () => {
+		// blockToLines pretty-formats + wraps the body into a small, short-lined set
+		// (no mega-line), so cli-highlighting the preview is affordable. The preview
+		// gets highlighted, keyed distinctly from the expanded view.
+		const json = '{\n  "ok": true,\n  "n": 3\n}';
+		const state: Record<string, unknown> = {};
+		const notExpanded: ToolRenderResultOptions = { expanded: false, isPartial: false };
+		renderMcpToolResult(
+			result([{ type: "text", text: json }], { tool: "q", server: "s" }),
+			notExpanded,
+			boldTheme,
+			{ isError: false, state: state as never, invalidate: () => {} },
+		);
+		// Highlight IS scheduled for the preview, keyed mcp:preview.
+		expect(state._hlKey).toBeDefined();
+		expect(String(state._hlKey)).toContain("mcp:preview");
+	});
+
+	it("highlights a TRUNCATED preview body while keeping the `+N more` footer off the highlight", async () => {
+		// Regression: a large result truncates to 80 lines + a footer, which never
+		// fully parses as JSON. Highlighting must still fire on the body (cli-
+		// highlight handles partial JSON) and the footer must be excluded from it.
+		const big = JSON.stringify({
+			results: Array.from({ length: 300 }, (_, i) => ({ i, name: `item-${i}` })),
+		});
+		const state: Record<string, unknown> = {};
+		const notExpanded: ToolRenderResultOptions = { expanded: false, isPartial: false };
+		const render = () =>
+			renderMcpToolResult(
+				result([{ type: "text", text: big }], { tool: "q", server: "s" }),
+				notExpanded,
+				boldTheme,
+				{ isError: false, state: state as never, invalidate: () => {} },
+			);
+		render();
+		// Highlight scheduled on the truncated preview body.
+		expect(state._hlKey).toBeDefined();
+		expect(String(state._hlKey)).toContain("mcp:preview");
+		// The highlighted body must NOT include the footer line.
+		expect(String(state._hlKey)).not.toContain("more");
+		await new Promise((r) => setTimeout(r, 30));
+		// The rendered output still carries the muted footer.
+		const out = render().render(80).join("\n");
+		expect(out).toContain("more");
 	});
 
 	it("schedules JSON highlighting and repaints via invalidate", async () => {
