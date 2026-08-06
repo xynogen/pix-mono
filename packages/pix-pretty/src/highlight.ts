@@ -1,5 +1,5 @@
 import { normalizeShikiContrast } from "./ansi.js";
-import { CACHE_LIMIT, MAX_HL_CHARS } from "./config.js";
+import { CACHE_LIMIT, MAX_HL_CHARS, MAX_HL_LINE_CHARS } from "./config.js";
 import type { BundledLanguage, FgTheme } from "./types.js";
 
 // Engine: cli-highlight (highlight.js-backed, synchronous ANSI output).
@@ -139,6 +139,13 @@ export async function hlBlock(
 ): Promise<string[]> {
 	if (!code) return [""];
 	if (!language || code.length > MAX_HL_CHARS) return code.split("\n");
+	// A single mega-line makes highlight.js backtrack catastrophically and freezes
+	// the render thread — bail to plain before it reaches cli-highlight. Cheap
+	// scan: split is already needed for the plain fallback and the cache miss path.
+	const rawLines = code.split("\n");
+	for (const line of rawLines) {
+		if (line.length > MAX_HL_LINE_CHARS) return rawLines;
+	}
 
 	const hljsLang = toHljsLang(language);
 	if (!hljsLang) return code.split("\n");
