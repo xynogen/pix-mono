@@ -68,6 +68,29 @@ export function compactionThresholdTokens(
 	return Math.max(minimumTokens, Math.ceil((contextWindow * triggerPercent) / 100));
 }
 
+/**
+ * Decide what to do after a self-triggered compaction completes. Pure so the
+ * three branches (the tricky part) are unit-testable without a Pi session.
+ *
+ * - "loop": compaction landed still at/above threshold — latch the auto-trigger
+ *   off so the resume turn doesn't re-fire agent_settled forever.
+ * - "skip": the user is already driving (a prompt is in flight or queued).
+ *   Injecting the resume nudge would collide with that prompt (the reported
+ *   "Agent is already processing a prompt" crash) and, worse, tell the agent to
+ *   resume the ORIGINAL task right after the user redirected it.
+ * - "resume": agent is idle with room to spare — send the nudge.
+ */
+export function resumeDecisionAfterCompaction(args: {
+	estimatedTokensAfter: number | undefined;
+	threshold: number;
+	idle: boolean;
+	hasPending: boolean;
+}): "loop" | "skip" | "resume" {
+	if ((args.estimatedTokensAfter ?? 0) >= args.threshold) return "loop";
+	if (!args.idle || args.hasPending) return "skip";
+	return "resume";
+}
+
 // Sent as a user message after a self-triggered compaction so the agent picks
 // its task back up on its own. Kept short — the freshly written summary already
 // carries the goal, progress, and next steps. Edit to taste.
@@ -122,8 +145,7 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 			);
 
 			const summary = response.content
-				.filter((c): c is { type: "text"; text: string } => c.type === "text")
-				.map((c) => c.text)
+				.flatMap((c) => (c.type === "text" ? [c.text] : []))
 				.join("\n")
 				.trim();
 
@@ -150,8 +172,13 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 
 	// ── Lever 2: our own trigger, driven by live context usage ────────────────
 	let compacting = false;
+	// Latched off if a compaction lands still above threshold (e.g. a large
+	// minimumTokens floor on a small model). Without this the resume turn settles,
+	// agent_settled re-fires, and we compact again every turn. Reset by /compact or
+	// a new session; a session-scoped bool is the smallest fix.
+	let triggerDisabled = false;
 	pi.on("agent_settled", (_event, ctx) => {
-		if (compacting) return;
+		if (compacting || triggerDisabled) return;
 		const { triggerPercent, minimumTokens } = config(compactionSection);
 		if (triggerPercent <= 0) return;
 
@@ -167,12 +194,48 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 			"info",
 		);
 		ctx.compact({
-			onComplete: () => {
+			onComplete: (result) => {
 				compacting = false;
-				// Nudge the agent to pick its task back up. Visible as a normal
-				// user message in the transcript (no hidden automation).
+				const decision = resumeDecisionAfterCompaction({
+					estimatedTokensAfter: result.estimatedTokensAfter,
+					threshold,
+					idle: ctx.isIdle(),
+					hasPending: ctx.hasPendingMessages(),
+				});
+
+				if (decision === "loop") {
+					// Still over the line (e.g. large minimumTokens floor on a small model).
+					// Latch the auto-trigger off so the resume turn doesn't re-fire
+					// agent_settled and compact every turn. Reset by /compact or new session.
+					triggerDisabled = true;
+					ctx.ui.notify(
+						`Compaction: ${(result.estimatedTokensAfter ?? 0).toLocaleString()} tok still ≥ ${threshold.toLocaleString()} tok threshold — auto-trigger disabled for this session`,
+						"warning",
+					);
+					return;
+				}
+
+				if (decision === "skip") {
+					// User is already driving; skipping avoids colliding with their in-flight
+					// prompt and avoids overriding an explicit redirect. The fresh summary is
+					// already in context, so the agent continues without a nudge.
+					ctx.ui.notify("Compaction: resume nudge skipped (your prompt is in flight)", "info");
+					return;
+				}
+
+				// Idle: nudge the agent to pick its task back up. Visible as a normal user
+				// message in the transcript (no hidden automation). deliverAs "followUp" is
+				// a backstop for the narrow await-window where a prompt starts between the
+				// isIdle() check and this send; pi swallows a residual rejection into its
+				// own emitError, so it can't crash the session. The try/catch only guards a
+				// stale-ctx throw from sendUserMessage.
 				ctx.ui.notify("Compaction: resuming task", "info");
-				pi.sendUserMessage(RESUME_NUDGE);
+				try {
+					pi.sendUserMessage(RESUME_NUDGE, { deliverAs: "followUp" });
+				} catch (err) {
+					const message = err instanceof Error ? err.message : String(err);
+					ctx.ui.notify(`Compaction: resume nudge skipped (${message})`, "warning");
+				}
 			},
 			onError: (err) => {
 				compacting = false;
