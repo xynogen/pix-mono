@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-core",
-	"version": "0.4.62",
-	"description": "Pi extension bundle \u2014 installs and activates all core pix-* extensions",
+	"version": "0.4.63",
+	"description": "Pi extension bundle — installs and activates all core pix-* extensions",
 	"type": "module",
 	"main": "src/extension.ts",
 	"pi": {
@@ -40,16 +40,16 @@
 	"dependencies": {
 		"@xynogen/pix-runtime": "^0.5.2",
 		"@xynogen/pix-data": "^0.4.1",
-		"@xynogen/pix-pretty": "^1.9.0",
-		"@xynogen/pix-welcome": "^0.1.18",
-		"@xynogen/pix-footer": "^0.1.20",
+		"@xynogen/pix-pretty": "^1.10.0",
+		"@xynogen/pix-welcome": "^0.1.19",
+		"@xynogen/pix-footer": "^0.1.21",
 		"@xynogen/pix-diagnostics": "^0.1.10",
 		"@xynogen/pix-display": "^0.1.14",
 		"@xynogen/pix-prompts": "^0.3.5",
-		"@xynogen/pix-skills": "^0.7.6",
+		"@xynogen/pix-skills": "^0.7.7",
 		"@xynogen/pix-models": "^0.1.27",
-		"@xynogen/pix-update": "^0.1.17",
-		"@xynogen/pix-commands": "^0.3.1",
+		"@xynogen/pix-update": "^0.1.18",
+		"@xynogen/pix-commands": "^0.3.2",
 		"@xynogen/pix-nudge": "^0.1.13",
 		"@xynogen/pix-read": "^0.1.20",
 		"@xynogen/pix-write": "^0.1.19",
@@ -58,11 +58,11 @@
 		"@xynogen/pix-grep": "^0.1.20",
 		"@xynogen/pix-ls": "^0.1.20",
 		"@xynogen/pix-bash": "^0.1.18",
-		"@xynogen/pix-todo": "^0.1.20",
+		"@xynogen/pix-todo": "^0.1.21",
 		"@xynogen/pix-ask": "^0.2.15",
 		"@xynogen/pix-optimizer": "^1.1.22",
 		"@xynogen/pix-gate": "^0.2.2",
-		"@xynogen/pix-subagent": "^0.6.4"
+		"@xynogen/pix-subagent": "^0.6.5"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-ai": "*",

@@ -218,7 +218,9 @@ import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 - `widget-format` — live-widget helpers: `SPINNER` (braille frames), token/duration formatters, `describeActivity`, session-stats readers. Shared by pix-subagent's agent widget and pix-commands' `/btw` widget.
 - `modal-frame` — rounded-border overlay primitives (`frameLines`, `modalWidth`). Used by pix-ask, pix-mcp, pix-models, pix-optimizer.
 - `gate-overlay` — the permission/confirm dialog (pix-gate, pix-sudo).
-- `icon-catalog`, `diff`/`diff-render`, `highlight`, `renderers`, `fff`, `ansi`, `utils` — see the full export map in `packages/pix-pretty/README.md`.
+- `icon-catalog` — semantic glyph table (never hardcode codepoints). Includes the `status.*` family (`status.ok/error/warn/pending/running/active/done/blocked`, all three modes) for checklists, panels, and finished-line markers; nerd/unicode keep the historical literal so mixed rows stay aligned, ascii mode is tofu-free.
+- `utils` — `humanSize(bytes)` renders IEC units (`B`/`KiB`/`MiB`/`GiB`, 1024-based). Token *counts* use `fmtTokenCount` in `widget-format` (plain `K`/`M`, no `iB`) — different formatter, do not conflate.
+- `diff`/`diff-render`, `highlight`, `renderers`, `fff`, `ansi` — see the full export map in `packages/pix-pretty/README.md`.
 
 Adding a helper to pix-pretty is a public-API addition → **minor bump** (needs approval per Key Rules). Consumers on `^1.x` carets already match a new minor, so no range edits ripple; only the packages you actually rewire (plus their pix-core pins) need patch bumps. New shared helpers must be pure and Pi-host-agnostic (accept a minimal `Theme`/`SessionLike` shape, not the full `ExtensionAPI`), and ship with unit tests in pix-pretty.
 
