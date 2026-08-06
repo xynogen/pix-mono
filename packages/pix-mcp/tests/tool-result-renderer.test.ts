@@ -66,28 +66,42 @@ describe("MCP tool call renderer", () => {
 });
 
 describe("MCP tool result renderer", () => {
-	it("shows the first three lines and an ellipsis for collapsed long text", () => {
+	it("caps collapsed text at the preview limit and notes how many lines were hidden", () => {
+		// explicit cap keeps the test independent of the MAX_PREVIEW_LINES default
 		const display = formatMcpToolResultLines(
-			result([{ type: "text", text: "one\ntwo\nthree\nfour" }]),
+			result([{ type: "text", text: "one\ntwo\nthree\nfour\nfive" }]),
 			false,
+			3,
 		);
 
 		expect(display).toEqual({
-			lines: ["one", "two", "three", "…"],
+			lines: ["one", "two", "three", "… +2 more"],
 			truncated: true,
 		});
 	});
 
-	it("does not add an ellipsis when collapsed text is three lines or fewer", () => {
+	it("does not truncate when collapsed text is within the cap", () => {
 		const display = formatMcpToolResultLines(
 			result([{ type: "text", text: "one\ntwo\nthree" }]),
 			false,
+			3,
 		);
 
 		expect(display).toEqual({
 			lines: ["one", "two", "three"],
 			truncated: false,
 		});
+	});
+
+	it("defaults the collapsed cap to MAX_PREVIEW_LINES (well above a few lines)", () => {
+		const display = formatMcpToolResultLines(
+			result([{ type: "text", text: "one\ntwo\nthree\nfour" }]),
+			false,
+		);
+
+		// 4 lines is under the 80-line default, so nothing is hidden.
+		expect(display.truncated).toBe(false);
+		expect(display.lines).toEqual(["one", "two", "three", "four"]);
 	});
 
 	it("shows full text when expanded", () => {

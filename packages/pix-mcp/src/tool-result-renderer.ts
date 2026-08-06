@@ -1,5 +1,6 @@
 import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
 type McpToolContentBlock = AgentToolResult<McpToolResultDetails>["content"][number];
@@ -125,10 +126,12 @@ function blockToLines(block: McpToolContentBlock): string[] {
 	return [`[image: ${block.mimeType}]`];
 }
 
+// Collapsed MCP results reuse MAX_PREVIEW_LINES — the same preview cap bash and
+// read use — instead of a bespoke MCP knob. Expanding always shows everything.
 export function formatMcpToolResultLines(
 	result: Pick<AgentToolResult<McpToolResultDetails>, "content">,
 	expanded: boolean,
-	maxCollapsedLines = 3,
+	maxCollapsedLines = MAX_PREVIEW_LINES,
 ): McpToolResultDisplay {
 	const allLines = result.content.flatMap(blockToLines);
 	const lines = allLines.length > 0 ? allLines : ["(empty result)"];
@@ -137,8 +140,9 @@ export function formatMcpToolResultLines(
 		return { lines, truncated: false };
 	}
 
+	const hidden = lines.length - maxCollapsedLines;
 	return {
-		lines: [...lines.slice(0, maxCollapsedLines), "…"],
+		lines: [...lines.slice(0, maxCollapsedLines), `… +${hidden} more`],
 		truncated: true,
 	};
 }
@@ -159,7 +163,11 @@ export function renderMcpToolResult(
 		options.expanded || context?.isError === true || hasErrorDetails,
 	);
 	const output = display.lines
-		.map((line) => (line === "…" ? theme.fg("muted", line) : theme.fg("toolOutput", line)))
+		.map((line, i) =>
+			display.truncated && i === display.lines.length - 1
+				? theme.fg("muted", line)
+				: theme.fg("toolOutput", line),
+		)
 		.join("\n");
 	const hint =
 		display.truncated && !options.expanded ? `\n${theme.fg("muted", "(Ctrl+O to expand)")}` : "";
