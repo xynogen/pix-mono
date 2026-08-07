@@ -22,16 +22,97 @@ interface McpRenderCtx {
 	invalidate?: () => void;
 }
 
+// A TOON header/scalar line: `key:`, `key[N]:`, or `key[N]{Col,Col}:`. Keys
+// allow the dotted/slashed/tilde names Fibery-style fields use (`workflow/state`).
+const TOON_HEADER = /^(\s*)([\w./~-]+)(\[\d+\])?(\{[^}]*\})?:(?:\s|$)/;
+
 /**
- * True when the block looks like a JSON object/array — worth highlighting.
- * Structural check only (no JSON.parse): a truncated preview is cut mid-object
- * and would never fully parse, but cli-highlight colors partial JSON fine
- * (ignoreIllegals), so a full parse would wrongly disable highlighting on
- * exactly the large results that need it.
+ * Pick how to color a result body, or null to leave it plain.
+ *
+ * - JSON object/array → "json", highlighted async via highlight.js. Structural
+ *   check only (no JSON.parse): a truncated preview is cut mid-object and would
+ *   never fully parse, but cli-highlight colors partial JSON fine
+ *   (ignoreIllegals), so a full parse would wrongly disable highlighting on
+ *   exactly the large results that need it.
+ * - TOON (the compact `key: value` / `name[N]{Cols}:` format some MCP servers
+ *   emit, e.g. fibery) → "toon", colored line-by-line by `colorizeToon` below.
+ *   highlight.js has no TOON grammar and its YAML grammar mangles the
+ *   array-header and CSV data rows into one string blob, so a tiny purpose-built
+ *   colorizer (no grammar engine) is both less code and correct here.
  */
-function looksLikeJson(text: string): boolean {
+export function detectHighlightLang(text: string): "json" | "toon" | null {
 	const t = text.trimStart();
-	return t[0] === "{" || t[0] === "[";
+	if (t[0] === "{" || t[0] === "[") return "json";
+	for (const line of t.split("\n")) {
+		if (TOON_HEADER.test(line)) return "toon";
+	}
+	return null;
+}
+
+/** Color a single TOON scalar value by its literal kind. */
+function colorToonValue(value: string, theme: RenderTheme): string {
+	if (value === "true" || value === "false" || value === "null") {
+		return theme.fg("syntaxKeyword", value);
+	}
+	if (/^-?\d+(?:\.\d+)?$/.test(value)) return theme.fg("syntaxNumber", value);
+	if (/^".*"$/.test(value)) return theme.fg("syntaxString", value);
+	return value; // bare free text stays the default readable color, not a blob
+}
+
+// Split a TOON data row on commas, but keep quoted values (which may contain
+// commas) intact — the same quoting TOON uses to emit them.
+function splitToonRow(row: string): string[] {
+	const out: string[] = [];
+	let cur = "";
+	let inQuote = false;
+	for (const ch of row) {
+		if (ch === '"') inQuote = !inQuote;
+		if (ch === "," && !inQuote) {
+			out.push(cur);
+			cur = "";
+		} else {
+			cur += ch;
+		}
+	}
+	out.push(cur);
+	return out;
+}
+
+/**
+ * Color TOON output line-by-line (synchronous — no highlight.js round-trip):
+ *   - `key: value`             → key + typed value
+ *   - `key[N]{Col,Col}:`       → key + count + column names
+ *   - indented `a,"b",3` rows  → each comma-separated cell typed
+ * Anything else passes through untouched.
+ */
+export function colorizeToon(text: string, theme: RenderTheme): string {
+	const punct = (s: string) => theme.fg("syntaxPunctuation", s);
+	return text
+		.split("\n")
+		.map((line) => {
+			const header = TOON_HEADER.exec(line);
+			if (header) {
+				const [, indent = "", key = "", count, cols] = header;
+				let styled = indent + theme.fg("syntaxVariable", key);
+				if (count) styled += theme.fg("syntaxNumber", count);
+				if (cols) {
+					const names = cols.slice(1, -1); // strip { }
+					styled += punct("{") + theme.fg("syntaxType", names) + punct("}");
+				}
+				styled += punct(":");
+				// A scalar `key: value` has its value after the colon on the same line.
+				const rest = line.slice(header[0].length);
+				return rest ? `${styled} ${colorToonValue(rest.trim(), theme)}` : styled;
+			}
+			// Indented data row: comma-separated cells.
+			if (/^\s+\S/.test(line) && line.includes(",")) {
+				const indent = line.match(/^\s*/)?.[0] ?? "";
+				const cells = splitToonRow(line.slice(indent.length));
+				return indent + cells.map((c) => colorToonValue(c, theme)).join(punct(","));
+			}
+			return line;
+		})
+		.join("\n");
 }
 
 type HighlightSlot = { key: string; text?: string };
@@ -40,22 +121,26 @@ type HlState = { _highlights?: Record<string, HighlightSlot> };
 // JSON syntax-highlight like read/edit. Each surface owns a cache slot because
 // Pi renders tool calls and results with the same context state. Sharing one
 // key makes both renderers invalidate each other forever when restoring history.
-function highlightedJson(
+function highlightedBlock(
 	body: string,
 	surface: string,
 	state: HlState,
 	invalidate: () => void,
 	theme: RenderTheme,
 ): string | null {
-	if (!body || !looksLikeJson(body)) return null;
-	const key = `${body.length}:${body}`;
+	const lang = body ? detectHighlightLang(body) : null;
+	if (!lang) return null;
+	// TOON is colored synchronously by our own line colorizer (no highlight.js
+	// grammar exists for it); return immediately, no async slot needed.
+	if (lang === "toon") return colorizeToon(body, theme);
+	const key = `${lang}:${body.length}:${body}`;
 	state._highlights ??= {};
 	const highlights = state._highlights;
 	let slot = highlights[surface];
 	if (slot?.key !== key) {
 		slot = { key };
 		highlights[surface] = slot;
-		hlBlock(body, "json", theme)
+		hlBlock(body, lang, theme)
 			.then((styled) => {
 				if (highlights[surface] !== slot) return;
 				slot.text = styled.join("\n");
@@ -154,9 +239,9 @@ function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRende
 	const [title = "mcp", ...rest] = lines;
 	const styledTitle = theme.fg("toolTitle", theme.bold ? theme.bold(title) : title);
 
-	// The trailing lines are a pretty-printed JSON args block; highlight it.
+	// The trailing lines are a pretty-printed args block (JSON); highlight it.
 	if (ctx?.state && ctx.invalidate) {
-		const hl = highlightedJson(rest.join("\n"), "mcpcall", ctx.state, ctx.invalidate, theme);
+		const hl = highlightedBlock(rest.join("\n"), "mcpcall", ctx.state, ctx.invalidate, theme);
 		if (hl) return new Text([styledTitle, hl].join("\n"), 0, 0);
 	}
 
@@ -281,7 +366,8 @@ export function renderMcpToolResult(
 	const hint =
 		display.truncated && !options.expanded ? `\n${theme.fg("muted", "(Ctrl+O to expand)")}` : "";
 
-	// cli-highlight the JSON body — both the preview and the expanded view.
+	// cli-highlight the body (JSON, or TOON via the YAML grammar) — both the
+	// preview and the expanded view.
 	// Highlighted JSON is ANSI-dense, which used to be too costly: an unshaped
 	// mega-line forced pi-tui off its ASCII fast-path and re-highlighting it each
 	// spinner frame saturated the render thread. blockToLines now pretty-formats
@@ -294,7 +380,7 @@ export function renderMcpToolResult(
 	if (context?.state && context.invalidate) {
 		const body = display.truncated ? display.lines.slice(0, -1) : display.lines;
 		const footer = display.truncated ? display.lines.at(-1) : undefined;
-		const hl = highlightedJson(
+		const hl = highlightedBlock(
 			body.join("\n"),
 			`mcp:${options.expanded ? "full" : "preview"}`,
 			context.state,
