@@ -7,7 +7,7 @@ Pi coding agent extension — skill loader tool + skills bundle.
 | Resource | Type | Description |
 |---|---|---|
 | `read_skills` | tool | Browse local skills, search Skills.sh, explicitly fetch/cache a selected public GitHub skill, read references, and copy bundled resources. |
-| `skills/` | skills | 28 bundled skills (off-context by default — discovered on demand via `read_skills`) |
+| `skills/` | skills | 29 bundled skills (off-context by default — discovered on demand via `read_skills`) |
 
 ## New: Skills.sh search and remote skill cache
 
