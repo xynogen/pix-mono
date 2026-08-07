@@ -196,14 +196,9 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 		ctx.compact({
 			onComplete: (result) => {
 				compacting = false;
-				const decision = resumeDecisionAfterCompaction({
-					estimatedTokensAfter: result.estimatedTokensAfter,
-					threshold,
-					idle: ctx.isIdle(),
-					hasPending: ctx.hasPendingMessages(),
-				});
 
-				if (decision === "loop") {
+				// Loop check is token-based (timing-independent) — decide it now.
+				if ((result.estimatedTokensAfter ?? 0) >= threshold) {
 					// Still over the line (e.g. large minimumTokens floor on a small model).
 					// Latch the auto-trigger off so the resume turn doesn't re-fire
 					// agent_settled and compact every turn. Reset by /compact or new session.
@@ -215,27 +210,48 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 					return;
 				}
 
-				if (decision === "skip") {
-					// User is already driving; skipping avoids colliding with their in-flight
-					// prompt and avoids overriding an explicit redirect. The fresh summary is
-					// already in context, so the agent continues without a nudge.
-					ctx.ui.notify("Compaction: resume nudge skipped (your prompt is in flight)", "info");
-					return;
-				}
+				// Defer the resume/skip decision by one macrotask. A message the user
+				// typed DURING compaction lives in the TUI's own compactionQueuedMessages
+				// buffer, which ctx.hasPendingMessages()/isIdle() cannot see. The host
+				// flushes that buffer on compaction_end by starting a new turn; deferring
+				// lets that turn's prompt() microtask chain flip the session to streaming
+				// first, so the re-read below reports busy and we skip the nudge. Without
+				// this, our nudge races the user's steer, wins the turn, and leaves their
+				// message queued "stuck" behind it — and re-points the agent at the old task.
+				// ponytail: setTimeout(0) drains microtasks; if the flush's prompt() blocks
+				// on a real-async auth check it may still be idle here and the nudge fires
+				// (user steer then queues behind it). Rare; upgrade path is a host API that
+				// exposes the TUI compaction buffer or a post-flush event.
+				setTimeout(() => {
+					const decision = resumeDecisionAfterCompaction({
+						estimatedTokensAfter: 0, // loop already handled above
+						threshold,
+						idle: ctx.isIdle(),
+						hasPending: ctx.hasPendingMessages(),
+					});
 
-				// Idle: nudge the agent to pick its task back up. Visible as a normal user
-				// message in the transcript (no hidden automation). deliverAs "followUp" is
-				// a backstop for the narrow await-window where a prompt starts between the
-				// isIdle() check and this send; pi swallows a residual rejection into its
-				// own emitError, so it can't crash the session. The try/catch only guards a
-				// stale-ctx throw from sendUserMessage.
-				ctx.ui.notify("Compaction: resuming task", "info");
-				try {
-					pi.sendUserMessage(RESUME_NUDGE, { deliverAs: "followUp" });
-				} catch (err) {
-					const message = err instanceof Error ? err.message : String(err);
-					ctx.ui.notify(`Compaction: resume nudge skipped (${message})`, "warning");
-				}
+					if (decision === "skip") {
+						// User is already driving (in-flight or freshly flushed prompt); skipping
+						// avoids colliding with it and avoids overriding an explicit redirect. The
+						// fresh summary is already in context, so the agent continues without a nudge.
+						ctx.ui.notify("Compaction: resume nudge skipped (your prompt is in flight)", "info");
+						return;
+					}
+
+					// Idle: nudge the agent to pick its task back up. Visible as a normal user
+					// message in the transcript (no hidden automation). deliverAs "followUp" is
+					// a backstop for the narrow await-window where a prompt starts between the
+					// isIdle() check and this send; pi swallows a residual rejection into its
+					// own emitError, so it can't crash the session. The try/catch only guards a
+					// stale-ctx throw from sendUserMessage.
+					ctx.ui.notify("Compaction: resuming task", "info");
+					try {
+						pi.sendUserMessage(RESUME_NUDGE, { deliverAs: "followUp" });
+					} catch (err) {
+						const message = err instanceof Error ? err.message : String(err);
+						ctx.ui.notify(`Compaction: resume nudge skipped (${message})`, "warning");
+					}
+				}, 0);
 			},
 			onError: (err) => {
 				compacting = false;
