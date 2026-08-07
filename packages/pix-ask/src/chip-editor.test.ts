@@ -170,16 +170,33 @@ describe("ChipEditor paste-image key routing", () => {
 	});
 
 	test("Ctrl+V with an empty clipboard falls through to the base editor", () => {
-		// No image on the clipboard (or no tool) → the key is not consumed as an
-		// image; the base editor handles it, leaving the buffer unchanged.
-		const ed = new ChipEditor(stubTui, stubTheme, appKb());
+		// Inject an empty-clipboard reader so the precondition is guaranteed, not
+		// dependent on the real system clipboard (which leaks across concurrent
+		// tests). No image → the key is not consumed; the base editor handles it,
+		// leaving the buffer unchanged.
+		const emptyClipboard = () => null;
+		const ed = new ChipEditor(stubTui, stubTheme, appKb(), emptyClipboard);
 		const before = ed.getText();
 		ed.handleInput("\x16");
 		expect(ed.getText()).toBe(before);
 	});
 
+	test("Ctrl+V with a clipboard image inserts the path as a paste chip", () => {
+		// Inject a reader that returns a path so the image-hit branch is exercised
+		// deterministically (the real clipboard can't be seeded from a unit test).
+		// The path is collapsed into a `[paste #N …]` marker (the chip behavior),
+		// so assert the buffer changed into a marker rather than the raw path.
+		const ed = new ChipEditor(stubTui, stubTheme, appKb(), () => "/tmp/pix-clip.png");
+		ed.handleInput("\x16");
+		// Exact marker: proves the path collapsed into a chip AND the cursor landed
+		// after it (the trailing-space branch of insertTextAtCursor).
+		expect(ed.getText()).toBe("[paste #1 17 chars] ");
+	});
+
 	test("without a keybindings manager, Ctrl+V is never treated as paste-image", () => {
-		const ed = new ChipEditor(stubTui, stubTheme);
+		// A stub reader that would inject if called proves the guard short-circuits
+		// before touching the clipboard when there is no keybindings manager.
+		const ed = new ChipEditor(stubTui, stubTheme, undefined, () => "/tmp/should-not-be-read.png");
 		const before = ed.getText();
 		ed.handleInput("\x16");
 		expect(ed.getText()).toBe(before);

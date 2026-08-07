@@ -184,10 +184,20 @@ function chip(color: string, glyph: string, label: string, meta: string): string
 export class ChipEditor extends Editor {
 	private readonly imageIds = new Set<number>();
 	private readonly keybindings?: KeybindingsManager;
+	// Injectable so tests can force a deterministic clipboard state (an empty
+	// clipboard, a known image) instead of depending on the real system
+	// clipboard, which leaks across concurrent tests. Defaults to the real reader.
+	private readonly readClipboardImage: () => string | null;
 
-	constructor(tui: TUI, theme: EditorTheme, keybindings?: KeybindingsManager) {
+	constructor(
+		tui: TUI,
+		theme: EditorTheme,
+		keybindings?: KeybindingsManager,
+		readClipboardImage: () => string | null = readClipboardImageToFile,
+	) {
 		super(tui, theme);
 		this.keybindings = keybindings;
+		this.readClipboardImage = readClipboardImage;
 		this.patchHandlePaste();
 		this.patchExpandPasteMarkers();
 		this.patchSubmitValue();
@@ -248,8 +258,11 @@ export class ChipEditor extends Editor {
 	 * base Editor handles the key as ordinary input / text paste.
 	 */
 	override handleInput(data: string): void {
+		// "app.clipboard.pasteImage" is type-checked via pi-coding-agent's
+		// declaration merge onto pi-tui's Keybindings interface. If pix-ask ever
+		// drops the pi-coding-agent dep, this key silently becomes a type error.
 		if (this.keybindings?.matches(data, "app.clipboard.pasteImage")) {
-			const filePath = readClipboardImageToFile();
+			const filePath = this.readClipboardImage();
 			if (filePath) {
 				this.insertTextAtCursor(filePath);
 				return;
