@@ -27,22 +27,22 @@
 			},
 			"correctness": {
 				"noUnusedImports": "error",
-				"noUnusedVariables": "warn",
-				"noUnusedPrivateClassMembers": "warn",
+				"noUnusedVariables": "error",
+				"noUnusedPrivateClassMembers": "error",
 				"noInvalidUseBeforeDeclaration": "error"
 			},
 			"complexity": {
 				"noExcessiveCognitiveComplexity": {
-					"level": "warn",
+					"level": "error",
 					"options": { "maxAllowedComplexity": 100 }
 				},
 				"noForEach": "off",
-				"noUselessTernary": "warn",
-				"noUselessConstructor": "warn"
+				"noUselessTernary": "error",
+				"noUselessConstructor": "error"
 			},
 			"style": {
 				"noNonNullAssertion": "off",
-				"useConst": "warn",
+				"useConst": "error",
 				"noParameterAssign": "off"
 			},
 			"performance": {

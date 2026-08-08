@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import type { ModelRegistry } from "../src/model-resolver.ts";
 import { listAvailable, resolveModel } from "../src/model-resolver.ts";
 
 const registry = {
@@ -11,7 +12,7 @@ const registry = {
 			name: "Claude Sonnet 4.6",
 		},
 	],
-};
+} as unknown as ModelRegistry;
 
 test("exact provider/id resolves", () => {
 	const m = resolveModel("anthropic/claude-haiku-4-5", registry);
@@ -43,7 +44,7 @@ const scoped = {
 		{ provider: "a", id: "available-only", name: "z" },
 	],
 	getAvailable: () => [{ provider: "a", id: "available-only", name: "z" }],
-};
+} as unknown as ModelRegistry;
 
 test("listAvailable scopes to getAvailable, not the full catalog", () => {
 	const lines = listAvailable(scoped);

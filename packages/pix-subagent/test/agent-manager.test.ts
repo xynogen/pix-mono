@@ -126,7 +126,7 @@ describe("AgentManager", () => {
 		});
 
 		expect(manager.getRecord(id)?.isBackground).toBeFalse();
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 
 		expect(manager.getRecord(id)?.status).toBe("completed");
@@ -150,7 +150,7 @@ describe("AgentManager", () => {
 		expect(manager.getRecord(id2)?.status).toBe("queued");
 
 		// Resolve the first agent — should trigger drainQueue → second starts
-		calls[0].resolve();
+		calls[0]!.resolve();
 		// Allow microtasks to flush
 		await new Promise((r) => setTimeout(r, 10));
 
@@ -158,7 +158,7 @@ describe("AgentManager", () => {
 		expect(manager.getRecord(id2)?.status).toBe("running");
 
 		// Clean up second agent
-		calls[1].resolve();
+		calls[1]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 	});
 
@@ -181,7 +181,7 @@ describe("AgentManager", () => {
 		expect(manager.getRecord(queuedId)?.status).toBe("stopped");
 
 		// Resolve the first and wait — the second should NOT start
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 		// Only 1 call to runAgent (the second was never started)
 		expect(calls.length).toBe(1);
@@ -199,11 +199,11 @@ describe("AgentManager", () => {
 
 		expect(manager.getRecord(id)?.status).toBe("running");
 		// The signal passed to the fake should not be aborted yet
-		expect(calls[0].signal?.aborted).toBe(false);
+		expect(calls[0]!.signal?.aborted).toBe(false);
 
 		manager.abort(id);
 		expect(manager.getRecord(id)?.status).toBe("stopped");
-		expect(calls[0].signal?.aborted).toBe(true);
+		expect(calls[0]!.signal?.aborted).toBe(true);
 	});
 
 	// 4. spawn cwd validation
@@ -262,7 +262,7 @@ describe("AgentManager", () => {
 		expect(agents.every((a) => a.status === "stopped")).toBe(true);
 
 		// Clean up — resolve the first's promise so the .catch handler runs
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 	});
 
@@ -281,7 +281,7 @@ describe("AgentManager", () => {
 		});
 
 		// Complete the first agent
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 		expect(manager.getRecord(idA)?.status).toBe("completed");
 		expect(manager.getRecord(idB)?.status).toBe("running");
@@ -292,7 +292,7 @@ describe("AgentManager", () => {
 		expect(manager.getRecord(idB)).toBeDefined();
 		expect(manager.getRecord(idB)?.status).toBe("running");
 
-		calls[1].resolve();
+		calls[1]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 	});
 
@@ -311,7 +311,7 @@ describe("AgentManager", () => {
 			isBackground: true,
 		});
 
-		calls[0].reject(new Error("kaboom"));
+		calls[0]!.reject(new Error("kaboom"));
 		await new Promise((r) => setTimeout(r, 10));
 
 		const record = manager.getRecord(id);
@@ -339,7 +339,7 @@ describe("AgentManager", () => {
 		});
 
 		// Complete the agent
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 
 		// Manually remove session to simulate no-session state
@@ -361,11 +361,11 @@ describe("AgentManager", () => {
 		});
 
 		// Complete the initial run so session is wired
-		runCalls[0].resolve("initial result");
+		runCalls[0]!.resolve("initial result");
 		await new Promise((r) => setTimeout(r, 10));
 
 		const resumed = manager.resume(id, "continue working");
-		resumeCalls[0].resolve("resumed output");
+		resumeCalls[0]!.resolve("resumed output");
 		const record = await resumed;
 
 		expect(record).toBeDefined();
@@ -383,11 +383,11 @@ describe("AgentManager", () => {
 			isBackground: true,
 		});
 
-		runCalls[0].resolve();
+		runCalls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 
 		const resumed = manager.resume(id, "continue");
-		resumeCalls[0].reject(new Error("resume failed"));
+		resumeCalls[0]!.reject(new Error("resume failed"));
 		const record = await resumed;
 
 		expect(record).toBeDefined();
@@ -433,7 +433,7 @@ describe("AgentManager", () => {
 			description: "test",
 			isBackground: true,
 		});
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 		expect(manager.hasRunning()).toBe(false);
 	});
@@ -455,8 +455,8 @@ describe("AgentManager", () => {
 
 		// Resolve both after a tick
 		setTimeout(() => {
-			calls[0].resolve();
-			calls[1].resolve();
+			calls[0]!.resolve();
+			calls[1]!.resolve();
 		}, 5);
 
 		await manager.waitForAll();
@@ -480,7 +480,7 @@ describe("AgentManager", () => {
 		});
 
 		// Resolve agents as they start
-		setTimeout(() => calls[0].resolve(), 5);
+		setTimeout(() => calls[0]!.resolve(), 5);
 		setTimeout(() => calls[1]?.resolve(), 20);
 
 		await manager.waitForAll();
@@ -511,7 +511,7 @@ describe("AgentManager", () => {
 		expect(ids).toContain(id2);
 		// Sorted by startedAt descending — both may have same timestamp,
 		// but the invariant is that newer agents come first or equal.
-		expect(list[0].startedAt).toBeGreaterThanOrEqual(list[1].startedAt);
+		expect(list[0]!.startedAt).toBeGreaterThanOrEqual(list[1]!.startedAt);
 	});
 
 	// ── getRecord ──────────────────────────────────────────────────────────
@@ -560,12 +560,12 @@ describe("AgentManager", () => {
 		expect(started).toEqual([id1]);
 
 		// Drain: resolve first → second starts
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 
 		expect(started).toEqual([id1, id2]);
 
-		calls[1].resolve();
+		calls[1]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 	});
 
@@ -630,8 +630,8 @@ describe("AgentManager", () => {
 		expect(manager.getRecord(id2)?.status).toBe("running");
 
 		// Clean up
-		calls[0].resolve();
-		calls[1].resolve();
+		calls[0]!.resolve();
+		calls[1]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 	});
 
@@ -732,7 +732,7 @@ describe("AgentManager", () => {
 			isBackground: true,
 		});
 
-		calls[0].resolve();
+		calls[0]!.resolve();
 		await new Promise((r) => setTimeout(r, 10));
 
 		expect(manager.abort(id)).toBe(false);
@@ -783,7 +783,7 @@ describe("AgentManager", () => {
 		});
 
 		const before = Date.now();
-		calls[0].resolve("the answer");
+		calls[0]!.resolve("the answer");
 		await new Promise((r) => setTimeout(r, 10));
 		const after = Date.now();
 
