@@ -418,7 +418,7 @@ describe("mcp-auth-flow explicit auth", () => {
 			expect.objectContaining({
 				strictPort: true,
 				port: 3118,
-				callbackHost: "localhost",
+				callbackHost: "127.0.0.1",
 				callbackPath: "/callback",
 				reserveState: true,
 				oauthState: expect.any(String),
