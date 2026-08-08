@@ -104,7 +104,7 @@ export function extractOAuthConfig(definition: ServerEntry): McpOAuthConfig {
 	return config;
 }
 
-function parseOAuthRedirectUri(redirectUri: string): {
+export function parseOAuthRedirectUri(redirectUri: string): {
 	port: number;
 	callbackHost: string;
 	callbackPath: string;
@@ -143,7 +143,9 @@ function parseOAuthRedirectUri(redirectUri: string): {
 		throw new Error("OAuth redirectUri must include an explicit numeric port");
 	}
 
-	const callbackHost = hostname === "[::1]" ? "::1" : hostname;
+	// "localhost" is ambiguous at bind time (Node picks one family); bind 127.0.0.1.
+	// Browsers hitting http://localhost fall back to IPv4 when ::1 is refused.
+	const callbackHost = hostname === "[::1]" || hostname === "::1" ? "::1" : "127.0.0.1";
 	return { port, callbackHost, callbackPath: url.pathname };
 }
 
@@ -155,7 +157,8 @@ export async function startAuth(
 	serverName: string,
 	serverUrl: string,
 	definition?: ServerEntry,
-): Promise<{ authorizationUrl: string }> {
+	options: { waitForBrowserCallback?: boolean } = {},
+): Promise<{ authorizationUrl: string; callbackCompletion?: Promise<AuthStatus> }> {
 	const config = definition ? extractOAuthConfig(definition) : {};
 
 	if (config.grantType === "client_credentials") {
@@ -243,7 +246,18 @@ export async function startAuth(
 			authProvider,
 		});
 		await setPendingTransport(serverName, pendingTransport, oauthState);
-		return { authorizationUrl: capturedUrl.toString() };
+		const callbackCompletion = options.waitForBrowserCallback
+			? waitForCallback(oauthState).then(async (code) => {
+					const storedState = await getOAuthState(serverName);
+					if (storedState !== oauthState) {
+						await clearOAuthState(serverName);
+						throw new Error("OAuth state mismatch - potential CSRF attack");
+					}
+					await clearOAuthState(serverName);
+					return completeAuth(serverName, code);
+				})
+			: undefined;
+		return { authorizationUrl: capturedUrl.toString(), callbackCompletion };
 	} catch (error) {
 		await clearPendingAuth(serverName, oauthState);
 		throw error;

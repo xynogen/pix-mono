@@ -103,14 +103,16 @@ describe("mcp-callback-server", () => {
 		mocks.setOAuthCallbackPort.mockClear();
 	});
 
-	it("binds localhost on an OS-assigned port and unrefs after a successful non-strict bind", async () => {
+	it("binds the IPv4 loopback literal on an OS-assigned port and unrefs after a successful non-strict bind", async () => {
 		const { ensureCallbackServer } = await import("../src/mcp-callback-server.ts");
 
 		await ensureCallbackServer();
 
+		// Must be "127.0.0.1", not "localhost": Node may resolve "localhost" to ::1
+		// only, refusing auth-server redirects to http://127.0.0.1:...
 		expect(mocks.runtime.servers[0]?.listen).toHaveBeenCalledWith(
 			0,
-			"localhost",
+			"127.0.0.1",
 			expect.any(Function),
 		);
 		expect(mocks.runtime.servers[0]?.unref).toHaveBeenCalledTimes(1);
@@ -124,12 +126,12 @@ describe("mcp-callback-server", () => {
 
 		expect(mocks.runtime.servers[0]?.listen).toHaveBeenCalledWith(
 			4337,
-			"localhost",
+			"127.0.0.1",
 			expect.any(Function),
 		);
 		expect(mocks.runtime.servers[0]?.listen).not.toHaveBeenCalledWith(
 			0,
-			"localhost",
+			"127.0.0.1",
 			expect.any(Function),
 		);
 		expect(mocks.state.activePort).toBe(4337);
@@ -203,7 +205,7 @@ describe("mcp-callback-server", () => {
 		expect(mocks.runtime.servers[0]?.close).toHaveBeenCalledTimes(1);
 		expect(mocks.runtime.servers[1]?.listen).toHaveBeenCalledWith(
 			4337,
-			"localhost",
+			"127.0.0.1",
 			expect.any(Function),
 		);
 		expect(mocks.state.activePort).toBe(4337);
@@ -277,7 +279,7 @@ describe("mcp-callback-server", () => {
 			reserveState: true,
 		});
 
-		await expect(ensureCallbackServer({ callbackHost: "127.0.0.1" })).rejects.toThrow(
+		await expect(ensureCallbackServer({ callbackHost: "::1" })).rejects.toThrow(
 			/cannot be switched while authorizations are pending/,
 		);
 		await expect(ensureCallbackServer({ callbackPath: "/second/callback" })).rejects.toThrow(

@@ -969,8 +969,8 @@ class McpPanel {
 	private renderConnectionStatus(server: ServerState): string {
 		const t = this.t;
 		const separator = fg(t.description, " · ");
-		if (this.authInFlight === server.name)
-			return `${separator}${fg(t.needsAuth, "authenticating")}`;
+		// Auth progress is shown once in the bottom notice; keep the row clean.
+		if (this.authInFlight === server.name) return "";
 		if (server.connectionStatus === "needs-auth") return `${separator}${fg(t.hint, "needs auth")}`;
 		if (server.connectionStatus === "connecting")
 			return `${separator}${fg(t.needsAuth, "connecting")}`;

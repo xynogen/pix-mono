@@ -710,8 +710,12 @@ export interface AddServerInput {
 	bearerToken?: string;
 	bearerTokenEnv?: string;
 }
-export function resolveAddTargetPath(scope: AddServerScope, cwd = process.cwd()): string {
-	return scope === "global" ? getGenericGlobalConfigPath() : getProjectConfigPath(cwd);
+export function resolveAddTargetPath(
+	scope: AddServerScope,
+	cwd = process.cwd(),
+	overridePath?: string,
+): string {
+	return scope === "global" ? getPiGlobalConfigPath(overridePath) : getProjectConfigPath(cwd);
 }
 export function buildAddServerEntry(input: AddServerInput): ServerEntry {
 	if (input.type === "npx") {

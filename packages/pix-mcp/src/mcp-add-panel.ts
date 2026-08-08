@@ -208,6 +208,8 @@ export class McpAddPanel {
 	private preview: ConfigWritePreview | null = null;
 	private connectStatus: string | null = null;
 	private busy = false;
+	private pasteBuffer = "";
+	private isPasting = false;
 	private tui: { requestRender(): void; terminal?: { rows?: number } };
 	private popupTheme: McpAddPopupTheme;
 	private t: AddTheme;
@@ -227,7 +229,6 @@ export class McpAddPanel {
 		this.popupTheme = theme;
 		this.t = createTheme(theme);
 		this.keys = createPanelKeys(keybindings);
-		// ponytail: simple line editor, known ceiling: no multiline/paste handling beyond single chars; upgrade to full editor if needed.
 		for (const f of this.fieldDefs) this.fieldValues[f.key] = "";
 		this.resetInactivityTimeout();
 	}
@@ -308,9 +309,42 @@ export class McpAddPanel {
 		return { name, entry };
 	}
 
+	private appendToCurrentField(text: string): void {
+		const key = this.fieldDefs[this.fieldCursor]?.key;
+		if (!key) return;
+		const clean = text.replace(/\r\n|[\r\n]/g, "").replace(/\t/g, "    ");
+		this.fieldValues[key] = (this.fieldValues[key] ?? "") + clean;
+		this.error = null;
+		this.tui.requestRender();
+	}
+
+	private handlePasteInput(data: string): boolean {
+		if (this.step !== "form") return false;
+		if (!this.isPasting && !data.includes("\x1b[200~")) {
+			if (data.length <= 1 || data.includes("\x1b")) return false;
+			this.appendToCurrentField(data);
+			return true;
+		}
+		if (!this.isPasting) {
+			this.isPasting = true;
+			this.pasteBuffer = "";
+			data = data.replace("\x1b[200~", "");
+		}
+		this.pasteBuffer += data;
+		const end = this.pasteBuffer.indexOf("\x1b[201~");
+		if (end === -1) return true;
+		this.appendToCurrentField(this.pasteBuffer.slice(0, end));
+		const remaining = this.pasteBuffer.slice(end + 6);
+		this.pasteBuffer = "";
+		this.isPasting = false;
+		if (remaining) this.handleInput(remaining);
+		return true;
+	}
+
 	handleInput(data: string): void {
 		this.resetInactivityTimeout();
 		if (this.busy && this.step !== "connecting") return;
+		if (this.handlePasteInput(data)) return;
 
 		if (matchesKey(data, "ctrl+c")) {
 			this.cleanup();

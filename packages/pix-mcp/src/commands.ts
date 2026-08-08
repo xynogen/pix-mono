@@ -407,7 +407,8 @@ async function openMcpAddOverlay(
 					{
 						cwd: ctx.cwd,
 						callbacks: {
-							resolveTargetPath: (scope) => resolveAddTargetPath(scope, ctx.cwd),
+							resolveTargetPath: (scope) =>
+								resolveAddTargetPath(scope, ctx.cwd, configOverridePath),
 							previewEntry: previewAddServerEntry,
 							writeEntry: writeAddServerEntry,
 							isNameTaken: (name) => isServerNameTaken(name, configOverridePath, ctx.cwd),

@@ -1,9 +1,20 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 const mocks = {
-	completeAuthFromInput: mock(() => {}),
-	startAuth: mock(() => {}),
-	supportsOAuth: mock(() => {}),
+	completeAuthFromInput: mock(
+		async (_server: string, _input: string): Promise<string> => "authenticated",
+	),
+	startAuth: mock(
+		async (
+			_server: string,
+			_url: string,
+			_definition: unknown,
+			_options?: { waitForBrowserCallback?: boolean },
+		): Promise<{ authorizationUrl: string; callbackCompletion?: Promise<string> }> => ({
+			authorizationUrl: "",
+		}),
+	),
+	supportsOAuth: mock((definition: { auth?: string }): boolean => definition.auth === "oauth"),
 	lazyConnect: mock(() => {}),
 	updateServerMetadata: mock(() => {}),
 	updateMetadataCache: mock(() => {}),
@@ -26,6 +37,10 @@ mock.module("../src/init.ts", () => ({
 	updateStatusBar: mocks.updateStatusBar,
 }));
 
+function firstText(result: { content: Array<{ type: string; text?: string }> }): string {
+	return result.content[0]?.text ?? "";
+}
+
 function createState(overrides: Record<string, unknown> = {}) {
 	return {
 		config: {
@@ -36,6 +51,7 @@ function createState(overrides: Record<string, unknown> = {}) {
 			},
 		},
 		manager: { close: mock(async () => {}) },
+		ui: { notify: mock(() => {}) },
 		toolMetadata: new Map(),
 		failureTracker: new Map([["demo", Date.now()]]),
 		...overrides,
@@ -49,7 +65,9 @@ describe("manual OAuth proxy actions", () => {
 			authorizationUrl:
 				"https://auth.example.com/authorize?redirect_uri=http%3A%2F%2Flocalhost%3A19876%2Fcallback",
 		});
-		mocks.supportsOAuth.mockReset().mockImplementation((definition) => definition.auth === "oauth");
+		mocks.supportsOAuth
+			.mockReset()
+			.mockImplementation((definition: { auth?: string }) => definition.auth === "oauth");
 		mocks.updateStatusBar.mockReset();
 	});
 
@@ -63,11 +81,34 @@ describe("manual OAuth proxy actions", () => {
 			"demo",
 			"https://api.example.com/mcp",
 			state.config.mcpServers.demo,
+			{ waitForBrowserCallback: true },
 		);
-		expect(result.content[0].text).toContain("Open this URL in your local browser");
-		expect(result.content[0].text).toContain("https://auth.example.com/authorize");
-		expect(result.content[0].text).toContain("auth-complete");
+		expect(firstText(result)).toContain("Open this URL in your local browser");
+		expect(firstText(result)).toContain("https://auth.example.com/authorize");
+		expect(firstText(result)).toContain("auth-complete");
 		expect(result.details).toMatchObject({ mode: "auth-start", server: "demo" });
+	});
+
+	it("finishes auth when browser reaches localhost callback", async () => {
+		let completeCallback: (status: string) => void = () => {};
+		const callbackCompletion = new Promise<string>((resolve) => {
+			completeCallback = resolve;
+		});
+		mocks.startAuth.mockResolvedValueOnce({
+			authorizationUrl: "https://auth.example.com/authorize",
+			callbackCompletion,
+		});
+		const { executeAuthStart } = await import("../src/proxy-modes.ts");
+		const state = createState();
+
+		await executeAuthStart(state, "demo");
+		completeCallback("authenticated");
+		await callbackCompletion;
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(state.manager.close).toHaveBeenCalledWith("demo");
+		expect(state.failureTracker.has("demo")).toBe(false);
+		expect(mocks.updateStatusBar).toHaveBeenCalledWith(state);
 	});
 
 	it("rejects auth-start for non-OAuth servers", async () => {
@@ -76,7 +117,7 @@ describe("manual OAuth proxy actions", () => {
 		const result = await executeAuthStart(createState(), "bearer");
 
 		expect(mocks.startAuth).not.toHaveBeenCalled();
-		expect(result.content[0].text).toContain("not configured for OAuth");
+		expect(firstText(result)).toContain("not configured for OAuth");
 		expect(result.details).toMatchObject({ error: "oauth_not_supported" });
 	});
 
@@ -97,6 +138,6 @@ describe("manual OAuth proxy actions", () => {
 		expect(state.manager.close).toHaveBeenCalledWith("demo");
 		expect(state.failureTracker.has("demo")).toBe(false);
 		expect(mocks.updateStatusBar).toHaveBeenCalledWith(state);
-		expect(result.content[0].text).toContain("OAuth authentication successful");
+		expect(firstText(result)).toContain("OAuth authentication successful");
 	});
 });

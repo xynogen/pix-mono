@@ -307,7 +307,12 @@ export async function executeAuthStart(
 	}
 
 	try {
-		const { authorizationUrl } = await startAuth(serverName, definition.url, definition);
+		const { authorizationUrl, callbackCompletion } = await startAuth(
+			serverName,
+			definition.url,
+			definition,
+			{ waitForBrowserCallback: true },
+		);
 		if (!authorizationUrl) {
 			return {
 				content: [
@@ -316,6 +321,17 @@ export async function executeAuthStart(
 				details: { mode: "auth-start", server: serverName, authenticated: true },
 			};
 		}
+
+		void callbackCompletion
+			?.then(async () => {
+				await state.manager.close(serverName);
+				state.failureTracker.delete(serverName);
+				updateStatusBar(state);
+			})
+			.catch((error) => {
+				const message = error instanceof Error ? error.message : String(error);
+				state.ui?.notify(`OAuth callback failed for "${serverName}": ${message}`, "error");
+			});
 
 		return {
 			content: [

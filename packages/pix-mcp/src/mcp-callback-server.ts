@@ -91,7 +91,10 @@ interface EnsureCallbackServerOptions {
 	reserveState?: boolean;
 }
 
-const DEFAULT_OAUTH_CALLBACK_HOST = "localhost";
+// Bind the IPv4 loopback literal, not "localhost": Node resolves "localhost" to a
+// single family (often ::1), leaving 127.0.0.1 unbound — auth servers that redirect
+// to http://127.0.0.1:... then get connection refused (RFC 8252 §7.3).
+const DEFAULT_OAUTH_CALLBACK_HOST = "127.0.0.1";
 let callbackServerHost = DEFAULT_OAUTH_CALLBACK_HOST;
 
 /**

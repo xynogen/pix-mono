@@ -37,13 +37,14 @@ describe("Pi agent dir paths", () => {
 		delete process.env.MCP_OAUTH_DIR;
 
 		const { getAgentDir } = await import("../src/agent-dir.ts");
-		const { getPiGlobalConfigPath } = await import("../src/config.ts");
+		const { getPiGlobalConfigPath, resolveAddTargetPath } = await import("../src/config.ts");
 		const { getMetadataCachePath } = await import("../src/metadata-cache.ts");
 		const { getOnboardingStatePath } = await import("../src/onboarding-state.ts");
 		const { getAuthEntryFilePath, saveAuthEntry } = await import("../src/mcp-auth.ts");
 
 		expect(getAgentDir()).toBe(agentDir);
 		expect(getPiGlobalConfigPath()).toBe(join(agentDir, "mcp.json"));
+		expect(resolveAddTargetPath("global")).toBe(join(agentDir, "mcp.json"));
 		expect(getMetadataCachePath()).toBe(join(agentDir, "mcp-cache.json"));
 		expect(getOnboardingStatePath()).toBe(join(agentDir, "mcp-onboarding.json"));
 
