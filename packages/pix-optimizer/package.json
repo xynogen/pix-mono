@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-optimizer",
-	"version": "1.1.22",
+	"version": "1.1.24",
 	"description": "Performance optimization suite for Pi Coding Agent - caveman mode + RTK tool rewriting + ponytail lazy-dev mode",
 	"type": "module",
 	"main": "src/index.ts",
@@ -43,7 +43,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.7.22"
+		"@xynogen/pix-pretty": "^1.11.2"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

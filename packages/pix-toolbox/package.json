@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-toolbox",
-	"version": "0.1.10",
+	"version": "0.1.11",
 	"description": "Pi tool — gated tool toggle UI (/toolbox)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -34,7 +34,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.7.9"
+		"@xynogen/pix-pretty": "^1.11.2"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
