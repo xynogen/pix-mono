@@ -187,7 +187,7 @@ interface ServerState {
 }
 
 interface VisibleItem {
-	type: "server" | "tool";
+	type: "server" | "tool" | "add";
 	serverIndex: number;
 	toolIndex?: number;
 }
@@ -213,6 +213,11 @@ class McpPanel {
 	private t: PanelTheme;
 	private keys: PanelKeys;
 	private pager = new ModalPager();
+	private addChild: {
+		handleInput(data: string): void;
+		render(width: number): string[];
+		dispose(): void;
+	} | null = null;
 
 	private static readonly INACTIVITY_MS = 60_000;
 
@@ -318,6 +323,10 @@ class McpPanel {
 			clearTimeout(this.inactivityTimeout);
 			this.inactivityTimeout = null;
 		}
+		if (this.addChild) {
+			this.addChild.dispose();
+			this.addChild = null;
+		}
 	}
 
 	private rebuildVisibleItems(): void {
@@ -325,6 +334,9 @@ class McpPanel {
 		const mode = this.descSearchActive ? "desc" : "name";
 
 		this.visibleItems = [];
+		if (!query || fuzzyScore(query, "add server") > 0 || fuzzyScore(query, "+ add") > 0) {
+			this.visibleItems.push({ type: "add", serverIndex: -1 });
+		}
 		for (let si = 0; si < this.servers.length; si++) {
 			const server = this.servers[si];
 			const serverMatches = mode === "name" && fuzzyScore(query, server.name) > 0;
@@ -376,7 +388,20 @@ class McpPanel {
 		return { changes, cancelled: false };
 	}
 
+	private requestAdd(): void {
+		this.cleanup();
+		this.done({
+			cancelled: false,
+			changes: new Map<string, true | string[] | false>(),
+			wantsAdd: true,
+		});
+	}
+
 	handleInput(data: string): void {
+		if (this.addChild) {
+			this.addChild.handleInput(data);
+			return;
+		}
 		this.resetInactivityTimeout();
 		this.importNotice = null;
 		if (!this.authInFlight) this.authNotice = null;
@@ -491,6 +516,10 @@ class McpPanel {
 		if (this.keys.selectConfirm(data)) {
 			const item = this.visibleItems[this.cursorIndex];
 			if (!item) return;
+			if (item.type === "add") {
+				this.requestAdd();
+				return;
+			}
 			const server = this.servers[item.serverIndex];
 			if (item.type === "server") {
 				if (server.connectionStatus === "needs-auth") {
@@ -519,8 +548,9 @@ class McpPanel {
 
 		if (matchesKey(data, "ctrl+r")) {
 			const item = this.visibleItems[this.cursorIndex];
-			if (!item) return;
+			if (!item || item.type === "add") return;
 			const server = this.servers[item.serverIndex];
+			if (!server) return;
 			if (server.connectionStatus === "connecting") return;
 			server.connectionStatus = "connecting";
 			this.callbacks
@@ -577,7 +607,10 @@ class McpPanel {
 	}
 
 	private authenticateSelectedServer(item: VisibleItem): void {
-		this.authenticateServer(this.servers[item.serverIndex]);
+		if (item.type === "add") return;
+		const server = this.servers[item.serverIndex];
+		if (!server) return;
+		this.authenticateServer(server);
 	}
 
 	private authenticateServer(server: ServerState): void {
@@ -769,6 +802,12 @@ class McpPanel {
 			body.push(emptyRow());
 			body.push(row(fg(t.hint, italic("No MCP servers configured."))));
 			body.push(emptyRow());
+			// Still show Add row when no servers
+			{
+				const isCursor = this.cursorIndex === 0 && this.visibleItems[0]?.type === "add";
+				body.push(row(this.renderAddRow(isCursor)));
+				body.push(emptyRow());
+			}
 		} else {
 			const total = this.visibleItems.length;
 
@@ -777,6 +816,10 @@ class McpPanel {
 			for (let i = 0; i < total; i++) {
 				const item = this.visibleItems[i];
 				const isCursor = i === this.cursorIndex;
+				if (item.type === "add") {
+					body.push(row(this.renderAddRow(isCursor)));
+					continue;
+				}
 				const server = this.servers[item.serverIndex];
 
 				if (item.type === "server") {
@@ -830,7 +873,7 @@ class McpPanel {
 		const hints = [
 			guide("↑↓", "navigate"),
 			guide("space", "toggle"),
-			guide("⏎", "expand/auth"),
+			guide("⏎", "expand/add"),
 			guide("ctrl+a", "auth"),
 			guide("ctrl+r", "reconnect"),
 			guide("?", "desc search"),
@@ -933,6 +976,14 @@ class McpPanel {
 			return `${separator}${fg(t.needsAuth, "connecting")}`;
 		if (server.connectionStatus === "failed") return `${separator}${fg(t.cancel, "failed")}`;
 		return "";
+	}
+
+	private renderAddRow(isCursor: boolean): string {
+		const t = this.t;
+		const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
+		const marker = isCursor ? fg(t.selected, "▶") : " ";
+		const label = isCursor ? bold(fg(t.selected, "+ Add server")) : fg(t.hint, "+ Add server");
+		return `${marker} ${label}`;
 	}
 
 	private renderToolRow(tool: ToolState, isCursor: boolean): string {

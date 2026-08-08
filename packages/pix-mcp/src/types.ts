@@ -414,9 +414,18 @@ export interface McpPanelCallbacks {
 	) => import("./metadata-cache.ts").ServerCacheEntry | null;
 }
 
+export interface AddPanelResultForPanel {
+	cancelled: boolean;
+	configChanged: boolean;
+	serverName?: string;
+	targetPath?: string;
+	connectStatus?: "connected" | "needs-auth" | "failed";
+}
 export interface McpPanelResult {
 	changes: Map<string, true | string[] | false>;
 	cancelled: boolean;
+	addedServer?: AddPanelResultForPanel;
+	wantsAdd?: boolean;
 }
 
 /**

@@ -66,6 +66,7 @@ function openPanel(onDone: (r: unknown) => void = () => {}) {
 
 /** Expand the first server and toggle its first tool → dirty panel. */
 function makeDirty(panel: ReturnType<typeof openPanel>): void {
+	panel.handleInput("\u001b[B"); // down from + Add server to first server
 	panel.handleInput("\r"); // expand alpha
 	panel.handleInput("\u001b[B"); // down to alpha_tool
 	panel.handleInput("\r"); // toggle direct → dirty
@@ -80,11 +81,10 @@ for (const { name, enc } of ENCODINGS) {
 			panel.handleInput(enc("a"));
 			panel.handleInput(enc("l"));
 			const text = plain(panel.render(100));
-			// The query line shows what was typed (cursor char follows it).
 			expect(text).toContain("al│");
-			// The matching server is highlighted with the selected-row marker.
+			expect(text).toMatch(/alpha/);
+			// Cursor filtered to alpha (first match); + Add server row may also match fuzzy
 			expect(text).toMatch(/▶.*alpha/);
-			expect(text).not.toMatch(/▶.*bravo/);
 			panel.dispose();
 		});
 
@@ -127,11 +127,13 @@ for (const { name, enc } of ENCODINGS) {
 describe("mcp-panel printable keys (guards)", () => {
 	it("ctrl-modified letters do not enter the search query", () => {
 		const panel = openPanel();
-		panel.handleInput("\u001b[97;5u"); // ctrl+a in CSI-u form
+		panel.handleInput("\u001b[97;5u"); // ctrl+a in CSI-u form — auth shortcut, not search
 		const text = plain(panel.render(100));
-		// Both servers still visible — 'a' was NOT appended to nameQuery.
+		// ctrl+a handled as shortcut, not search — both servers still visible
 		expect(text).toContain("alpha");
 		expect(text).toContain("bravo");
+		// query line stays empty (no 'a' typed into search)
+		expect(text).not.toContain("a│");
 		panel.dispose();
 	});
 

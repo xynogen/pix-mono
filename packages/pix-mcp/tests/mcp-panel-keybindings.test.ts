@@ -115,12 +115,14 @@ describe("mcp-panel custom keybindings", () => {
 			{ keybindings: createEmacsKeybindings() },
 		);
 
-		panel.handleInput(CTRL_N);
+		// Start on "+ Add server" row; one ctrl+n → alpha, two → beta.
+		panel.handleInput(CTRL_N); // → alpha
+		panel.handleInput(CTRL_N); // → beta
 		panel.handleInput(ENTER);
 		await Promise.resolve();
 		expect(callbacks.authenticate).toHaveBeenLastCalledWith("beta");
 
-		panel.handleInput(CTRL_P);
+		panel.handleInput(CTRL_P); // → alpha
 		panel.handleInput(ENTER);
 		await Promise.resolve();
 		expect(callbacks.authenticate).toHaveBeenLastCalledWith("alpha");
@@ -139,7 +141,8 @@ describe("mcp-panel custom keybindings", () => {
 			{ keybindings: createEmacsKeybindings() },
 		);
 
-		panel.handleInput(DOWN);
+		panel.handleInput(DOWN); // → alpha
+		panel.handleInput(DOWN); // → beta
 		panel.handleInput(ENTER);
 		await Promise.resolve();
 		expect(callbacks.authenticate).toHaveBeenLastCalledWith("beta");
@@ -158,10 +161,11 @@ describe("mcp-panel custom keybindings", () => {
 			{},
 		);
 
+		// Fallback: ctrl+n not bound → stays on Add row (requests add, not auth).
 		panel.handleInput(CTRL_N);
+		panel.handleInput(DOWN); // → alpha
 		panel.handleInput(ENTER);
 		await Promise.resolve();
-		// Cursor did not move: still authenticates the first server.
 		expect(callbacks.authenticate).toHaveBeenLastCalledWith("alpha");
 		panel.dispose();
 	});

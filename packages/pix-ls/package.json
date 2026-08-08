@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-ls",
-	"version": "0.1.20",
+	"version": "0.1.21",
 	"description": "Pi tool — directory listing with tree view",
 	"type": "module",
 	"main": "src/index.ts",
@@ -36,7 +36,7 @@
 	"dependencies": {
 		"@xynogen/pix-data": "^0.4.0",
 		"@xynogen/pix-pretty": "^1.7.22",
-		"@xynogen/pix-runtime": "^0.4.0"
+		"@xynogen/pix-runtime": "^0.5.2"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

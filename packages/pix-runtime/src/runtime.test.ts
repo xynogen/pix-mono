@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { migrate } from "./migrations.ts";
-import type { StorageAdapter } from "./persistence.ts";
+import { FileStorage, type StorageAdapter } from "./persistence.ts";
+import { SectionRegistry } from "./registry.ts";
 import { createRuntime } from "./runtime.ts";
 import { stripDefaults } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
@@ -192,6 +193,28 @@ describe("persistence", () => {
 		expect((doc.collapse as { delaySec: number }).delaySec).toBe(30);
 		expect((doc.optimizer as { caveman: string }).caveman).toBe("lite");
 	});
+
+	it("updating one field in a section never mutates its siblings", async () => {
+		const { runtime } = fresh();
+		await runtime.update(compactionSection, { triggerPercent: 20, minimumTokens: 150_000 });
+		// Change only the percent — the token floor must survive untouched.
+		await runtime.update(compactionSection, { triggerPercent: 50 });
+		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 50, minimumTokens: 150_000 });
+		// Change only the floor — the percent must survive untouched.
+		await runtime.update(compactionSection, { minimumTokens: 300_000 });
+		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 50, minimumTokens: 300_000 });
+	});
+
+	it("a NaN patch on one field heals it without corrupting siblings", async () => {
+		const { runtime } = fresh();
+		await runtime.update(compactionSection, { triggerPercent: 50, minimumTokens: 300_000 });
+		// A bad write (e.g. Number("") from a stale picker) must re-validate to the
+		// default, and must NOT blank the sibling into NaN.
+		await runtime.update(compactionSection, { triggerPercent: Number.NaN });
+		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 60, minimumTokens: 300_000 });
+		await runtime.update(compactionSection, { minimumTokens: Number.NaN });
+		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 60, minimumTokens: 100_000 });
+	});
 });
 
 describe("migration", () => {
@@ -321,5 +344,24 @@ describe("events and lifecycle", () => {
 		await runtime.update(prettySection, { icons: "ascii" });
 		await runtime.reset(prettySection);
 		expect(runtime.get(prettySection).icons).toBe("nerd");
+	});
+
+	it("functional update survives a registry missing the section (version skew)", async () => {
+		// Regression: a stale npm copy of the runtime (older registry without the
+		// compaction section) claimed the process singleton; a functional updater
+		// from a newer /pix command then received `undefined` and crashed pi.
+		const { agentDir } = fresh();
+		const skewed = createRuntime({
+			agentDir,
+			storage: new FileStorage(agentDir),
+			registry: new SectionRegistry([prettySection, ioSection]),
+		});
+		const change = await skewed.update(compactionSection, (cur) => ({
+			...cur,
+			triggerPercent: cur.triggerPercent + 5,
+		}));
+		// The skewed registry can't diff/persist an unknown section — no change,
+		// but crucially no crash.
+		expect(change).toBeUndefined();
 	});
 });

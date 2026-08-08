@@ -4,9 +4,13 @@ import {
 	ensureCompatibilityImports,
 	getMcpDiscoverySummary,
 	getServerProvenance,
+	isServerNameTaken,
+	previewAddServerEntry,
 	previewCompatibilityImports,
 	previewSharedServerEntry,
 	previewStarterProjectConfig,
+	resolveAddTargetPath,
+	writeAddServerEntry,
 	writeDirectToolsConfig,
 	writeSharedServerEntry,
 	writeStarterProjectConfig,
@@ -390,6 +394,46 @@ function buildMcpPanelCallbacks(
 	};
 }
 
+async function openMcpAddOverlay(
+	state: McpExtensionState,
+	ctx: ExtensionContext,
+	configOverridePath: string | undefined,
+): Promise<import("./mcp-add-panel.ts").AddPanelResult> {
+	const { createMcpAddPanel } = await import("./mcp-add-panel.ts");
+	return new Promise<import("./mcp-add-panel.ts").AddPanelResult>((resolve) => {
+		ctx.ui.custom(
+			(tui, theme, keybindings, done) => {
+				return createMcpAddPanel(
+					{
+						cwd: ctx.cwd,
+						callbacks: {
+							resolveTargetPath: (scope) => resolveAddTargetPath(scope, ctx.cwd),
+							previewEntry: previewAddServerEntry,
+							writeEntry: writeAddServerEntry,
+							isNameTaken: (name) => isServerNameTaken(name, configOverridePath, ctx.cwd),
+							testConnect: async (serverName) => {
+								const ok = await lazyConnect(state, serverName);
+								if (ok) return "connected";
+								const conn = state.manager.getConnection(serverName);
+								if (conn?.status === "needs-auth") return "needs-auth";
+								return "failed";
+							},
+						},
+					},
+					tui,
+					(result) => {
+						done(undefined);
+						resolve(result);
+					},
+					theme,
+					keybindings,
+				);
+			},
+			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+		);
+	});
+}
+
 export async function openMcpPanel(
 	state: McpExtensionState,
 	pi: ExtensionAPI,
@@ -410,6 +454,8 @@ export async function openMcpPanel(
 
 	const { createMcpPanel } = await import("./mcp-panel.ts");
 	let configChanged = false;
+	let wantsAdd = false;
+	let addedServer: import("./mcp-add-panel.ts").AddPanelResult | undefined;
 
 	await new Promise<void>((resolve) => {
 		ctx.ui.custom(
@@ -421,6 +467,12 @@ export async function openMcpPanel(
 					callbacks,
 					tui,
 					(result: McpPanelResult) => {
+						if (result.wantsAdd) {
+							wantsAdd = true;
+							done(undefined);
+							resolve();
+							return;
+						}
 						if (!result.cancelled && result.changes.size > 0) {
 							writeDirectToolsConfig(result.changes, provenanceMap, config);
 							configChanged = true;
@@ -428,6 +480,10 @@ export async function openMcpPanel(
 								"Direct tools updated. Pi will reload after this panel closes.",
 								"info",
 							);
+						}
+						if (result.addedServer) {
+							addedServer = result.addedServer;
+							configChanged = true;
 						}
 						done(undefined);
 						resolve();
@@ -439,9 +495,41 @@ export async function openMcpPanel(
 		);
 	});
 
+	if (wantsAdd) {
+		const addResult = await openMcpAddOverlay(state, ctx, configOverridePath);
+		if (!addResult.cancelled && addResult.configChanged) {
+			const label =
+				addResult.connectStatus === "connected"
+					? "connected"
+					: addResult.connectStatus === "needs-auth"
+						? "needs auth"
+						: (addResult.connectStatus ?? "failed");
+			ctx.ui.notify(
+				`Added ${addResult.serverName} to ${addResult.targetPath} — ${label}. Pi will reload.`,
+				"info",
+			);
+			return { configChanged: true };
+		}
+		// cancelled add → return to panel
+		return openMcpPanel(state, pi, ctx, configOverridePath);
+	}
+
+	if (addedServer) {
+		const label =
+			addedServer.connectStatus === "connected"
+				? "connected"
+				: addedServer.connectStatus === "needs-auth"
+					? "needs auth"
+					: (addedServer.connectStatus ?? "failed");
+		ctx.ui.notify(
+			`Added ${addedServer.serverName} to ${addedServer.targetPath} — ${label}.`,
+			"info",
+		);
+	}
+
 	if (noticeLines.length > 0 && fingerprint) {
 		markSharedConfigHintShown(fingerprint);
 	}
 
-	return { configChanged };
+	return { configChanged: configChanged || !!addedServer };
 }

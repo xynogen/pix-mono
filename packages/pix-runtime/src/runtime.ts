@@ -347,11 +347,23 @@ class RuntimeImpl implements PixRuntime {
 		const values = new Map<string, unknown>();
 		for (const s of this.registry.all()) values.set(s.key, s.parse(base[s.key], ctx));
 
-		const currentValue = values.get(section.key) as Readonly<T>;
-		const nextValue =
+		// Guard against a version-skewed second runtime copy whose registry
+		// lacks this section (e.g. an old npm copy handling a new handle). The
+		// functional updater would otherwise crash the whole process on
+		// `undefined`. Fall back to the handle's own parse of the raw doc.
+		const currentValue = (
+			values.has(section.key)
+				? values.get(section.key)
+				: section.__section.parse(base[section.key], ctx)
+		) as Readonly<T>;
+		const mergedValue =
 			typeof updater === "function"
 				? (updater as (c: Readonly<T>) => T)(currentValue)
 				: deepMerge(currentValue as T, updater);
+
+		// Re-validate through the section's own parse so a bad patch (NaN,
+		// Infinity, wrong type) can never enter the live snapshot.
+		const nextValue = section.__section.parse(mergedValue, ctx) as T;
 
 		if (JSON.stringify(currentValue) === JSON.stringify(nextValue)) return undefined;
 		values.set(section.key, nextValue);

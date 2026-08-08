@@ -694,6 +694,93 @@ export function getServerProvenance(
 	return provenance;
 }
 
+// ── /mcp add helpers ───────────────────────────────────────────────────────
+export type AddServerScope = "global" | "project";
+export type AddServerType = "stdio" | "npx" | "http" | "sse";
+export interface AddServerInput {
+	name: string;
+	type: AddServerType;
+	command?: string;
+	args?: string[];
+	env?: Record<string, string>;
+	cwd?: string;
+	pkg?: string;
+	url?: string;
+	headers?: Record<string, string>;
+	bearerToken?: string;
+	bearerTokenEnv?: string;
+}
+export function resolveAddTargetPath(scope: AddServerScope, cwd = process.cwd()): string {
+	return scope === "global" ? getGenericGlobalConfigPath() : getProjectConfigPath(cwd);
+}
+export function buildAddServerEntry(input: AddServerInput): ServerEntry {
+	if (input.type === "npx") {
+		return {
+			command: "npx",
+			args: ["-y", input.pkg?.trim() ?? "", ...(input.args ?? [])].filter(Boolean),
+			env: input.env,
+			cwd: input.cwd || undefined,
+		};
+	}
+	if (input.type === "http" || input.type === "sse") {
+		const entry: ServerEntry = { url: input.url?.trim() };
+		if (input.headers && Object.keys(input.headers).length > 0) entry.headers = input.headers;
+		if (input.bearerToken?.trim()) entry.bearerToken = input.bearerToken.trim();
+		if (input.bearerTokenEnv?.trim()) entry.bearerTokenEnv = input.bearerTokenEnv.trim();
+		return entry;
+	}
+	return {
+		command: input.command?.trim() ?? "",
+		args: input.args ?? [],
+		env: input.env,
+		cwd: input.cwd || undefined,
+	};
+}
+export function validateAddServerInput(
+	input: AddServerInput,
+): { ok: true; entry: ServerEntry } | { ok: false; error: string } {
+	const name = input.name.trim();
+	if (!name) return { ok: false, error: "Server name is required." };
+	if (!/^[A-Za-z0-9._-]+$/.test(name))
+		return { ok: false, error: "Name may use letters, digits, dot, dash, underscore only." };
+	if (input.type === "npx") {
+		if (!input.pkg?.trim()) return { ok: false, error: "Package name is required for npx type." };
+	} else if (input.type === "stdio") {
+		if (!input.command?.trim()) return { ok: false, error: "Command is required for stdio type." };
+	} else {
+		const url = input.url?.trim() ?? "";
+		if (!url) return { ok: false, error: "URL is required for HTTP/SSE type." };
+		try {
+			const parsed = new URL(url);
+			if (!/^https?:$/.test(parsed.protocol)) throw new Error("bad protocol");
+		} catch {
+			return { ok: false, error: "URL must be http(s)://…" };
+		}
+	}
+	return { ok: true, entry: buildAddServerEntry({ ...input, name }) };
+}
+export function previewAddServerEntry(
+	targetPath: string,
+	serverName: string,
+	entry: ServerEntry,
+): ConfigWritePreview {
+	return previewSharedServerEntry(targetPath, serverName, entry);
+}
+export function writeAddServerEntry(
+	targetPath: string,
+	serverName: string,
+	entry: ServerEntry,
+): string {
+	return writeSharedServerEntry(targetPath, serverName, entry);
+}
+export function isServerNameTaken(
+	name: string,
+	overridePath?: string,
+	cwd = process.cwd(),
+): boolean {
+	const cfg = loadMcpConfig(overridePath, cwd);
+	return name in cfg.mcpServers;
+}
 export function writeDirectToolsConfig(
 	changes: Map<string, true | string[] | false>,
 	provenance: Map<string, ServerProvenance>,

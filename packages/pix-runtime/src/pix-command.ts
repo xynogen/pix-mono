@@ -44,8 +44,14 @@ function formatTokens(tokens: number): string {
 
 /** Parse a compact token label ("1M", "150k") back to an absolute count. */
 function parseTokens(label: string): number {
-	const n = Number.parseFloat(label);
-	return /m$/i.test(label) ? n * 1_000_000 : n * 1000;
+	const raw = label.trim();
+	const m = raw.match(/^([0-9]*\.?[0-9]+)\s*([km])?$/i);
+	if (!m) return Number.NaN;
+	const numStr = m[1] ?? "";
+	const n = Number.parseFloat(numStr);
+	if (!Number.isFinite(n)) return Number.NaN;
+	const suf = (m[2] ?? "").toLowerCase();
+	return suf === "m" ? Math.round(n * 1_000_000) : Math.round(n * 1000);
 }
 
 const SETTINGS: SettingRow<unknown>[] = [
@@ -93,7 +99,8 @@ const SETTINGS: SettingRow<unknown>[] = [
 		section: "Compaction",
 		label: "Trigger (% ctx)",
 		handle: compactionSection,
-		values: ["0", "5", "10", "15", "20", "25", "30", "40", "50", "60", "70", "80", "90"],
+		// 0–100 in 5% steps.
+		values: Array.from({ length: 21 }, (_, i) => String(i * 5)),
 		read: (v) => String(v.triggerPercent),
 		patch: (value) => ({ triggerPercent: Number(value) }),
 	}),
@@ -135,6 +142,8 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 	pi.registerCommand("pix", {
 		description: "pix: open shared settings (edit pix.json)",
 		handler: async (_args: string, ctx: ExtensionCommandContext) => {
+			// Re-parse pix.json so section parsers remain the single validation source.
+			await runtime.reload({ origin: "command", source: "pix" });
 			const ui = ctx.ui as unknown as {
 				custom?: (f: unknown, opts?: unknown) => Promise<unknown>;
 				notify(m: string, t?: "info" | "warning" | "error"): void;
@@ -169,11 +178,29 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					const cycle = (direction: -1 | 1) => {
 						const row = SETTINGS[selected];
 						if (!row) return;
-						const cur = row.values.indexOf(row.read(runtime.get(row.handle)));
-						const next = (cur + direction + row.values.length) % row.values.length;
-						const val = row.values[next];
-						if (val === undefined) return;
-						void runtime.update(row.handle, row.patch(val), { origin: "command", source: "pix" });
+						// Functional updater: the runtime queue serializes writes, and the
+						// callback sees the latest committed value — so rapid presses each
+						// advance exactly one step instead of collapsing on a stale snapshot.
+						const step = (current: unknown): unknown => {
+							const curVal = row.read(current);
+							let cur = row.values.indexOf(curVal);
+							// ponytail: unsupported custom values snap to section default on first change.
+							if (cur === -1) {
+								const def = row.read(row.handle.defaults);
+								const defIdx = row.values.indexOf(def);
+								cur = defIdx !== -1 ? defIdx - direction : -1;
+							}
+							const next = (cur + direction + row.values.length) % row.values.length;
+							const val = row.values[next];
+							if (val === undefined) return current;
+							return { ...(current as object), ...(row.patch(val) as object) };
+						};
+						// Re-render AFTER the commit lands; the synchronous render in
+						// handleInput fires before the queued write and shows a stale value.
+						void runtime
+							.update(row.handle, step, { origin: "command", source: "pix" })
+							.then(() => tui.requestRender())
+							.catch(() => ui.notify(`pix: failed to update ${row.label}`, "error"));
 					};
 					const move = (direction: -1 | 1) => {
 						selected = (selected + direction + SETTINGS.length) % SETTINGS.length;
@@ -187,7 +214,8 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							const settingBodyLines: number[] = [];
 							let lastSection = "";
 							for (let i = 0; i < SETTINGS.length; i++) {
-								const row = SETTINGS[i]!;
+								const row = SETTINGS[i];
+								if (!row) continue;
 								if (row.section !== lastSection) {
 									if (lastSection) body.push("");
 									body.push(theme.fg("dim", `  ${row.section}`));
@@ -241,20 +269,15 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							// matchesKey handles both legacy bytes and Kitty CSI-u encodings
 							// for letters and special keys alike — raw string compares like
 							// `data === "k"` silently fail under the Kitty keyboard protocol.
-							if (matchesKey(data, "k") || matchesKey(data, "up")) move(-1);
-							else if (matchesKey(data, "j") || matchesKey(data, "down")) move(1);
-							else if (matchesKey(data, "h") || matchesKey(data, "left")) cycle(-1);
-							else if (
-								matchesKey(data, "l") ||
-								matchesKey(data, "right") ||
-								matchesKey(data, "space") ||
-								matchesKey(data, "enter")
-							)
-								cycle(1);
-							else if (matchesKey(data, "escape") || matchesKey(data, "q")) {
+							if (kb.matches(data, "tui.select.cancel")) {
 								done(null);
 								return;
-							} else return;
+							}
+							if (kb.matches(data, "tui.select.up")) move(-1);
+							else if (kb.matches(data, "tui.select.down")) move(1);
+							else if (matchesKey(data, Key.left)) cycle(-1);
+							else if (matchesKey(data, Key.right)) cycle(1);
+							else return;
 							tui.requestRender();
 						},
 					};
@@ -357,12 +380,13 @@ function frameRows(
 	const dashes = "─".repeat(width - 2);
 	const SENTINEL = "\x00";
 	const bgOpen = bg(SENTINEL).split(SENTINEL)[0] ?? "";
-	const reassert = (s: string): string =>
-		bgOpen
-			? s.replace(/\x1b\[([0-9;]*)m/g, (seq, p: string) =>
-					p === "0" || p.split(";").includes("49") ? `${seq}${bgOpen}` : seq,
-				)
-			: s;
+	const reassert = (s: string): string => {
+		if (!bgOpen) return s;
+		return s.replace(/\x1b\[([0-9;]*)m/g, (seq, p: string) => {
+			if (p === "0" || p.split(";").includes("49")) return `${seq}${bgOpen}`;
+			return seq;
+		});
+	};
 	const row = (content: string): string => {
 		const fitted = truncateToWidth(content, inner, "…");
 		const padded = fitted + " ".repeat(Math.max(0, inner - visibleWidth(fitted)));

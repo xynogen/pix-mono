@@ -87,6 +87,7 @@ describe("mcp-panel rendering", () => {
 			() => {},
 		);
 
+		panel.handleInput("\u001b[B"); // past + Add server row to first server
 		panel.handleInput("\r");
 
 		const lines = panel.render(120);
@@ -136,6 +137,7 @@ describe("mcp-panel rendering", () => {
 			done,
 		);
 
+		panel.handleInput("\u001b[B"); // past + Add server to first server
 		panel.handleInput("\r");
 		panel.handleInput("\x1b[B");
 		panel.handleInput("\r");

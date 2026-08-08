@@ -65,7 +65,10 @@ export function compactionThresholdTokens(
 	triggerPercent: number,
 	minimumTokens: number,
 ): number {
-	return Math.max(minimumTokens, Math.ceil((contextWindow * triggerPercent) / 100));
+	const cw = Number.isFinite(contextWindow) ? Math.max(0, Math.floor(contextWindow)) : 0;
+	const pct = Number.isFinite(triggerPercent) ? Math.min(100, Math.max(0, triggerPercent)) : 0;
+	const floor = Number.isFinite(minimumTokens) ? Math.max(0, Math.round(minimumTokens)) : 100_000;
+	return Math.max(floor, Math.ceil((cw * pct) / 100));
 }
 
 /**

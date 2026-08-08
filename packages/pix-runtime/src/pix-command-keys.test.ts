@@ -9,7 +9,12 @@
 
 import { afterEach, describe, expect, it } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { getKeybindings, setKittyProtocolActive } from "@earendil-works/pi-tui";
+import {
+	getKeybindings,
+	KeybindingsManager,
+	setKittyProtocolActive,
+	TUI_KEYBINDINGS,
+} from "@earendil-works/pi-tui";
 import { registerPixCommand } from "./pix-command.ts";
 import { compactionSection } from "./sections/compaction.ts";
 import { ioSection } from "./sections/io.ts";
@@ -51,6 +56,7 @@ interface Driver {
 	closed(): boolean;
 	iconsValue(): string;
 	timeoutValue(): number;
+	triggerPercentValue(): number;
 	minimumTokensValue(): number;
 	cleanup(): void;
 }
@@ -62,7 +68,7 @@ afterEach(() => {
 });
 
 /** Register /pix against a mock host + isolated runtime and open its overlay. */
-async function openOverlay(): Promise<Driver> {
+async function openOverlay(kb = getKeybindings()): Promise<Driver> {
 	const iso = createIsolatedRuntime();
 	active = iso;
 	await iso.runtime.init();
@@ -97,14 +103,9 @@ async function openOverlay(): Promise<Driver> {
 					done: (v: T) => void,
 				) => Overlay,
 			): Promise<T | undefined> => {
-				overlay = cb(
-					{ requestRender: () => {}, terminal: { rows: 12 } },
-					theme,
-					getKeybindings(),
-					() => {
-						closed = true;
-					},
-				);
+				overlay = cb({ requestRender: () => {}, terminal: { rows: 12 } }, theme, kb, () => {
+					closed = true;
+				});
 				return undefined;
 			},
 		},
@@ -125,6 +126,7 @@ async function openOverlay(): Promise<Driver> {
 		// First row is Pretty/icons; read the live value through the runtime.
 		iconsValue: () => iso.runtime.get(prettySection).icons,
 		timeoutValue: () => iso.runtime.get(ioSection).timeoutSec,
+		triggerPercentValue: () => iso.runtime.get(compactionSection).triggerPercent,
 		minimumTokensValue: () => iso.runtime.get(compactionSection).minimumTokens,
 		cleanup: () => iso.cleanup(),
 	};
@@ -134,16 +136,23 @@ async function openOverlay(): Promise<Driver> {
 
 for (const enc of ENCODINGS) {
 	describe(`/pix overlay keys (${enc} encoding)`, () => {
-		it("down arrow moves the cursor off the first row", async () => {
+		it("down arrow moves without changing the selected value", async () => {
 			const d = await openOverlay();
 			const first = d.cursorLine();
+			const icons = d.iconsValue();
 			expect(first).toBeDefined();
 			d.feed(KEYS.down[enc]);
+			await d.settle();
 			expect(d.cursorLine()).not.toBe(first);
+			expect(d.iconsValue()).toBe(icons);
 		});
 
-		it("vim j/k move and return to the same row", async () => {
-			const d = await openOverlay();
+		it("configured select actions move and return to the same row", async () => {
+			const kb = new KeybindingsManager(TUI_KEYBINDINGS, {
+				"tui.select.down": "j",
+				"tui.select.up": "k",
+			});
+			const d = await openOverlay(kb);
 			const first = d.cursorLine();
 			d.feed(KEYS.j[enc]);
 			expect(d.cursorLine()).not.toBe(first);
@@ -169,16 +178,13 @@ for (const enc of ENCODINGS) {
 			expect(d.iconsValue()).toBe(before);
 		});
 
-		it("space and enter cycle forward", async () => {
+		it("space and enter do not change values", async () => {
 			const d = await openOverlay();
 			const before = d.iconsValue();
 			d.feed(KEYS.space[enc]);
-			await d.settle();
-			const afterSpace = d.iconsValue();
-			expect(afterSpace).not.toBe(before);
 			d.feed(KEYS.enter[enc]);
 			await d.settle();
-			expect(d.iconsValue()).not.toBe(afterSpace);
+			expect(d.iconsValue()).toBe(before);
 		});
 
 		it("escape closes the overlay", async () => {
@@ -204,8 +210,9 @@ for (const enc of ENCODINGS) {
 			}
 		});
 
-		it("q closes the overlay", async () => {
-			const d = await openOverlay();
+		it("configured cancel action closes the overlay", async () => {
+			const kb = new KeybindingsManager(TUI_KEYBINDINGS, { "tui.select.cancel": "q" });
+			const d = await openOverlay(kb);
 			d.feed(KEYS.q[enc]);
 			expect(d.closed()).toBe(true);
 		});
@@ -228,6 +235,31 @@ describe("/pix network timeout", () => {
 });
 
 describe("/pix compaction floor", () => {
+	it("rapid right presses each advance one step (no stale-read collapse)", async () => {
+		const d = await openOverlay();
+		for (let i = 0; i < 5; i++) d.feed(KEYS.down.legacy);
+		expect(d.cursorLine()).toContain("Trigger (% ctx)");
+		expect(d.triggerPercentValue()).toBe(60);
+		// Two presses before any settle — both must land: 60 → 65 → 70.
+		d.feed(KEYS.right.legacy);
+		d.feed(KEYS.right.legacy);
+		await d.settle();
+		expect(d.triggerPercentValue()).toBe(70);
+	});
+
+	it("down moves from trigger to minimum tokens without changing either number", async () => {
+		const d = await openOverlay();
+		for (let i = 0; i < 5; i++) d.feed(KEYS.down.legacy);
+		expect(d.cursorLine()).toContain("Trigger (% ctx)");
+		const triggerPercent = d.triggerPercentValue();
+		const minimumTokens = d.minimumTokensValue();
+		d.feed(KEYS.down.legacy);
+		await d.settle();
+		expect(d.cursorLine()).toContain("Minimum tokens");
+		expect(d.triggerPercentValue()).toBe(triggerPercent);
+		expect(d.minimumTokensValue()).toBe(minimumTokens);
+	});
+
 	it("offers 25k through 600k and defaults to 100k", async () => {
 		const d = await openOverlay();
 		for (let i = 0; i < 6; i++) d.feed(KEYS.down.legacy);
@@ -273,8 +305,7 @@ describe("/pix overlay keys (guards)", () => {
 		const d = await openOverlay();
 		const first = d.cursorLine();
 		const icons = d.iconsValue();
-		d.feed("x");
-		d.feed("\u001b[120u"); // kitty 'x'
+		for (const key of ["h", "l", "x", "\u001b[104u", "\u001b[108u", "\u001b[120u"]) d.feed(key);
 		await d.settle();
 		expect(d.cursorLine()).toBe(first);
 		expect(d.iconsValue()).toBe(icons);

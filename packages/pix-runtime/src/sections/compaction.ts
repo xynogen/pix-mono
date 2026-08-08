@@ -31,7 +31,22 @@ function pctOr(v: unknown, fallback: number): number {
 /** Require a finite token floor of at least 25k. */
 function minimumTokensOr(v: unknown, fallback: number): number {
 	if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+	// Strings from older/hand-edited pix.json (e.g. "150k") → parse before clamping.
 	return Math.max(MINIMUM_TOKEN_FLOOR, Math.round(v));
+}
+
+function parseTokenString(label: string): number | undefined {
+	const raw = label.trim();
+	if (!raw) return undefined;
+	const m = raw.match(/^([0-9]*\.?[0-9]+)\s*([km])?$/i);
+	if (!m) return undefined;
+	const numStr = m[1] ?? "";
+	const n = Number.parseFloat(numStr);
+	if (!Number.isFinite(n)) return undefined;
+	const suf = (m[2] ?? "").toLowerCase();
+	if (suf === "m") return Math.round(n * 1_000_000);
+	if (suf === "k") return Math.round(n * 1000);
+	return Math.round(n);
 }
 
 export const compactionSection = defineSection<"compaction", CompactionConfig>({
@@ -39,9 +54,12 @@ export const compactionSection = defineSection<"compaction", CompactionConfig>({
 	defaults: DEFAULTS,
 	parse(raw) {
 		if (!isObj(raw)) return { ...DEFAULTS };
+		const rawMin = raw.minimumTokens;
+		const coercedMin =
+			typeof rawMin === "string" ? (parseTokenString(rawMin) ?? Number.NaN) : rawMin;
 		return {
 			triggerPercent: pctOr(raw.triggerPercent, DEFAULTS.triggerPercent),
-			minimumTokens: minimumTokensOr(raw.minimumTokens, DEFAULTS.minimumTokens),
+			minimumTokens: minimumTokensOr(coercedMin, DEFAULTS.minimumTokens),
 		};
 	},
 });

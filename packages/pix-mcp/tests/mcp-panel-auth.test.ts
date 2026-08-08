@@ -55,6 +55,7 @@ describe("mcp-panel auth actions", () => {
 		const tui = { requestRender: mock(() => {}) };
 		const panel = createMcpPanel(config, createCache(config), new Map(), callbacks, tui, () => {});
 
+		panel.handleInput("\u001b[B"); // past + Add server to github row
 		panel.handleInput("\r");
 		await Promise.resolve();
 
@@ -106,6 +107,7 @@ describe("mcp-panel auth actions", () => {
 			() => {},
 		);
 
+		panel.handleInput("\u001b[B"); // focus github row
 		panel.handleInput("\x01");
 		await Promise.resolve();
 
@@ -130,6 +132,7 @@ describe("mcp-panel auth actions", () => {
 			() => {},
 		);
 
+		panel.handleInput("\u001b[B");
 		panel.handleInput("\r");
 		await Promise.resolve();
 
@@ -161,6 +164,7 @@ describe("mcp-panel auth actions", () => {
 			() => {},
 		);
 
+		panel.handleInput("\u001b[B");
 		panel.handleInput("\r");
 		await Promise.resolve();
 
@@ -191,6 +195,7 @@ describe("mcp-panel auth actions", () => {
 			() => {},
 		);
 
+		panel.handleInput("\u001b[B");
 		panel.handleInput("\r");
 		panel.handleInput("\r");
 		panel.handleInput("\x01");
