@@ -6,6 +6,7 @@ import {
 	fmtCtx,
 	type ModelSearchLookup,
 	normalizeModelText,
+	resolveContextWindow,
 	sortModels,
 	stepEffectiveThinkingLevel,
 	stepThinkingLevel,
@@ -54,6 +55,25 @@ describe("stepEffectiveThinkingLevel", () => {
 
 	it("stays at an endpoint when every farther request clamps back", () => {
 		expect(stepEffectiveThinkingLevel("high", 1, () => "high")).toBe("high");
+	});
+});
+
+describe("resolveContextWindow", () => {
+	it("prefers provider contextWindow over fallback", () => {
+		expect(resolveContextWindow({ contextWindow: 200_000 }, 128_000)).toBe(200_000);
+	});
+	it("falls back to dev limit when provider is 0/missing", () => {
+		expect(resolveContextWindow({ contextWindow: 0 }, 128_000)).toBe(128_000);
+		expect(resolveContextWindow({}, 64_000)).toBe(64_000);
+	});
+	it("ignores non-finite and negative values", () => {
+		expect(resolveContextWindow({ contextWindow: Number.NaN }, 128_000)).toBe(128_000);
+		expect(resolveContextWindow({ contextWindow: Number.POSITIVE_INFINITY }, 50_000)).toBe(50_000);
+		expect(resolveContextWindow({ contextWindow: -1 }, 32_000)).toBe(32_000);
+	});
+	it("returns 0 when both missing/invalid", () => {
+		expect(resolveContextWindow({}, undefined)).toBe(0);
+		expect(resolveContextWindow({ contextWindow: null }, null)).toBe(0);
 	});
 });
 

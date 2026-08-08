@@ -31,6 +31,20 @@ import { patchOutBuiltinModelCommand } from "./patch-builtin";
 
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
 
+export function resolveContextWindow(
+	model: { contextWindow?: number | null },
+	fallback?: number | null,
+): number {
+	if (
+		typeof model.contextWindow === "number" &&
+		Number.isFinite(model.contextWindow) &&
+		model.contextWindow > 0
+	)
+		return model.contextWindow;
+	if (typeof fallback === "number" && Number.isFinite(fallback) && fallback > 0) return fallback;
+	return 0;
+}
+
 export function fmtCtx(n: number): string {
 	if (!n || n < 1_000) return `${n}`;
 	if (n >= 1_000_000) {
@@ -346,7 +360,10 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 
 				// Description: ctx · cost · score stars
 				// Colors: ctx muted · cost success (free muted) · score+stars warning
-				const ctxRaw = fmtCtx(dev?.limit?.context ?? 0);
+				// Context: provider's `contextWindow` (source of truth) → fallback to modelgrep `dev.limit.context`.
+				const ctxRaw = fmtCtx(
+					resolveContextWindow(m as { contextWindow?: number }, dev?.limit?.context),
+				);
 				const ctxStr = mute(ctxRaw.padStart(4));
 				const rawCost = fmtCost(dev);
 				let costSeg: string;
