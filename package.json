@@ -9,9 +9,9 @@
 	],
 	"scripts": {
 		"install:deps": "bun install --frozen-lockfile",
-		"dev": "bun test --watch --path-ignore-patterns='packages/pix-mcp/tests/**'",
-		"test": "bun test --path-ignore-patterns='packages/pix-mcp/tests/**' && bun run --cwd packages/pix-mcp test",
-		"test:unit": "bun test --path-ignore-patterns='packages/pix-mcp/tests/**' && bun run --cwd packages/pix-mcp test",
+		"dev": "bun test --watch --isolate",
+		"test": "bun test --isolate",
+		"test:unit": "bun test --isolate",
 		"test:tidy": "rm -rf coverage",
 		"typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/pix-mcp/tsconfig.json",
 		"lint": "biome lint packages",

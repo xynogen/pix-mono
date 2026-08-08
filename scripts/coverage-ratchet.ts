@@ -4,7 +4,7 @@ export {};
 // Current baseline ~72% funcs / 70% lines. Threshold set slightly below to ratchet.
 const THRESHOLDS = { funcs: 60, lines: 58 } as const;
 
-const proc = Bun.spawn(["bun", "test", "--path-ignore-patterns=packages/pix-mcp/tests/**", "--coverage", "--coverage-reporter=text"], {
+const proc = Bun.spawn(["bun", "test", "--isolate", "--coverage", "--coverage-reporter=text"], {
 	stdout: "pipe",
 	stderr: "pipe",
 });

@@ -92,13 +92,11 @@ The test suite uses `bun:test` throughout:
 bun run test
 ```
 
-The package test command uses `scripts/test.ts` to run each test file in a
-separate Bun process. This isolation is intentional: Bun's `mock.module()`
-state can currently leak between test files even when `bun test --isolate` is
-used, causing tests that pass individually to interfere with the full suite.
-The runner is small, cross-platform, and is not included in the published npm
-package. It can be removed once Bun provides reliable module-mock isolation,
-or after the tests are refactored to avoid module-level mocks.
+The suite uses `bun test --isolate` (see root `package.json`). This is
+required because `mock.module()` is process-global and leaks between files
+without isolation. The flag is intentionally on the default `bun test`
+command so bare runs pass everywhere (`bunfig.toml` does not support
+`[test].isolate` in Bun 1.3).
 
 ## Compatibility
 
