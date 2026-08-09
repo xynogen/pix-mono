@@ -184,14 +184,21 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 	pi.registerTool(createAgentSteerTool(manager));
 
 	// ── Lifecycle ──────────────────────────────────────────────────────────────
-	pi.on("session_start", () => {
+	pi.on("session_start", (_event, ctx) => {
 		manager.clearCompleted();
 		agentActivity.clear();
+		// Capture the session-stable UI ctx (like pix-commands /btw). turn_start
+		// alone is not enough: a background agent outlives its launching turn, and
+		// once that turn ends the turn_start-captured ctx goes stale — setWidget/
+		// requestRender then no-op and the live agent row vanishes though it runs.
+		widget.setUICtx(ctx.ui as Parameters<typeof widget.setUICtx>[0]);
 	});
 
-	pi.on("turn_start", (_event, ctx) => {
+	pi.on("turn_start", () => {
+		// UI ctx is captured once at session_start (session-stable). Re-capturing a
+		// per-turn ctx here would swap to a handle that dies when the turn ends,
+		// which is exactly what made a still-running background agent's row vanish.
 		widget.onTurnStart();
-		widget.setUICtx(ctx.ui as Parameters<typeof widget.setUICtx>[0]);
 		widget.ensureTimer();
 	});
 
