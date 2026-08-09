@@ -273,10 +273,8 @@ export function registerEditTool(
 				if (renderCtx.toolCallId) trackInvalidator(renderCtx.toolCallId, renderCtx.invalidate);
 				if (renderCtx.state._edk !== key) {
 					renderCtx.state._edk = key;
-					const loc =
-						(d.editLine as number) > 0 ? ` ${theme.fg("muted", `at line ${d.editLine}`)}` : "";
-					const summary = renderDiffSummary(String(d.summary), theme);
-					renderCtx.state._edt = `  ${summary}${loc}\n${theme.fg("muted", "  rendering diff…")}`;
+					// ponytail: call already shows `edit <file> <summary>`; don't repeat summary+loc header — gutter carries absolute line
+					renderCtx.state._edt = theme.fg("muted", "  rendering diff…");
 					const dc = resolveDiffColors(theme);
 					const diff = parseDiff(
 						d.oldContent as string,
@@ -287,10 +285,7 @@ export function registerEditTool(
 					renderSplit(diff, d.language as string | undefined, MAX_RENDER_LINES, dc)
 						.then((rendered) => {
 							if (renderCtx.state._edk !== key) return;
-							const loc2 =
-								(d.editLine as number) > 0 ? ` ${theme.fg("muted", `at line ${d.editLine}`)}` : "";
-							const summary = renderDiffSummary(String(d.summary), theme);
-							renderCtx.state._edt = `  ${summary}${loc2}\n${rendered}`;
+							renderCtx.state._edt = rendered;
 							renderCtx.invalidate();
 						})
 						.catch(() => {
@@ -309,8 +304,8 @@ export function registerEditTool(
 				if (renderCtx.toolCallId) trackInvalidator(renderCtx.toolCallId, renderCtx.invalidate);
 				if (renderCtx.state._edk !== key) {
 					renderCtx.state._edk = key;
-					const summary = renderDiffSummary(String(d.summary), theme);
-					renderCtx.state._edt = `  ${theme.fg("muted", `${d.editCount} edits`)} ${summary}\n${theme.fg("muted", "  rendering diff…")}`;
+					// ponytail: call already shows summary; render diffs directly
+					renderCtx.state._edt = theme.fg("muted", "  rendering diff…");
 					const dc = resolveDiffColors(theme);
 					Promise.all(
 						(
@@ -328,8 +323,7 @@ export function registerEditTool(
 						.then((rendered) => {
 							if (renderCtx.state._edk !== key) return;
 							const body = rendered.join(`\n${theme.fg("muted", "  ···")}\n`);
-							const summary = renderDiffSummary(String(d.summary), theme);
-							renderCtx.state._edt = `  ${theme.fg("muted", `${d.editCount} edits`)} ${summary}\n${body}`;
+							renderCtx.state._edt = body;
 							renderCtx.invalidate();
 						})
 						.catch(() => {

@@ -255,6 +255,13 @@ export function renderDimPreview(
 			: undefined;
 
 	if (opts.frame) {
+		// Single-line in collapsed preview: show inline without framing (matches bash).
+		if (!opts.header && lines.length === 1 && !overflow) {
+			return fillToolBackground(body[0] ?? "");
+		}
+		if (opts.header && lines.length === 1 && !overflow) {
+			return fillToolBackground(`${header} · ${body[0]?.trim() ?? ""}`);
+		}
 		// Same layout as bash/read/mcp: header above the top rule, body between the
 		// rules, overflow footer below the bottom rule.
 		const out = [...(header ? [header] : []), ...ruleFrame(body, overflow ? [overflow] : [])];

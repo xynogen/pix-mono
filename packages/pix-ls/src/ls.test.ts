@@ -99,6 +99,56 @@ describe("registerLsTool", () => {
 		expect(result?.getText()).not.toContain("✓ ls");
 	});
 
+	it("renders single-entry output inline as one line", () => {
+		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
+		const mockPi: PiPrettyApi = {
+			registerTool(tool: unknown) {
+				Object.assign(registered, tool);
+			},
+			registerCommand() {},
+			on() {},
+		};
+		registerLsTool(mockPi, () => ({ execute: async () => ({ content: [], details: undefined }) }), {
+			cwd: process.cwd(),
+			sp: (p: string) => p,
+			TextComponent: MockTextComponent as unknown as TextComponentCtor,
+			fffState: { module: null, finder: null, partialIndex: false, dbDir: null } satisfies FffState,
+			cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
+		});
+		const theme: ThemeLike = { fg: (_k: string, v: string) => v, bold: (v: string) => v };
+		const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "");
+		const result = {
+			content: [{ type: "text", text: "README.md" }],
+			details: { _type: "lsResult", text: "README.md", path: ".", entryCount: 1 },
+		};
+		const out =
+			registered
+				.renderResult?.(result, { isPartial: false }, theme, {
+					expanded: false,
+					isError: false,
+					invalidate: () => {},
+					state: {},
+				} as unknown as RenderContextLike)
+				?.getText() ?? "";
+		expect(strip(out).split("\n").length).toBe(1);
+		expect(out).toContain("README.md");
+		expect(out).not.toContain("─");
+		const multi = {
+			content: [{ type: "text", text: "a.ts\nb.ts\nc.ts" }],
+			details: { _type: "lsResult", text: "a.ts\nb.ts\nc.ts", path: ".", entryCount: 3 },
+		};
+		const multiOut =
+			registered
+				.renderResult?.(multi, { isPartial: false }, theme, {
+					expanded: false,
+					isError: false,
+					invalidate: () => {},
+					state: {},
+				} as unknown as RenderContextLike)
+				?.getText() ?? "";
+		expect(multiOut).toContain("─");
+	});
+
 	it("collapses structured errors and restores the exact diagnostic on expansion", () => {
 		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
 		const mockPi: PiPrettyApi = {

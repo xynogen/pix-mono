@@ -494,13 +494,19 @@ export default function (pi: ExtensionAPI): void {
 			const { summary } = renderBashOutput(rendered, code, theme);
 			const lines = rendered ? rendered.split("\n") : [];
 			const lineCount = lines.length;
-			const lineInfo = lineCount > 1 ? `  ${FG_DIM}(${lineCount} lines)${RST}` : "";
-			const header = `  ${summary}${lineInfo}`;
 
 			if (!rendered) {
-				text.setText(fillToolBackground(header));
+				text.setText(fillToolBackground(`  ${summary}`));
 				return text;
 			}
+
+			if (lineCount === 1 && !renderCtx.expanded) {
+				text.setText(fillToolBackground(`  ${summary} · ${theme.fg("dim", lines[0] ?? "")}`));
+				return text;
+			}
+
+			const lineInfo = lineCount > 1 ? `  ${FG_DIM}(${lineCount} lines)${RST}` : "";
+			const header = `  ${summary}${lineInfo}`;
 
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 			const show = lines.slice(0, maxShow);

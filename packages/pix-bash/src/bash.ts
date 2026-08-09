@@ -204,26 +204,32 @@ export function registerBashTool(
 				const { summary } = renderBashOutput(normalizedText, d.exitCode as number | null, theme);
 				const lines = normalizedText ? normalizedText.split("\n") : [];
 				const lineCount = lines.length;
-				const lineInfo = lineCount > 1 ? `  ${FG_DIM}(${lineCount} lines)${RST}` : "";
-				const header = `  ${summary}${lineInfo}`;
+				const header = summary;
 
-				if (normalizedText) {
-					const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-					const show = lines.slice(0, maxShow);
-					const footer =
-						lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
-					const out = [
-						header,
-						...ruleFrame(
-							show.map((line) => `  ${line}`),
-							footer,
-							termW(),
-						),
-					];
-					text.setText(fillToolBackground(out.join("\n")));
-				} else {
+				if (!normalizedText) {
 					text.setText(fillToolBackground(header));
+					return text;
 				}
+
+				if (lineCount === 1 && !renderCtx.expanded) {
+					const singleLine = normalizeLineEndings(lines[0] ?? "");
+					text.setText(fillToolBackground(`${header} · ${theme.fg("dim", singleLine)}`));
+					return text;
+				}
+
+				const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
+				const show = lines.slice(0, maxShow);
+				const footer =
+					lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
+				const out = [
+					header,
+					...ruleFrame(
+						show.map((line) => `  ${line}`),
+						footer,
+						termW(),
+					),
+				];
+				text.setText(fillToolBackground(out.join("\n")));
 				return text;
 			}
 

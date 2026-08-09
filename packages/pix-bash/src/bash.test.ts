@@ -275,6 +275,85 @@ describe("registerBashTool", () => {
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 
+	it("renders single-line output inline as one line", () => {
+		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
+		const mockPi: PiPrettyApi = {
+			registerTool(tool: unknown) {
+				Object.assign(registered, tool);
+			},
+			registerCommand() {},
+			on() {},
+		};
+		registerBashTool(
+			mockPi,
+			() => ({ execute: async () => ({ content: [], details: undefined }) }),
+			{
+				cwd: process.cwd(),
+				sp: (p: string) => p,
+				TextComponent: MockTextComponent as unknown as TextComponentCtor,
+				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
+				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
+			},
+		);
+		const theme: ThemeLike = { fg: (_k: string, v: string) => v, bold: (v: string) => v };
+		const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "");
+		const single = {
+			content: [{ type: "text", text: "Checked 382 files" }],
+			details: {
+				_type: "bashResult",
+				text: "Checked 382 files",
+				exitCode: 0,
+				command: "bun run check",
+				durationMs: 0,
+			},
+		};
+		const collapsed =
+			registered
+				.renderResult?.(single, { isPartial: false }, theme, {
+					expanded: false,
+					isError: false,
+					invalidate: () => {},
+					state: {},
+				} as unknown as RenderContextLike)
+				?.getText() ?? "";
+		// non-expanded single-line must be exactly 1 line: "✓ exit 0 · <output>"
+		expect(strip(collapsed).split("\n").length).toBe(1);
+		expect(collapsed).toContain("✓ exit 0");
+		expect(collapsed).toContain("Checked 382 files");
+		expect(collapsed).not.toContain("─");
+		const expanded =
+			registered
+				.renderResult?.(single, { isPartial: false }, theme, {
+					expanded: true,
+					isError: false,
+					invalidate: () => {},
+					state: {},
+				} as unknown as RenderContextLike)
+				?.getText() ?? "";
+		// expanded single-line should still be framed
+		expect(expanded).toContain("─");
+		const multi = {
+			content: [{ type: "text", text: "a\nb\nc" }],
+			details: {
+				_type: "bashResult",
+				text: "a\nb\nc",
+				exitCode: 0,
+				command: "echo",
+				durationMs: 0,
+			},
+		};
+		const multiOut =
+			registered
+				.renderResult?.(multi, { isPartial: false }, theme, {
+					expanded: false,
+					isError: false,
+					invalidate: () => {},
+					state: {},
+				} as unknown as RenderContextLike)
+				?.getText() ?? "";
+		expect(multiOut).toContain("─");
+	});
+
 	it("collapses a non-zero exit thrown by Pi's built-in bash tool", async () => {
 		const registered: {
 			execute?: (...args: unknown[]) => Promise<ToolResultLike & { isError?: boolean }>;

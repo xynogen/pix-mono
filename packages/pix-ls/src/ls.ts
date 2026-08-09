@@ -142,6 +142,16 @@ export function registerLsTool(
 				return text;
 			}
 			if (d?._type === "lsResult" && d.text) {
+				const raw = String(d.text).trim();
+				const singleLine = raw && !raw.includes("\n");
+				if (singleLine && !renderCtx.expanded) {
+					text.setText(
+						fillToolBackground(
+							`  ${FG_DIM}${d.entryCount} entries${RST} · ${theme.fg("dim", raw)}`,
+						),
+					);
+					return text;
+				}
 				const tree = renderTree(d.text as string, d.path as string, theme);
 				const info = `  ${FG_DIM}${d.entryCount} entries${RST}`;
 				const out = [info, ...ruleFrame(tree.split("\n"))];
