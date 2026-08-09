@@ -110,11 +110,11 @@ describe("registerFindTool", () => {
 
 		expect(result?.getText()).toContain("src/one.ts");
 		expect(result?.getText()).toContain("src/two.ts");
-		// Framed view shows the same semantic count as the collapsed row (no drift).
-		expect(result?.getText()).toContain("2 files");
+		// No floating count header in the framed view — the collapsed row carries it.
+		expect(result?.getText()).not.toContain("2 files");
 	});
 
-	it("renders single-file output inline as one line", () => {
+	it("frames single-file output like multi-file (no inline row)", () => {
 		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
 		const mockPi: PiPrettyApi = {
 			registerTool(tool: unknown) {
@@ -154,8 +154,10 @@ describe("registerFindTool", () => {
 					state: {},
 				} as unknown as RenderContextLike)
 				?.getText() ?? "";
-		expect(strip(out).split("\n").length).toBe(1);
-		expect(out).not.toContain("─");
+		// Single result is framed just like multi — one shape, no inline row.
+		expect(out).toContain("─");
+		expect(out).toContain("src/a.ts");
+		expect(strip(out)).not.toContain("file");
 		const multi = {
 			content: [{ type: "text", text: "a.ts\nb.ts\nc.ts" }],
 			details: {

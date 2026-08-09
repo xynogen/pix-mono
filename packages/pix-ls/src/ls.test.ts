@@ -99,7 +99,7 @@ describe("registerLsTool", () => {
 		expect(result?.getText()).not.toContain("✓ ls");
 	});
 
-	it("renders single-entry output inline as one line", () => {
+	it("frames single-entry output like multi-entry (no inline row)", () => {
 		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
 		const mockPi: PiPrettyApi = {
 			registerTool(tool: unknown) {
@@ -130,9 +130,11 @@ describe("registerLsTool", () => {
 					state: {},
 				} as unknown as RenderContextLike)
 				?.getText() ?? "";
-		expect(strip(out).split("\n").length).toBe(1);
+		// Single entry is now framed just like multi-entry — no inline row and no
+		// floating "N entries" header; one shape regardless of count.
+		expect(out).toContain("─");
 		expect(out).toContain("README.md");
-		expect(out).not.toContain("─");
+		expect(strip(out)).not.toContain("entries");
 		const multi = {
 			content: [{ type: "text", text: "a.ts\nb.ts\nc.ts" }],
 			details: { _type: "lsResult", text: "a.ts\nb.ts\nc.ts", path: ".", entryCount: 3 },

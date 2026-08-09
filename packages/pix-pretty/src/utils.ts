@@ -218,16 +218,16 @@ export function hideCollapsedToolCall(
 
 export type DimPreviewOptions = {
 	maxLines?: number;
-	/** Header line shown above the body (or above the top rule when framed).
-	 *  Pass the tool's SEMANTIC count here (e.g. `pluralize(matchCount, "match")`)
-	 *  — the same value the collapsed summary row uses — so top and collapsed
-	 *  never disagree. Do not recount the body: notices/blank lines make a body
-	 *  line-count diverge from the semantic count. */
+	/** Header line shown above the body. NON-FRAMED mode only — in framed mode
+	 *  the header is intentionally dropped (the collapsed row already carries the
+	 *  count, so a floating header above the frame is redundant). */
 	header?: string;
 	/** Pattern whose matches are highlighted (green bold) inside dim lines. */
 	highlight?: string;
-	/** Wrap the body in a top/bottom rule frame (header above, overflow below), like bash/read/mcp. */
+	/** Wrap the body in a top/bottom rule frame (overflow below), like bash/ls/mcp. */
 	frame?: boolean;
+	/** Tint the frame rules (green ok, red error) — same status color as bash/ls. */
+	paint?: RulePaint;
 };
 
 function dimLineWithHighlight(line: string, theme: FgTheme, pattern?: string): string {
@@ -268,16 +268,9 @@ export function renderDimPreview(
 			: undefined;
 
 	if (opts.frame) {
-		// Single-line in collapsed preview: show inline without framing (matches bash).
-		if (!opts.header && lines.length === 1 && !overflow) {
-			return fillToolBackground(body[0] ?? "");
-		}
-		if (opts.header && lines.length === 1 && !overflow) {
-			return fillToolBackground(`${header} · ${body[0]?.trim() ?? ""}`);
-		}
-		// Same layout as bash/read/mcp: header above the top rule, body between the
-		// rules, overflow footer below the bottom rule.
-		const out = [...(header ? [header] : []), ...ruleFrame(body, overflow ? [overflow] : [])];
+		// One shape regardless of line count: a single framed box, no floating
+		// header (the collapsed row carries the count). Rules follow status color.
+		const out = ruleFrame(body, overflow ? [overflow] : [], undefined, opts.paint);
 		return fillToolBackground(out.join("\n"));
 	}
 

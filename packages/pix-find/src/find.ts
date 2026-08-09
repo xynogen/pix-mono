@@ -188,14 +188,11 @@ export function registerFindTool(
 			}
 
 			const output = getTextContent(result) || "found";
+			// One framed shape; rules follow status color. Count lives in the collapsed row.
 			text.setText(
 				renderDimPreview(output, theme, {
 					frame: true,
-					// Same semantic count the collapsed row shows — one source, no drift.
-					header:
-						d?._type === "findResult" && d.matchCount != null
-							? pluralize(d.matchCount, "file")
-							: undefined,
+					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
 				}),
 			);
 			return text;

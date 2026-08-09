@@ -11,7 +11,6 @@ import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { parseDiff } from "@xynogen/pix-pretty/diff";
 import {
 	diffThemeCacheKey,
-	renderDiffSummary,
 	renderSplit,
 	resolveDiffColors,
 	summarize,
@@ -211,17 +210,17 @@ export function registerWriteTool(
 			if (d?._type === "diff") {
 				const key = `wd:${diffThemeCacheKey(theme)}:${termW()}:${d.summary}:${(d.newContent as string).length}:${d.language ?? ""}`;
 				if (renderCtx.toolCallId) trackInvalidator(renderCtx.toolCallId, renderCtx.invalidate);
+				// No summary header above the diff — the collapsed row carries `+x -y`
+				// (matches edit). The diff itself is the body.
 				if (renderCtx.state._wdk !== key) {
 					renderCtx.state._wdk = key;
-					const summary = renderDiffSummary(String(d.summary), theme);
-					renderCtx.state._wdt = `  ${summary}\n${theme.fg("muted", "  rendering diff…")}`;
+					renderCtx.state._wdt = theme.fg("muted", "  rendering diff…");
 					const dc = resolveDiffColors(theme);
 					const diff = parseDiff(d.oldContent as string, d.newContent as string);
 					renderSplit(diff, d.language as string | undefined, MAX_RENDER_LINES, dc)
 						.then((rendered) => {
 							if (renderCtx.state._wdk !== key) return;
-							const summary = renderDiffSummary(String(d.summary), theme);
-							renderCtx.state._wdt = `  ${summary}\n${rendered}`;
+							renderCtx.state._wdt = rendered;
 							renderCtx.invalidate();
 						})
 						.catch(() => {

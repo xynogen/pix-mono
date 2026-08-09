@@ -225,13 +225,22 @@ describe("renderDimPreview", () => {
 		expect(out).toContain("body");
 	});
 
-	it("frames the body with a rule top and bottom, header above the top rule", () => {
+	it("frames the body with a rule top and bottom, dropping the redundant header", () => {
 		const out = plain(renderDimPreview("a\nb", theme, { frame: true, header: "2 files" }));
 		const lines = out.split("\n");
-		// header, top rule, a, b, bottom rule
-		expect(lines[0]).toContain("2 files");
-		expect(lines[1]).toMatch(/^─+$/); // top rule
+		// No floating header in framed mode — the collapsed row carries the count.
+		expect(out).not.toContain("2 files");
+		expect(lines[0]).toMatch(/^─+$/); // top rule is the first line
 		expect(lines.at(-1)).toMatch(/^─+$/); // bottom rule closes the block
+	});
+
+	it("paints the frame rules when a paint fn is given", () => {
+		const tag: FgTheme = { fg: (k, v) => `<${k}>${v}` };
+		const out = renderDimPreview("a\nb", tag, {
+			frame: true,
+			paint: (s: string) => tag.fg("success", s),
+		});
+		expect(out).toContain("<success>─");
 	});
 
 	it("frames overflow footer below the bottom rule", () => {

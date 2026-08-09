@@ -3,7 +3,7 @@ import type {
 	ExtensionContext,
 	ReadToolInput,
 } from "@earendil-works/pi-coding-agent";
-import { FG_DIM, RST, resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
+import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { fileIcon } from "@xynogen/pix-pretty/icons";
@@ -27,6 +27,7 @@ import {
 	normalizeLineEndings,
 	renderCollapsedToolRow,
 	renderToolError,
+	ruleFrame,
 	setResultDetails,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -202,10 +203,12 @@ export function registerReadTool(
 
 			if (d?._type === "readFile" && d.content) {
 				const key = `read:${d.filePath}:${d.offset}:${d.lineCount}:${process.stdout.columns ?? 80}:${renderCtx.expanded ? "full" : "preview"}`;
+				// One framed shape; rules follow status color. The line count lives in the
+				// collapsed row — no floating "N lines" header above the frame.
+				const paint = (s: string) => theme.fg("success", s);
 				if (renderCtx.state._rk !== key) {
 					renderCtx.state._rk = key;
-					const info = `${FG_DIM}${d.lineCount} lines${RST}`;
-					renderCtx.state._rt = fillToolBackground(`  ${info}`);
+					renderCtx.state._rt = fillToolBackground(theme.fg("muted", "  reading…"));
 
 					const maxShow = renderCtx.expanded ? (d.lineCount as number) : MAX_PREVIEW_LINES;
 					renderFileContent(
@@ -217,14 +220,14 @@ export function registerReadTool(
 					)
 						.then((rendered: string) => {
 							if (renderCtx.state._rk !== key) return;
-							renderCtx.state._rt = fillToolBackground(`  ${info}\n${rendered}`);
+							renderCtx.state._rt = fillToolBackground(
+								ruleFrame(rendered.split("\n"), [], undefined, paint).join("\n"),
+							);
 							renderCtx.invalidate();
 						})
 						.catch(() => {});
 				}
-				text.setText(
-					renderCtx.state._rt ?? fillToolBackground(`  ${FG_DIM}${d.lineCount} lines${RST}`),
-				);
+				text.setText(renderCtx.state._rt ?? fillToolBackground(theme.fg("muted", "  reading…")));
 				return text;
 			}
 

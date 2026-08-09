@@ -117,7 +117,7 @@ describe("registerGrepTool", () => {
 		expect(rendered).not.toContain("✓ grep");
 	});
 
-	it("renders single-match output inline as one line", () => {
+	it("frames single-match output like multi-match (no inline row)", () => {
 		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
 		const mockPi: PiPrettyApi = {
 			registerTool(tool: unknown) {
@@ -162,8 +162,10 @@ describe("registerGrepTool", () => {
 					state: {},
 				} as unknown as RenderContextLike)
 				?.getText() ?? "";
-		expect(strip(out).split("\n").length).toBe(1);
-		expect(out).not.toContain("─");
+		// Single match is framed just like multi — one shape, no inline row.
+		expect(out).toContain("─");
+		expect(strip(out)).toContain("foo");
+		expect(strip(out)).not.toContain("match");
 		const multi = {
 			content: [{ type: "text", text: "a:1:foo\nb:2:foo\nc:3:foo" }],
 			details: {

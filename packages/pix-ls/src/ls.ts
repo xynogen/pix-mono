@@ -3,7 +3,7 @@ import type {
 	ExtensionContext,
 	LsToolInput,
 } from "@earendil-works/pi-coding-agent";
-import { FG_DIM, RST, resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
+import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { renderTree } from "@xynogen/pix-pretty/renderers";
 import type {
@@ -15,7 +15,6 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
-	dotJoin,
 	fillToolBackground,
 	getTextContent,
 	hideCollapsedToolCall,
@@ -143,19 +142,13 @@ export function registerLsTool(
 				return text;
 			}
 			if (d?._type === "lsResult" && d.text) {
-				const raw = String(d.text).trim();
-				const singleLine = raw && !raw.includes("\n");
-				if (singleLine && !renderCtx.expanded) {
-					text.setText(
-						fillToolBackground(
-							`  ${dotJoin([`${FG_DIM}${d.entryCount} entries${RST}`, theme.fg("dim", raw)], (s) => theme.fg("dim", s))}`,
-						),
-					);
-					return text;
-				}
+				// One shape regardless of entry count: a single framed box, no floating
+				// "N entries" header (the collapsed row already carries the count).
+				// Rules follow status color like bash — green ok, red error. Color can
+				// encode status but not the count, so the count stays in the collapsed row.
 				const tree = renderTree(d.text as string, d.path as string, theme);
-				const info = `  ${FG_DIM}${d.entryCount} entries${RST}`;
-				const out = [info, ...ruleFrame(tree.split("\n"))];
+				const paint = (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s);
+				const out = ruleFrame(tree.split("\n"), [], undefined, paint);
 				text.setText(fillToolBackground(out.join("\n")));
 				return text;
 			}

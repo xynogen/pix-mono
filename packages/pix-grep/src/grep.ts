@@ -211,11 +211,11 @@ export function registerGrepTool(
 			}
 
 			const output = getTextContent(result) || "searched";
+			// One framed shape; rules follow status color. Count lives in the collapsed row.
 			text.setText(
 				renderDimPreview(output, theme, {
 					frame: true,
-					header:
-						d?._type === "grepResult" ? pluralize(d.matchCount, "match", "matches") : undefined,
+					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
 					highlight: d?._type === "grepResult" ? d.pattern : undefined,
 				}),
 			);
