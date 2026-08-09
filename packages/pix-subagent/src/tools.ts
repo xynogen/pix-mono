@@ -26,6 +26,7 @@ import { lookupBenchmark } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	COLLAPSED_TOOL_GLYPH,
+	dotJoin,
 	formatCollapsedToolRow,
 	hideCollapsedToolCall,
 	padIcon,
@@ -289,7 +290,7 @@ function buildStats(d: AgentDetails, theme: Theme): string {
 		parts.push(theme.fg("dim", formatTurns(d.turnCount, d.maxTurns)));
 	if (d.toolUses > 0) parts.push(theme.fg("dim", formatToolUses(d.toolUses)));
 	if (d.context) parts.push(theme.fg("dim", d.context));
-	return parts.join(` ${theme.fg("dim", "·")} `);
+	return dotJoin(parts, (s) => theme.fg("dim", s));
 }
 
 /** Format every foreground terminal state with stable identity-first ordering. */
@@ -330,10 +331,8 @@ export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 	parts.push(theme.fg("dim", formatMs(d.durationMs)));
 	parts.push(theme.fg(d.status === "error" ? "error" : "dim", status));
 
-	return (
-		`${marker} ${theme.fg("toolTitle", theme.bold(d.displayName))}` +
-		` ${theme.fg("dim", "·")} ${parts.join(` ${theme.fg("dim", "·")} `)}`
-	);
+	const dot = (s: string) => theme.fg("dim", s);
+	return dotJoin([`${marker} ${theme.fg("toolTitle", theme.bold(d.displayName))}`, ...parts], dot);
 }
 
 /** Backward-compatible name for completed-row consumers. */
@@ -541,12 +540,16 @@ export function createAgentTool(
 				if (liveSpeed) parts.push(liveSpeed);
 				if (details.durationMs > 0) parts.push(formatMs(details.durationMs));
 				if (details.activity) parts.push(details.activity);
-				const statsText =
-					parts.length > 0 ? ` ${theme.fg("dim", "·")} ${theme.fg("dim", parts.join(" · "))}` : "";
+				const dot = (s: string) => theme.fg("dim", s);
+				const statsText = parts.length > 0 ? dot(dotJoin(parts)) : "";
 
-				const line =
-					`  ${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(details.displayName))}${modelLabel}` +
-					` ${theme.fg("dim", "·")} ${theme.fg("muted", details.description)}${statsText}`;
+				const line = dotJoin(
+					[
+						`  ${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(details.displayName))}${modelLabel}`,
+						`${theme.fg("muted", details.description)}${statsText}`,
+					],
+					dot,
+				);
 				return new Text(line, 0, 0);
 			}
 

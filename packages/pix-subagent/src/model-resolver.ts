@@ -4,6 +4,7 @@
 
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
+import { dotJoin } from "@xynogen/pix-pretty/utils";
 
 export interface ModelEntry {
 	id: string;
@@ -131,15 +132,15 @@ function annotate(m: ModelEntry): { line: string; score: number } {
 	const bench = lookupBenchmark(m.id);
 	const score = bench?.overallScore ?? null;
 	const out = bench?.outputPrice ?? dev?.cost?.output;
-	const segs = [
-		typeof score === "number" ? `⚡${score}` : "",
+	const segs = dotJoin([
+		typeof score === "number" && `⚡${score}`,
 		fmtCtx(dev?.limit?.context),
 		fmtCost(bench?.inputPrice ?? dev?.cost?.input, out),
 		tier(score, out),
-	].filter(Boolean);
+	]);
 	const id = `${m.provider}/${m.id}`;
 	return {
-		line: segs.length ? `${id}  — ${segs.join(" · ")}` : id,
+		line: segs ? `${id}  — ${segs}` : id,
 		score: score ?? -1,
 	};
 }

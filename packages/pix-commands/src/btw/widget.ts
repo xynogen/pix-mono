@@ -9,6 +9,7 @@
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { dotJoin } from "@xynogen/pix-pretty/utils";
 import {
 	type ContextUsageLike,
 	describeActivity,
@@ -73,7 +74,7 @@ function statsFor(job: BtwWidgetJob, endMs: number): string {
 	const speed = formatSpeed(job.outputTokens, endMs - job.startedAt);
 	if (speed) parts.push(speed);
 	parts.push(formatMs(endMs - job.startedAt));
-	return parts.join(" \u00b7 ");
+	return dotJoin(parts);
 }
 
 function finishedLine(job: BtwWidgetJob, theme: WidgetTheme): string {

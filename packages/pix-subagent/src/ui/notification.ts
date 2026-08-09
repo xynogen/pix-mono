@@ -7,7 +7,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
-import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
 import { formatContext, formatMs, formatSpeed, formatToolUses, formatTurns } from "../tools.ts";
 import type { NotificationDetails } from "../types.ts";
 
@@ -52,10 +52,15 @@ export function formatNotificationLine(d: NotificationDetails, theme: Notificati
 	if (speed) parts.push(theme.fg("dim", speed));
 	if (d.durationMs > 0) parts.push(theme.fg("dim", formatMs(d.durationMs)));
 
-	let line = `${marker} ${theme.bold(d.description)}`;
-	if (parts.length > 0)
-		line += ` ${theme.fg("dim", "·")} ${parts.join(` ${theme.fg("dim", "·")} `)}`;
-	line += ` ${theme.fg("dim", "·")} ${theme.fg(d.status === "error" ? "error" : "dim", statusText)}`;
+	const dot = (s: string) => theme.fg("dim", s);
+	let line = dotJoin(
+		[
+			`${marker} ${theme.bold(d.description)}`,
+			parts.length > 0 && dotJoin(parts, dot),
+			theme.fg(d.status === "error" ? "error" : "dim", statusText),
+		],
+		dot,
+	);
 	if (d.status === "error" && d.error) line += theme.fg("error", `: ${d.error.slice(0, 100)}`);
 	return line;
 }

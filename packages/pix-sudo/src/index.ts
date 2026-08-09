@@ -29,6 +29,7 @@ import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
+	dotJoin,
 	fillToolBackground,
 	getTextContent,
 	hideCollapsedToolCall,
@@ -130,13 +131,12 @@ function terminalMeta(details: SudoResultDetails): string {
 	if (details.errorKind === "authentication") return "authentication failed";
 	if (details.errorKind === "execution" || details.errorKind === "no-result") return "failed";
 
-	const meta: string[] = [];
-	if (typeof details.exitCode === "number") meta.push(`exit ${details.exitCode}`);
-	if (typeof details.lineCount === "number" && details.lineCount > 0) {
-		meta.push(`${details.lineCount} ${details.lineCount === 1 ? "line" : "lines"}`);
-	}
-	if (details.truncated) meta.push("truncated");
-	return meta.join(" · ");
+	const hasLines = typeof details.lineCount === "number" && details.lineCount > 0;
+	return dotJoin([
+		typeof details.exitCode === "number" && `exit ${details.exitCode}`,
+		hasLines && `${details.lineCount} ${details.lineCount === 1 ? "line" : "lines"}`,
+		details.truncated && "truncated",
+	]);
 }
 
 function isTerminal(details: SudoResultDetails): boolean {
@@ -501,25 +501,28 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			if (lineCount === 1 && !renderCtx.expanded) {
-				text.setText(fillToolBackground(`  ${summary} · ${theme.fg("dim", lines[0] ?? "")}`));
+				text.setText(
+					fillToolBackground(
+						`  ${dotJoin([summary, theme.fg("dim", lines[0] ?? "")], (s) => theme.fg("dim", s))}`,
+					),
+				);
 				return text;
 			}
-
-			const lineInfo = lineCount > 1 ? `  ${FG_DIM}(${lineCount} lines)${RST}` : "";
-			const header = `  ${summary}${lineInfo}`;
 
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 			const show = lines.slice(0, maxShow);
 			const footer =
 				lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
-			const out = [
-				header,
-				...ruleFrame(
-					show.map((line) => `  ${line}`),
-					footer,
-					termW(),
-				),
-			];
+			// Frame tint follows exit status: green ok, red failure, dim unknown.
+			// The `✓ exit N` header is dropped — the collapsed row already carries it.
+			const statusKey = code === null ? "dim" : code === 0 ? "success" : "error";
+			const paint = (s: string) => theme.fg(statusKey, s);
+			const out = ruleFrame(
+				show.map((line) => `  ${line}`),
+				footer,
+				termW(),
+				paint,
+			);
 			text.setText(fillToolBackground(out.join("\n")));
 			return text;
 		}) as never,

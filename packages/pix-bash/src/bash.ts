@@ -18,6 +18,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
+	dotJoin,
 	fillToolBackground,
 	getTextContent,
 	hideCollapsedToolCall,
@@ -45,11 +46,11 @@ export function summarizeBashCommand(command: string): string {
 	if (steps.length === 0) return "command";
 	const first = steps[0] ?? "command";
 	if (/^(?:export\s+)?[A-Za-z_][A-Za-z0-9_]*=|^(?:if|for|while|case)\b/.test(first)) {
-		return `shell script · ${lines.length} lines`;
+		return dotJoin(["shell script", `${lines.length} lines`]);
 	}
 
 	const compact = first.replace(/\s+/g, " ");
-	return steps.length > 1 ? `${compact} · +${steps.length - 1} steps` : compact;
+	return dotJoin([compact, steps.length > 1 && `+${steps.length - 1} steps`]);
 }
 
 // ponytail: thin wrapper keeps old import path; canonical is formatDuration(ms,'bash') in pix-pretty
@@ -172,17 +173,17 @@ export function registerBashTool(
 					const durationMs = Number(d.durationMs ?? 0);
 					const exitCode = d.exitCode as number | null;
 					const status = exitCode === null ? "warning" : exitCode === 0 ? "success" : "error";
-					const meta = [
-						exitCode !== null && exitCode !== 0 ? `exit ${exitCode}` : "",
-						lc > 0 ? `${lc} ${lc === 1 ? "line" : "lines"}` : "",
-						durationMs > 0 ? formatBashDuration(durationMs) : "",
-					].filter(Boolean);
+					const meta = dotJoin([
+						exitCode !== null && exitCode !== 0 && `exit ${exitCode}`,
+						lc > 0 && `${lc} ${lc === 1 ? "line" : "lines"}`,
+						durationMs > 0 && formatBashDuration(durationMs),
+					]);
 					text.setText(
 						renderCollapsedToolRow(
 							theme,
 							"bash",
 							summarizeBashCommand(String(d.command ?? "")),
-							meta.join(" · "),
+							meta,
 							status,
 						),
 					);
@@ -213,7 +214,11 @@ export function registerBashTool(
 
 				if (lineCount === 1 && !renderCtx.expanded) {
 					const singleLine = normalizeLineEndings(lines[0] ?? "");
-					text.setText(fillToolBackground(`${header} · ${theme.fg("dim", singleLine)}`));
+					text.setText(
+						fillToolBackground(
+							dotJoin([header, theme.fg("dim", singleLine)], (s) => theme.fg("dim", s)),
+						),
+					);
 					return text;
 				}
 
@@ -221,14 +226,17 @@ export function registerBashTool(
 				const show = lines.slice(0, maxShow);
 				const footer =
 					lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
-				const out = [
-					header,
-					...ruleFrame(
-						show.map((line) => `  ${line}`),
-						footer,
-						termW(),
-					),
-				];
+				// Frame tint follows exit status: green ok, red failure, dim unknown.
+				// The `✓ exit N` header is dropped here — the collapsed row already carries it.
+				const exitCode = d.exitCode as number | null;
+				const statusKey = exitCode === null ? "dim" : exitCode === 0 ? "success" : "error";
+				const paint = (s: string) => theme.fg(statusKey, s);
+				const out = ruleFrame(
+					show.map((line) => `  ${line}`),
+					footer,
+					termW(),
+					paint,
+				);
 				text.setText(fillToolBackground(out.join("\n")));
 				return text;
 			}

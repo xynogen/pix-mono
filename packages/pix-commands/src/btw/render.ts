@@ -1,6 +1,7 @@
 import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import { Box, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { dotJoin } from "@xynogen/pix-pretty/utils";
 import { formatDuration as fmtDuration } from "@xynogen/pix-pretty/widget-format";
 
 export interface BtwMessageDetails {
@@ -33,8 +34,12 @@ export function registerBtwRenderer(
 		const statusGlyph = failed
 			? theme.fg("error", icon("status.error"))
 			: theme.fg("success", icon("status.ok"));
-		const meta = [details.model, details.thinkingLevel, formatDuration(details.durationMs)];
-		if (details.toolUses > 0) meta.push(`${details.toolUses} tools`);
+		const meta = dotJoin([
+			details.model,
+			details.thinkingLevel,
+			formatDuration(details.durationMs),
+			details.toolUses > 0 && `${details.toolUses} tools`,
+		]);
 
 		// A custom renderer bypasses Pi's default custom-message box, so provide
 		// our own card. Use selectedBg rather than the generic custom-message
@@ -44,11 +49,7 @@ export function registerBtwRenderer(
 		// header text embedded inside Markdown can confuse wrapping and parsing.
 		const card = new Box(1, 1, (text) => theme.bg("selectedBg", text));
 		card.addChild(
-			new Text(
-				`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("dim", `· ${meta.join(" · ")}`)}`,
-				0,
-				0,
-			),
+			new Text(`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("dim", `· ${meta}`)}`, 0, 0),
 		);
 		card.addChild(
 			new Text(`${theme.fg("accent", "▐")} ${theme.fg("muted", details.question)}`, 0, 0),

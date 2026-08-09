@@ -10,7 +10,7 @@
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
 import type { AgentManager } from "../agent-manager.ts";
 import { getConfig } from "../agent-types.ts";
 import type { AgentActivity, AgentDetails, Theme } from "../tools.ts";
@@ -231,7 +231,8 @@ export class AgentWidget {
 		if (speed) parts.push(speed);
 		parts.push(duration);
 
-		return `${icon} ${theme.fg("dim", name)}${modelLabel}${modeTag} ${theme.fg("dim", "·")} ${theme.fg("dim", a.description)} ${theme.fg("dim", "·")} ${theme.fg("dim", parts.join(" · "))}${statusText}`;
+		const dot = (s: string) => theme.fg("dim", s);
+		return `${dotJoin([`${icon} ${theme.fg("dim", name)}${modelLabel}${modeTag}`, theme.fg("dim", a.description), theme.fg("dim", dotJoin(parts))], dot)}${statusText}`;
 	}
 
 	private renderWidget(
@@ -289,16 +290,17 @@ export class AgentWidget {
 			const liveSpeed = formatSpeed(bg?.lifetimeUsage.output ?? 0, bg?.streamingMs ?? 0);
 			if (liveSpeed) parts.push(liveSpeed);
 			parts.push(elapsed);
-			const statsText = parts.join(" · ");
+			const statsText = dotJoin(parts);
 
 			// Activity trails at the end (after stats) so its variable width
 			// doesn't cause the static identity + stats to bounce around.
 			const activity = bg ? describeActivity(bg.activeTools, bg.responseText) : "thinking…";
 
+			const dot = (s: string) => theme.fg("dim", s);
 			runningLines.push(
 				truncate(
 					theme.fg("dim", "├─") +
-						` ${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(name))}${modelLabel}${modeTag} ${theme.fg("dim", "·")} ${theme.fg("muted", a.description)} ${theme.fg("dim", "·")} ${theme.fg("dim", statsText)} ${theme.fg("dim", "·")} ${theme.fg("dim", activity)}`,
+						` ${dotJoin([`${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(name))}${modelLabel}${modeTag}`, theme.fg("muted", a.description), theme.fg("dim", statsText), theme.fg("dim", activity)], dot)}`,
 				),
 			);
 		}

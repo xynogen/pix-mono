@@ -17,6 +17,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
+	dotJoin,
 	fillToolBackground,
 	getTextContent,
 	hideCollapsedToolCall,
@@ -175,7 +176,7 @@ export function registerReadTool(
 							theme,
 							"read",
 							sp(String(d.filePath ?? "")),
-							`${d.mimeType ?? "image"} · ${humanSize(byteSize)}`,
+							dotJoin([String(d.mimeType ?? "image"), humanSize(byteSize)]),
 						),
 					);
 				} else {
@@ -193,7 +194,7 @@ export function registerReadTool(
 				const byteSize = Math.ceil(((d.data as string).length * 3) / 4);
 				text.setText(
 					fillToolBackground(
-						`  ${fileIcon(d.filePath as string, theme)}${theme.fg("dim", `${d.mimeType ?? "image"} · ${humanSize(byteSize)}`)}`,
+						`  ${fileIcon(d.filePath as string, theme)}${theme.fg("dim", dotJoin([String(d.mimeType ?? "image"), humanSize(byteSize)]))}`,
 					),
 				);
 				return text;

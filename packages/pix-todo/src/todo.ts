@@ -12,7 +12,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { formatCollapsedToolRow } from "@xynogen/pix-pretty/utils";
+import { dotJoin, formatCollapsedToolRow } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
@@ -64,9 +64,7 @@ export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme): stri
 	const done = items.filter((t) => t.status === "done").length;
 	const active = items.find((t) => t.status === "in_progress");
 	const blocked = items.filter((t) => t.status === "blocked").length;
-	const meta = [`${done}/${items.length} done`, blocked > 0 ? `${blocked} blocked` : ""]
-		.filter(Boolean)
-		.join(" · ");
+	const meta = dotJoin([`${done}/${items.length} done`, blocked > 0 && `${blocked} blocked`]);
 	const target = active
 		? `#${active.id} ${active.text}`
 		: done === items.length

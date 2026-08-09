@@ -15,6 +15,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
+	dotJoin,
 	fillToolBackground,
 	getTextContent,
 	hideCollapsedToolCall,
@@ -147,7 +148,7 @@ export function registerLsTool(
 				if (singleLine && !renderCtx.expanded) {
 					text.setText(
 						fillToolBackground(
-							`  ${FG_DIM}${d.entryCount} entries${RST} · ${theme.fg("dim", raw)}`,
+							`  ${dotJoin([`${FG_DIM}${d.entryCount} entries${RST}`, theme.fg("dim", raw)], (s) => theme.fg("dim", s))}`,
 						),
 					);
 					return text;

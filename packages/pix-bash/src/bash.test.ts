@@ -352,6 +352,63 @@ describe("registerBashTool", () => {
 				} as unknown as RenderContextLike)
 				?.getText() ?? "";
 		expect(multiOut).toContain("─");
+		// Framed view drops the `✓ exit 0` header — the collapsed row already carries it.
+		expect(multiOut).not.toContain("✓ exit 0");
+	});
+
+	it("tints the frame rules green on success and red on failure", () => {
+		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
+		const mockPi: PiPrettyApi = {
+			registerTool(tool: unknown) {
+				Object.assign(registered, tool);
+			},
+			registerCommand() {},
+			on() {},
+		};
+		registerBashTool(
+			mockPi,
+			() => ({ execute: async () => ({ content: [], details: undefined }) }),
+			{
+				cwd: process.cwd(),
+				sp: (p: string) => p,
+				TextComponent: MockTextComponent as unknown as TextComponentCtor,
+				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
+				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
+			},
+		);
+		// Tag each fg() call so the rule's status color is observable in the output.
+		const theme: ThemeLike = {
+			fg: (k: string, v: string) => `[${k}]${v}[/]`,
+			bold: (v: string) => v,
+		};
+		// exitCode drives the rule tint; isError:false keeps the framed (non-error) branch
+		// so a non-zero exit still renders framed output with red rules.
+		const render = (exitCode: number | null) =>
+			registered
+				.renderResult?.(
+					{
+						content: [{ type: "text", text: "a\nb\nc" }],
+						details: {
+							_type: "bashResult",
+							text: "a\nb\nc",
+							exitCode,
+							command: "x",
+							durationMs: 0,
+						},
+					},
+					{ isPartial: false },
+					theme,
+					{
+						expanded: false,
+						isError: false,
+						invalidate: () => {},
+						state: {},
+					} as unknown as RenderContextLike,
+				)
+				?.getText() ?? "";
+		expect(render(0)).toContain("[success]─"); // top+bottom rules painted success
+		expect(render(1)).toContain("[error]─"); // non-zero exit → red rules
+		expect(render(null)).toContain("[dim]─"); // unknown exit → neutral dim rules
 	});
 
 	it("collapses a non-zero exit thrown by Pi's built-in bash tool", async () => {

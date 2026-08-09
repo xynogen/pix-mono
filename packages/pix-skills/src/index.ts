@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import {
+	dotJoin,
 	formatCollapsedToolRow,
 	hideCollapsedToolCall,
 	humanSize,
@@ -292,7 +293,7 @@ export type ThemeLike = {
 };
 
 export function formatSkillList(names: string[]): string {
-	return `Available skills (${names.length}): ${names.join(" · ")}`;
+	return `Available skills (${names.length}): ${dotJoin(names)}`;
 }
 
 function formatInstalls(installs: number): string {
@@ -308,7 +309,7 @@ export function formatRemoteSkillSearch(query: string, results: RemoteSkillSearc
 		`skills.sh matches for "${query}" (${results.length}, installs descending):`,
 		...ranked.map(
 			(result, index) =>
-				`${index + 1}. ${result.name} · ${result.source} · ${formatInstalls(result.installs)} installs`,
+				`${index + 1}. ${dotJoin([result.name, result.source, `${formatInstalls(result.installs)} installs`])}`,
 		),
 	].join("\n");
 }
@@ -332,15 +333,15 @@ export type SkillResultDetails =
 	| { mode: "copy"; name: string; resource: string; output: string; bytes: number };
 
 export function formatSkillCallLabel(args: SkillCallArgs): string {
-	if (args.search) return `search · ${args.search}`;
-	if (args.source && args.name) return `remote · ${args.source}@${args.name}`;
+	if (args.search) return dotJoin(["search", args.search]);
+	if (args.source && args.name) return dotJoin(["remote", `${args.source}@${args.name}`]);
 	if (!args.name) return "list";
 	if (args.resource && args.output) {
-		return `copy · ${args.name}/${args.resource} → ${args.output}`;
+		return dotJoin(["copy", `${args.name}/${args.resource} → ${args.output}`]);
 	}
-	if (args.resource) return `reference · ${args.name}/${args.resource}`;
-	if (args.full) return `instructions · ${args.name}`;
-	return `description · ${args.name}`;
+	if (args.resource) return dotJoin(["reference", `${args.name}/${args.resource}`]);
+	if (args.full) return dotJoin(["instructions", args.name]);
+	return dotJoin(["description", args.name]);
 }
 
 export function formatCollapsedSkillResult(details: SkillResultDetails): string {
@@ -350,13 +351,13 @@ export function formatCollapsedSkillResult(details: SkillResultDetails): string 
 		case "search":
 			return `${details.count} matches for “${details.query}”`;
 		case "description":
-			return `${details.name} · description`;
+			return dotJoin([details.name, "description"]);
 		case "instructions":
-			return `${details.name} · ${details.lines} instruction lines`;
+			return dotJoin([details.name, `${details.lines} instruction lines`]);
 		case "reference":
-			return `${details.name} · reference · ${humanSize(details.bytes)}`;
+			return dotJoin([details.name, "reference", humanSize(details.bytes)]);
 		case "copy":
-			return `copied · ${details.output} · ${humanSize(details.bytes)}`;
+			return dotJoin(["copied", details.output, humanSize(details.bytes)]);
 	}
 }
 
@@ -389,16 +390,16 @@ export function formatExpandedSkillResult(details: SkillResultDetails, text: str
 		case "description": {
 			const prefix = `${details.name}:`;
 			const description = text.startsWith(prefix) ? text.slice(prefix.length).trimStart() : text;
-			return `DESCRIPTION · ${details.name}\n${description}`;
+			return `${dotJoin(["DESCRIPTION", details.name])}\n${description}`;
 		}
 		case "instructions": {
 			const preview = text.length > 100 ? `${text.slice(0, 100)}...` : text;
-			return `INSTRUCTIONS · ${details.name} · ${details.lines} lines\n${preview}`;
+			return `${dotJoin(["INSTRUCTIONS", details.name, `${details.lines} lines`])}\n${preview}`;
 		}
 		case "reference":
-			return `REFERENCE · ${details.name}\n${details.resource} · ${humanSize(details.bytes)}\n${text}`;
+			return `${dotJoin(["REFERENCE", details.name])}\n${dotJoin([details.resource, humanSize(details.bytes)])}\n${text}`;
 		case "copy":
-			return `COPIED · ${details.name}\n${details.resource} → ${details.output} · ${humanSize(details.bytes)}`;
+			return `${dotJoin(["COPIED", details.name])}\n${dotJoin([`${details.resource} → ${details.output}`, humanSize(details.bytes)])}`;
 	}
 }
 

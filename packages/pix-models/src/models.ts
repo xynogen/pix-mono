@@ -27,6 +27,7 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { dotJoin } from "@xynogen/pix-pretty/utils";
 import { patchOutBuiltinModelCommand } from "./patch-builtin";
 
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
@@ -310,7 +311,6 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 
 			// Mute low-info parts (separators, padding, #, ☆) so the actual values pop.
 			const mute = (s: string) => theme.fg("muted", s);
-			const sep = mute(" · ");
 			const guide = (key: string, action: string) =>
 				theme.fg("text", key) + theme.fg("dim", ` ${action}`);
 			const guideSep = theme.fg("dim", " · ");
@@ -389,7 +389,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					const starBar = theme.fg(scoreColor, "★".repeat(filled)) + mute("☆".repeat(5 - filled));
 					benchSeg = `⚡${theme.fg(scoreColor, String(score))} ${starBar}`;
 				}
-				const desc = [ctxStr, costSeg, benchSeg].filter(Boolean).join(sep);
+				const desc = dotJoin([ctxStr, costSeg, benchSeg], mute);
 
 				return {
 					value: `${m.provider}/${m.id}`,

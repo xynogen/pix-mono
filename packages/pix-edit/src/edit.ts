@@ -28,6 +28,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
+	dotJoin,
 	fillToolBackground,
 	getTextContent,
 	hideCollapsedToolCall,
@@ -210,11 +211,16 @@ export function registerEditTool(
 
 			const { summary } = summarizeEditOperations(operations);
 			const coloredSummary = renderDiffSummary(summary, theme);
-			const suffix =
-				operations.length === 1
-					? coloredSummary
-					: `${theme.fg("muted", `${operations.length} edits`)} ${coloredSummary}`;
-			text.setText(fillToolBackground(`${hdr}  ${suffix}`));
+			const paint = (s: string) => theme.fg("dim", s);
+			const suffix = dotJoin(
+				[
+					hdr,
+					operations.length > 1 && theme.fg("muted", `${operations.length} edits`),
+					coloredSummary,
+				],
+				paint,
+			);
+			text.setText(fillToolBackground(suffix));
 			return text;
 		},
 
@@ -242,7 +248,7 @@ export function registerEditTool(
 					d?._type === "editInfo"
 						? (d.summary as string)
 						: d?._type === "multiEditInfo"
-							? `${d.editCount} edits · ${d.summary}`
+							? dotJoin([`${d.editCount} edits`, String(d.summary)])
 							: "edited";
 				let filePath = "";
 				if (d?._type === "editInfo") filePath = String(d.filePath ?? "");
