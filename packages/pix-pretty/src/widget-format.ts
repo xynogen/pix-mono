@@ -109,6 +109,23 @@ export function formatMs(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/** ponytail: unified duration - keep 3 presentations via style param. */
+export type DurationStyle = "bash" | "btw" | "ms"; // bash=ms/<10s 1dp/>10s int; btw=ms/s/m+s; ms=always s 1dp
+export function formatDuration(ms: number, style: DurationStyle = "ms"): string {
+	const n = Math.max(0, Math.floor(ms));
+	if (style === "bash") {
+		if (n < 1_000) return `${n}ms`;
+		if (n < 10_000) return `${(n / 1_000).toFixed(1)}s`;
+		return `${Math.round(n / 1_000)}s`;
+	}
+	if (style === "btw") {
+		if (n < 1_000) return `${n}ms`;
+		if (n < 60_000) return `${(n / 1_000).toFixed(n < 10_000 ? 1 : 0)}s`;
+		return `${Math.floor(n / 60_000)}m ${Math.round((n % 60_000) / 1_000)}s`;
+	}
+	return formatMs(n);
+}
+
 /**
  * Output tokens per second over a duration. "" when either input is
  * non-positive (no work / zero elapsed) so callers can skip the segment.

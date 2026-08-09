@@ -3,6 +3,7 @@ import {
 	describeActivity,
 	fmtTokenCount,
 	formatContext,
+	formatDuration,
 	formatMs,
 	formatSpeed,
 	formatTokens,
@@ -35,6 +36,18 @@ describe("widget formatters", () => {
 
 	test("formatMs renders seconds to one decimal", () => {
 		expect(formatMs(2_100)).toBe("2.1s");
+	});
+
+	test("formatDuration keeps 3 presentations via style param", () => {
+		expect(formatDuration(420, "bash")).toBe("420ms");
+		expect(formatDuration(2_450, "bash")).toBe("2.5s");
+		expect(formatDuration(12_400, "bash")).toBe("12s");
+		expect(formatDuration(450, "btw")).toBe("450ms");
+		expect(formatDuration(2_100, "btw")).toBe("2.1s");
+		expect(formatDuration(12_400, "btw")).toBe("12s");
+		expect(formatDuration(65_000, "btw")).toBe("1m 5s");
+		expect(formatDuration(2_100)).toBe("2.1s");
+		expect(formatDuration(2_100, "ms")).toBe(formatMs(2_100));
 	});
 
 	test("formatSpeed returns empty when there is no work", () => {

@@ -1,4 +1,4 @@
-import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	frameModal,
@@ -6,6 +6,7 @@ import {
 	ModalPager,
 	modalWidth,
 	terminalModalHeight,
+	wrapTextWithAnsi,
 } from "@xynogen/pix-pretty/modal-frame";
 import type { ConfigWritePreview, McpDiscoverySummary } from "./config.ts";
 import type { McpOnboardingState } from "./onboarding-state.ts";
@@ -61,22 +62,9 @@ function fg(style: (text: string) => string, text: string): string {
 	return style(text);
 }
 
+// ponytail: use pix-pretty/modal-frame ANSI-safe wrapping (ceiling: wrapTextWithAnsi handles ANSI + unbroken tokens)
 function wrapText(text: string, width: number): string[] {
-	if (width <= 8) return [text];
-	const words = text.split(/\s+/).filter(Boolean);
-	const lines: string[] = [];
-	let current = "";
-	for (const word of words) {
-		const candidate = current ? `${current} ${word}` : word;
-		if (visibleWidth(candidate) <= width) {
-			current = candidate;
-			continue;
-		}
-		if (current) lines.push(current);
-		current = word;
-	}
-	if (current) lines.push(current);
-	return lines.length > 0 ? lines : [""];
+	return width <= 8 ? [text] : wrapTextWithAnsi(text, width);
 }
 
 export interface SetupPanelCallbacks {

@@ -17,6 +17,10 @@ import {
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
 
+export { truncateToWidth, visibleWidth, wrapTextWithAnsi };
+
+// ponytail: re-export ANSI-safe wrapping via pix-pretty so consumers dedupe local wrapText (pix-mcp)
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MIN_WIDTH = 40;

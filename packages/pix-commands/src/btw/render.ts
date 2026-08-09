@@ -1,6 +1,7 @@
 import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import { Box, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { formatDuration as fmtDuration } from "@xynogen/pix-pretty/widget-format";
 
 export interface BtwMessageDetails {
 	question: string;
@@ -14,10 +15,9 @@ export interface BtwMessageDetails {
 	error?: string;
 }
 
+// ponytail: thin wrapper keeps old import path; canonical is formatDuration(ms,'btw') in pix-pretty
 export function formatDuration(ms: number): string {
-	if (ms < 1_000) return `${ms}ms`;
-	if (ms < 60_000) return `${(ms / 1_000).toFixed(ms < 10_000 ? 1 : 0)}s`;
-	return `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1_000)}s`;
+	return fmtDuration(ms, "btw");
 }
 
 export function registerBtwRenderer(

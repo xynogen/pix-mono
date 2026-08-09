@@ -29,6 +29,7 @@ import {
 	setResultDetails,
 	termW,
 } from "@xynogen/pix-pretty/utils";
+import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 export function summarizeBashCommand(command: string): string {
@@ -51,10 +52,9 @@ export function summarizeBashCommand(command: string): string {
 	return steps.length > 1 ? `${compact} · +${steps.length - 1} steps` : compact;
 }
 
+// ponytail: thin wrapper keeps old import path; canonical is formatDuration(ms,'bash') in pix-pretty
 export function formatBashDuration(durationMs: number): string {
-	if (durationMs < 1_000) return `${durationMs}ms`;
-	if (durationMs < 10_000) return `${(durationMs / 1_000).toFixed(1)}s`;
-	return `${Math.round(durationMs / 1_000)}s`;
+	return formatDuration(durationMs, "bash");
 }
 
 export function registerBashTool(
