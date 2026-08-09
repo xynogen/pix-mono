@@ -323,6 +323,6 @@ describe("registerBashTool", () => {
 			invalidate: () => {},
 			state: { collapsed: true },
 		} as unknown as RenderContextLike);
-		expect(rendered?.getText()).toContain("✗ bash bun test · exit 1");
+		expect(rendered?.getText()).toContain("✗  bash bun test · exit 1");
 	});
 });
