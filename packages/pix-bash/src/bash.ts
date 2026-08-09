@@ -212,22 +212,13 @@ export function registerBashTool(
 					return text;
 				}
 
-				if (lineCount === 1 && !renderCtx.expanded) {
-					const singleLine = normalizeLineEndings(lines[0] ?? "");
-					text.setText(
-						fillToolBackground(
-							dotJoin([header, theme.fg("dim", singleLine)], (s) => theme.fg("dim", s)),
-						),
-					);
-					return text;
-				}
-
 				const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 				const show = lines.slice(0, maxShow);
 				const footer =
 					lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
-				// Frame tint follows exit status: green ok, red failure, dim unknown.
-				// The `✓ exit N` header is dropped here — the collapsed row already carries it.
+				// Every result (including single-line) is framed; the rules follow exit
+				// status: green ok, red failure, dim unknown. The `✓ exit N` header is
+				// dropped — the collapsed row already carries status.
 				const exitCode = d.exitCode as number | null;
 				const statusKey = exitCode === null ? "dim" : exitCode === 0 ? "success" : "error";
 				const paint = (s: string) => theme.fg(statusKey, s);

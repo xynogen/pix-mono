@@ -275,7 +275,7 @@ describe("registerBashTool", () => {
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 
-	it("renders single-line output inline as one line", () => {
+	it("frames single-line output like multi-line (no inline row)", () => {
 		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
 		const mockPi: PiPrettyApi = {
 			registerTool(tool: unknown) {
@@ -316,11 +316,11 @@ describe("registerBashTool", () => {
 					state: {},
 				} as unknown as RenderContextLike)
 				?.getText() ?? "";
-		// non-expanded single-line must be exactly 1 line: "✓ exit 0 · <output>"
-		expect(strip(collapsed).split("\n").length).toBe(1);
-		expect(collapsed).toContain("✓ exit 0");
+		// Single-line output is now framed just like multi-line — no inline row,
+		// no "✓ exit 0" header; the rules carry status by color.
+		expect(collapsed).toContain("─");
 		expect(collapsed).toContain("Checked 382 files");
-		expect(collapsed).not.toContain("─");
+		expect(strip(collapsed)).not.toContain("✓ exit 0");
 		const expanded =
 			registered
 				.renderResult?.(single, { isPartial: false }, theme, {

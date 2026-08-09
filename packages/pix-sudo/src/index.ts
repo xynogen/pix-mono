@@ -500,21 +500,13 @@ export default function (pi: ExtensionAPI): void {
 				return text;
 			}
 
-			if (lineCount === 1 && !renderCtx.expanded) {
-				text.setText(
-					fillToolBackground(
-						`  ${dotJoin([summary, theme.fg("dim", lines[0] ?? "")], (s) => theme.fg("dim", s))}`,
-					),
-				);
-				return text;
-			}
-
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 			const show = lines.slice(0, maxShow);
 			const footer =
 				lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
-			// Frame tint follows exit status: green ok, red failure, dim unknown.
-			// The `✓ exit N` header is dropped — the collapsed row already carries it.
+			// Every result (including single-line) is framed; the rules follow exit
+			// status: green ok, red failure, dim unknown. The `✓ exit N` header is
+			// dropped — the collapsed row already carries status.
 			const statusKey = code === null ? "dim" : code === 0 ? "success" : "error";
 			const paint = (s: string) => theme.fg(statusKey, s);
 			const out = ruleFrame(
