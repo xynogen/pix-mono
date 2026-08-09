@@ -3,6 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { MAX_PREVIEW_LINES } from "./config.js";
 import type { FgTheme } from "./types.js";
 import {
+	dotJoin,
 	formatCollapsedToolRow,
 	formatJson,
 	hideCollapsedToolCall,
@@ -34,6 +35,28 @@ describe("ruleFrame", () => {
 		const out = ruleFrame(["only"], [], 4);
 		expect(plain(out[0]!)).toBe("────");
 		expect(plain(out.at(-1)!)).toBe("────");
+	});
+
+	it("paints both rules via the supplied paint fn, neutral by default", () => {
+		const green = (s: string) => `<G>${s}</G>`;
+		const ok = ruleFrame(["x"], [], 4, green);
+		expect(ok[0]).toBe("<G>────</G>");
+		expect(ok.at(-1)).toBe("<G>────</G>"); // both top and bottom rule painted
+		const neutral = ruleFrame(["x"], [], 4);
+		expect(neutral[0]).toContain("50;50;50"); // FG_RULE default tint
+	});
+});
+
+describe("dotJoin", () => {
+	it("joins non-empty parts with a middot, dropping falsy pieces", () => {
+		expect(dotJoin(["a", "b", "c"])).toBe("a · b · c");
+		expect(dotJoin(["a", "", null, undefined, false, "b"])).toBe("a · b");
+		expect(dotJoin(["only"])).toBe("only");
+		expect(dotJoin([])).toBe("");
+	});
+
+	it("paints the separator when a paint fn is supplied", () => {
+		expect(dotJoin(["a", "b"], (s) => `<${s}>`)).toBe("a< · >b");
 	});
 });
 

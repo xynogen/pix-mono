@@ -156,6 +156,19 @@ export function padIcon(glyph: string, width = 2): string {
 	return pad > 0 ? glyph + " ".repeat(pad) : glyph;
 }
 
+/**
+ * Join non-empty parts with a middot separator: `dotJoin(["a", "", "b"])` → `"a · b"`.
+ * Empty/nullish parts are dropped so callers can pass conditional pieces inline.
+ * Pass `paint` (e.g. `(s) => theme.fg("dim", s)`) to tint the separator to theme.
+ */
+export function dotJoin(
+	parts: Array<string | false | null | undefined>,
+	paint?: RulePaint,
+): string {
+	const sep = paint ? paint(" · ") : " · ";
+	return parts.filter((p): p is string => Boolean(p)).join(sep);
+}
+
 type CollapsedToolTheme = {
 	fg: (
 		key: "success" | "error" | "warning" | "toolTitle" | "muted" | "dim",
@@ -343,8 +356,13 @@ export function shortPath(cwd: string, home: string, p: string): string {
 	return p.replace(home, "~");
 }
 
-export function rule(w: number): string {
-	return `${FG_RULE}${"─".repeat(w)}${RST}`;
+/** Paints a rule line. Callers pass `(s) => theme.fg(status, s)` so the frame
+ *  tint follows the active theme (success/error/warning). Default = neutral FG_RULE. */
+export type RulePaint = (glyphs: string) => string;
+
+export function rule(w: number, paint?: RulePaint): string {
+	const glyphs = "─".repeat(w);
+	return paint ? paint(glyphs) : `${FG_RULE}${glyphs}${RST}`;
 }
 
 /**
@@ -357,8 +375,9 @@ export function ruleFrame(
 	bodyLines: string[],
 	footerLines: string[] = [],
 	width?: number,
+	paint?: RulePaint,
 ): string[] {
-	const r = rule(width ?? termW());
+	const r = rule(width ?? termW(), paint);
 	return [r, ...bodyLines, r, ...footerLines];
 }
 
