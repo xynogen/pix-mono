@@ -80,27 +80,37 @@ export function registerBashTool(
 			toolCtx: ExtensionContext,
 		) {
 			const startedAt = Date.now();
-			const result = (await origBash.execute(tid, params, sig, upd, toolCtx)) as ToolResultLike;
-			const textContent = getTextContent(result);
+			const details = (text: string) => {
+				const exitMatch = text.match(/(?:exit code|exited with(?: code)?|exit status)[:\s]*(\d+)/i);
+				const exitCode = exitMatch
+					? Number(exitMatch[1])
+					: text.includes("command not found") || text.includes("No such file")
+						? 1
+						: 0;
+				return {
+					_type: "bashResult" as const,
+					text,
+					exitCode,
+					command: params.command ?? "",
+					durationMs: Date.now() - startedAt,
+				};
+			};
 
-			let exitCode: number | null = 0;
-			if (textContent) {
-				const exitMatch = textContent.match(/(?:exit code|exited with|exit status)[:\s]*(\d+)/i);
-				if (exitMatch) exitCode = Number(exitMatch[1]);
-				if (textContent.includes("command not found") || textContent.includes("No such file")) {
-					exitCode = 1;
+			try {
+				const result = (await origBash.execute(tid, params, sig, upd, toolCtx)) as ToolResultLike;
+				setResultDetails(result, details(getTextContent(result)));
+				return result;
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				if (!/(?:exit code|exited with(?: code)?|exit status)[:\s]*(\d+)/i.test(text)) {
+					throw error;
 				}
+				return {
+					content: [{ type: "text" as const, text }],
+					details: details(text),
+					isError: true,
+				};
 			}
-
-			setResultDetails(result, {
-				_type: "bashResult",
-				text: textContent ?? "",
-				exitCode,
-				command: params.command ?? "",
-				durationMs: Date.now() - startedAt,
-			});
-
-			return result;
 		},
 
 		renderCall(args: BashParams, theme: ThemeLike, renderCtx: RenderContextLike) {
