@@ -61,42 +61,57 @@ export function registerReadTool(
 			toolCtx: ExtensionContext,
 		) {
 			const effectiveParams = applyReadDefaults(params);
-			const result = (await origRead.execute(
-				tid,
-				effectiveParams,
-				sig,
-				upd,
-				toolCtx,
-			)) as ToolResultLike;
-
 			const fp = effectiveParams.path ?? "";
 			const offset = effectiveParams.offset ?? 1;
+			try {
+				const result = (await origRead.execute(
+					tid,
+					effectiveParams,
+					sig,
+					upd,
+					toolCtx,
+				)) as ToolResultLike;
 
-			const imageBlock = result.content?.find(isImageContent);
-			if (imageBlock) {
-				setResultDetails(result, {
-					_type: "readImage",
-					filePath: fp,
-					data: imageBlock.data,
-					mimeType: imageBlock.mimeType ?? "image/png",
-				});
+				const imageBlock = result.content?.find(isImageContent);
+				if (imageBlock) {
+					setResultDetails(result, {
+						_type: "readImage",
+						filePath: fp,
+						data: imageBlock.data,
+						mimeType: imageBlock.mimeType ?? "image/png",
+					});
+					return result;
+				}
+
+				const textContent = getTextContent(result);
+				if (textContent && fp) {
+					const normalizedContent = normalizeLineEndings(textContent);
+					const lineCount = normalizedContent.split("\n").length;
+					setResultDetails(result, {
+						_type: "readFile",
+						filePath: fp,
+						content: normalizedContent,
+						offset,
+						lineCount,
+					});
+				}
+
 				return result;
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				if (sig?.aborted || /aborted/i.test(text)) throw error;
+				return {
+					content: [{ type: "text" as const, text }],
+					details: {
+						_type: "readFile" as const,
+						filePath: fp,
+						content: text,
+						offset,
+						lineCount: 1,
+					},
+					isError: true,
+				};
 			}
-
-			const textContent = getTextContent(result);
-			if (textContent && fp) {
-				const normalizedContent = normalizeLineEndings(textContent);
-				const lineCount = normalizedContent.split("\n").length;
-				setResultDetails(result, {
-					_type: "readFile",
-					filePath: fp,
-					content: normalizedContent,
-					offset,
-					lineCount,
-				});
-			}
-
-			return result;
 		},
 
 		renderCall(args: ReadParams, theme: ThemeLike, renderCtx: RenderContextLike) {

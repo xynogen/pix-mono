@@ -54,25 +54,35 @@ export function registerLsTool(
 			toolCtx: ExtensionContext,
 		) {
 			const effectiveParams = applyLsDefaults(params);
-			const result = (await origLs.execute(
-				tid,
-				effectiveParams,
-				sig,
-				upd,
-				toolCtx,
-			)) as ToolResultLike;
-			const textContent = getTextContent(result);
 			const fp = effectiveParams.path ?? cwd;
-			const entryCount = textContent ? textContent.trim().split("\n").filter(Boolean).length : 0;
+			try {
+				const result = (await origLs.execute(
+					tid,
+					effectiveParams,
+					sig,
+					upd,
+					toolCtx,
+				)) as ToolResultLike;
+				const textContent = getTextContent(result);
+				const entryCount = textContent ? textContent.trim().split("\n").filter(Boolean).length : 0;
 
-			setResultDetails(result, {
-				_type: "lsResult",
-				text: textContent ?? "",
-				path: fp,
-				entryCount,
-			});
+				setResultDetails(result, {
+					_type: "lsResult",
+					text: textContent ?? "",
+					path: fp,
+					entryCount,
+				});
 
-			return result;
+				return result;
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				if (sig?.aborted || /aborted/i.test(text)) throw error;
+				return {
+					content: [{ type: "text" as const, text }],
+					details: { _type: "lsResult" as const, text, path: fp, entryCount: 0 },
+					isError: true,
+				};
+			}
 		},
 
 		renderCall(args: LsParams, theme: ThemeLike, renderCtx: RenderContextLike) {

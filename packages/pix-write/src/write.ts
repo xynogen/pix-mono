@@ -61,6 +61,7 @@ export function registerWriteTool(
 			toolCtx: ExtensionContext,
 		) {
 			const fp = params.path ?? params.file_path ?? "";
+			const content = params.content ?? "";
 			let old: string | null = null;
 			try {
 				if (fp && existsSync(fp)) old = readFileSync(fp, "utf-8");
@@ -68,14 +69,29 @@ export function registerWriteTool(
 				old = null;
 			}
 
-			const result = (await origWrite.execute(
-				tid,
-				params as unknown as Parameters<typeof origWrite.execute>[1],
-				sig,
-				upd,
-				toolCtx,
-			)) as ToolResultLike;
-			const content = params.content ?? "";
+			let result: ToolResultLike;
+			try {
+				result = (await origWrite.execute(
+					tid,
+					params as unknown as Parameters<typeof origWrite.execute>[1],
+					sig,
+					upd,
+					toolCtx,
+				)) as ToolResultLike;
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				if (sig?.aborted || /aborted/i.test(text)) throw error;
+				return {
+					content: [{ type: "text" as const, text }],
+					details: {
+						_type: "new" as const,
+						lines: content.split("\n").length,
+						content,
+						filePath: fp,
+					},
+					isError: true,
+				};
+			}
 
 			if (old !== null && old !== content) {
 				const diff = parseDiff(old, content);

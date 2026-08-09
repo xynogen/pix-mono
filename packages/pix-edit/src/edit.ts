@@ -128,13 +128,32 @@ export function registerEditTool(
 			const operations = getEditOperations(params);
 			const fileLang = lang(fp);
 
-			const result = (await origEdit.execute(
-				tid,
-				params as unknown as Parameters<typeof origEdit.execute>[1],
-				sig,
-				upd,
-				toolCtx,
-			)) as ToolResultLike;
+			let result: ToolResultLike;
+			try {
+				result = (await origEdit.execute(
+					tid,
+					params as unknown as Parameters<typeof origEdit.execute>[1],
+					sig,
+					upd,
+					toolCtx,
+				)) as ToolResultLike;
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				if (sig?.aborted || /aborted/i.test(text)) throw error;
+				return {
+					content: [{ type: "text" as const, text }],
+					details: {
+						_type: "editInfo" as const,
+						summary: "failed",
+						editLine: 0,
+						oldContent: operations[0]?.oldText ?? "",
+						newContent: operations[0]?.newText ?? "",
+						language: fileLang,
+						filePath: fp,
+					},
+					isError: true,
+				};
+			}
 
 			if (operations.length === 0) return result;
 

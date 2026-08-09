@@ -113,24 +113,40 @@ export function registerGrepTool(
 			}
 
 			// SDK fallback
-			const result = await origGrep.execute(tid, effectiveParams, sig, upd as never, toolCtx);
-			const textContent = normalizeLineEndings(getTextContent(result));
-			if (result.content) {
-				for (const content of result.content) {
-					if (isTextContent(content)) content.text = normalizeLineEndings(content.text || "");
+			try {
+				const result = await origGrep.execute(tid, effectiveParams, sig, upd as never, toolCtx);
+				const textContent = normalizeLineEndings(getTextContent(result));
+				if (result.content) {
+					for (const content of result.content) {
+						if (isTextContent(content)) content.text = normalizeLineEndings(content.text || "");
+					}
 				}
+				const matchCount = textContent ? countRipgrepMatches(textContent) : 0;
+
+				setResultDetails<GrepResultDetails>(result, {
+					_type: "grepResult",
+					text: textContent,
+					pattern: params.pattern,
+					path: params.path,
+					matchCount,
+				});
+
+				return result;
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				if (sig?.aborted || /aborted/i.test(text)) throw error;
+				return {
+					content: [{ type: "text" as const, text }],
+					details: {
+						_type: "grepResult" as const,
+						text,
+						pattern: params.pattern,
+						path: params.path,
+						matchCount: 0,
+					},
+					isError: true,
+				};
 			}
-			const matchCount = textContent ? countRipgrepMatches(textContent) : 0;
-
-			setResultDetails<GrepResultDetails>(result, {
-				_type: "grepResult",
-				text: textContent,
-				pattern: params.pattern,
-				path: params.path,
-				matchCount,
-			});
-
-			return result;
 		},
 
 		renderCall(args: GrepParams, theme: ThemeLike, renderCtx: RenderContextLike) {

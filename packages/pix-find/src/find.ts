@@ -94,19 +94,35 @@ export function registerFindTool(
 			}
 
 			// SDK fallback
-			const result = await origFind.execute(tid, effectiveParams, sig, upd as never, toolCtx);
-			const textContent = getTextContent(result);
-			const matchCount = textContent ? textContent.trim().split("\n").filter(Boolean).length : 0;
+			try {
+				const result = await origFind.execute(tid, effectiveParams, sig, upd as never, toolCtx);
+				const textContent = getTextContent(result);
+				const matchCount = textContent ? textContent.trim().split("\n").filter(Boolean).length : 0;
 
-			setResultDetails<FindResultDetails>(result, {
-				_type: "findResult",
-				text: textContent,
-				pattern: params.pattern,
-				path: params.path,
-				matchCount,
-			});
+				setResultDetails<FindResultDetails>(result, {
+					_type: "findResult",
+					text: textContent,
+					pattern: params.pattern,
+					path: params.path,
+					matchCount,
+				});
 
-			return result;
+				return result;
+			} catch (error) {
+				const text = error instanceof Error ? error.message : String(error);
+				if (sig?.aborted || /aborted/i.test(text)) throw error;
+				return {
+					content: [{ type: "text" as const, text }],
+					details: {
+						_type: "findResult" as const,
+						text,
+						pattern: params.pattern,
+						path: params.path,
+						matchCount: 0,
+					},
+					isError: true,
+				};
+			}
 		},
 
 		renderCall(args: FindParams, theme: ThemeLike, renderCtx: RenderContextLike) {
