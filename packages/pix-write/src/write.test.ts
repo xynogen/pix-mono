@@ -160,7 +160,7 @@ describe("registerWriteTool", () => {
 				?.getText() ?? "";
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗ write locked.ts · failed");
+		expect(render({ collapsed: true })).toContain("✗  write locked.ts · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 });

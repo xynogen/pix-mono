@@ -10,6 +10,7 @@
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/utils";
 import type { AgentManager } from "../agent-manager.ts";
 import { getConfig } from "../agent-types.ts";
 import type { AgentActivity, AgentDetails, Theme } from "../tools.ts";
@@ -196,21 +197,23 @@ export class AgentWidget {
 
 		let icon: string;
 		let statusText: string;
+		// Markers are width-normalized (padIcon) so wide `⚠` (aborted) aligns with
+		// the 1-cell `✓`/`✗`/`■` siblings when finished rows stack in the widget.
 		if (a.status === "completed") {
-			icon = theme.fg("success", "✓");
+			icon = theme.fg("success", padIcon("✓"));
 			statusText = "";
 		} else if (a.status === "steered") {
-			icon = theme.fg("success", "✓");
+			icon = theme.fg("success", padIcon("✓"));
 			statusText = theme.fg("dim", " (turn limit)");
 		} else if (a.status === "stopped") {
-			icon = theme.fg("dim", "■");
+			icon = theme.fg("dim", padIcon("■"));
 			statusText = theme.fg("dim", " stopped");
 		} else if (a.status === "error") {
-			icon = theme.fg("error", "✗");
+			icon = theme.fg("error", padIcon("✗"));
 			const errMsg = a.error ? `: ${a.error.slice(0, 60)}` : "";
 			statusText = theme.fg("error", ` error${errMsg}`);
 		} else {
-			icon = theme.fg("error", "✗");
+			icon = theme.fg("warning", padIcon(COLLAPSED_TOOL_GLYPH.warning));
 			statusText = theme.fg("warning", " aborted");
 		}
 

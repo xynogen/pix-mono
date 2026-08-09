@@ -181,7 +181,7 @@ mock.module("./lib.ts", () => {
 	};
 });
 
-import { termW } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, padIcon, termW } from "@xynogen/pix-pretty/utils";
 import registerSudo from "./index.ts";
 
 // Minimal theme stub: returns text unchanged so assertions match plain strings.
@@ -594,8 +594,9 @@ describe("sudo_run tool execute()", () => {
 			lineCount: 18,
 			truncated: false,
 		});
+		// Markers are width-normalized (padIcon) so 1-cell and 2-cell glyphs align.
 		expect(renderResult(successHost, success, false)).toContain(
-			"✓ sudo apt install ripgrep · exit 0 · 18 lines",
+			`${padIcon(COLLAPSED_TOOL_GLYPH.success)} sudo apt install ripgrep · exit 0 · 18 lines`,
 		);
 
 		const deniedHost = makeHost();
@@ -608,7 +609,7 @@ describe("sudo_run tool execute()", () => {
 		);
 		expect(denied.details).toMatchObject({ outcome: "denied", cancellationKind: "denied" });
 		expect(renderResult(deniedHost, denied, false)).toContain(
-			"⚡ sudo systemctl restart foo · denied",
+			`${padIcon(COLLAPSED_TOOL_GLYPH.warning)} sudo systemctl restart foo · denied`,
 		);
 
 		const timeoutHost = makeHost();
@@ -620,7 +621,9 @@ describe("sudo_run tool execute()", () => {
 			makeCtx({ overlayResult: { action: "timeout" } }),
 		);
 		expect(timedOut.details).toMatchObject({ outcome: "timed-out", cancellationKind: "timeout" });
-		expect(renderResult(timeoutHost, timedOut, false)).toContain("⚡ sudo apt update · timed out");
+		expect(renderResult(timeoutHost, timedOut, false)).toContain(
+			`${padIcon(COLLAPSED_TOOL_GLYPH.warning)} sudo apt update · timed out`,
+		);
 
 		const failedHost = makeHost();
 		sudoMock = async () => ({
@@ -642,7 +645,7 @@ describe("sudo_run tool execute()", () => {
 			errorKind: "exit-code",
 		});
 		expect(renderResult(failedHost, failed, false)).toContain(
-			"✗ sudo apt update · exit 1 · 12 lines",
+			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo apt update · exit 1 · 12 lines`,
 		);
 	});
 

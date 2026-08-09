@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
 import { makeRenderCall, makeRenderResult } from "./render.js";
 
 const theme = {
@@ -127,8 +128,8 @@ test("renderResult caps the normal preview", () => {
 
 test("warning and error callbacks select shared status glyphs", () => {
 	for (const [status, glyph] of [
-		["warning", "⚡"],
-		["error", "✗"],
+		["warning", COLLAPSED_TOOL_GLYPH.warning],
+		["error", COLLAPSED_TOOL_GLYPH.error],
 	] as const) {
 		const stub = stubComponent();
 		const rr = makeRenderResult({ ...config, status: () => status });

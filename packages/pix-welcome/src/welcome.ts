@@ -36,6 +36,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { padIcon } from "@xynogen/pix-pretty/utils";
 
 // ─── Theme shim (same pattern as footer.ts) ───────────────────────────────────
 
@@ -325,7 +326,8 @@ export function renderCheck(theme: Theme, c: CheckResult): string {
 	const labelColor = c.status === "error" ? "error" : c.status === "warn" ? "warning" : "muted";
 	const label = theme.fg(labelColor, c.label.padEnd(LABEL_WIDTH));
 	const detail = c.detail ? theme.fg("text", c.detail) : "";
-	return `${icon} ${label}  ${detail}`;
+	// padIcon normalizes 1-cell (✓/✗/○) vs 2-cell (⚠) markers to one column.
+	return `${padIcon(icon)} ${label}  ${detail}`;
 }
 
 function buildLogoLines(theme: Theme, model: string, cwd: string): string[] {

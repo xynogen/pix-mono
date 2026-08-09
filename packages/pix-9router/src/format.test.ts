@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
 import registerFetch, { executeFetch, formatFetchResult } from "./fetch.ts";
 import registerSearch, {
 	executeSearch,
@@ -365,7 +366,7 @@ describe("fetch and search compact renderers", () => {
 				chars: 120,
 			},
 		});
-		expect(fetchRow).toContain("⚡");
+		expect(fetchRow).toContain(COLLAPSED_TOOL_GLYPH.warning);
 		expect(fetchRow).toContain("120 chars · curl fallback");
 
 		const searchRow = renderRegisteredResult(

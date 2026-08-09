@@ -65,6 +65,8 @@ const CATALOG = {
 	// part of this set.
 	"status.ok": { nerd: "\u2713", unicode: `\u2713${VS}`, ascii: "ok" },
 	"status.error": { nerd: "\u2717", unicode: `\u2717${VS}`, ascii: "x" },
+	// `⚠` is East-Asian wide (2 cells); consumers that place it in an aligned
+	// marker column must normalize width via `padIcon` (pix-pretty/utils).
 	"status.warn": { nerd: "\u26A0", unicode: `\u26A0${VS}`, ascii: "!" },
 	"status.pending": { nerd: "\u25CB", unicode: `\u25CB${VS}`, ascii: "o" },
 	"status.running": { nerd: "\u25D0", unicode: `\u25D0${VS}`, ascii: "*" },

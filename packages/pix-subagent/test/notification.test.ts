@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
 import type { NotificationDetails } from "../src/types.ts";
 import { registerNotificationRenderer } from "../src/ui/notification.ts";
 
@@ -65,11 +66,11 @@ describe("terminal subagent notifications", () => {
 	});
 
 	for (const [status, marker, label] of [
-		["completed", "✓", "completed"],
-		["steered", "✓", "completed (steered)"],
+		["completed", COLLAPSED_TOOL_GLYPH.success, "completed"],
+		["steered", COLLAPSED_TOOL_GLYPH.success, "completed (steered)"],
 		["stopped", "■", "stopped"],
-		["aborted", "⚡", "aborted"],
-		["error", "✗", "error"],
+		["aborted", COLLAPSED_TOOL_GLYPH.warning, "aborted"],
+		["error", COLLAPSED_TOOL_GLYPH.error, "error"],
 	] as const) {
 		test(`${status} notification uses one terminal summary row`, () => {
 			const output = renderNotification(details(status), false);

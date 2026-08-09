@@ -1,6 +1,7 @@
 import type { AgentToolResult, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { UrlElicitationRequiredError } from "@modelcontextprotocol/sdk/types.js";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { padIcon } from "@xynogen/pix-pretty/utils";
 import { checkSync } from "recheck";
 import { abortable, throwIfAborted } from "./abort.ts";
 import {
@@ -248,23 +249,24 @@ export function executeStatus(state: McpExtensionState): ProxyToolResult {
 
 	let text = `MCP: ${connectedCount}/${servers.length} servers, ${totalTools} tools\n\n`;
 	for (const server of servers) {
+		// padIcon normalizes 1-cell markers vs 2-cell `⚠` (status.warn) to one column.
 		if (server.status === "connected") {
-			text += `${icon("status.ok")} ${server.name} (${server.toolCount} tools)\n`;
+			text += `${padIcon(icon("status.ok"))} ${server.name} (${server.toolCount} tools)\n`;
 			continue;
 		}
 		if (server.status === "needs-auth") {
-			text += `${icon("status.warn")} ${server.name} (needs auth)\n`;
+			text += `${padIcon(icon("status.warn"))} ${server.name} (needs auth)\n`;
 			continue;
 		}
 		if (server.status === "cached") {
-			text += `${icon("status.pending")} ${server.name} (${server.toolCount} tools, cached)\n`;
+			text += `${padIcon(icon("status.pending"))} ${server.name} (${server.toolCount} tools, cached)\n`;
 			continue;
 		}
 		if (server.status === "failed") {
-			text += `${icon("status.error")} ${server.name} (failed ${server.failedAgo ?? 0}s ago)\n`;
+			text += `${padIcon(icon("status.error"))} ${server.name} (failed ${server.failedAgo ?? 0}s ago)\n`;
 			continue;
 		}
-		text += `${icon("status.pending")} ${server.name} (not connected)\n`;
+		text += `${padIcon(icon("status.pending"))} ${server.name} (not connected)\n`;
 	}
 
 	if (servers.length > 0) {

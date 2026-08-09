@@ -163,7 +163,7 @@ describe("registerGrepTool", () => {
 				?.getText() ?? "";
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗ grep “(” in src · failed");
+		expect(render({ collapsed: true })).toContain("✗  grep “(” in src · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 });

@@ -167,7 +167,7 @@ describe("registerBashTool", () => {
 		);
 
 		expect(call?.getText()).toBe("");
-		expect(result?.getText()).toContain("✓ bash <muted>bun test · +2 steps</muted>");
+		expect(result?.getText()).toContain("✓  bash <muted>bun test · +2 steps</muted>");
 		expect(result?.getText()).toContain("2 lines · 2.5s");
 		expect(result?.getText()).not.toContain("git diff --check");
 	});
@@ -270,7 +270,7 @@ describe("registerBashTool", () => {
 				?.getText() ?? "";
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗ bash bun test · exit 1");
+		expect(render({ collapsed: true })).toContain("✗  bash bun test · exit 1");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 });

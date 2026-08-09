@@ -819,7 +819,7 @@ describe("todo card layout", () => {
 
 		expect(rendered).toContain("1. alpha");
 		expect(rendered).toContain("[muted]○[/]");
-		expect(rendered).not.toContain("[success]✓[/] [toolTitle]<b>todo</b>[/]");
+		expect(rendered).not.toContain("[success]✓ [/] [toolTitle]<b>todo</b>[/]");
 	});
 
 	test("failed todo actions render their exact error", async () => {
@@ -860,7 +860,7 @@ describe("todo card layout", () => {
 		expect(result.details).toBeDefined();
 		expect(lines).toHaveLength(1);
 		expect(lines[0]?.trimEnd()).toBe(
-			"[success]✓[/] [toolTitle]<b>todo</b>[/] [muted]#2 todo renderer[/] [dim]·[/] [dim]1/2 done[/]",
+			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [muted]#2 todo renderer[/] [dim]·[/] [dim]1/2 done[/]",
 		);
 	});
 });
@@ -891,7 +891,7 @@ describe("renderResult snapshot isolation", () => {
 describe("renderTodoSummaryLine (collapsed one-liner)", () => {
 	test("empty list renders a compact tool row", () => {
 		expect(renderTodoSummaryLine([], tagTheme)).toBe(
-			"[success]✓[/] [toolTitle]<b>todo</b>[/] [muted]empty[/]",
+			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [muted]empty[/]",
 		);
 	});
 
@@ -901,7 +901,7 @@ describe("renderTodoSummaryLine (collapsed one-liner)", () => {
 			{ id: 2, text: "b", status: "in_progress" },
 		];
 		expect(renderTodoSummaryLine(items, tagTheme)).toBe(
-			"[success]✓[/] [toolTitle]<b>todo</b>[/] [muted]#2 b[/] [dim]·[/] [dim]1/2 done[/]",
+			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [muted]#2 b[/] [dim]·[/] [dim]1/2 done[/]",
 		);
 	});
 });

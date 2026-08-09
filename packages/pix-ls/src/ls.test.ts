@@ -135,7 +135,7 @@ describe("registerLsTool", () => {
 				?.getText() ?? "";
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗ ls missing-dir · failed");
+		expect(render({ collapsed: true })).toContain("✗  ls missing-dir · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 });

@@ -6,6 +6,7 @@ import {
 	formatCollapsedToolRow,
 	formatJson,
 	hideCollapsedToolCall,
+	padIcon,
 	pluralize,
 	renderCollapsedToolRow,
 	renderDimPreview,
@@ -108,11 +109,25 @@ describe("collapsed tool rows", () => {
 	const rowTheme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
 
 	it("renders a consistent status, tool, target, and metadata row", () => {
+		// The status marker is width-normalized to 2 cells (padIcon) so wide glyphs
+		// align with narrow ones; a 1-cell `✓` therefore carries one pad space.
 		expect(formatCollapsedToolRow(rowTheme, "read", "src/a.ts", "12 lines")).toBe(
-			"✓ read src/a.ts · 12 lines",
+			"✓  read src/a.ts · 12 lines",
 		);
 		const rendered = plain(renderCollapsedToolRow(rowTheme, "read", "src/a.ts", "12 lines"));
-		expect(rendered).toStartWith("✓ read src/a.ts · 12 lines");
+		expect(rendered).toStartWith("✓  read src/a.ts · 12 lines");
+	});
+
+	it("padIcon normalizes markers to a fixed cell width (per pi-tui visibleWidth)", () => {
+		// pi-tui's width table drives the actual TUI column math, so padIcon trusts
+		// it: `✓`/`✗`/`⚠` measure 1 cell and gain a pad space; `⚡` measures 2 and
+		// is left as-is. All markers then occupy the same 2-cell column.
+		expect(padIcon("✓")).toBe("✓ ");
+		expect(padIcon("✗")).toBe("✗ ");
+		expect(padIcon("⚠")).toBe("⚠ ");
+		expect(padIcon("⚡")).toBe("⚡"); // already 2 cells — unchanged
+		expect(padIcon("x", 4)).toBe("x   "); // explicit width
+		expect(padIcon("⚡", 1)).toBe("⚡"); // never truncated below its own width
 	});
 
 	it("hides only collapsed, non-expanded call rows", () => {

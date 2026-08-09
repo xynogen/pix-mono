@@ -160,7 +160,7 @@ describe("registerFindTool", () => {
 				?.getText() ?? "";
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗ find [ in src · failed");
+		expect(render({ collapsed: true })).toContain("✗  find [ in src · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 });

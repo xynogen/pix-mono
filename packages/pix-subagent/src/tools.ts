@@ -24,7 +24,12 @@ import { defineTool, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { lookupBenchmark } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { formatCollapsedToolRow, hideCollapsedToolCall } from "@xynogen/pix-pretty/utils";
+import {
+	COLLAPSED_TOOL_GLYPH,
+	formatCollapsedToolRow,
+	hideCollapsedToolCall,
+	padIcon,
+} from "@xynogen/pix-pretty/utils";
 import {
 	describeActivity,
 	formatContext,
@@ -232,7 +237,10 @@ function renderAgentUtilityResult(
 		);
 		return new Text(
 			details.status === "stopped"
-				? row.replace(theme.fg("warning", "⚡"), theme.fg("dim", "■"))
+				? row.replace(
+						theme.fg("warning", padIcon(COLLAPSED_TOOL_GLYPH.warning)),
+						theme.fg("dim", padIcon("■")),
+					)
 				: row,
 			0,
 			0,
@@ -250,7 +258,11 @@ function renderAgentUtilityResult(
 					: details.outcome;
 	if (details.outcome === "stopped") {
 		const row = formatCollapsedToolRow(theme, tool, details.agentId, meta);
-		return new Text(row.replace(theme.fg("success", "✓"), theme.fg("dim", "■")), 0, 0);
+		return new Text(
+			row.replace(theme.fg("success", padIcon("✓")), theme.fg("dim", padIcon("■"))),
+			0,
+			0,
+		);
 	}
 	const status =
 		details.outcome === "delivered"
@@ -286,23 +298,23 @@ export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 	let status: string;
 	switch (d.status) {
 		case "completed":
-			marker = theme.fg("success", icon("status.ok"));
+			marker = theme.fg("success", padIcon(icon("status.ok")));
 			status = "completed";
 			break;
 		case "steered":
-			marker = theme.fg("success", icon("status.ok"));
+			marker = theme.fg("success", padIcon(icon("status.ok")));
 			status = "steered (turn limit)";
 			break;
 		case "stopped":
-			marker = theme.fg("dim", "■");
+			marker = theme.fg("dim", padIcon("■"));
 			status = "stopped";
 			break;
 		case "aborted":
-			marker = theme.fg("warning", "⚡");
+			marker = theme.fg("warning", padIcon(COLLAPSED_TOOL_GLYPH.warning));
 			status = "aborted (max turns exceeded)";
 			break;
 		default: {
-			marker = theme.fg("error", icon("status.error"));
+			marker = theme.fg("error", padIcon(icon("status.error")));
 			const reason = d.error?.replace(/\s+/g, " ").trim().slice(0, 100);
 			status = reason ? `error: ${reason}` : "error";
 			break;

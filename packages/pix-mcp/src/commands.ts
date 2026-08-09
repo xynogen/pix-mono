@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { padIcon } from "@xynogen/pix-pretty/utils";
 import {
 	ensureCompatibilityImports,
 	getMcpDiscoverySummary,
@@ -67,7 +68,8 @@ export async function showStatus(state: McpExtensionState, ctx: ExtensionContext
 		const toolSuffix = failed
 			? ""
 			: ` (${toolCount} tools${status === "cached" ? ", cached" : ""})`;
-		lines.push(`${statusIcon} ${name}: ${status}${toolSuffix}`);
+		// padIcon normalizes 1-cell markers vs 2-cell `⚠` (status.warn) to one column.
+		lines.push(`${padIcon(statusIcon)} ${name}: ${status}${toolSuffix}`);
 	}
 
 	if (Object.keys(state.config.mcpServers).length === 0) {

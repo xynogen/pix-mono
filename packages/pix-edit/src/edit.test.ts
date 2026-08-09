@@ -155,7 +155,7 @@ describe("registerEditTool", () => {
 				?.getText() ?? "";
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗ edit sample.ts · failed");
+		expect(render({ collapsed: true })).toContain("✗  edit sample.ts · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 });

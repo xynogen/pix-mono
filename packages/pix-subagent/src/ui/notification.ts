@@ -7,6 +7,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/utils";
 import { formatContext, formatMs, formatSpeed, formatToolUses, formatTurns } from "../tools.ts";
 import type { NotificationDetails } from "../types.ts";
 
@@ -21,23 +22,23 @@ export function formatNotificationLine(d: NotificationDetails, theme: Notificati
 	let statusText: string;
 	switch (d.status) {
 		case "completed":
-			marker = theme.fg("success", "✓");
+			marker = theme.fg("success", padIcon("✓"));
 			statusText = "completed";
 			break;
 		case "steered":
-			marker = theme.fg("success", "✓");
+			marker = theme.fg("success", padIcon("✓"));
 			statusText = "completed (steered)";
 			break;
 		case "stopped":
-			marker = theme.fg("dim", "■");
+			marker = theme.fg("dim", padIcon("■"));
 			statusText = "stopped";
 			break;
 		case "aborted":
-			marker = theme.fg("warning", "⚡");
+			marker = theme.fg("warning", padIcon(COLLAPSED_TOOL_GLYPH.warning));
 			statusText = "aborted";
 			break;
 		case "error":
-			marker = theme.fg("error", "✗");
+			marker = theme.fg("error", padIcon("✗"));
 			statusText = "error";
 	}
 

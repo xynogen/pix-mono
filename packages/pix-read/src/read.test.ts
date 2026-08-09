@@ -159,7 +159,7 @@ describe("registerReadTool", () => {
 				?.getText() ?? "";
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗ read missing.ts · failed");
+		expect(render({ collapsed: true })).toContain("✗  read missing.ts · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
 });

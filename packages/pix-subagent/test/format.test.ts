@@ -194,7 +194,9 @@ test("formatAgentCompletedLine keeps the completed agent row visible", () => {
 		theme,
 	);
 
-	expect(rendered).toBe("✓ Agent · Audit recording dead code · 0.3s · completed");
+	// Status marker is width-normalized (padIcon) so wide/narrow glyphs align —
+	// a 1-cell ✓ carries one pad space before the separator.
+	expect(rendered).toBe("✓  Agent · Audit recording dead code · 0.3s · completed");
 });
 
 test("agent uses the self-rendered shell so terminal status marks have no box padding", () => {

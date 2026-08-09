@@ -125,6 +125,37 @@ export function formatJson(value: unknown, options: FormatJsonOptions = {}): str
 
 export type CollapsedToolStatus = "success" | "error" | "warning";
 
+/**
+ * Status glyphs for collapsed tool rows. `⚠` (warning) is East-Asian *wide*
+ * (2 cells) while `✓`/`✗` are 1 cell — render them through `padIcon` so every
+ * marker occupies the same fixed column and rows stay vertically aligned.
+ * (`⚡` is reserved for strength / model-score badges, not warnings.)
+ */
+export const COLLAPSED_TOOL_GLYPH: Record<CollapsedToolStatus, string> = {
+	success: "✓",
+	warning: "⚠",
+	error: "✗",
+};
+
+/**
+ * Normalize a marker glyph to a fixed display width so mixed 1-cell and 2-cell
+ * (East-Asian wide / emoji) icons align in a column and the following text
+ * always starts at the same offset. Measures actual terminal cells via pi-tui's
+ * `visibleWidth` (ANSI-aware), then right-pads with spaces. A glyph already
+ * at/over `width` is returned unchanged (never truncated — clipping a marker is
+ * worse than a 1-cell overflow).
+ *
+ * The default width (2) makes every marker occupy exactly two cells, so with a
+ * single separator space the following text always starts at the same column:
+ *
+ *   `${padIcon("✓")} bash`   // "✓  bash"  (1 cell + 1 pad + separator)
+ *   `${padIcon("⚠")} bash`   // "⚠ bash"  (2 cells + separator — same column)
+ */
+export function padIcon(glyph: string, width = 2): string {
+	const pad = width - visibleWidth(glyph);
+	return pad > 0 ? glyph + " ".repeat(pad) : glyph;
+}
+
 type CollapsedToolTheme = {
 	fg: (
 		key: "success" | "error" | "warning" | "toolTitle" | "muted" | "dim",
@@ -141,7 +172,7 @@ export function formatCollapsedToolRow(
 	meta = "",
 	status: CollapsedToolStatus = "success",
 ): string {
-	const icon = status === "success" ? "✓" : status === "warning" ? "⚡" : "✗";
+	const icon = padIcon(COLLAPSED_TOOL_GLYPH[status]);
 	const parts = [
 		`${theme.fg(status, icon)} ${theme.fg("toolTitle", theme.bold(tool))}`,
 		target ? theme.fg("muted", target) : "",
