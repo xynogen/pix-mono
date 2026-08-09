@@ -6,6 +6,7 @@ import type {
 	RenderContextLike,
 	TextComponentCtor,
 	ThemeLike,
+	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import { formatBashDuration, registerBashTool, summarizeBashCommand } from "./bash";
 
@@ -272,5 +273,56 @@ describe("registerBashTool", () => {
 		expect(render({ timer: 1 })).toContain(diagnostic);
 		expect(render({ collapsed: true })).toContain("✗  bash bun test · exit 1");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
+	});
+
+	it("collapses a non-zero exit thrown by Pi's built-in bash tool", async () => {
+		const registered: {
+			execute?: (...args: unknown[]) => Promise<ToolResultLike & { isError?: boolean }>;
+			renderResult?: (...args: unknown[]) => MockTextComponent;
+		} = {};
+		const mockPi: PiPrettyApi = {
+			registerTool(tool: unknown) {
+				Object.assign(registered, tool);
+			},
+			registerCommand() {},
+			on() {},
+		};
+		registerBashTool(
+			mockPi,
+			() => ({
+				execute: async () => {
+					throw new Error("test failed\n\nCommand exited with code 1");
+				},
+			}),
+			{
+				cwd: process.cwd(),
+				sp: (p: string) => p,
+				TextComponent: MockTextComponent as unknown as TextComponentCtor,
+				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
+				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
+			},
+		);
+
+		const result = await registered.execute!(
+			"call-1",
+			{ command: "bun test" },
+			undefined,
+			undefined,
+			{},
+		);
+		expect(result.isError).toBe(true);
+		expect(result.details).toMatchObject({ _type: "bashResult", exitCode: 1 });
+
+		const theme: ThemeLike = {
+			fg: (_key: string, value: string) => value,
+			bold: (value: string) => value,
+		};
+		const rendered = registered.renderResult?.(result, { isPartial: false }, theme, {
+			expanded: false,
+			isError: true,
+			invalidate: () => {},
+			state: { collapsed: true },
+		} as unknown as RenderContextLike);
+		expect(rendered?.getText()).toContain("✗ bash bun test · exit 1");
 	});
 });
