@@ -68,6 +68,83 @@ Collapse policy helpers:
 import { shouldCollapse, collapseDelayMs } from "@xynogen/pix-runtime/collapse";
 ```
 
+## Agent state and herdr notifications
+
+### Agent-state coordinator
+
+`src/herdr-state.ts` (exported from the package index) is a process-wide
+coordinator that tracks whether the agent is `working`, `blocked`, or `idle`,
+keyed per Pi `EventBus`. On every transition it emits a `pix:agent-state` event:
+
+```ts
+{ state: "working" | "blocked" | "idle", message?: string, activities: number, blocks: number }
+```
+
+Two lease primitives drive it. Both return an idempotent release function:
+
+- `beginAgentActivity(events, source, message?)` marks asynchronous work in
+  progress (for example a running subagent). State reports `working` while any
+  activity lease is open.
+- `withAgentBlock(events, source, message, prompt)` holds `blocked` state for the
+  duration of an awaited `prompt()` and always releases it, even on throw. Blocks
+  take priority over activities, so state is `blocked` whenever any block lease is
+  open.
+
+`bindAgentStateEvents(events)` replays the current state and answers
+`pix:agent-state:request`. `resetAgentState(events)` clears all leases on session
+shutdown.
+
+Nested leases collapse to a single state: two open blocks still report `blocked`
+until both release.
+
+Consumers that open a block today: `pix-ask` (`ask_user`, "Waiting for user
+answer"), `pix-gate` (approval prompts), and `pix-sudo` (root approval).
+`pix-subagent` opens activity leases for running background agents.
+
+```ts
+import { withAgentBlock, beginAgentActivity } from "@xynogen/pix-runtime";
+
+// Hold blocked state while waiting on the user:
+await withAgentBlock(pi.events, "ask_user", "Waiting for user answer", () => promptUser());
+
+// Mark background work:
+const done = beginAgentActivity(pi.events, "subagent", "Agent running");
+// ... later ...
+done();
+```
+
+### herdr notification bridge
+
+`src/herdr-notify.ts` (exported as `bindHerdrNotify`) is a leaf subscriber on
+`pix:agent-state`. When the agent transitions INTO `blocked` it spawns:
+
+```bash
+herdr notification show <message> --sound request
+```
+
+so a user away from their terminal gets a popup and sound. `request` is herdr's
+built-in "needs attention" cue. The trigger is edge-triggered: it fires once per
+entry into `blocked`, not repeatedly, and nested blocks stay a single
+notification.
+
+The bridge is fire-and-forget. The child is `detached`, `unref`'d, and
+`stdio: "ignore"`, and a missing `herdr` binary is swallowed, so it never blocks
+the prompt path or throws. herdr owns the toast's color, position, and sound via
+its own server config (`[toast]` / `[notification]`); pix only reports the moment
+and the message. Compaction and other autonomous work never enter `blocked`, so
+they never notify.
+
+It is wired automatically by the runtime extension: bound at session start,
+unbound at shutdown. No manual setup beyond running inside a herdr pane.
+
+Two environment variables control it:
+
+- `HERDR_ENV` — herdr sets this to `1` inside its own pane. The bridge only runs
+  when `HERDR_ENV === "1"`; outside a herdr pane it is a no-op and spawns
+  nothing.
+- `PIX_HERDR_NOTIFY` — set to `0` to silence notifications even inside a herdr
+  pane.
+
 ## Testing
 
 ```ts

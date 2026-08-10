@@ -6,6 +6,8 @@ Pi extension — permission gate for dangerous bash commands.
 
 Intercepts every `bash` tool call and classifies the command against a set of severity rules before it runs. Two rule sets: **path rules** (block / warn / info) protect the `read` / `write` / `edit` tools from touching private keys, credential files, etc. — `block` is deny-first (15s timeout), `warn` is allow-first (30s), `info` is a blue notify that never blocks. **Command rules** (critical / dangerous / risky) gate `bash` invocations: `critical` (force pushes to main, recursive deletes, `dd` to disks, etc.) is hard-blocked in non-interactive mode and hard-denied via a 15-second auto-deny dialog in TUI mode; `dangerous` commands (including any `sudo` invocation, which is hard-redirected to the `sudo_run` tool — no bypass) show a 30-second auto-deny confirmation dialog; `risky` commands show a 60-second allow-first dialog and silently pass in non-interactive mode. Auto-approve patterns and extra rules can be configured in the `gate` section of `~/.pi/agent/pix.json`. Built-in rules can be turned off entirely by setting `guardrails: "off"` in that section.
 
+While an approval dialog is open, the gate holds the shared **agent-state** coordinator in the `blocked` state (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)). Inside a herdr pane that fires a "needs attention" notification, so an away user is pinged when a command is waiting on approval. Pairs with `/afk` (pix-commands): with AFK on, yellow gates auto-allow and red/sudo auto-deny, so only genuine stops surface.
+
 ## Install
 
 ```bash

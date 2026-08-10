@@ -27,6 +27,8 @@ Gives the parent agent (planner) four tools to delegate work to isolated child s
 
 ### The pix twist
 
+A running background agent also opens an **agent-state** activity lease (`beginAgentActivity` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so the shared state reads `working` while any child is in flight. It does not fire attention notifications — only `blocked` states (an open `ask_user` / gate / sudo prompt) do that.
+
 **Model name is always visible** — in the widget header and completion notification, regardless of whether the child uses the same model as the parent. Looks like:
 
 ```

@@ -7,6 +7,7 @@ export type {
 	SubscribeOptions,
 } from "./events.ts";
 export { default } from "./extension.ts";
+export { bindHerdrNotify } from "./herdr-notify.ts";
 export {
 	beginAgentActivity,
 	bindAgentStateEvents,

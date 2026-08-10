@@ -4,6 +4,7 @@ Pi extension providing focused slash commands:
 
 - `/clear` — flush Pi's cached model data.
 - `/btw <question>` — ask an isolated side question without interrupting the main agent.
+- `/afk` — toggle AFK mode for unattended runs.
 
 ## `/clear`
 
@@ -27,6 +28,30 @@ The child session:
 - supports multiple concurrent side questions.
 
 When the main agent is streaming, completion is shown as a notification and the durable card is appended after the main session becomes idle. This prevents the side answer from becoming steering input.
+
+## `/afk`
+
+`/afk` toggles AFK mode (away-from-keyboard) for unattended runs. It is a shared
+toggle stored in a global flag and shown in the status bar.
+
+When ON, yellow (medium-risk) permission gates auto-allow, while red (dangerous)
+gates and sudo prompts auto-deny:
+
+```text
+AFK mode on — yellow gates auto-allow; red and sudo auto-deny.
+```
+
+When OFF (the default), normal approval prompts are restored:
+
+```text
+AFK mode off — approval prompts restored.
+```
+
+The point is to let the agent keep working on safe, medium-risk actions while you
+are away, without silently permitting destructive ones. It pairs with the herdr
+notification bridge in `pix-runtime`: you still get pinged when something truly
+needs you (a red gate or sudo), and auto-deny turns that into a stop rather than
+an approval.
 
 ## Install
 
