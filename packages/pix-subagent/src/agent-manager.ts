@@ -37,6 +37,7 @@ export function __resetAgentRunnersForTests(): void {
 	_resumeAgentImpl = _resumeAgentReal;
 }
 
+import { beginAgentActivity } from "@xynogen/pix-runtime";
 import type { AgentInvocation, AgentRecord, SubagentType, ThinkingLevel } from "./types.ts";
 import { addUsage } from "./usage.ts";
 
@@ -75,6 +76,7 @@ function assertValidSpawnCwd(cwd: unknown): asserts cwd is string | undefined | 
 
 interface SpawnArgs {
 	pi: ExtensionAPI;
+	endActivity?: () => void;
 	ctx: ExtensionContext;
 	type: SubagentType;
 	prompt: string;
@@ -206,7 +208,22 @@ export class AgentManager {
 		};
 		this.agents.set(id, record);
 
-		const args: SpawnArgs = { pi, ctx, type, prompt, options };
+		const args: SpawnArgs = {
+			pi,
+			ctx,
+			type,
+			prompt,
+			options,
+			...(options.isBackground && pi.events
+				? {
+						endActivity: beginAgentActivity(
+							pi.events,
+							"subagent",
+							`Subagent: ${options.description}`,
+						),
+					}
+				: {}),
+		};
 
 		if (
 			options.isBackground &&
@@ -223,6 +240,7 @@ export class AgentManager {
 		try {
 			this.startAgent(id, record, args);
 		} catch (err) {
+			args.endActivity?.();
 			this.agents.delete(id);
 			throw err;
 		}
@@ -233,7 +251,7 @@ export class AgentManager {
 	private startAgent(
 		id: string,
 		record: AgentRecord,
-		{ pi, ctx, type, prompt, options }: SpawnArgs,
+		{ pi, ctx, type, prompt, options, endActivity }: SpawnArgs,
 	) {
 		// Re-validate a caller-supplied cwd: queued spawns can start minutes after
 		// spawn()'s check, and the directory may be gone by then (TOCTOU). Same
@@ -318,6 +336,7 @@ export class AgentManager {
 				detach();
 
 				if (options.isBackground) {
+					endActivity?.();
 					this.runningBackground--;
 					try {
 						this.onComplete?.(record);
@@ -339,6 +358,7 @@ export class AgentManager {
 				detach();
 
 				if (options.isBackground) {
+					endActivity?.();
 					this.runningBackground--;
 					this.onComplete?.(record);
 					this.drainQueue();
@@ -359,6 +379,7 @@ export class AgentManager {
 			try {
 				this.startAgent(next.id, record, next.args);
 			} catch (err) {
+				next.args.endActivity?.();
 				// Late failure (e.g. strict worktree-isolation) — surface on the record
 				// so the user/agent can see it via /agents, then keep draining.
 				record.status = "error";
@@ -427,6 +448,8 @@ export class AgentManager {
 
 		// Remove from queue if queued
 		if (record.status === "queued") {
+			const queued = this.queue.find((q) => q.id === id);
+			queued?.args.endActivity?.();
 			this.queue = this.queue.filter((q) => q.id !== id);
 			record.status = "stopped";
 			record.completedAt = Date.now();
@@ -477,6 +500,7 @@ export class AgentManager {
 		let count = 0;
 		// Clear queued agents first
 		for (const queued of this.queue) {
+			queued.args.endActivity?.();
 			const record = this.agents.get(queued.id);
 			if (record) {
 				record.status = "stopped";

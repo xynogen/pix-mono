@@ -7,6 +7,14 @@ export type {
 	SubscribeOptions,
 } from "./events.ts";
 export { default } from "./extension.ts";
+export {
+	beginAgentActivity,
+	bindAgentStateEvents,
+	type PixAgentState,
+	type PixAgentStateEvent,
+	resetAgentState,
+	withAgentBlock,
+} from "./herdr-state.ts";
 export { ioTimeoutMs, ioTimeoutSignal } from "./io.ts";
 export {
 	config,

@@ -6,7 +6,7 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-import type { AgentSession } from "@earendil-works/pi-coding-agent";
+import { type AgentSession, createEventBus } from "@earendil-works/pi-coding-agent";
 import {
 	__resetAgentRunnersForTests,
 	__setResumeAgentForTests,
@@ -115,6 +115,24 @@ function installFakeResumeAgent(): DeferredResumeAgent[] {
 }
 
 describe("AgentManager", () => {
+	test("background work keeps shared agent state working until completion", async () => {
+		const calls = installFakeRunAgent();
+		const events = createEventBus();
+		const states: string[] = [];
+		events.on("pix:agent-state", (event) => states.push((event as { state: string }).state));
+		manager = new AgentManager();
+
+		manager.spawn({ events } as never, ctx, "general", "task", {
+			description: "background task",
+			isBackground: true,
+		});
+		expect(states.at(-1)).toBe("working");
+
+		calls[0]!.resolve();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(states.at(-1)).toBe("idle");
+	});
+
 	// 1. Queueing
 	test("foreground agents are marked foreground and do not trigger completion notifications", async () => {
 		const calls = installFakeRunAgent();
