@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-mcp",
-	"version": "0.2.12",
+	"version": "0.2.13",
 	"description": "Token-efficient MCP gateway for the Pix Pi distro",
 	"type": "module",
 	"main": "src/index.ts",

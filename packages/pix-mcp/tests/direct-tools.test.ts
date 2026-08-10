@@ -61,7 +61,8 @@ describe("buildProxyDescription", () => {
 
 		expect(description).toContain("action=auth/UI");
 		expect(description).toContain("search=find");
-		expect(description).toContain("call native Pi tools directly");
+		expect(description).toContain("User names one: use search/server");
+		expect(description).toContain("Otherwise use native Pi tools");
 		expect(description.length).toBeLessThan(400);
 	});
 

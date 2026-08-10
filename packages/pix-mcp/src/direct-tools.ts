@@ -228,7 +228,7 @@ export function buildProxyDescription(
 	directSpecs: DirectToolSpec[],
 ): string {
 	const prefix = config.settings?.toolPrefix ?? "server";
-	let desc = `MCP gateway. Discover schemas on demand; call native Pi tools directly.\n`;
+	let desc = `MCP gateway for listed services. User names one: use search/server to discover, then tool+args to call. Otherwise use native Pi tools.\n`;
 
 	const directByServer = new Map<string, number>();
 	for (const spec of directSpecs) {
