@@ -25,7 +25,7 @@ import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-c
 import { Text } from "@earendil-works/pi-tui";
 import { FG_DIM, RST, resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
-import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
@@ -183,7 +183,9 @@ export default function (pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
 			const { command, reason } = params;
 
-			if ((globalThis as { __pixAfk?: boolean }).__pixAfk === true) {
+			const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
+			const yolo = g.__pixYolo === true;
+			if (g.__pixAfk === true && !yolo) {
 				return {
 					content: [{ type: "text", text: "sudo_run denied immediately — AFK mode is active." }],
 					details: makeDetails(command, reason, {
@@ -224,58 +226,68 @@ export default function (pi: ExtensionAPI): void {
 			let executionError: unknown;
 
 			// ── Confirm (+ validate password inside the same open overlay) ───────
+			// YOLO auto-approves root, but only when a PAM ticket is already cached:
+			// the password cannot be auto-typed, so a no-ticket run still prompts.
+			if (yolo && cached) {
+				ctx.ui.notify("🔐 YOLO — root command auto-approved (cached ticket).", "warning");
+			}
 			const overlayResult = await withAgentBlock(
 				pi.events,
 				"sudo_run",
 				"Root approval required",
-				() =>
-					cached
-						? showOverlay(ctx.ui, {
-								mode: "confirm",
-								title: "🔐 ROOT COMMAND REQUEST",
-								body: [...body, "(sudo session active — no password needed)"],
-								accent: "error",
-								timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-								choices: [
-									{ value: "yes", label: "Allow", description: "Run the command" },
-									{ value: "no", label: "Deny", description: "Block the command" },
-								],
-							})
-						: showOverlay(ctx.ui, {
-								mode: "sudo",
-								title: "🔐 ROOT COMMAND REQUEST",
-								body,
-								accent: "error",
-								timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-								maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-								validatePassword: async (password) => {
-									try {
-										const validation = await validateSudoPassword(password, signal);
-										if (detectAuthFailure(validation.code, validation.stderr)) return false;
-										if (validation.code !== 0) {
-											executionError = new Error(
-												validation.stderr || "sudo password validation failed",
-											);
-										}
-										return true;
-									} catch (err) {
-										executionError = err;
-										return true;
-									}
-								},
-								choices: [
-									{
-										value: "yes",
-										label: "Allow — enter password",
-										description: "Proceed to password prompt",
-									},
-									{
-										value: "no",
-										label: "Deny — block command",
-										description: "Prevent this command from running",
-									},
-								],
-							}),
+				() => {
+					if (yolo && cached) {
+						return Promise.resolve<OverlayResult>({ action: "approved", password: "" });
+					}
+					if (cached) {
+						return showOverlay(ctx.ui, {
+							mode: "confirm",
+							title: "🔐 ROOT COMMAND REQUEST",
+							body: [...body, "(sudo session active — no password needed)"],
+							accent: "error",
+							timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+							choices: [
+								{ value: "yes", label: "Allow", description: "Run the command" },
+								{ value: "no", label: "Deny", description: "Block the command" },
+							],
+						});
+					}
+					return showOverlay(ctx.ui, {
+						mode: "sudo",
+						title: "🔐 ROOT COMMAND REQUEST",
+						body,
+						accent: "error",
+						timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+						maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+						validatePassword: async (password) => {
+							try {
+								const validation = await validateSudoPassword(password, signal);
+								if (detectAuthFailure(validation.code, validation.stderr)) return false;
+								if (validation.code !== 0) {
+									executionError = new Error(
+										validation.stderr || "sudo password validation failed",
+									);
+								}
+								return true;
+							} catch (err) {
+								executionError = err;
+								return true;
+							}
+						},
+						choices: [
+							{
+								value: "yes",
+								label: "Allow — enter password",
+								description: "Proceed to password prompt",
+							},
+							{
+								value: "no",
+								label: "Deny — block command",
+								description: "Prevent this command from running",
+							},
+						],
+					});
+				},
 			);
 
 			// Cached ticket needs no password; otherwise a blank password is a cancel.

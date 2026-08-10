@@ -290,7 +290,33 @@ export function isSudoCommand(command: string): boolean {
 	return /(^|[\s;|&])sudo\b/i.test(command);
 }
 
-export function afkGateDecision(tier: number): "allow" | "deny" | undefined {
-	if ((globalThis as { __pixAfk?: boolean }).__pixAfk !== true) return undefined;
-	return tier >= 4 ? "deny" : "allow";
+// Non-lifting circuit breaker: catastrophic, unrecoverable commands that NO
+// mode (not even YOLO) may auto-approve. Mirrors Claude Code's bypassPermissions
+// floor, which still prompts on root/home wipes. These always fall through to
+// the interactive dialog (or a no-UI block).
+const CIRCUIT_BREAKER: RegExp[] = [
+	/\brm\s+-[a-z]*r[a-z]*f?[a-z]*\s+(?:--\s+)?[~/]\s*(?:$|[\s;|&])/i, // rm -rf /  or  rm -rf ~
+	/\bdd\b[^\n]*\bof=\/dev\/(?:sd|nvme|disk|hd|vd)/i, // dd onto a raw disk
+	/\bmkfs\.\w+\s+\/dev\//i, // format a device
+	/:\s*\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;/, // classic fork bomb
+	/>\s*\/dev\/(?:sd|nvme|disk|hd|vd)[a-z0-9]*\b/i, // redirect over a raw disk
+];
+
+/** True when a command is catastrophic enough that no unattended mode may auto-approve it. */
+export function isCircuitBreaker(command: string): boolean {
+	return CIRCUIT_BREAKER.some((re) => re.test(command));
+}
+
+/**
+ * Unattended-mode gate decision for a concern tier (1 risky … 5 critical).
+ *   yolo — auto-allow every tier, including red/critical.
+ *   afk  — auto-allow yellow (tier < 4), auto-deny red (tier >= 4).
+ *   off  — undefined (fall through to the interactive dialog).
+ * Mutually exclusive globals set by pix-commands' /afk and /yolo.
+ */
+export function unattendedGateDecision(tier: number): "allow" | "deny" | undefined {
+	const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
+	if (g.__pixYolo === true) return "allow";
+	if (g.__pixAfk === true) return tier >= 4 ? "deny" : "allow";
+	return undefined;
 }

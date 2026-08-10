@@ -20,13 +20,14 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { withAgentBlock } from "@xynogen/pix-runtime";
 import {
-	afkGateDecision,
 	buildRules,
 	classify,
 	classifyPath,
 	extractPathsFromBash,
+	isCircuitBreaker,
 	isSudoCommand,
 	loadUserConfig,
+	unattendedGateDecision,
 } from "./lib.ts";
 import {
 	type Concern,
@@ -71,9 +72,9 @@ export default function (pi: ExtensionAPI): void {
 			return undefined;
 		}
 
-		const afkDecision = afkGateDecision(hit.severity === "block" ? 4 : 2);
-		if (afkDecision === "allow") return undefined;
-		if (afkDecision === "deny") {
+		const unattended = unattendedGateDecision(hit.severity === "block" ? 4 : 2);
+		if (unattended === "allow") return undefined;
+		if (unattended === "deny") {
 			return {
 				block: true,
 				reason: `[AFK][PATH:${hit.severity.toUpperCase()}] ${hit.reason}`,
@@ -156,9 +157,10 @@ export default function (pi: ExtensionAPI): void {
 
 		const highest = concerns.reduce((a, b) => (a.tier > b.tier ? a : b));
 
-		// sudo: hard redirect — no prompt, no bypass.
+		// sudo: hard redirect — no prompt, no bypass. Even YOLO cannot run bare
+		// `sudo` in bash (the password can't be auto-typed); it must use sudo_run.
 		if (isSudoCommand(command)) {
-			if (afkGateDecision(highest.tier)) {
+			if (unattendedGateDecision(highest.tier) === "deny") {
 				return { block: true, reason: "[AFK] sudo is denied while user is away." };
 			}
 			ctx.ui.notify(
@@ -171,9 +173,18 @@ export default function (pi: ExtensionAPI): void {
 			};
 		}
 
-		const afkDecision = afkGateDecision(highest.tier);
-		if (afkDecision === "allow") return undefined;
-		if (afkDecision === "deny") {
+		// Circuit breaker: catastrophic commands never auto-approve, even under YOLO.
+		// They fall through to the interactive dialog (or the no-UI block below).
+		const breaker = isCircuitBreaker(command);
+		if (breaker && unattendedGateDecision(highest.tier) === "allow") {
+			ctx.ui.notify(
+				`⛔ ${ctx.ui.theme.fg("error", "CIRCUIT BREAKER")} — refused even under YOLO; confirm manually`,
+				"error",
+			);
+		}
+		const unattended = breaker ? undefined : unattendedGateDecision(highest.tier);
+		if (unattended === "allow") return undefined;
+		if (unattended === "deny") {
 			return {
 				block: true,
 				reason: `[AFK][${highest.label}] ${highest.detail}`,

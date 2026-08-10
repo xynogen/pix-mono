@@ -6,6 +6,7 @@ import extension from "./extension.ts";
 afterEach(() => {
 	delete (globalThis as { __pixOnce?: WeakMap<object, Set<string>> }).__pixOnce;
 	delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
+	delete (globalThis as { __pixYolo?: boolean }).__pixYolo;
 });
 
 describe("pix-commands registration", () => {
@@ -29,11 +30,11 @@ describe("pix-commands registration", () => {
 		return { pi, commands, handlers, renderers };
 	}
 
-	test("registers /clear, /btw, /afk, and the BTW renderer once per Pi instance", () => {
+	test("registers /clear, /btw, /afk, /yolo, and the BTW renderer once per Pi instance", () => {
 		const { pi, commands, renderers } = host();
 		extension(pi);
 		extension(pi);
-		expect(commands).toEqual(["clear", "btw", "afk"]);
+		expect(commands).toEqual(["clear", "btw", "afk", "yolo"]);
 		expect(renderers).toEqual(["pix-btw-answer"]);
 	});
 
@@ -42,8 +43,8 @@ describe("pix-commands registration", () => {
 		const second = host();
 		extension(first.pi);
 		extension(second.pi);
-		expect(first.commands).toEqual(["clear", "btw", "afk"]);
-		expect(second.commands).toEqual(["clear", "btw", "afk"]);
+		expect(first.commands).toEqual(["clear", "btw", "afk", "yolo"]);
+		expect(second.commands).toEqual(["clear", "btw", "afk", "yolo"]);
 	});
 
 	test("/afk toggles shared state and status", async () => {

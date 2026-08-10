@@ -406,6 +406,55 @@ describe("sudo_run tool execute()", () => {
 		expect(text(result)).toContain("no UI available");
 	});
 
+	test("YOLO + cached ticket auto-approves without opening the overlay", async () => {
+		(globalThis as { __pixYolo?: boolean }).__pixYolo = true;
+		ticketMock = true;
+		sudoMock = async () => ({ stdout: "root", stderr: "", code: 0 });
+		const host = makeHost();
+		let opened = false;
+		const result = await host.execute(
+			"id",
+			{ command: "whoami" },
+			undefined,
+			undefined,
+			makeCtx({
+				onCustom: () => {
+					opened = true;
+				},
+			}),
+		);
+		delete (globalThis as { __pixYolo?: boolean }).__pixYolo;
+		ticketMock = false;
+		sudoMock = async () => {
+			throw new Error("runWithSudo not stubbed for this test");
+		};
+		expect(opened).toBe(false);
+		expect(result.details.outcome).toBe("success");
+		expect(text(result)).toContain("root");
+	});
+
+	test("YOLO WITHOUT a cached ticket still prompts for the password", async () => {
+		(globalThis as { __pixYolo?: boolean }).__pixYolo = true;
+		ticketMock = false;
+		const host = makeHost();
+		let opened = false;
+		const result = await host.execute(
+			"id",
+			{ command: "whoami" },
+			undefined,
+			undefined,
+			makeCtx({
+				overlayResult: { action: "denied" },
+				onCustom: () => {
+					opened = true;
+				},
+			}),
+		);
+		delete (globalThis as { __pixYolo?: boolean }).__pixYolo;
+		expect(opened).toBe(true); // no ticket => cannot auto-type password => overlay shown
+		expect(text(result)).toContain("Denied by user");
+	});
+
 	test("action=denied => cancelled", async () => {
 		const host = makeHost();
 		const result = await host.execute(

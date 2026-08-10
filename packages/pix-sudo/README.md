@@ -8,6 +8,8 @@ Registers the `sudo_run` tool, which executes shell commands as root behind a pe
 
 While the approval dialog is open, `sudo_run` holds the shared **agent-state** coordinator in the `blocked` state (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)). Inside a herdr pane that fires a "needs attention" notification, so an away user is pinged when a root command is waiting on approval.
 
+The unattended modes in pix-commands interact with this: `/afk` denies `sudo_run` immediately, while `/yolo` auto-approves it **only when a valid PAM ticket is already cached** (the password cannot be auto-typed, so a first root command with no cached ticket still shows the password prompt). The per-call Allow/Deny is skipped in that one case; nothing else about the auth flow changes.
+
 Completed calls collapse after the configured Pix delay into a status row such as `✓ sudo apt install ripgrep · exit 0 · 18 lines`; denied and timed-out calls use `⚡`, and nonzero exits use `✗`. Expanding the row restores the normal stdout/stderr or exact diagnostic without restarting the elapsed timer. Configure the delay with `collapse.delaySec` and the per-tool toggle with `collapse.tools.sudo` in `~/.pi/agent/pix.json`. Approval and masked-password overlays are never collapsed, and passwords are never included in result metadata or render state.
 
 ## Install

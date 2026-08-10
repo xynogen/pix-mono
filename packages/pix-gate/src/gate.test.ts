@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
-	afkGateDecision,
 	buildRules,
 	classify,
 	DEFAULT_RULES,
 	extractPathsFromBash,
+	isCircuitBreaker,
 	isSudoCommand,
+	unattendedGateDecision,
 } from "./lib.ts";
 
 // ── isSudoCommand ─────────────────────────────────────────────────────────────
@@ -45,20 +46,72 @@ describe("isSudoCommand", () => {
 
 // ── AFK behavior ──────────────────────────────────────────────────────────────
 
-describe("afkGateDecision", () => {
-	test("does nothing while AFK mode is off", () => {
-		delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
-		expect(afkGateDecision(5)).toBeUndefined();
+describe("unattendedGateDecision", () => {
+	type G = { __pixAfk?: boolean; __pixYolo?: boolean };
+	const reset = () => {
+		delete (globalThis as G).__pixAfk;
+		delete (globalThis as G).__pixYolo;
+	};
+
+	test("does nothing while every mode is off", () => {
+		reset();
+		expect(unattendedGateDecision(5)).toBeUndefined();
 	});
 
-	test("allows yellow concerns and denies red concerns while AFK", () => {
-		(globalThis as { __pixAfk?: boolean }).__pixAfk = true;
-		expect(afkGateDecision(1)).toBe("allow");
-		expect(afkGateDecision(2)).toBe("allow");
-		expect(afkGateDecision(3)).toBe("allow");
-		expect(afkGateDecision(4)).toBe("deny");
-		expect(afkGateDecision(5)).toBe("deny");
-		delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
+	test("AFK allows yellow concerns and denies red concerns", () => {
+		reset();
+		(globalThis as G).__pixAfk = true;
+		expect(unattendedGateDecision(1)).toBe("allow");
+		expect(unattendedGateDecision(2)).toBe("allow");
+		expect(unattendedGateDecision(3)).toBe("allow");
+		expect(unattendedGateDecision(4)).toBe("deny");
+		expect(unattendedGateDecision(5)).toBe("deny");
+		reset();
+	});
+
+	test("YOLO allows every tier including red/critical", () => {
+		reset();
+		(globalThis as G).__pixYolo = true;
+		expect(unattendedGateDecision(1)).toBe("allow");
+		expect(unattendedGateDecision(4)).toBe("allow");
+		expect(unattendedGateDecision(5)).toBe("allow");
+		reset();
+	});
+
+	test("YOLO wins when both flags are somehow set", () => {
+		reset();
+		(globalThis as G).__pixAfk = true;
+		(globalThis as G).__pixYolo = true;
+		expect(unattendedGateDecision(5)).toBe("allow");
+		reset();
+	});
+});
+
+// ── circuit breaker ───────────────────────────────────────────────────────────
+
+describe("isCircuitBreaker", () => {
+	test("catches root and home wipes", () => {
+		expect(isCircuitBreaker("rm -rf /")).toBe(true);
+		expect(isCircuitBreaker("rm -rf ~")).toBe(true);
+		expect(isCircuitBreaker("rm -fr / --no-preserve-root")).toBe(true);
+		expect(isCircuitBreaker("cd /tmp && rm -rf /")).toBe(true);
+	});
+
+	test("catches raw-disk writes and format", () => {
+		expect(isCircuitBreaker("dd if=/dev/zero of=/dev/sda")).toBe(true);
+		expect(isCircuitBreaker("mkfs.ext4 /dev/nvme0n1")).toBe(true);
+		expect(isCircuitBreaker("echo x > /dev/sdb")).toBe(true);
+	});
+
+	test("catches the classic fork bomb", () => {
+		expect(isCircuitBreaker(":(){ :|:& };:")).toBe(true);
+	});
+
+	test("does NOT trip on ordinary destructive-but-scoped commands", () => {
+		expect(isCircuitBreaker("rm -rf ./build")).toBe(false);
+		expect(isCircuitBreaker("rm -rf node_modules")).toBe(false);
+		expect(isCircuitBreaker("dd if=in.img of=out.img")).toBe(false);
+		expect(isCircuitBreaker("echo hi > /tmp/x")).toBe(false);
 	});
 });
 

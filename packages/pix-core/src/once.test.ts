@@ -158,11 +158,11 @@ describe("member factory dedupe (pix-commands)", () => {
 		return { pi, commandNames };
 	}
 
-	it("registers /clear, /btw, and /afk once across core + standalone activation", () => {
+	it("registers /clear, /btw, /afk, and /yolo once across core + standalone activation", () => {
 		const { pi, commandNames } = makeHost();
 		registerCommands(pi);
 		registerCommands(pi);
-		expect(commandNames).toEqual(["clear", "btw", "afk"]);
+		expect(commandNames).toEqual(["clear", "btw", "afk", "yolo"]);
 	});
 
 	it("registers commands again for a fresh pi instance", () => {
@@ -170,8 +170,8 @@ describe("member factory dedupe (pix-commands)", () => {
 		const second = makeHost();
 		registerCommands(first.pi);
 		registerCommands(second.pi);
-		expect(first.commandNames).toEqual(["clear", "btw", "afk"]);
-		expect(second.commandNames).toEqual(["clear", "btw", "afk"]);
+		expect(first.commandNames).toEqual(["clear", "btw", "afk", "yolo"]);
+		expect(second.commandNames).toEqual(["clear", "btw", "afk", "yolo"]);
 	});
 });
 
