@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-nudge",
-	"version": "0.1.15",
+	"version": "0.1.16",
 	"description": "Pi extension — model-steering nudges (tools + capability)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -41,6 +41,6 @@
 		"@earendil-works/pi-coding-agent": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.5.3"
+		"@xynogen/pix-runtime": "^0.6.0"
 	}
 }

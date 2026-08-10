@@ -70,7 +70,10 @@ export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme): stri
 		: done === items.length
 			? "complete"
 			: "checklist";
-	return formatCollapsedToolRow(theme, "todo", target, meta, "success");
+	// Blocked work with nothing active is not a success — surface the warning glyph
+	// (text meta already names the block count) so status is not color-only.
+	const status = blocked > 0 && !active && done !== items.length ? "warning" : "success";
+	return formatCollapsedToolRow(theme, "todo", target, meta, status);
 }
 
 /** Colored checklist for the TUI: glyphs tinted by status, active row bold. */

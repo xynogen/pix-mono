@@ -38,6 +38,7 @@ import {
 import type { McpExtensionState } from "./state.ts";
 import {
 	createMcpDirectToolCallRenderer,
+	createMcpDirectToolResultRenderer,
 	renderMcpProxyToolCall,
 	renderMcpToolResult,
 } from "./tool-result-renderer.ts";
@@ -122,7 +123,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 				spec,
 			),
 			renderCall: createMcpDirectToolCallRenderer(spec.prefixedName),
-			renderResult: renderMcpToolResult,
+			renderResult: createMcpDirectToolResultRenderer(spec.prefixedName),
 		});
 	}
 

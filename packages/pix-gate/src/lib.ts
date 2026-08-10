@@ -289,3 +289,8 @@ export function extractPathsFromBash(cmd: string): string[] {
 export function isSudoCommand(command: string): boolean {
 	return /(^|[\s;|&])sudo\b/i.test(command);
 }
+
+export function afkGateDecision(tier: number): "allow" | "deny" | undefined {
+	if ((globalThis as { __pixAfk?: boolean }).__pixAfk !== true) return undefined;
+	return tier >= 4 ? "deny" : "allow";
+}

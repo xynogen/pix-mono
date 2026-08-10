@@ -5,7 +5,8 @@
  * formatting). TUI components are not tested here.
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { createEventBus } from "@earendil-works/pi-coding-agent";
 import {
 	buildResponseText,
 	formatAnswerScalar,
@@ -14,6 +15,10 @@ import {
 	type QuestionData,
 	sentinelsFor,
 } from "./index.ts";
+
+afterEach(() => {
+	delete (globalThis as { __pixOnce?: WeakMap<object, Set<string>> }).__pixOnce;
+});
 
 // ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -237,5 +242,87 @@ describe("registerAsk", () => {
 	test("exports a default function", async () => {
 		const mod = await import("./index.ts");
 		expect(typeof mod.default).toBe("function");
+	});
+
+	test("renders shared call and terminal result rows", async () => {
+		let tool:
+			| {
+					renderShell?: unknown;
+					renderCall: (...args: any[]) => { render: (width: number) => string[] };
+					renderResult: (...args: any[]) => { render: (width: number) => string[] };
+			  }
+			| undefined;
+		const pi = {
+			registerTool(definition: typeof tool) {
+				tool = definition;
+			},
+		};
+		const { default: registerAsk } = await import("./index.ts");
+		registerAsk(pi as never);
+		if (!tool) throw new Error("ask_user not registered");
+		const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text };
+		const state = { collapsed: false };
+		const call = tool
+			.renderCall({ questions: [qSingle] }, theme, {
+				expanded: false,
+				state,
+				invalidate: () => {},
+			})
+			.render(120)
+			.join("\n")
+			.trimEnd();
+		expect(tool.renderShell).toBe("self");
+		expect(call).toBe("ask_user Which approach? · 1 question");
+
+		state.collapsed = true;
+		const result = tool
+			.renderResult(
+				{
+					content: [{ type: "text", text: "answer" }],
+					details: {
+						answers: [
+							{ questionIndex: 0, question: qSingle.question, kind: "option", answer: "REST" },
+						],
+					},
+				},
+				{ expanded: false, isPartial: false },
+				theme,
+				{ expanded: false, state, invalidate: () => {}, isError: false },
+			)
+			.render(120)
+			.join("\n")
+			.trimEnd();
+		expect(result).toBe("✓  ask_user REST · 1 answer");
+	});
+
+	test("reports blocked while waiting for user input", async () => {
+		const events = createEventBus();
+		const states: string[] = [];
+		events.on("pix:agent-state", (event) => states.push((event as { state: string }).state));
+		let tool: { execute: (...args: any[]) => Promise<unknown> } | undefined;
+		const pi = {
+			events,
+			registerTool(definition: typeof tool) {
+				tool = definition;
+			},
+		};
+		const { default: registerAsk } = await import("./index.ts");
+		registerAsk(pi as never);
+		if (!tool) throw new Error("ask_user not registered");
+
+		await tool.execute("id", { questions: [qSingle] }, undefined, undefined, {
+			hasUI: true,
+			ui: {
+				custom: async () => ({
+					answers: [
+						{ questionIndex: 0, question: qSingle.question, kind: "option", answer: "REST" },
+					],
+					cancelled: false,
+				}),
+			},
+		});
+
+		expect(states).toContain("blocked");
+		expect(states.at(-1)).toBe("idle");
 	});
 });

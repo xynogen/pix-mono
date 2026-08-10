@@ -147,11 +147,12 @@ export function formatAgentCall(
 	const model = typeof args.model === "string" ? args.model : "";
 	const prompt = typeof args.prompt === "string" ? args.prompt : "";
 	const modelStr = model ? ` ${theme.fg("muted", `[${model}]`)}` : "";
-	const header =
-		"▸ " +
-		theme.fg("toolTitle", theme.bold(displayName)) +
-		modelStr +
-		(description ? `  ${theme.fg("muted", description)}` : "");
+	// Shared grammar: `<tool> <target> · <call metadata>` — tool is the registered
+	// name `agent`, target is the agent display name.
+	const head = `${theme.fg("toolTitle", theme.bold("agent"))} ${theme.fg("toolTitle", theme.bold(displayName))}${modelStr}`;
+	const header = description
+		? dotJoin([head, theme.fg("muted", description)], (s) => theme.fg("dim", s))
+		: head;
 
 	// renderCall replaces Pi's default argument renderer. Initially retain the
 	// task context, then let the shared pix collapse timer reduce it to the header.
@@ -332,7 +333,10 @@ export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 	parts.push(theme.fg(d.status === "error" ? "error" : "dim", status));
 
 	const dot = (s: string) => theme.fg("dim", s);
-	return dotJoin([`${marker} ${theme.fg("toolTitle", theme.bold(d.displayName))}`, ...parts], dot);
+	// Lead with the registered tool name `agent`, then the agent display name as
+	// the target — matching the call row and every other collapsed tool row.
+	const identity = `${marker} ${theme.fg("toolTitle", theme.bold("agent"))} ${theme.fg("toolTitle", theme.bold(d.displayName))}`;
+	return dotJoin([identity, ...parts], dot);
 }
 
 /** Backward-compatible name for completed-row consumers. */

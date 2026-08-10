@@ -18,7 +18,9 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { withAgentBlock } from "@xynogen/pix-runtime";
 import {
+	afkGateDecision,
 	buildRules,
 	classify,
 	classifyPath,
@@ -69,13 +71,27 @@ export default function (pi: ExtensionAPI): void {
 			return undefined;
 		}
 
+		const afkDecision = afkGateDecision(hit.severity === "block" ? 4 : 2);
+		if (afkDecision === "allow") return undefined;
+		if (afkDecision === "deny") {
+			return {
+				block: true,
+				reason: `[AFK][PATH:${hit.severity.toUpperCase()}] ${hit.reason}`,
+			};
+		}
+
 		if (!ctx.hasUI)
 			return {
 				block: true,
 				reason: `[PATH:${hit.severity.toUpperCase()}] ${hit.reason} (no UI)`,
 			};
 
-		const decision = await promptPathDecision(ctx.ui, hit, op, path);
+		const decision = await withAgentBlock(
+			pi.events,
+			"gate",
+			`${hit.severity.toUpperCase()} path approval required`,
+			() => promptPathDecision(ctx.ui, hit, op, path),
+		);
 		if (!decision.approved)
 			return {
 				block: true,
@@ -104,8 +120,6 @@ export default function (pi: ExtensionAPI): void {
 
 		const command = String(event.input.command ?? "");
 		if (!command.trim()) return undefined;
-
-		if (autoApprove.some((re) => re.test(command))) return undefined;
 
 		// Collect all concerns: path hits + command hit
 		const concerns: Concern[] = [];
@@ -144,6 +158,9 @@ export default function (pi: ExtensionAPI): void {
 
 		// sudo: hard redirect — no prompt, no bypass.
 		if (isSudoCommand(command)) {
+			if (afkGateDecision(highest.tier)) {
+				return { block: true, reason: "[AFK] sudo is denied while user is away." };
+			}
 			ctx.ui.notify(
 				`⚠️  ${ctx.ui.theme.fg("warning", "DANGEROUS")} — use sudo_run tool instead (handles auth securely)`,
 				"warning",
@@ -153,6 +170,17 @@ export default function (pi: ExtensionAPI): void {
 				reason: "Use sudo_run tool instead of sudo in bash.",
 			};
 		}
+
+		const afkDecision = afkGateDecision(highest.tier);
+		if (afkDecision === "allow") return undefined;
+		if (afkDecision === "deny") {
+			return {
+				block: true,
+				reason: `[AFK][${highest.label}] ${highest.detail}`,
+			};
+		}
+
+		if (autoApprove.some((re) => re.test(command))) return undefined;
 
 		// No UI: auto-block block+ severity, pass anything lower.
 		if (!ctx.hasUI) {
@@ -168,19 +196,34 @@ export default function (pi: ExtensionAPI): void {
 		// Single concern → use existing targeted dialog. Multiple → merged.
 		let decision: GateDecision;
 		if (concerns.length === 1 && cmdHit) {
-			decision = await promptGateDecision(ctx.ui, cmdHit, command);
+			decision = await withAgentBlock(
+				pi.events,
+				"gate",
+				`${highest.label} command approval required`,
+				() => promptGateDecision(ctx.ui, cmdHit, command),
+			);
 		} else if (concerns.length === 1 && !cmdHit) {
 			// Single path hit — reuse path dialog
 			const ph = candidates
 				.map((p) => ({ p, h: classifyPath(p, "read", pathRules) }))
 				.find((x) => x.h?.severity !== "info" && x.h);
 			if (ph?.h) {
-				decision = await promptPathDecision(ctx.ui, ph.h, "bash read", ph.p);
+				decision = await withAgentBlock(
+					pi.events,
+					"gate",
+					`${highest.label} path approval required`,
+					() => promptPathDecision(ctx.ui, ph.h as NonNullable<typeof ph.h>, "bash read", ph.p),
+				);
 			} else {
 				return undefined;
 			}
 		} else {
-			decision = await promptMergedGateDecision(ctx.ui, concerns, command);
+			decision = await withAgentBlock(
+				pi.events,
+				"gate",
+				`${highest.label} command approval required`,
+				() => promptMergedGateDecision(ctx.ui, concerns, command),
+			);
 		}
 
 		if (!decision.approved) {

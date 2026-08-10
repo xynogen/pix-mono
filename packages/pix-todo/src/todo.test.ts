@@ -895,6 +895,13 @@ describe("renderTodoSummaryLine (collapsed one-liner)", () => {
 		);
 	});
 
+	test("uses warning status when work is blocked", () => {
+		const items: TodoItem[] = [{ id: 1, text: "Need approval", status: "blocked" }];
+		expect(renderTodoSummaryLine(items, tagTheme)).toBe(
+			"[warning]⚠ [/] [toolTitle]<b>todo</b>[/] [muted]checklist[/] [dim]·[/] [dim]0/1 done · 1 blocked[/]",
+		);
+	});
+
 	test("renders active work and progress in one row", () => {
 		const items: TodoItem[] = [
 			{ id: 1, text: "a", status: "done" },

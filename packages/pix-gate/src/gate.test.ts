@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { buildRules, classify, DEFAULT_RULES, extractPathsFromBash, isSudoCommand } from "./lib.ts";
+import {
+	afkGateDecision,
+	buildRules,
+	classify,
+	DEFAULT_RULES,
+	extractPathsFromBash,
+	isSudoCommand,
+} from "./lib.ts";
 
 // ── isSudoCommand ─────────────────────────────────────────────────────────────
 
@@ -33,6 +40,25 @@ describe("isSudoCommand", () => {
 	test("does NOT match sudoer or pseudo", () => {
 		expect(isSudoCommand("cat /etc/sudoers")).toBe(false);
 		expect(isSudoCommand("echo pseudo")).toBe(false);
+	});
+});
+
+// ── AFK behavior ──────────────────────────────────────────────────────────────
+
+describe("afkGateDecision", () => {
+	test("does nothing while AFK mode is off", () => {
+		delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
+		expect(afkGateDecision(5)).toBeUndefined();
+	});
+
+	test("allows yellow concerns and denies red concerns while AFK", () => {
+		(globalThis as { __pixAfk?: boolean }).__pixAfk = true;
+		expect(afkGateDecision(1)).toBe("allow");
+		expect(afkGateDecision(2)).toBe("allow");
+		expect(afkGateDecision(3)).toBe("allow");
+		expect(afkGateDecision(4)).toBe("deny");
+		expect(afkGateDecision(5)).toBe("deny");
+		delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
 	});
 });
 

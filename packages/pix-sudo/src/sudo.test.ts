@@ -157,6 +157,7 @@ describe("detectAuthFailure", () => {
 //   ctx.ui.notify()  — fire-and-forget (swallowed in mock)
 
 import { mock } from "bun:test";
+import { createEventBus } from "@earendil-works/pi-coding-agent";
 import type { SudoResult } from "./lib.ts";
 
 // Swappable runWithSudo stub — index.ts imports the mocked module.
@@ -243,9 +244,14 @@ type SudoToolDefinition = {
 	renderResult?: (...args: unknown[]) => RenderComponent;
 };
 
-function makeHost() {
+function makeHost(onState?: (state: string) => void) {
 	let captured: SudoToolDefinition | null = null;
+	const events = createEventBus();
+	if (onState) {
+		events.on("pix:agent-state", (event) => onState((event as { state: string }).state));
+	}
 	const pi = {
+		events,
 		registerTool(def: SudoToolDefinition) {
 			captured = def;
 		},
@@ -352,6 +358,41 @@ function text(result: { content: Array<{ type: string; text: string }> }) {
 }
 
 describe("sudo_run tool execute()", () => {
+	test("reports blocked while waiting for root approval", async () => {
+		const states: string[] = [];
+		const host = makeHost((state) => states.push(state));
+		await host.execute(
+			"id",
+			{ command: "whoami" },
+			undefined,
+			undefined,
+			makeCtx({ overlayResult: { action: "denied" } }),
+		);
+		expect(states).toContain("blocked");
+		expect(states.at(-1)).toBe("idle");
+	});
+
+	test("AFK mode denies immediately without opening UI", async () => {
+		(globalThis as { __pixAfk?: boolean }).__pixAfk = true;
+		const host = makeHost();
+		let opened = false;
+		const result = await host.execute(
+			"id",
+			{ command: "whoami" },
+			undefined,
+			undefined,
+			makeCtx({
+				onCustom: () => {
+					opened = true;
+				},
+			}),
+		);
+		delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
+		expect(opened).toBe(false);
+		expect(text(result)).toContain("denied immediately");
+		expect(result.details.outcome).toBe("denied");
+	});
+
 	test("no UI returns error immediately", async () => {
 		const host = makeHost();
 		const result = await host.execute(

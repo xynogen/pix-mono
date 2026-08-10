@@ -44,6 +44,7 @@ const CATALOG = {
 	mcp: { nerd: "\u{F048D}", unicode: `\u25D0${VS}`, ascii: "MCP" },
 	cwd: { nerd: "\u{F024B}", unicode: `\u2302${VS}`, ascii: "~" },
 	folder: { nerd: "\u{F024B}", unicode: `\u2302${VS}`, ascii: "/" },
+	afk: { nerd: "\u{F0310}", unicode: `\u2328${VS}`, ascii: "kbd" },
 
 	// ── footer indicators (git status, score) ─────────────────────────────
 	"git.unstaged": { nerd: "\u2717", unicode: "\u2717", ascii: "x" },

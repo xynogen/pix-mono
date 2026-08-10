@@ -160,7 +160,7 @@ test("formatAgentCall includes the task prompt before auto-collapse", () => {
 		theme,
 	);
 
-	expect(rendered).toBe('▸ Agent  Audit recording dead code\n"here"');
+	expect(rendered).toBe('agent Agent · Audit recording dead code\n"here"');
 });
 
 test("formatAgentCall hides the task prompt after auto-collapse", () => {
@@ -176,7 +176,7 @@ test("formatAgentCall hides the task prompt after auto-collapse", () => {
 		false,
 	);
 
-	expect(rendered).toBe("▸ Agent  Audit recording dead code");
+	expect(rendered).toBe("agent Agent · Audit recording dead code");
 });
 
 test("formatAgentCompletedLine keeps the completed agent row visible", () => {
@@ -196,7 +196,7 @@ test("formatAgentCompletedLine keeps the completed agent row visible", () => {
 
 	// Status marker is width-normalized (padIcon) so wide/narrow glyphs align —
 	// a 1-cell ✓ carries one pad space before the separator.
-	expect(rendered).toBe("✓  Agent · Audit recording dead code · 0.3s · completed");
+	expect(rendered).toBe("✓  agent Agent · Audit recording dead code · 0.3s · completed");
 });
 
 test("agent uses the self-rendered shell so terminal status marks have no box padding", () => {

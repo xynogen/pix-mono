@@ -39,6 +39,7 @@ import {
 	ruleFrame,
 	termW,
 } from "@xynogen/pix-pretty/utils";
+import { withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import {
@@ -182,6 +183,16 @@ export default function (pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
 			const { command, reason } = params;
 
+			if ((globalThis as { __pixAfk?: boolean }).__pixAfk === true) {
+				return {
+					content: [{ type: "text", text: "sudo_run denied immediately — AFK mode is active." }],
+					details: makeDetails(command, reason, {
+						outcome: "denied",
+						cancellationKind: "denied",
+					}),
+				};
+			}
+
 			// ── No UI: block immediately ───────────────────────────────────────
 			if (!ctx.hasUI) {
 				return {
@@ -213,53 +224,59 @@ export default function (pi: ExtensionAPI): void {
 			let executionError: unknown;
 
 			// ── Confirm (+ validate password inside the same open overlay) ───────
-			const overlayResult = cached
-				? await showOverlay(ctx.ui, {
-						mode: "confirm",
-						title: "🔐 ROOT COMMAND REQUEST",
-						body: [...body, "(sudo session active — no password needed)"],
-						accent: "error",
-						timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-						choices: [
-							{ value: "yes", label: "Allow", description: "Run the command" },
-							{ value: "no", label: "Deny", description: "Block the command" },
-						],
-					})
-				: await showOverlay(ctx.ui, {
-						mode: "sudo",
-						title: "🔐 ROOT COMMAND REQUEST",
-						body,
-						accent: "error",
-						timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-						maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-						validatePassword: async (password) => {
-							try {
-								const validation = await validateSudoPassword(password, signal);
-								if (detectAuthFailure(validation.code, validation.stderr)) return false;
-								if (validation.code !== 0) {
-									executionError = new Error(
-										validation.stderr || "sudo password validation failed",
-									);
-								}
-								return true;
-							} catch (err) {
-								executionError = err;
-								return true;
-							}
-						},
-						choices: [
-							{
-								value: "yes",
-								label: "Allow — enter password",
-								description: "Proceed to password prompt",
-							},
-							{
-								value: "no",
-								label: "Deny — block command",
-								description: "Prevent this command from running",
-							},
-						],
-					});
+			const overlayResult = await withAgentBlock(
+				pi.events,
+				"sudo_run",
+				"Root approval required",
+				() =>
+					cached
+						? showOverlay(ctx.ui, {
+								mode: "confirm",
+								title: "🔐 ROOT COMMAND REQUEST",
+								body: [...body, "(sudo session active — no password needed)"],
+								accent: "error",
+								timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+								choices: [
+									{ value: "yes", label: "Allow", description: "Run the command" },
+									{ value: "no", label: "Deny", description: "Block the command" },
+								],
+							})
+						: showOverlay(ctx.ui, {
+								mode: "sudo",
+								title: "🔐 ROOT COMMAND REQUEST",
+								body,
+								accent: "error",
+								timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+								maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+								validatePassword: async (password) => {
+									try {
+										const validation = await validateSudoPassword(password, signal);
+										if (detectAuthFailure(validation.code, validation.stderr)) return false;
+										if (validation.code !== 0) {
+											executionError = new Error(
+												validation.stderr || "sudo password validation failed",
+											);
+										}
+										return true;
+									} catch (err) {
+										executionError = err;
+										return true;
+									}
+								},
+								choices: [
+									{
+										value: "yes",
+										label: "Allow — enter password",
+										description: "Proceed to password prompt",
+									},
+									{
+										value: "no",
+										label: "Deny — block command",
+										description: "Prevent this command from running",
+									},
+								],
+							}),
+			);
 
 			// Cached ticket needs no password; otherwise a blank password is a cancel.
 			const missingPassword = !cached && !overlayResult.password?.trim();

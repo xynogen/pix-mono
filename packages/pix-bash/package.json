@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-bash",
-	"version": "0.1.24",
+	"version": "0.1.25",
 	"description": "Pi tool — bash shell execution with pretty output",
 	"type": "module",
 	"main": "src/index.ts",
@@ -36,7 +36,7 @@
 	"dependencies": {
 		"@xynogen/pix-data": "^0.4.3",
 		"@xynogen/pix-pretty": "^1.13.0",
-		"@xynogen/pix-runtime": "^0.5.3"
+		"@xynogen/pix-runtime": "^0.6.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

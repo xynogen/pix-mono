@@ -1,5 +1,13 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import {
+	dotJoin,
+	formatCollapsedToolRow,
+	hideCollapsedToolCall,
+	pluralize,
+} from "@xynogen/pix-pretty/utils";
+import { withAgentBlock } from "@xynogen/pix-runtime";
+import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { buildResponseText } from "./helpers.js";
 import { AskQuestionnaire } from "./questionnaire.js";
@@ -30,6 +38,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 		pi.registerTool({
 			name: "ask_user",
 			label: "Ask",
+			renderShell: "self",
 			description: `Ask the user up to ${MAX_QUESTIONS} structured questions (${MIN_OPTIONS}-${MAX_OPTIONS} options each) when requirements are ambiguous.`,
 			promptSnippet: `Ask the user up to ${MAX_QUESTIONS} structured questions (${MIN_OPTIONS}-${MAX_OPTIONS} options each) when requirements are ambiguous`,
 			promptGuidelines: [
@@ -65,16 +74,18 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					return { content: [{ type: "text", text }], details: result };
 				}
 
-				const result = await ctx.ui.custom<QuestionnaireResult | null>(
-					(tui, theme, keybindings, done) => {
-						if (signal) {
-							signal.addEventListener("abort", () => done({ answers: [], cancelled: true }), {
-								once: true,
-							});
-						}
-						return new AskQuestionnaire(typed, tui, theme, keybindings, done);
-					},
-					{ overlay: true },
+				const result = await withAgentBlock(pi.events, "ask_user", "Waiting for user answer", () =>
+					ctx.ui.custom<QuestionnaireResult | null>(
+						(tui, theme, keybindings, done) => {
+							if (signal) {
+								signal.addEventListener("abort", () => done({ answers: [], cancelled: true }), {
+									once: true,
+								});
+							}
+							return new AskQuestionnaire(typed, tui, theme, keybindings, done);
+						},
+						{ overlay: true },
+					),
 				);
 
 				if (!result || result.cancelled) {
@@ -88,31 +99,71 @@ export default function registerAsk(pi: ExtensionAPI): void {
 				return { content: [{ type: "text", text }], details: result };
 			},
 
-			renderCall(args, theme) {
+			renderCall(args, theme, renderCtx) {
+				const text =
+					renderCtx?.lastComponent instanceof Text ? renderCtx.lastComponent : new Text("", 0, 0);
+				if (
+					renderCtx &&
+					hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
+						text.setText(value),
+					)
+				)
+					return text;
 				const questions = Array.isArray(args.questions) ? args.questions : [];
 				const count = questions.length;
 				const firstQ = questions[0]?.question ?? "";
-				let text = theme.fg("toolTitle", theme.bold(`ask (${count}) `));
-				text += theme.fg("muted", firstQ);
-				if (count > 1) text += theme.fg("dim", ` +${count - 1} more`);
-				return new Text(text, 0, 0);
+				const head = `${theme.fg("toolTitle", theme.bold("ask_user"))} ${theme.fg("muted", firstQ)}`;
+				text.setText(
+					dotJoin([head, theme.fg("dim", pluralize(count, "question"))], (s) => theme.fg("dim", s)),
+				);
+				return text;
 			},
 
-			renderResult(result, options, theme) {
+			renderResult(result, options, theme, renderCtx) {
+				const text =
+					renderCtx?.lastComponent instanceof Text ? renderCtx.lastComponent : new Text("", 0, 0);
 				const details = result.details as
 					| { answers?: QuestionAnswer[]; cancelled?: boolean }
 					| undefined;
 				if (options.isPartial) {
-					return new Text(theme.fg("muted", "Waiting for user input..."), 0, 0);
+					text.setText(theme.fg("muted", "Waiting for user input…"));
+					return text;
 				}
 				if (!details || details.cancelled || !details.answers?.length) {
-					return new Text(theme.fg("warning", "Cancelled"), 0, 0);
+					// Cancellation is a warning outcome, not success — shared row keeps the
+					// tool identity and a text label (never color alone) for accessibility.
+					text.setText(formatCollapsedToolRow(theme, "ask_user", "", "cancelled", "warning"));
+					return text;
 				}
-				const texts = details.answers.map((a) => {
-					const v = a.kind === "multi" ? (a.selected ?? []).join(", ") : (a.answer ?? "");
-					return `${a.questionIndex + 1}: ${v}`;
-				});
-				return new Text(theme.fg("success", `✓ ${texts.join(" • ")}`), 0, 0);
+				const values = details.answers.map((a) =>
+					a.kind === "multi" ? (a.selected ?? []).join(", ") : (a.answer ?? ""),
+				);
+				const collapsed =
+					!!renderCtx &&
+					tickCollapse(
+						"ask_user",
+						renderCtx.state as CollapseState,
+						renderCtx.invalidate,
+						renderCtx.expanded,
+					);
+				if (collapsed) {
+					text.setText(
+						formatCollapsedToolRow(
+							theme,
+							"ask_user",
+							values.join(", "),
+							pluralize(details.answers.length, "answer"),
+						),
+					);
+					return text;
+				}
+				const lines = details.answers.map(
+					(a, i) =>
+						`${theme.fg("muted", `${a.questionIndex + 1}:`)} ${theme.fg("success", values[i] ?? "")}`,
+				);
+				const header = `${theme.fg("success", "✓")} ${theme.fg("toolTitle", theme.bold("ask_user"))}`;
+				text.setText([header, ...lines].join("\n"));
+				return text;
 			},
 		});
 	});

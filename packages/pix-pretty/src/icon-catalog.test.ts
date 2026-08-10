@@ -31,6 +31,12 @@ describe("icon-catalog", () => {
 		expect(getIconMode()).toBe("nerd"); // unchanged
 	});
 
+	it("provides AFK keyboard fallbacks for every icon mode", () => {
+		expect(iconFor("afk", "nerd")).toBe("\u{F0310}");
+		expect(iconFor("afk", "unicode")).toBe("\u2328\uFE0E");
+		expect(iconFor("afk", "ascii")).toBe("kbd");
+	});
+
 	it("every catalog key has a non-empty glyph in every mode", () => {
 		for (const mode of ICON_MODES) {
 			for (const key of ICON_KEYS) {

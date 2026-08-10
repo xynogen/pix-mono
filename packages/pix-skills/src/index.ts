@@ -344,6 +344,28 @@ export function formatSkillCallLabel(args: SkillCallArgs): string {
 	return dotJoin(["description", args.name]);
 }
 
+/** Collapsed row target/meta for a skill result, in the same action-first order
+ * the call label uses (e.g. `instructions tdd · 84 lines`). */
+export function collapsedSkillRow(details: SkillResultDetails): {
+	target: string;
+	meta: string;
+} {
+	switch (details.mode) {
+		case "list":
+			return { target: "list", meta: `${details.count} skills` };
+		case "search":
+			return { target: `search “${details.query}”`, meta: `${details.count} matches` };
+		case "description":
+			return { target: `description · ${details.name}`, meta: "" };
+		case "instructions":
+			return { target: `instructions · ${details.name}`, meta: `${details.lines} lines` };
+		case "reference":
+			return { target: `reference · ${details.name}`, meta: humanSize(details.bytes) };
+		case "copy":
+			return { target: `copy · ${details.output}`, meta: humanSize(details.bytes) };
+	}
+}
+
 export function formatCollapsedSkillResult(details: SkillResultDetails): string {
 	switch (details.mode) {
 		case "list":
@@ -654,9 +676,9 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 			if (!renderCtx.isError && details) {
 				const state = renderCtx.state as CollapseState;
 				if (tickCollapse("read_skills", state, renderCtx.invalidate, renderCtx.expanded)) {
-					const target =
-						details.mode === "search" ? `“${details.query}”` : formatCollapsedSkillResult(details);
-					const meta = details.mode === "search" ? `${details.count} matches` : "";
+					// Collapsed row mirrors the call label: `<action> <target> · <meta>` so
+					// the summary reads the same way the call did (no action/target reorder).
+					const { target, meta } = collapsedSkillRow(details);
 					component.setText(formatCollapsedToolRow(theme, "read_skills", target, meta));
 					return component;
 				}

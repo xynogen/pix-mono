@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import {
+	createMcpDirectToolResultRenderer,
 	formatMcpDirectToolCallLines,
 	formatMcpProxyToolCallLines,
 	formatMcpToolResultLines,
@@ -97,6 +98,25 @@ describe("MCP tool call renderer", () => {
 
 	it("omits empty direct tool arguments", () => {
 		expect(formatMcpDirectToolCallLines("cf-portal_status", {})).toEqual(["cf-portal_status"]);
+	});
+
+	it("keeps direct tool identity in the collapsed result", () => {
+		const renderResult = createMcpDirectToolResultRenderer("cf-portal_list_worker_tail_events");
+		const rendered = renderResult(
+			result([{ type: "text", text: "one\ntwo" }], {
+				server: "cf-portal",
+				tool: "list_worker_tail_events",
+			}),
+			collapsedOptions,
+			boldTheme,
+			{ state: { collapsed: true } as never, expanded: false, invalidate: () => {} },
+		)
+			.render(120)
+			.map((l: string) => l.replace(/\x1b\[[0-9;]*m/g, ""))
+			.join("\n")
+			.trimEnd();
+
+		expect(rendered).toBe("✓  cf-portal_list_worker_tail_events · 2 lines");
 	});
 
 	it("line-caps a tall pretty-printed args block with a +N note", () => {

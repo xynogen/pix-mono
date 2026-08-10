@@ -263,6 +263,17 @@ export function createMcpDirectToolCallRenderer(displayName: string) {
 	};
 }
 
+/** Result renderer for a direct MCP tool: keeps the registered tool name in the
+ * collapsed row so call and result share one identity (not the generic "mcp"). */
+export function createMcpDirectToolResultRenderer(displayName: string) {
+	return (
+		result: AgentToolResult<McpToolResultDetails>,
+		options: ToolRenderResultOptions,
+		theme: RenderTheme,
+		context?: McpRenderCtx,
+	) => renderMcpToolResult(result, options, theme, context, displayName);
+}
+
 // A JSON tool result is pretty-formatted (one mega-line → many short lines) so
 // the pathological single-line case that saturates the TUI render loop can
 // never reach the measurer. Long JSON *string values* stay on one logical line
@@ -328,15 +339,19 @@ export function formatMcpToolResultLines(
 function collapsedRow(
 	result: AgentToolResult<McpToolResultDetails>,
 	theme: RenderTheme & { bold: (text: string) => string },
+	// Direct tools pass their registered name so the collapsed row keeps the same
+	// identity the call row showed; the proxy tool omits it and stays "mcp".
+	displayName?: string,
 ): string {
 	const d = result.details as Record<string, unknown>;
 	const tool = typeof d.tool === "string" ? d.tool : "";
 	const server = typeof d.server === "string" ? d.server : "";
+	const lineCount = result.content.flatMap(blockToLines).length;
+	const meta = lineCount > 0 ? `${lineCount} ${lineCount === 1 ? "line" : "lines"}` : "";
+	if (displayName) return renderCollapsedToolRow(theme, displayName, "", meta);
 	let target = tool;
 	if (tool && server) target = `${tool} @ ${server}`;
 	else if (!tool) target = server;
-	const lineCount = result.content.flatMap(blockToLines).length;
-	const meta = lineCount > 0 ? `${lineCount} ${lineCount === 1 ? "line" : "lines"}` : "";
 	return renderCollapsedToolRow(theme, "mcp", target, meta);
 }
 
@@ -345,6 +360,7 @@ export function renderMcpToolResult(
 	options: ToolRenderResultOptions,
 	theme: RenderTheme,
 	context?: McpRenderCtx,
+	displayName?: string,
 ) {
 	if (options.isPartial) {
 		return new Text(theme.fg("warning", "Running MCP tool..."), 0, 0);
@@ -357,8 +373,8 @@ export function renderMcpToolResult(
 	// never collapsed (the timer is skipped so the failure stays visible).
 	if (!isError && context?.state && context.invalidate && theme.bold) {
 		const withBold = theme as RenderTheme & { bold: (text: string) => string };
-		if (tickCollapse("mcp", context.state, context.invalidate, options.expanded)) {
-			return new Text(collapsedRow(result, withBold), 0, 0);
+		if (tickCollapse(displayName ?? "mcp", context.state, context.invalidate, options.expanded)) {
+			return new Text(collapsedRow(result, withBold, displayName), 0, 0);
 		}
 	}
 

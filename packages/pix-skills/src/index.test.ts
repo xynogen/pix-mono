@@ -264,6 +264,34 @@ describe("skill renderer", () => {
 		expect(rendered).not.toContain("search results");
 	});
 
+	it("keeps the call action and target in the collapsed result", () => {
+		let registered: Record<string, unknown> = {};
+		registerSkills({
+			registerTool(tool: unknown) {
+				registered = tool as Record<string, unknown>;
+			},
+			on() {},
+		} as never);
+		const renderResult = registered.renderResult as (...args: unknown[]) => {
+			render: (width: number) => string[];
+		};
+		const rendered = renderResult(
+			{
+				content: [{ type: "text", text: "portable guidance" }],
+				details: { mode: "instructions", name: "tdd", lines: 84 },
+			},
+			{},
+			tagTheme,
+			{ expanded: false, isError: false, state: { collapsed: true }, invalidate: () => {} },
+		)
+			.render(120)
+			.join("\n");
+
+		expect(rendered).toContain("<b>read_skills</b>");
+		expect(rendered).toContain("instructions · tdd");
+		expect(rendered).toContain("84 lines");
+	});
+
 	it("restores the normal result when an elapsed card is expanded", () => {
 		let registered: Record<string, unknown> = {};
 		registerSkills({
