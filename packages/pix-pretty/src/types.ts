@@ -42,9 +42,11 @@ export type ToolContent = TextContent | ImageContent;
 
 export type ToolResultLike<TDetails = unknown> = AgentToolResult<TDetails | undefined>;
 
-type TextComponentLike = {
+export type TextComponentLike = {
 	setText(value: string): void;
 	getText?: () => string;
+	render?: (width: number) => string[];
+	invalidate?: () => void;
 };
 
 export type TextComponentCtor = new (text?: string, x?: number, y?: number) => TextComponentLike;

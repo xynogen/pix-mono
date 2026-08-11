@@ -21,7 +21,7 @@ import type {
 	TextComponentCtor,
 	ToolFactory,
 } from "@xynogen/pix-pretty/types";
-import { getErrorMessage, shortPath } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, shortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { once } from "@xynogen/pix-runtime/once";
 import { registerGrepTool } from "./grep.js";
 
@@ -97,7 +97,7 @@ export default function pixGrepExtension(pi: PiPrettyApi): void {
 		registerGrepTool(pi, createGrepTool, {
 			cwd,
 			sp: (p: string) => shortPath(cwd, home, p),
-			TextComponent,
+			TextComponent: viewportTextConstructor(TextComponent),
 			fffState,
 			cursorStore,
 		});

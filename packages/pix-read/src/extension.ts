@@ -5,7 +5,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
 import type { PiPrettyApi, TextComponentCtor, ToolFactory } from "@xynogen/pix-pretty/types";
-import { shortPath } from "@xynogen/pix-pretty/utils";
+import { shortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 
 import { once } from "@xynogen/pix-runtime/once";
 import { registerReadTool } from "./read.js";
@@ -29,7 +29,7 @@ export default function pixReadExtension(pi: PiPrettyApi): void {
 		registerReadTool(pi, createReadTool, {
 			cwd,
 			sp: (p: string) => shortPath(cwd, home, p),
-			TextComponent,
+			TextComponent: viewportTextConstructor(TextComponent),
 			fffState,
 			cursorStore: new CursorStore(),
 		});
