@@ -22,6 +22,29 @@ approval, resolves the reference to the real value in place before the tool runs
 - **all other tools** (read, grep, find, write, custom) — raw value substituted.
 - **No UI / unattended** — injection is blocked, not silently leaked.
 
+## Which tools does it work on?
+
+**Any tool**, not just the `pix-*` suite. Resolution runs on the host `tool_call`
+event and mutates `event.input` in place, so it applies to every registered
+tool — Pi built-ins, custom tools, and the MCP proxy alike. The only
+requirement is that the `$KEY` / `${KEY}` reference sits in a **string field**
+of the tool's input (nested objects and arrays are walked). A tool that takes
+no string input, or that reads its arguments from somewhere other than the
+call input, cannot be brokered.
+
+## Unattended modes (AFK / YOLO)
+
+pix-env honours the same `__pixAfk` / `__pixYolo` globals as pix-sudo and
+pix-ssh (set via the unattended toggle in pix-commands):
+
+- **AFK** (and not YOLO) — injection is **auto-denied**. No secret is resolved
+  while you are away.
+- **YOLO** — injection is **auto-approved** without the popup, with a warning
+  notification naming the keys. Use only when you accept unattended secret
+  resolution.
+- **Normal** — the approval popup is shown per tool call, including a leak
+  warning (see below).
+
 ## Usage
 
 Install the package into Pi. On session start it loads `.env` and `.env.local`
@@ -51,8 +74,21 @@ an explicit approval popup per tool call.
 **Accepted limitation:** once resolved into a tool's input, the value can appear
 in that tool's rendered call or output if the tool echoes it back
 (`echo $TOKEN`, `curl -v`, an error dump). pix-env does **not** scrub tool
-output. If you need that, the upgrade path is a `tool_result` redactor that masks
-known registry values back to `$KEY` — see the header note in `src/lib.ts`.
+output. The approval popup warns about this per call. If you need scrubbing, the
+upgrade path is a `tool_result` redactor that masks known registry values back
+to `$KEY` — see the header note in `src/lib.ts`.
+
+Other known limits:
+
+- **String fields only** — a `$KEY` embedded in a non-string argument (number,
+  boolean) is not resolved.
+- **cwd-scoped load** — files are read from the session's working directory at
+  start; secrets defined elsewhere are not seen.
+- **No re-load** — editing `.env` mid-session does not refresh the registry;
+  restart the session.
+- **Read gating is separate** — pix-gate blocks the model from *reading* real
+  `.env` files (`.env.example` and friends are allowed). pix-env only governs
+  *injecting* their values into tool calls.
 
 ## License
 

@@ -17,6 +17,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { withAgentBlock } from "@xynogen/pix-runtime";
 import { once } from "@xynogen/pix-runtime/once";
 import { collectRefs, loadRegistry, resolveInput } from "./lib.ts";
@@ -47,6 +48,22 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			const keys = collectRefs(event.input, reg);
 			if (keys.length === 0) return undefined;
 
+			// Same AFK/YOLO globals pix-sudo honours (set by the optimizer/gate).
+			const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
+			const list = keys.sort((a, b) => a.localeCompare(b)).join(", ");
+
+			// AFK (and not YOLO): auto-deny so no secret is injected while away.
+			if (g.__pixAfk === true && g.__pixYolo !== true) {
+				return { block: true, reason: `[pix-env] secret injection auto-denied (AFK): ${list}` };
+			}
+
+			// YOLO: auto-inject without the popup.
+			if (g.__pixYolo === true) {
+				ctx.ui?.notify?.(`🔑 YOLO — secret auto-injected: ${list}`, "warning");
+				resolveInput(event.input, reg, shell);
+				return undefined;
+			}
+
 			// No UI (unattended): refuse injection rather than leak silently.
 			if (!ctx.hasUI) {
 				return {
@@ -55,7 +72,6 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				};
 			}
 
-			const list = keys.sort((a, b) => a.localeCompare(b)).join(", ");
 			const result = await withAgentBlock(pi.events, "pix-env", "secret approval", () =>
 				showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
 					mode: "confirm",
@@ -63,6 +79,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 					body: [
 						`Tool "${event.toolName}" will receive the real value of: ${list}`,
 						"Value is not shown here and stays out of your transcript unless the tool echoes it.",
+						`${icon("status.warn")} Warning: a tool that prints or logs its input (echo, cat, curl -v, error output) can leak the value into the transcript, files, or the network. Only inject into commands you trust with the real secret.`,
 					],
 					accent: "warning",
 					timeoutMs: 30_000,
