@@ -31,6 +31,21 @@ class MockTextComponent {
 	invalidate(): void {}
 }
 
+// Counting variant: records how often the inner component is re-fitted, so a
+// regression that recomputes every frame (the pre-memo CPU bug) fails loudly.
+class CountingTextComponent {
+	static setCalls = 0;
+	private text = "";
+	setText(value: string): void {
+		CountingTextComponent.setCalls++;
+		this.text = value;
+	}
+	render(): string[] {
+		return this.text.split("\n");
+	}
+	invalidate(): void {}
+}
+
 describe("viewportText", () => {
 	it("trims a pre-filled row to Pi's narrower fullscreen viewport", () => {
 		const text = viewportText(MockTextComponent);
@@ -38,6 +53,51 @@ describe("viewportText", () => {
 
 		expect(plain(text.render(9)[0]!)).toBe("tool".padEnd(9));
 		expect(plain(text.render(10)[0]!)).toBe("tool".padEnd(10));
+	});
+
+	it("memoizes: repeat render at same width does not re-fit the inner component", () => {
+		CountingTextComponent.setCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		text.setText("line one\nline two");
+
+		text.render(20);
+		text.render(20);
+		text.render(20);
+		// One fit for the width; repeats hit the cache. Pre-memo this was 3.
+		expect(CountingTextComponent.setCalls).toBe(1);
+	});
+
+	it("re-fits when width changes, and again when it returns", () => {
+		CountingTextComponent.setCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		text.setText("abcdefghij");
+
+		text.render(20);
+		text.render(5); // width changed → re-fit
+		text.render(5); // same → cached
+		text.render(20); // changed back → re-fit
+		expect(CountingTextComponent.setCalls).toBe(3);
+	});
+
+	it("re-fits after setText changes the content", () => {
+		CountingTextComponent.setCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		text.setText("first");
+		text.render(20);
+		text.render(20); // cached
+		text.setText("second"); // invalidates memo
+		text.render(20); // re-fit
+		expect(CountingTextComponent.setCalls).toBe(2);
+	});
+
+	it("setText with identical value is a no-op (no memo invalidation)", () => {
+		CountingTextComponent.setCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		text.setText("same");
+		text.render(20);
+		text.setText("same"); // identical → must not invalidate
+		text.render(20); // still cached
+		expect(CountingTextComponent.setCalls).toBe(1);
 	});
 });
 
