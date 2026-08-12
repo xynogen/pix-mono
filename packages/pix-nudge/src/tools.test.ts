@@ -14,6 +14,7 @@ type ToolCallHandler = (
 
 function makeHandler(
 	activeTools: string[] = ["read", "ls", "grep", "find", "edit"],
+	registeredTools: string[] = ["read", "ls", "grep", "find", "edit", "ssh_run", "sudo_run"],
 ): ToolCallHandler {
 	let handler: ToolCallHandler | undefined;
 	const pi = {
@@ -21,6 +22,7 @@ function makeHandler(
 			if (eventName === "tool_call") handler = h;
 		},
 		getActiveTools: () => activeTools,
+		getAllTools: () => registeredTools.map((name) => ({ name })),
 	};
 	registerToolsNudge(pi as unknown as Parameters<typeof registerToolsNudge>[0]);
 	if (!handler) throw new Error("handler not registered");
@@ -215,6 +217,51 @@ describe("registerToolsNudge handler", () => {
 
 		await handler(bashEvent("git status"), ctx);
 		await handler(bashEvent("cat a | grep b"), ctx); // compound — real shell work
+		expect(notices).toHaveLength(0);
+	});
+
+	test("nudges bash ssh toward ssh_run when it's registered", async () => {
+		const handler = makeHandler();
+		const { ctx, notices } = makeCtx();
+
+		await handler(bashEvent("ssh deploy@host uptime"), ctx);
+
+		expect(notices).toHaveLength(1);
+		expect((notices[0] as Notice).msg).toContain("ssh_run");
+	});
+
+	test("stays silent on bash ssh when ssh_run isn't installed", async () => {
+		// pix-ssh is opt-in; without it, bash ssh is the only path.
+		const handler = makeHandler(
+			["read", "ls", "grep", "find", "edit"],
+			["read", "ls", "grep", "find", "edit"],
+		);
+		const { ctx, notices } = makeCtx();
+
+		await handler(bashEvent("ssh deploy@host uptime"), ctx);
+
+		expect(notices).toHaveLength(0);
+	});
+
+	test("nudges bash sudo toward sudo_run when it's registered", async () => {
+		const handler = makeHandler();
+		const { ctx, notices } = makeCtx();
+
+		await handler(bashEvent("sudo apt update"), ctx);
+
+		expect(notices).toHaveLength(1);
+		expect((notices[0] as Notice).msg).toContain("sudo_run");
+	});
+
+	test("stays silent on bash sudo when sudo_run isn't installed", async () => {
+		const handler = makeHandler(
+			["read", "ls", "grep", "find", "edit"],
+			["read", "ls", "grep", "find", "edit"],
+		);
+		const { ctx, notices } = makeCtx();
+
+		await handler(bashEvent("sudo apt update"), ctx);
+
 		expect(notices).toHaveLength(0);
 	});
 
