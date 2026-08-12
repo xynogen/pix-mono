@@ -4,6 +4,7 @@ import { MAX_PREVIEW_LINES } from "./config.js";
 import type { FgTheme } from "./types.js";
 import {
 	dotJoin,
+	fillToolBackground,
 	formatCollapsedToolRow,
 	formatJson,
 	hideCollapsedToolCall,
@@ -13,7 +14,32 @@ import {
 	renderDimPreview,
 	ruleFrame,
 	setResultDetails,
+	viewportText,
 } from "./utils.js";
+
+class MockTextComponent {
+	private text = "";
+
+	setText(value: string): void {
+		this.text = value;
+	}
+
+	render(): string[] {
+		return this.text.split("\n");
+	}
+
+	invalidate(): void {}
+}
+
+describe("viewportText", () => {
+	it("trims a pre-filled row to Pi's narrower fullscreen viewport", () => {
+		const text = viewportText(MockTextComponent);
+		text.setText(fillToolBackground("tool", "", 10));
+
+		expect(plain(text.render(9)[0]!)).toBe("tool".padEnd(9));
+		expect(plain(text.render(10)[0]!)).toBe("tool".padEnd(10));
+	});
+});
 
 // Strip ANSI escapes so assertions test content, not color codes.
 const ANSI = /\x1b\[[0-9;]*m/g;

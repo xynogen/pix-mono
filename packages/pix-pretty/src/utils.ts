@@ -14,6 +14,8 @@ import {
 import { MAX_PREVIEW_LINES } from "./config.js";
 import type {
 	FgTheme,
+	TextComponentCtor,
+	TextComponentLike,
 	ToolContent,
 	ToolImageContent,
 	ToolResultLike,
@@ -46,6 +48,53 @@ export function fillToolBackground(text: string, bg = BG_BASE, width?: number): 
 			return `${bg}${fitted}${" ".repeat(padding)}${RST}`;
 		})
 		.join("\n");
+}
+
+export function viewportTextConstructor(TextComponent: TextComponentCtor): TextComponentCtor {
+	return function ViewportTextComponent(text = "") {
+		const component = viewportText(TextComponent);
+		component.setText(text);
+		return component;
+	} as unknown as TextComponentCtor;
+}
+
+export function viewportText(
+	TextComponent: TextComponentCtor,
+): TextComponentLike & ViewportComponent {
+	return new ViewportText(new TextComponent("", 0, 0));
+}
+
+type ViewportComponent = {
+	render(width: number): string[];
+	invalidate(): void;
+};
+
+class ViewportText implements TextComponentLike, ViewportComponent {
+	private text = "";
+
+	constructor(private readonly component: TextComponentLike) {}
+
+	setText(value: string): void {
+		this.text = value;
+		this.component.setText(value);
+	}
+
+	getText(): string {
+		return this.text;
+	}
+
+	render(width: number): string[] {
+		const fitted = this.text
+			.split("\n")
+			.map((line) => truncateToWidth(line, width, ""))
+			.join("\n");
+		this.component.setText(fitted);
+		return this.component.render?.(width) ?? fitted.split("\n");
+	}
+
+	invalidate(): void {
+		this.component.invalidate?.();
+	}
 }
 
 export function pluralize(count: number, noun: string, plural?: string): string {
