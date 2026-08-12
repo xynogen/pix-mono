@@ -71,12 +71,18 @@ type ViewportComponent = {
 
 class ViewportText implements TextComponentLike, ViewportComponent {
 	private text = "";
+	// Pi re-renders every frame (spinner/streaming). Without this cache each
+	// frame re-split + re-truncated the full text AND re-setText'd the inner
+	// component (re-dirtying it), burning CPU on unchanged content.
+	private fittedWidth = -1;
+	private fittedText = "";
 
 	constructor(private readonly component: TextComponentLike) {}
 
 	setText(value: string): void {
+		if (value === this.text) return;
 		this.text = value;
-		this.component.setText(value);
+		this.fittedWidth = -1; // invalidate memo
 	}
 
 	getText(): string {
@@ -84,12 +90,15 @@ class ViewportText implements TextComponentLike, ViewportComponent {
 	}
 
 	render(width: number): string[] {
-		const fitted = this.text
-			.split("\n")
-			.map((line) => truncateToWidth(line, width, ""))
-			.join("\n");
-		this.component.setText(fitted);
-		return this.component.render?.(width) ?? fitted.split("\n");
+		if (width !== this.fittedWidth) {
+			this.fittedText = this.text
+				.split("\n")
+				.map((line) => truncateToWidth(line, width, ""))
+				.join("\n");
+			this.fittedWidth = width;
+			this.component.setText(this.fittedText);
+		}
+		return this.component.render?.(width) ?? this.fittedText.split("\n");
 	}
 
 	invalidate(): void {
