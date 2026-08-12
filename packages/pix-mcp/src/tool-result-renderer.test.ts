@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { colorizeToon, detectHighlightLang } from "./tool-result-renderer.ts";
+import {
+	colorizeToon,
+	detectHighlightLang,
+	formatMcpToolResultLines,
+} from "./tool-result-renderer.ts";
 
 // A theme that wraps each colored span in «key»… so assertions can see which
 // semantic color each token got without matching raw ANSI.
@@ -59,4 +63,31 @@ test("colorizeToon: data row splits on unquoted commas, keeps quoted intact", ()
 
 test("colorizeToon: quoted comma is not a cell boundary", () => {
 	expect(colorizeToon('  "a,b",c', tagTheme)).toBe('  «syntaxString»"a,b"«syntaxPunctuation»,c');
+});
+
+test("formatMcpToolResultLines: renders TOON as pretty JSON", () => {
+	const toon = [
+		"success: true",
+		"result[1]{State,PublicId,Name}:",
+		'  Done,"141","Improve toolbox rendering"',
+		"hasNext: false",
+	].join("\n");
+	const display = formatMcpToolResultLines({ content: [{ type: "text", text: toon }] }, false, 80);
+
+	expect(display).toEqual({
+		lines: [
+			"{",
+			'  "success": true,',
+			'  "result": [',
+			"    {",
+			'      "State": "Done",',
+			'      "PublicId": "141",',
+			'      "Name": "Improve toolbox rendering"',
+			"    }",
+			"  ],",
+			'  "hasNext": false',
+			"}",
+		],
+		truncated: false,
+	});
 });

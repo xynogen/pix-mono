@@ -61,21 +61,92 @@ function colorToonValue(value: string, theme: RenderTheme): string {
 
 // Split a TOON data row on commas, but keep quoted values (which may contain
 // commas) intact — the same quoting TOON uses to emit them.
-function splitToonRow(row: string): string[] {
+function splitToonRow(row: string): string[] | null {
 	const out: string[] = [];
 	let cur = "";
 	let inQuote = false;
+	let escaped = false;
 	for (const ch of row) {
-		if (ch === '"') inQuote = !inQuote;
+		if (ch === '"' && !escaped) inQuote = !inQuote;
 		if (ch === "," && !inQuote) {
 			out.push(cur);
 			cur = "";
 		} else {
 			cur += ch;
 		}
+		escaped = ch === "\\" && !escaped;
+		if (ch !== "\\") escaped = false;
 	}
+	if (inQuote) return null;
 	out.push(cur);
 	return out;
+}
+
+function parseToonPrimitive(token: string): string | number | boolean | null | undefined {
+	if (token === "true") return true;
+	if (token === "false") return false;
+	if (token === "null") return null;
+	if (token.startsWith('"')) {
+		try {
+			const value: unknown = JSON.parse(token);
+			return typeof value === "string" ? value : undefined;
+		} catch {
+			return undefined;
+		}
+	}
+	if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(token)) {
+		const value = Number(token);
+		return Number.isFinite(value) ? value : undefined;
+	}
+	return token || undefined;
+}
+
+/**
+ * Convert common MCP TOON output to readable JSON for display only.
+ *
+ * ponytail: supports root objects containing primitives and flat tabular arrays;
+ * unsupported/nested TOON stays unchanged. Replace with a spec decoder if MCP
+ * servers start returning broader TOON shapes.
+ */
+function toonToPrettyJson(text: string): string | null {
+	if (detectHighlightLang(text) !== "toon") return null;
+
+	const lines = text.trimEnd().split("\n");
+	const result: Record<string, unknown> = {};
+	for (let i = 0; i < lines.length; i += 1) {
+		const line = lines[i] ?? "";
+		const header = TOON_HEADER.exec(line);
+		if (!header || header[1]) return null;
+		const [, , key = "", countToken, columnsToken] = header;
+		if (!key || Object.hasOwn(result, key)) return null;
+
+		if (countToken || columnsToken) {
+			if (!countToken || !columnsToken) return null;
+			const count = Number(countToken.slice(1, -1));
+			const columns = splitToonRow(columnsToken.slice(1, -1));
+			if (!columns || columns.length === 0 || columns.some((column) => !column)) return null;
+
+			const rows: Record<string, unknown>[] = [];
+			for (let rowIndex = 0; rowIndex < count; rowIndex += 1) {
+				const row = lines[++i];
+				if (!row || !/^\s+\S/.test(row)) return null;
+				const cells = splitToonRow(row.trimStart());
+				if (!cells || cells.length !== columns.length) return null;
+				const values = cells.map(parseToonPrimitive);
+				if (values.some((value) => value === undefined)) return null;
+				rows.push(Object.fromEntries(columns.map((column, index) => [column, values[index]])));
+			}
+			result[key] = rows;
+			continue;
+		}
+
+		const token = line.slice(header[0].length).trim();
+		const value = parseToonPrimitive(token);
+		if (value === undefined) return null;
+		result[key] = value;
+	}
+
+	return JSON.stringify(result, null, 2);
 }
 
 /**
@@ -108,7 +179,7 @@ export function colorizeToon(text: string, theme: RenderTheme): string {
 			if (/^\s+\S/.test(line) && line.includes(",")) {
 				const indent = line.match(/^\s*/)?.[0] ?? "";
 				const cells = splitToonRow(line.slice(indent.length));
-				return indent + cells.map((c) => colorToonValue(c, theme)).join(punct(","));
+				if (cells) return indent + cells.map((c) => colorToonValue(c, theme)).join(punct(","));
 			}
 			return line;
 		})
@@ -284,7 +355,8 @@ export function createMcpDirectToolResultRenderer(displayName: string) {
 // expanded must stay complete.
 function blockToLines(block: McpToolContentBlock): string[] {
 	if (block.type === "text") {
-		return formatJson(block.text, { maxLines: Number.MAX_SAFE_INTEGER }).split("\n");
+		const displayText = toonToPrettyJson(block.text) ?? block.text;
+		return formatJson(displayText, { maxLines: Number.MAX_SAFE_INTEGER }).split("\n");
 	}
 	return [`[image: ${block.mimeType}]`];
 }
@@ -382,8 +454,9 @@ export function renderMcpToolResult(
 	const hint =
 		display.truncated && !options.expanded ? `\n${theme.fg("muted", "(Ctrl+O to expand)")}` : "";
 
-	// cli-highlight the body (JSON, or TOON via the YAML grammar) — both the
-	// preview and the expanded view.
+	// Highlight JSON in both preview and expanded views. Supported TOON was
+	// converted to pretty JSON by blockToLines; unsupported TOON keeps its
+	// purpose-built colorizer as a lossless fallback.
 	// Highlighted JSON is ANSI-dense, which used to be too costly: an unshaped
 	// mega-line forced pi-tui off its ASCII fast-path and re-highlighting it each
 	// spinner frame saturated the render thread. blockToLines now pretty-formats
