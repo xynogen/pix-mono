@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-edit",
-	"version": "0.1.26",
+	"version": "0.1.27",
 	"description": "Pi tool — precise text replacement edit with diff rendering",
 	"type": "module",
 	"main": "src/index.ts",
