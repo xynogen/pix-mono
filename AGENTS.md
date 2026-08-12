@@ -93,6 +93,7 @@ packages/
   # ── Standalone (opt-in, NOT bundled) ───────────────────────────────
   pix-9router/     # 9Router LLM provider + fetch/search/transcribe (needs API key)
   pix-sudo/        # sudo_run with PAM password prompt
+  pix-ssh/         # ssh_run — remote command over SSH (key/password auth + remote sudo)
   pix-toolbox/     # Gated tool toggle UI (/toolbox)
   pix-mcp/         # Token-efficient MCP gateway (external servers; explicit opt-in)
 scripts/
@@ -232,7 +233,7 @@ Owned by `pix-runtime` (init/reload/flush + the `/pix` settings command). Auto-c
 
 | Section | Consumers |
 |---|---|
-| `collapse` | pix-bash, pix-read, pix-grep, pix-edit, pix-write, pix-find, pix-ls, pix-todo, pix-sudo, pix-skills, pix-subagent, pix-9router |
+| `collapse` | pix-bash, pix-read, pix-grep, pix-edit, pix-write, pix-find, pix-ls, pix-todo, pix-sudo, pix-ssh, pix-skills, pix-subagent, pix-9router |
 | `pretty` | pix-pretty (icons, preview/render limits, diff split thresholds) |
 | `optimizer` | pix-optimizer (caveman/rtk/ponytail state) |
 | `gate` | pix-gate (rules, auto-approve patterns) |
