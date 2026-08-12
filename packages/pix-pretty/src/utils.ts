@@ -71,18 +71,33 @@ type ViewportComponent = {
 
 class ViewportText implements TextComponentLike, ViewportComponent {
 	private text = "";
-	// Pi re-renders every frame (spinner/streaming). Without this cache each
-	// frame re-split + re-truncated the full text AND re-setText'd the inner
-	// component (re-dirtying it), burning CPU on unchanged content.
+	// Pi re-renders every frame (spinner/streaming). Two-level cache:
+	//  1. per-line: `truncateToWidth` result keyed by raw line + width. Streaming
+	//     only appends to the tail, so already-fitted lines hit the cache and
+	//     only the new/changed lines pay the pi-tui width cost (was O(total
+	//     lines) per chunk, now O(new lines)).
+	//  2. per-blob: skip re-joining + re-setText'ing the inner component when
+	//     neither text nor width changed (idle frames, spinner ticks).
 	private fittedWidth = -1;
 	private fittedText = "";
+	private lineCache = new Map<string, string>();
+	private lineCacheWidth = -1;
+	// Render-output memo. The inner component's render is a pure function of
+	// (fittedText, width), so on an unchanged frame (spinner tick, idle) we skip
+	// calling into pi-tui AND skip the fallback split — otherwise both fired
+	// every single frame even when nothing changed. The returned array is shared
+	// by reference; pi-tui's render contract is read-only (the host joins/prints
+	// the lines, never mutates), so we don't defensively copy per frame.
+	private rendered: string[] = [];
+	private renderedWidth = -1;
 
 	constructor(private readonly component: TextComponentLike) {}
 
 	setText(value: string): void {
 		if (value === this.text) return;
 		this.text = value;
-		this.fittedWidth = -1; // invalidate memo
+		this.fittedWidth = -1; // invalidate blob memo (line cache stays valid)
+		this.renderedWidth = -1; // invalidate render-output memo
 	}
 
 	getText(): string {
@@ -91,17 +106,45 @@ class ViewportText implements TextComponentLike, ViewportComponent {
 
 	render(width: number): string[] {
 		if (width !== this.fittedWidth) {
-			this.fittedText = this.text
-				.split("\n")
-				.map((line) => truncateToWidth(line, width, ""))
+			if (width !== this.lineCacheWidth) {
+				this.lineCache.clear(); // width changed → every line must re-fit
+				this.lineCacheWidth = width;
+			}
+			const cache = this.lineCache;
+			const lines = this.text.split("\n");
+			// Bound the cache so a long streaming log can't grow it without limit.
+			// The working set is the visible line count; a generous multiple keeps
+			// steady-state hits while capping worst-case memory. Reset when exceeded
+			// rather than LRU-evicting — simpler, and a width-stable frame refills it.
+			if (cache.size > 4 * lines.length + 256) cache.clear();
+			this.fittedText = lines
+				.map((line) => {
+					let fitted = cache.get(line);
+					if (fitted === undefined) {
+						fitted = truncateToWidth(line, width, "");
+						cache.set(line, fitted);
+					}
+					return fitted;
+				})
 				.join("\n");
 			this.fittedWidth = width;
+			this.renderedWidth = -1; // fitted text rebuilt → render output is stale
 			this.component.setText(this.fittedText);
 		}
-		return this.component.render?.(width) ?? this.fittedText.split("\n");
+		if (width !== this.renderedWidth) {
+			this.rendered = this.component.render?.(width) ?? this.fittedText.split("\n");
+			this.renderedWidth = width;
+		}
+		return this.rendered;
 	}
 
 	invalidate(): void {
+		// invalidate = "output stale for reasons other than (text,width)" — theme /
+		// style change. Fitting is pure on (text,width) so fittedText/lineCache stay
+		// valid, but the RENDER output (colors) may differ, so drop the render memo;
+		// otherwise a same-width frame after invalidate would serve pre-invalidate
+		// output forever.
+		this.renderedWidth = -1;
 		this.component.invalidate?.();
 	}
 }

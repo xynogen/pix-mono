@@ -35,12 +35,14 @@ class MockTextComponent {
 // regression that recomputes every frame (the pre-memo CPU bug) fails loudly.
 class CountingTextComponent {
 	static setCalls = 0;
+	static renderCalls = 0;
 	private text = "";
 	setText(value: string): void {
 		CountingTextComponent.setCalls++;
 		this.text = value;
 	}
 	render(): string[] {
+		CountingTextComponent.renderCalls++;
 		return this.text.split("\n");
 	}
 	invalidate(): void {}
@@ -98,6 +100,56 @@ describe("viewportText", () => {
 		text.setText("same"); // identical → must not invalidate
 		text.render(20); // still cached
 		expect(CountingTextComponent.setCalls).toBe(1);
+	});
+
+	it("idle frames (same text+width) do not re-call the inner render", () => {
+		CountingTextComponent.renderCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		text.setText("line one\nline two");
+		text.render(20);
+		text.render(20);
+		text.render(20);
+		// One inner render for the width; spinner ticks reuse the memoized output.
+		expect(CountingTextComponent.renderCalls).toBe(1);
+	});
+
+	it("re-calls inner render after content changes", () => {
+		CountingTextComponent.renderCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		text.setText("first");
+		text.render(20);
+		text.setText("second"); // content changed → render output stale
+		text.render(20);
+		expect(CountingTextComponent.renderCalls).toBe(2);
+	});
+
+	it("invalidate() drops the render memo so a same-width frame recomputes (theme change)", () => {
+		CountingTextComponent.renderCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		text.setText("body");
+		text.render(20);
+		text.render(20); // memo hit
+		expect(CountingTextComponent.renderCalls).toBe(1);
+		text.invalidate(); // theme/style changed → output stale even at same width
+		text.render(20); // must recompute, not serve pre-invalidate output
+		expect(CountingTextComponent.renderCalls).toBe(2);
+	});
+
+	it("streaming append reuses already-fitted lines and fits only the new tail", () => {
+		const text = viewportText(MockTextComponent);
+		text.setText("aaaaaaaaaa\nbbbbbbbbbb");
+		expect(text.render(5).map(plain)).toEqual(["aaaaa", "bbbbb"]);
+		// Append (streaming). Old lines fit identically; new line appears.
+		text.setText("aaaaaaaaaa\nbbbbbbbbbb\ncccccccccc");
+		expect(text.render(5).map(plain)).toEqual(["aaaaa", "bbbbb", "ccccc"]);
+	});
+
+	it("width change re-fits all lines (line cache is width-scoped, no stale serve)", () => {
+		const text = viewportText(MockTextComponent);
+		text.setText("abcdefghij");
+		expect(text.render(5).map(plain)).toEqual(["abcde"]);
+		// Must NOT serve the stale 5-wide fit for the same raw line at a new width.
+		expect(text.render(8).map(plain)).toEqual(["abcdefgh"]);
 	});
 });
 
