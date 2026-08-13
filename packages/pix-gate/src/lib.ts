@@ -222,9 +222,15 @@ export const DEFAULT_PATH_RULES: PathRule[] = [
 		severity: "block",
 		reason: "credentials file",
 	},
+	// Real .env files hold live secrets — block. Placeholder variants
+	// (.env.example/.sample/.template/.dist) carry no secrets, so exclude them.
+	{
+		pattern: /(^|\/)\.env(?:$|\.(?!example|sample|template|dist)[A-Za-z0-9_-]+)/i,
+		severity: "block",
+		reason: ".env file (live secrets)",
+	},
 
 	// warn — yellow allow-first
-	{ pattern: /(^|\/)\.env(\.|$)/i, severity: "warn", reason: ".env file" },
 	{ pattern: /(^|\/)\.envrc$/i, severity: "warn", reason: "direnv file" },
 	{
 		pattern: /(^|\/)\.npmrc$/i,

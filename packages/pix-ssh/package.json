@@ -1,7 +1,7 @@
 {
-	"name": "@xynogen/pix-write",
-	"version": "0.1.24",
-	"description": "Pi tool — file write with diff rendering",
+	"name": "@xynogen/pix-ssh",
+	"version": "0.1.0",
+	"description": "Pi tool — ssh_run: run remote commands over SSH with password/key auth and remote sudo",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
@@ -14,28 +14,30 @@
 	],
 	"pi": {
 		"extensions": [
-			"src/extension.ts"
+			"src/index.ts"
 		]
 	},
 	"keywords": [
 		"pi",
 		"pi-package",
 		"pi-extension",
-		"write"
+		"ssh",
+		"sudo",
+		"remote"
 	],
 	"author": "xynogen",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/xynogen/pix-mono.git",
-		"directory": "packages/pix-write"
+		"directory": "packages/pix-ssh"
 	},
 	"publishConfig": {
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-data": "^0.4.3",
-		"@xynogen/pix-pretty": "^1.11.2",
+		"typebox": "^1.1.38",
+		"@xynogen/pix-pretty": "^1.16.0",
 		"@xynogen/pix-runtime": "^0.6.0"
 	},
 	"peerDependencies": {

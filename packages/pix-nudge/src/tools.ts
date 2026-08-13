@@ -32,7 +32,7 @@ function at<T>(arr: T[], i: number): T {
 }
 
 /** Categories that map a raw shell command to a dedicated Pi tool. */
-type Category = "read" | "ls" | "grep" | "find" | "edit";
+type Category = "read" | "ls" | "grep" | "find" | "edit" | "ssh" | "sudo";
 
 interface Rule {
 	category: Category;
@@ -80,6 +80,18 @@ const RULES: Rule[] = [
 		test: (c) => /^sed$/.test(leadWord(c)) && /\s-i\b/.test(c),
 		tool: "edit",
 		reason: "Editing a file in place via bash `sed -i`.",
+	},
+	{
+		category: "ssh",
+		test: (c) => /^ssh$/.test(leadWord(c)),
+		tool: "ssh_run",
+		reason: "Running a remote command via bash ssh.",
+	},
+	{
+		category: "sudo",
+		test: (c) => /^sudo$/.test(leadWord(c)),
+		tool: "sudo_run",
+		reason: "Running a command as root via bash sudo.",
 	},
 ];
 
@@ -191,6 +203,15 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 		}
 	}
 
+	/** Is `name` registered at all (active or gated)? ssh_run is opt-in — absent when pix-ssh isn't installed. */
+	function isRegistered(name: string): boolean {
+		try {
+			return (pi.getAllTools?.() ?? []).some((t) => t.name === name);
+		} catch {
+			return true;
+		}
+	}
+
 	pi.on("tool_call", async (event, ctx) => {
 		if (!isToolCallEventType("bash", event)) return;
 		const command = event.input.command;
@@ -198,6 +219,9 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 
 		const rule = classifyCompound(command);
 		if (!rule) return;
+		// ssh_run / sudo_run are standalone opt-in tools — without them, the bash
+		// form is the only path, so don't nudge toward a tool that isn't there.
+		if ((rule.tool === "ssh_run" || rule.tool === "sudo_run") && !isRegistered(rule.tool)) return;
 		if (nudged.has(rule.category)) return; // already taught — allow.
 
 		nudged.add(rule.category);

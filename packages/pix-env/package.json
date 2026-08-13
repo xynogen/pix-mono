@@ -1,7 +1,7 @@
 {
-	"name": "@xynogen/pix-write",
-	"version": "0.1.24",
-	"description": "Pi tool — file write with diff rendering",
+	"name": "@xynogen/pix-env",
+	"version": "0.1.0",
+	"description": "Pi extension — broker .env secrets to tools via $KEY references with gated injection",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
@@ -21,21 +21,22 @@
 		"pi",
 		"pi-package",
 		"pi-extension",
-		"write"
+		"env",
+		"secrets",
+		"dotenv"
 	],
 	"author": "xynogen",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/xynogen/pix-mono.git",
-		"directory": "packages/pix-write"
+		"directory": "packages/pix-env"
 	},
 	"publishConfig": {
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-data": "^0.4.3",
-		"@xynogen/pix-pretty": "^1.11.2",
+		"@xynogen/pix-pretty": "^1.16.0",
 		"@xynogen/pix-runtime": "^0.6.0"
 	},
 	"peerDependencies": {

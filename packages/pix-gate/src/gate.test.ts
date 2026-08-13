@@ -2,12 +2,31 @@ import { describe, expect, test } from "bun:test";
 import {
 	buildRules,
 	classify,
+	classifyPath,
+	DEFAULT_PATH_RULES,
 	DEFAULT_RULES,
 	extractPathsFromBash,
 	isCircuitBreaker,
 	isSudoCommand,
 	unattendedGateDecision,
 } from "./lib.ts";
+
+// ── .env path gating ─────────────────────────────────────────────
+describe("classifyPath .env", () => {
+	const blocked = [".env", ".env.local", ".env.production", "path/to/.env", "src/.env.staging"];
+	const allowed = [".env.example", ".env.sample", ".env.template", ".env.dist"];
+
+	for (const p of blocked) {
+		test(`reading ${p} is blocked`, () => {
+			expect(classifyPath(p, "read", DEFAULT_PATH_RULES)?.severity).toBe("block");
+		});
+	}
+	for (const p of allowed) {
+		test(`reading ${p} is not blocked`, () => {
+			expect(classifyPath(p, "read", DEFAULT_PATH_RULES)).toBeUndefined();
+		});
+	}
+});
 
 // ── isSudoCommand ─────────────────────────────────────────────────────────────
 
