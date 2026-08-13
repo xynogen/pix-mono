@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import {
 	baseSshArgs,
+	commandEscalatesPrivilege,
 	controlPathFor,
 	detectSshFailure,
 	detectSudoFailure,
 	filterSudoPrompt,
+	hostApproved,
 	hostTarget,
 	isUnreachable,
 	parseHost,
@@ -139,6 +141,36 @@ describe("filterSudoPrompt", () => {
 	});
 	it("keeps normal lines", () => {
 		expect(filterSudoPrompt("line one\nline two")).toBe("line one\nline two");
+	});
+});
+
+describe("hostApproved", () => {
+	it("is false for an unknown host", () => {
+		expect(hostApproved(new Map(), "u@h:22")).toBe(false);
+	});
+	it("is true within the TTL window", () => {
+		const m = new Map([["u@h:22", 1000]]);
+		expect(hostApproved(m, "u@h:22", 500)).toBe(true);
+	});
+	it("expires and self-prunes at/after the deadline", () => {
+		const m = new Map([["u@h:22", 1000]]);
+		expect(hostApproved(m, "u@h:22", 1000)).toBe(false);
+		expect(m.has("u@h:22")).toBe(false);
+	});
+});
+
+describe("commandEscalatesPrivilege", () => {
+	it("flags leading and mid-chain escalation tokens", () => {
+		expect(commandEscalatesPrivilege("sudo apt update")).toBe(true);
+		expect(commandEscalatesPrivilege("apt update && sudo apt install x")).toBe(true);
+		expect(commandEscalatesPrivilege("foo; su -c 'x'")).toBe(true);
+		expect(commandEscalatesPrivilege("doas reboot")).toBe(true);
+		expect(commandEscalatesPrivilege("pkexec whoami")).toBe(true);
+	});
+	it("does not flag plain commands or substrings", () => {
+		expect(commandEscalatesPrivilege("ls -la")).toBe(false);
+		expect(commandEscalatesPrivilege("pseudo-tty")).toBe(false);
+		expect(commandEscalatesPrivilege("cat sudoku.txt")).toBe(false);
 	});
 });
 

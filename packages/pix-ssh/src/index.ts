@@ -47,10 +47,13 @@ import { withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import {
+	APPROVAL_TTL_MS,
+	commandEscalatesPrivilege,
 	controlPathFor,
 	detectSshFailure,
 	detectSudoFailure,
 	type HostSpec,
+	hostApproved,
 	hostTarget,
 	MAX_OUTPUT_BYTES,
 	MAX_OUTPUT_LINES,
@@ -70,6 +73,14 @@ interface HostCreds {
 	sudoPassword?: string;
 }
 const credCache = new Map<string, HostCreds>();
+
+// Per-host allow-memory (on by default): once the user approves any command on
+// a host, later calls to that host skip the confirm overlay until the approval
+// expires — mirroring sudo's PAM ticket window (~15 min), not the whole session.
+// Password prompts are NOT skipped — a still-missing login or sudo password
+// always re-prompts. Each auto-approve emits a visible notify so the decision is
+// never silent. Map value = epoch ms when the approval lapses (see APPROVAL_TTL_MS).
+const approvedHosts = new Map<string, number>();
 
 function cacheKey(spec: HostSpec): string {
 	return `${spec.user ?? ""}@${spec.host}:${spec.port ?? 22}`;
@@ -318,9 +329,20 @@ export default function (pi: ExtensionAPI): void {
 			// pix-sudo uses (masked input, N attempts). We can't validate remote
 			// passwords without connecting, so validatePassword just accepts a
 			// non-empty entry; a wrong password surfaces as an auth error after run.
+			// Session allow-memory: host already approved + no password missing → skip
+			// the confirm overlay entirely (visible notify below). Privileged commands
+			// (sudo:true, or a sudo/su/doas/pkexec token in the command text) are never
+			// auto-approved — they always re-confirm.
+			const privileged = sudo || commandEscalatesPrivilege(command);
+			const alreadyApproved =
+				!privileged && hostApproved(approvedHosts, key) && promptFor.length === 0;
+			if (alreadyApproved) {
+				ctx.ui.notify(`🔐 ssh_run auto-approved — ${host} allowed this session`, "warning");
+			}
+
 			const runOverlay = (): Promise<OverlayResult> =>
 				withAgentBlock(pi.events, "ssh_run", "SSH approval required", async () => {
-					if (yolo && promptFor.length === 0) {
+					if ((yolo || alreadyApproved) && promptFor.length === 0) {
 						return { action: "approved", password: "" } as OverlayResult;
 					}
 					// Confirm-only when no password is missing.
@@ -375,6 +397,9 @@ export default function (pi: ExtensionAPI): void {
 				ctx.ui.notify(`🔐 ${r.content[0]?.text}`, "warning");
 				return r;
 			}
+
+			// Remember this host's approval until the TTL lapses (refreshed each call).
+			approvedHosts.set(key, Date.now() + APPROVAL_TTL_MS);
 
 			// Persist newly-entered passwords in the session cache.
 			const loginPassword = creds.loginPassword ?? collected.login;

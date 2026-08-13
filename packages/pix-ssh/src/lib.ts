@@ -21,6 +21,33 @@ import { join } from "node:path";
 export const MAX_OUTPUT_BYTES = 50 * 1024;
 export const MAX_OUTPUT_LINES = 2000;
 
+/** Per-host approval TTL (ms) — mirrors sudo's PAM ticket window (~15 min). */
+export const APPROVAL_TTL_MS = 15 * 60_000;
+
+/**
+ * True when `key` has a live (non-expired) approval in `map`; deletes the entry
+ * on expiry so the map self-prunes. `now` is injectable for tests.
+ */
+export function hostApproved(map: Map<string, number>, key: string, now = Date.now()): boolean {
+	const expiry = map.get(key);
+	if (expiry === undefined) return false;
+	if (now >= expiry) {
+		map.delete(key);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * True when the command text itself escalates privilege (sudo/su/doas/pkexec),
+ * so per-host allow-memory must NOT auto-approve it even when `sudo:true` was
+ * not passed. Word-boundary match; catches leading and mid-chain occurrences
+ * (`… && sudo …`).
+ */
+export function commandEscalatesPrivilege(command: string): boolean {
+	return /(^|[\s;&|(])(sudo|su|doas|pkexec)\b/.test(command);
+}
+
 /** ControlPersist window (seconds) — the multiplexed connection lingers this
  * long after the last call, so repeat commands skip re-auth. */
 const CONTROL_PERSIST_SECONDS = 120;
