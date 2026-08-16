@@ -10,6 +10,7 @@ import {
 	hostTarget,
 	isUnreachable,
 	parseHost,
+	parseSshConfig,
 	remoteCommand,
 	shellQuote,
 	truncate,
@@ -43,6 +44,20 @@ describe("parseHost", () => {
 		expect(() => parseHost("h:0")).toThrow();
 		expect(() => parseHost("h:70000")).toThrow();
 		expect(() => parseHost("h:abc")).toThrow();
+	});
+});
+
+describe("parseSshConfig", () => {
+	it("reads effective user, hostname, and port from ssh -G output", () => {
+		expect(parseSshConfig("host orin\nuser jetson\nhostname 10.10.21.251\nport 2222\n")).toEqual({
+			user: "jetson",
+			host: "10.10.21.251",
+			port: 2222,
+		});
+	});
+
+	it("rejects incomplete ssh -G output", () => {
+		expect(parseSshConfig("hostname 10.10.21.251\n")).toBeUndefined();
 	});
 });
 

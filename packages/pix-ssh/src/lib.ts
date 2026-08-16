@@ -108,6 +108,39 @@ function parsePort(value: string): number {
 	return n;
 }
 
+/** Parse effective destination fields emitted by OpenSSH's `ssh -G`. */
+export function parseSshConfig(output: string): HostSpec | undefined {
+	const values = new Map(
+		output
+			.split("\n")
+			.map((line) => line.trim().split(/\s+/, 2))
+			.filter((parts): parts is [string, string] => parts.length === 2),
+	);
+	const user = values.get("user");
+	const host = values.get("hostname");
+	const port = values.get("port");
+	if (!user || !host || !port) return undefined;
+	return { user, host, port: parsePort(port) };
+}
+
+/** Resolve aliases through OpenSSH config, including Include and Match rules. */
+export function resolveSshHost(spec: HostSpec, signal?: AbortSignal): Promise<HostSpec> {
+	const args = ["-G"];
+	if (spec.port !== undefined) args.push("-p", String(spec.port));
+	args.push(hostTarget(spec));
+
+	return new Promise((resolve) => {
+		let stdout = "";
+		const proc = spawn("ssh", args, { stdio: ["ignore", "pipe", "ignore"] });
+		proc.stdout.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString();
+		});
+		proc.on("error", () => resolve(spec));
+		proc.on("close", (code) => resolve(code === 0 ? (parseSshConfig(stdout) ?? spec) : spec));
+		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
+	});
+}
+
 /** Canonical `[user@]host` target string for ssh argv. */
 export function hostTarget(spec: HostSpec): string {
 	return spec.user ? `${spec.user}@${spec.host}` : spec.host;

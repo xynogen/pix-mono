@@ -59,6 +59,7 @@ import {
 	MAX_OUTPUT_LINES,
 	parseHost,
 	probeKeyAuth,
+	resolveSshHost,
 	runSsh,
 	truncate,
 } from "./lib.ts";
@@ -268,9 +269,14 @@ export default function (pi: ExtensionAPI): void {
 					isError: true,
 				};
 			}
-			const host = hostTarget(spec);
-			const controlPath = controlPathFor(spec);
-			const key = cacheKey(spec);
+			// ponytail: let OpenSSH own config parsing; `ssh -G` handles aliases,
+			// Include, and Match rules without duplicating its config grammar.
+			const effectiveSpec = await resolveSshHost(spec, sig);
+			const host = hostTarget(effectiveSpec);
+			// Keep original target for execution so alias-specific IdentityFile,
+			// ProxyJump, and other SSH config options still apply.
+			const controlPath = controlPathFor(effectiveSpec);
+			const key = cacheKey(effectiveSpec);
 			const creds = credCache.get(key) ?? {};
 
 			const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
