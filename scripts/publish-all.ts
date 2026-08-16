@@ -12,9 +12,9 @@
  *   PUBLISH_CONCURRENCY=4 bun scripts/publish-all.ts
  */
 
-import { readdirSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { $ } from "bun";
+import { $, spawn } from "bun";
 import {
 	formatStaticAnalysisFailure,
 	runStaticAnalysis,
@@ -69,7 +69,9 @@ let hasWorkspaceProtocol = false;
 for (const { dir, name } of pkgs) {
 	const raw = readFileSync(join(dir, "package.json"), "utf8");
 	if (raw.includes('"workspace:')) {
-		console.error(`✖ ${name}: package.json contains workspace: protocol — replace with a semver range before publishing.`);
+		console.error(
+			`✖ ${name}: package.json contains workspace: protocol — replace with a semver range before publishing.`,
+		);
 		hasWorkspaceProtocol = true;
 	}
 }
@@ -77,6 +79,14 @@ if (hasWorkspaceProtocol) {
 	console.error("\nAborted. Fix workspace: references and retry.");
 	process.exit(1);
 }
+
+const versionCheck = spawn(["bun", "scripts/check-versions.ts"], {
+	cwd: join(import.meta.dir, ".."),
+	stdin: "inherit",
+	stdout: "inherit",
+	stderr: "inherit",
+});
+if ((await versionCheck.exited) !== 0) process.exit(1);
 
 try {
 	await runStaticAnalysis();
@@ -138,8 +148,15 @@ async function publishOne(pkg: PkgInfo): Promise<void> {
 			console.log(`↷ skip (race): ${name}@${version}`);
 			return;
 		}
-		if (out.includes("EOTP") || out.includes("one-time password") || out.includes("E401") || out.includes("Unauthorized")) {
-			console.error(`\n✖ Auth error: npm requires an automation token to publish with 2FA enabled.`);
+		if (
+			out.includes("EOTP") ||
+			out.includes("one-time password") ||
+			out.includes("E401") ||
+			out.includes("Unauthorized")
+		) {
+			console.error(
+				`\n✖ Auth error: npm requires an automation token to publish with 2FA enabled.`,
+			);
 			console.error(`\nCreate one at: https://www.npmjs.com/settings/xynogen/tokens`);
 			console.error(`  1. Generate New Token → Granular Access Token (or Classic → Automation)`);
 			console.error(`  2. Set it:  npm set //registry.npmjs.org/:_authToken YOUR_TOKEN`);
@@ -158,5 +175,7 @@ for (let i = 0; i < toPublish.length; i += CONCURRENCY) {
 	await Promise.all(batch.map(publishOne));
 }
 
-console.log(`\n${DRY_RUN ? "[dry-run] " : ""}Publish summary: ${publishedCount} ${DRY_RUN ? "would publish" : "published"}, ${toSkip.length} skipped, ${failedCount} failed.`);
+console.log(
+	`\n${DRY_RUN ? "[dry-run] " : ""}Publish summary: ${publishedCount} ${DRY_RUN ? "would publish" : "published"}, ${toSkip.length} skipped, ${failedCount} failed.`,
+);
 if (failedCount > 0) process.exit(1);

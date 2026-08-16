@@ -13,7 +13,7 @@ const err = await new Response(proc.stderr).text();
 await proc.exited;
 const combined = `${out}\n${err}`;
 // Strip ANSI
-const clean = combined.replaceAll(/\x1b\[[0-9;]*m/g, "");
+const clean = combined.replace(/\x1b\[[0-9;]*m/g, "");
 // Find "All files" line: columns are funcs | lines
 const line = clean.split("\n").find((l) => l.includes("All files"));
 if (!line) {

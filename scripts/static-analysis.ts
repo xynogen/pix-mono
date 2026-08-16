@@ -26,7 +26,7 @@ type CommandRunner = (command: StaticAnalysisCommand) => Promise<number>;
 function shellQuote(argument: string): string {
 	return /^[A-Za-z0-9_./:=@+-]+$/.test(argument)
 		? argument
-		: `'${argument.replaceAll("'", `'\\''`)}'`;
+		: `'${argument.replace(/'/g, `'\\''`)}'`;
 }
 
 export class StaticAnalysisError extends Error {
@@ -57,7 +57,7 @@ export function formatStaticAnalysisFailure(error: StaticAnalysisError): string 
 
 async function runCommand(command: StaticAnalysisCommand): Promise<number> {
 	const child = spawn(command.argv, {
-		cwd: import.meta.dir + "/..",
+		cwd: `${import.meta.dir}/..`,
 		stdin: "inherit",
 		stdout: "inherit",
 		stderr: "inherit",

@@ -7,7 +7,15 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["packages/**/*.ts", "packages/**/*.json", "*.json"]
+		"includes": [
+			"packages/**/*.ts",
+			"packages/**/*.json",
+			"scripts/check-versions*.ts",
+			"scripts/deps.test.ts",
+			"scripts/publish-all.ts",
+			"scripts/static-analysis*.ts",
+			"*.json"
+		]
 	},
 	"formatter": {
 		"enabled": true,

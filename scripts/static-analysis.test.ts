@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	formatStaticAnalysisFailure,
-	STATIC_ANALYSIS_COMMANDS,
-	StaticAnalysisError,
 	runStaticAnalysis,
+	STATIC_ANALYSIS_COMMANDS,
 	type StaticAnalysisCommand,
+	StaticAnalysisError,
 } from "./static-analysis.ts";
 
 const repoRoot = join(import.meta.dir, "..");
@@ -14,11 +14,11 @@ const repoRoot = join(import.meta.dir, "..");
 describe("pre-publish static analysis", () => {
 	test("runs formatting, linting, type checks, dependency hygiene, and high-severity audit", () => {
 		expect(STATIC_ANALYSIS_COMMANDS.map(({ argv }) => argv)).toEqual([
-		["bun", "run", "ci"],
-		["bun", "run", "typecheck"],
-		["bun", "test", "scripts/deps.test.ts"],
-		["bun", "audit", "--audit-level=high"],
-	]);
+			["bun", "run", "ci"],
+			["bun", "run", "typecheck"],
+			["bun", "test", "scripts/deps.test.ts"],
+			["bun", "audit", "--audit-level=high"],
+		]);
 	});
 
 	test("runs checks sequentially", async () => {
@@ -68,13 +68,15 @@ describe("pre-publish static analysis", () => {
 		);
 	});
 
-	test("publish-all invokes the gate before registry access", () => {
+	test("publish-all invokes version and static-analysis gates before registry access", () => {
 		const source = readFileSync(join(repoRoot, "scripts", "publish-all.ts"), "utf8");
-		const gate = source.indexOf("await runStaticAnalysis()");
+		const versionGate = source.indexOf('spawn(["bun", "scripts/check-versions.ts"]');
+		const staticGate = source.indexOf("await runStaticAnalysis()");
 		const registry = source.indexOf("fetch(`https://registry.npmjs.org/");
 
-		expect(gate).toBeGreaterThan(-1);
-		expect(registry).toBeGreaterThan(gate);
+		expect(versionGate).toBeGreaterThan(-1);
+		expect(staticGate).toBeGreaterThan(versionGate);
+		expect(registry).toBeGreaterThan(staticGate);
 	});
 
 	test("CI uses the same agent-readable gate", () => {

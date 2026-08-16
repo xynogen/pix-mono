@@ -7,9 +7,9 @@
  * package's actual version.
  */
 
-import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const packagesDir = join(import.meta.dir, "..", "packages");
 
@@ -17,16 +17,16 @@ interface PkgJson {
 	name: string;
 	version: string;
 	private?: boolean;
+	pi?: {
+		extensions?: string[];
+		themes?: string | string[];
+	};
 	dependencies?: Record<string, string>;
 	devDependencies?: Record<string, string>;
 	optionalDependencies?: Record<string, string>;
 }
 
-const DEP_FIELDS = [
-	"dependencies",
-	"devDependencies",
-	"optionalDependencies",
-] as const;
+const DEP_FIELDS = ["dependencies", "devDependencies", "optionalDependencies"] as const;
 
 // Collect all publishable packages
 const pkgs: { name: string; dir: string; pkg: PkgJson }[] = [];
@@ -37,6 +37,34 @@ for (const entry of readdirSync(packagesDir)) {
 	if (pkg.private) continue;
 	pkgs.push({ name: pkg.name, dir: entry, pkg });
 }
+
+describe("package onboarding", () => {
+	test("package names and Pi manifest paths match the workspace", () => {
+		const violations: string[] = [];
+		for (const { name, dir, pkg } of pkgs) {
+			if (name !== `@xynogen/${dir}`)
+				violations.push(`${dir}: expected name @xynogen/${dir}, got ${name}`);
+			const entries = [...(pkg.pi?.extensions ?? [])];
+			const themes = pkg.pi?.themes;
+			if (typeof themes === "string") entries.push(themes);
+			else if (themes) entries.push(...themes);
+			for (const entry of entries) {
+				if (!existsSync(join(packagesDir, dir, entry)))
+					violations.push(`${name}: missing pi entry ${entry}`);
+			}
+		}
+		expect(violations).toEqual([]);
+	});
+
+	test("uninstaller covers every package except its documented updater exception", () => {
+		const uninstaller = readFileSync(join(import.meta.dir, "uninstall.sh"), "utf8");
+		const violations = pkgs
+			.filter(({ name }) => name !== "@xynogen/pix-update")
+			.filter(({ name }) => !uninstaller.includes(`npm:${name}`))
+			.map(({ name }) => `${name}: missing from uninstall.sh`);
+		expect(violations).toEqual([]);
+	});
+});
 
 describe("dependency hygiene", () => {
 	test("no workspace: protocol in any published package", () => {
@@ -108,6 +136,43 @@ describe("dependency hygiene", () => {
 				);
 			}
 		}
+
+		expect(violations).toEqual([]);
+	});
+
+	test("pix-core activates every direct Pix dependency", () => {
+		const core = pkgs.find((p) => p.name === "@xynogen/pix-core");
+		if (!core) throw new Error("pix-core not found in packages/");
+		const extension = readFileSync(join(packagesDir, "pix-core", "src", "extension.ts"), "utf8");
+		const violations = Object.keys(core.pkg.dependencies ?? {})
+			.filter((name) => name.startsWith("@xynogen/"))
+			.filter((name) => !extension.includes(`from "${name}`))
+			.map((name) => `${name}: dependency is not imported by pix-core/src/extension.ts`);
+		expect(violations).toEqual([]);
+	});
+
+	test("every standalone Pix extension is offered by the installer", () => {
+		const core = pkgs.find((p) => p.name === "@xynogen/pix-core");
+		if (!core) throw new Error("pix-core not found in packages/");
+		const bundled = new Set<string>([core.name]);
+		const pending = Object.keys(core.pkg.dependencies ?? {}).filter((name) =>
+			name.startsWith("@xynogen/"),
+		);
+		while (pending.length > 0) {
+			const name = pending.pop();
+			if (!name || bundled.has(name)) continue;
+			bundled.add(name);
+			const pkg = pkgs.find((candidate) => candidate.name === name);
+			pending.push(
+				...Object.keys(pkg?.pkg.dependencies ?? {}).filter((dep) => dep.startsWith("@xynogen/")),
+			);
+		}
+
+		const installer = readFileSync(join(import.meta.dir, "install.sh"), "utf8");
+		const violations = pkgs
+			.filter(({ name, pkg }) => pkg.pi && name !== "@xynogen/pix-themes" && !bundled.has(name))
+			.filter(({ name }) => !installer.includes(`npm:${name}|`))
+			.map(({ name }) => `${name}: not bundled by pix-core or listed in OPTIN_PIX_PACKAGES`);
 
 		expect(violations).toEqual([]);
 	});

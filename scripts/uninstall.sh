@@ -46,9 +46,11 @@ npm:@xynogen/pix-subagent
 EXTENSION_PACKAGES="
 npm:@xynogen/pix-themes
 npm:@xynogen/pix-mcp
+npm:@xynogen/pix-env
 npm:@xynogen/pix-optimizer
 npm:@xynogen/pix-9router
 npm:@xynogen/pix-pretty
+npm:@xynogen/pix-runtime
 npm:@xynogen/pix-bash
 npm:@xynogen/pix-read
 npm:@xynogen/pix-write
@@ -56,6 +58,7 @@ npm:@xynogen/pix-edit
 npm:@xynogen/pix-find
 npm:@xynogen/pix-grep
 npm:@xynogen/pix-ls
+npm:@xynogen/pix-ssh
 npm:@xynogen/pix-sudo
 npm:@xynogen/pix-todo
 npm:@xynogen/pix-ask

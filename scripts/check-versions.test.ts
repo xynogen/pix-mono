@@ -46,7 +46,11 @@ async function setupSandbox(): Promise<Sandbox> {
 	);
 	writeFileSync(
 		join(packagesDir, "stable", "package.json"),
-		JSON.stringify({ name: "stable-pkg", version: "1.0.0", dependencies: { lodash: "^4.0.0" } }, null, "\t"),
+		JSON.stringify(
+			{ name: "stable-pkg", version: "1.0.0", dependencies: { lodash: "^4.0.0" } },
+			null,
+			"\t",
+		),
 	);
 
 	spawnSync("git", ["add", "-A"], { cwd: root });
@@ -87,23 +91,19 @@ afterEach(() => {
 });
 
 describe("check-versions pre-publish guard", () => {
-	test("skips a dependency-only edit without a version bump", () => {
+	test("rejects package changes without a version bump", () => {
 		if (!sandbox) throw new Error("sandbox not initialised");
-		writeFileSync(
-			join(sandbox.root, "packages/stable/package.json"),
-			JSON.stringify(
-				{ name: "stable-pkg", version: "1.0.0", dependencies: { lodash: "^4.17.21" } },
-				null,
-				"\t",
-			),
-		);
+		const sourceDir = join(sandbox.root, "packages/stable/src");
+		mkdirSync(sourceDir, { recursive: true });
+		writeFileSync(join(sourceDir, "index.ts"), "export const changed = true;\n");
 		spawnSync("git", ["add", "-A"], { cwd: sandbox.root });
-		spawnSync("git", ["commit", "-q", "-m", "bump dependency"], { cwd: sandbox.root });
+		spawnSync("git", ["commit", "-q", "-m", "change source without bump"], { cwd: sandbox.root });
 
 		const { stdout, stderr, status } = runCheckVersions(sandbox);
-		expect(stdout).toContain("No packages changed since last release");
-		expect(`${stdout}${stderr}`).not.toContain("stable-pkg");
-		expect(status).toBe(0);
+		expect(`${stdout}${stderr}`).toContain(
+			"stable-pkg@1.0.0 — package changed but version was not bumped",
+		);
+		expect(status).toBe(1);
 	});
 
 	test("reports only packages whose version changed", () => {
