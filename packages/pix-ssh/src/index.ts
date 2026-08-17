@@ -217,17 +217,22 @@ export default function (pi: ExtensionAPI): void {
 		name: "ssh_run",
 		label: "Run over SSH",
 		description:
-			"Run a shell command on a remote host over SSH, optionally as root (remote sudo). " +
-			"Handles the connection and any password entry through a confirmation dialog — " +
-			"the command is NEVER executed without explicit user approval. " +
+			"Run a command through the remote host's configured SSH shell, optionally through POSIX sudo. " +
+			"Basic cmd/PowerShell/pwsh commands may work, but Windows shells are best-effort: shell selection, " +
+			"quoting, PowerShell error/stream/encoding semantics, interactive prompts, and Windows " +
+			"administrator/UAC elevation are not supported. Back away and tell the user when correctness " +
+			"depends on one of those limits. Handles connection and password entry through a permission dialog. " +
+			"A configured approval window or YOLO mode may auto-approve non-privileged commands when no password is missing. " +
 			"SSH auth tries key/agent first, then prompts for a login password if needed. " +
 			"Set `sudo: true` to run the command as root on the remote machine (prompts for the " +
 			"remote sudo password). Always provide a clear `reason`.",
-		promptSnippet: "Run a command on a remote host over SSH (optionally as remote root)",
+		promptSnippet: "Run a remote SSH command (Windows shells best-effort; POSIX sudo only)",
 		promptGuidelines: [
-			"Use ssh_run to execute commands on a remote machine over SSH. Provide `host` as " +
-				"`[user@]host[:port]`. Set `sudo: true` only when the remote command needs root. " +
-				"Always set `reason` to a short plain-English sentence explaining the intent.",
+			"ssh_run sends commands to the remote host's configured SSH shell. Basic cmd, PowerShell, or " +
+				"pwsh commands may work, but treat Windows shells as best-effort. Back away and tell the user " +
+				"when correctness depends on explicit shell selection, complex quoting, PowerShell error/stream/encoding " +
+				"semantics, interactive prompts, or Windows administrator/UAC elevation. `sudo` covers POSIX sudo " +
+				"only. Provide `host` as `[user@]host[:port]` and always explain the intent in `reason`.",
 		],
 
 		renderShell: "self",
@@ -237,7 +242,7 @@ export default function (pi: ExtensionAPI): void {
 				description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
 			}),
 			command: Type.String({
-				description: "Shell command to run on the remote host (passed to remote `sh -c`).",
+				description: "Command sent to the remote host's configured SSH shell.",
 			}),
 			sudo: Type.Optional(
 				Type.Boolean({

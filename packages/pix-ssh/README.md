@@ -1,12 +1,15 @@
 # pix-ssh
 
-Pi tool — `ssh_run`: run a shell command on a remote host over SSH, optionally as remote root.
+Pi tool — `ssh_run`: run a command through a remote host's configured SSH shell, optionally through POSIX `sudo`.
+
+> [!IMPORTANT]
+> Basic Windows `cmd`, Windows PowerShell, and `pwsh` commands may work through the configured SSH shell, but support is best-effort. Shell selection, complex quoting, PowerShell error/stream/encoding semantics, interactive prompts, and Windows administrator/UAC elevation are not covered. The agent should back away when correctness depends on those limits. `sudo: true` supports POSIX `sudo` only.
 
 ## What it does
 
-Registers the `ssh_run` tool, which executes a command on a remote machine behind a permission dialog (the shared overlay from `@xynogen/pix-pretty`, the same one pix-sudo uses). Every command requires explicit per-call Allow/Deny approval in the UI, with a 60-second auto-deny timeout — that approval step is never skipped. Output is truncated to 50 KB / 2000 lines. In non-interactive (RPC/JSON) mode the tool is blocked immediately.
+Registers the `ssh_run` tool, which executes a command through the configured SSH shell on a remote machine behind a permission dialog (the shared overlay from `@xynogen/pix-pretty`, the same one pix-sudo uses). Initial and privileged calls require Allow/Deny approval in the UI, with a 60-second auto-deny timeout. Non-privileged calls may be auto-approved during the 15-minute per-host approval window or in YOLO mode when no password is missing; each host-window auto-approval emits a notification. Output is truncated to 50 KB / 2000 lines. In non-interactive (RPC/JSON) mode the tool is blocked immediately.
 
-**Parameters:** `host` as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`), `command`, optional `sudo` (run as root on the remote), optional `reason`.
+**Parameters:** `host` as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`), `command`, optional `sudo` (run through POSIX `sudo` as root), optional `reason`.
 
 ### Authentication
 
