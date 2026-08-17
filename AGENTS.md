@@ -149,14 +149,21 @@ Because the tag is the trigger (not CI-completion), there is **no tag-push race*
 
 "publish" (alone) means: run this exact sequence, no re-asking which packages.
 
-1. **Gate** — `bun run check && bun run typecheck && bun run test`. Red → STOP.
-2. **Confirm bumps** — changed packages must have version ahead of npm. Unbumped → that package silently ships nothing (no error). Semver: `feat`→minor, `fix`/`perf`→patch, breaking→major.
-3. **Commit + push** — confirm via `ask_user` first (shared-state push).
-4. **Dry-run** — `bun run publish:dry` — note the exact `name@version` list.
-5. **Confirm publish** — `ask_user` with the exact list. Prior approval never carries forward.
-6. **Push commits + wait for CI** — push to `main`, then `gh run watch <ci-run-id> --exit-status` for the branch CI on the pushed SHA. CI must be green *before* tagging (the Publish gate requires it). Red → STOP.
-7. **Tag + push** — create and push the release tag. This directly triggers the Publish workflow; no manual dispatch. The Publish job re-confirms CI is green on the tagged commit, then publishes.
-8. **Verify GitHub Actions** — find the triggered Publish run (`gh run list --workflow Publish --limit 1`) and `gh run watch <run-id> --exit-status`. Confirm its log reports every expected `name@version` as published and ends with `0 failed`; report the Publish workflow URL and exact published versions. Red → STOP and report the failing step/log — never claim the release succeeded from the tag push alone. (If the tag push ever fails to trigger Publish, the fallback is `gh workflow run Publish --ref main`.)
+1. **Approve once, up front** — inspect release scope, then use `ask_user` once. Approval prompt must show:
+   - current branch and target commit SHA;
+   - dirty files and proposed commit message, or state that no commit is needed;
+   - commits included since the previous release tag;
+   - exact package/version list planned for npm;
+   - target release tag (`release-YYYYMMDD-HHMM`);
+   - remote effects: commit push if needed, push to `main`, tag push, Publish workflow trigger, and npm publication.
+
+   Approval covers the complete listed release. Do not ask again unless target commit, tag, or package/version list changes after approval.
+2. **Gate** — `bun run check && bun run typecheck && bun run test`. Red → STOP.
+3. **Confirm bumps** — changed packages must have version ahead of npm. Unbumped → that package silently ships nothing (no error). Semver: `feat`→minor, `fix`/`perf`→patch, breaking→major.
+4. **Dry-run** — `bun run publish:dry` — note the exact `name@version` list. If it differs from the approved list, STOP and request new approval.
+5. **Push commits + wait for CI** — push to `main`, then `gh run watch <ci-run-id> --exit-status` for the branch CI on the pushed SHA. CI must be green *before* tagging (the Publish gate requires it). Red → STOP.
+6. **Tag + push** — create and push the release tag without another approval. This directly triggers the Publish workflow; no manual dispatch. The Publish job re-confirms CI is green on the tagged commit, then publishes.
+7. **Verify GitHub Actions** — find the triggered Publish run (`gh run list --workflow Publish --limit 1`) and `gh run watch <run-id> --exit-status`. Confirm its log reports every expected `name@version` as published and ends with `0 failed`; report the Publish workflow URL and exact published versions. Red → STOP and report the failing step/log — never claim the release succeeded from the tag push alone. (If the tag push ever fails to trigger Publish, the fallback is `gh workflow run Publish --ref main`.)
 
 ---
 
