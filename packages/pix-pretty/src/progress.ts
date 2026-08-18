@@ -13,7 +13,13 @@
  *   p.close();                             // releases input, removes overlay
  */
 
-import { frameModal, MIN_MODAL_HEIGHT, modalWidth, terminalModalHeight } from "./modal-frame.js";
+import {
+	frameModal,
+	MIN_MODAL_HEIGHT,
+	modalOverlayOptions,
+	modalWidth,
+	terminalModalHeight,
+} from "./modal-frame.js";
 import { SPINNER } from "./widget-format.js";
 
 interface ProgressTheme {
@@ -36,7 +42,7 @@ export interface ProgressUI {
 			kb: unknown,
 			done: (v: T) => void,
 		) => ProgressComponent,
-		opts?: { overlay?: boolean; overlayOptions?: { maxHeight?: number | `${number}%` } },
+		opts?: { overlay?: boolean; overlayOptions?: ReturnType<typeof modalOverlayOptions> },
 	): Promise<T | undefined>;
 }
 
@@ -97,7 +103,7 @@ export function openProgress(ui: ProgressUI, title: string, accent = "accent"): 
 				handleInput: () => {},
 			};
 		},
-		{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+		{ overlay: true, overlayOptions: modalOverlayOptions() },
 	);
 
 	return {

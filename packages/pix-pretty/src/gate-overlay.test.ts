@@ -1,5 +1,6 @@
 import { describe, expect, jest, test } from "bun:test";
 import { type OverlayUI, showOverlay } from "./gate-overlay.ts";
+import { modalOverlayOptions } from "./modal-frame.ts";
 
 // ── Mock host ─────────────────────────────────────────────────────────────────
 //
@@ -60,7 +61,7 @@ const ENTER = "\r";
 const DOWN = "\x1b[B";
 
 describe("showOverlay — confirm mode", () => {
-	test("caps overlay at 80% of terminal height", async () => {
+	test("uses configured global overlay bounds", async () => {
 		let options: unknown;
 		await showOverlay(
 			makeUI(
@@ -71,7 +72,7 @@ describe("showOverlay — confirm mode", () => {
 			),
 			{ mode: "confirm", title: "T" },
 		);
-		expect(options).toEqual({ overlay: true, overlayOptions: { maxHeight: "80%" } });
+		expect(options).toEqual({ overlay: true, overlayOptions: modalOverlayOptions() });
 	});
 
 	test("selecting the approve choice (first) returns approved", async () => {

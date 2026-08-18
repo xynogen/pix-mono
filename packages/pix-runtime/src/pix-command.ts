@@ -21,7 +21,7 @@ import { collapseSection } from "./sections/collapse.ts";
 import { compactionSection } from "./sections/compaction.ts";
 import { gateSection } from "./sections/gate.ts";
 import { ioSection } from "./sections/io.ts";
-import { prettySection } from "./sections/pretty.ts";
+import { prettySection, type RenderSize } from "./sections/pretty.ts";
 
 interface SettingRow<T> {
 	section: string;
@@ -40,6 +40,15 @@ function row<T>(r: SettingRow<T>): SettingRow<unknown> {
 /** Render a token count as a compact label: 1_000_000 → "1M", 150_000 → "150k". */
 function formatTokens(tokens: number): string {
 	return tokens % 1_000_000 === 0 ? `${tokens / 1_000_000}M` : `${tokens / 1000}k`;
+}
+
+function parseRenderSize(value: string): RenderSize {
+	return value.endsWith("%") ? (value as `${number}%`) : Number.parseFloat(value);
+}
+
+function resolveRenderSize(limit: RenderSize, available: number): number {
+	if (typeof limit === "number") return Math.floor(limit);
+	return Math.floor((available * Number.parseFloat(limit)) / 100);
 }
 
 /** Parse a compact token label ("1M", "150k") back to an absolute count. */
@@ -70,6 +79,58 @@ const SETTINGS: SettingRow<unknown>[] = [
 		values: ["grid", "tree"],
 		read: (v) => v.lsStyle,
 		patch: (value) => ({ lsStyle: value as "grid" | "tree" }),
+	}),
+	row({
+		section: "Pretty",
+		label: "max modal width",
+		handle: prettySection,
+		values: [
+			"50%",
+			"55%",
+			"60%",
+			"65%",
+			"70%",
+			"75%",
+			"80%",
+			"85%",
+			"90%",
+			"95%",
+			"100%",
+			"72 cols",
+			"80 cols",
+			"88 cols",
+			"96 cols",
+			"104 cols",
+			"120 cols",
+		],
+		read: (v) =>
+			typeof v.maxRenderWidth === "number" ? `${v.maxRenderWidth} cols` : v.maxRenderWidth,
+		patch: (value) => ({ maxRenderWidth: parseRenderSize(value) }),
+	}),
+	row({
+		section: "Pretty",
+		label: "max modal height",
+		handle: prettySection,
+		values: [
+			"50%",
+			"55%",
+			"60%",
+			"65%",
+			"70%",
+			"75%",
+			"80%",
+			"85%",
+			"90%",
+			"95%",
+			"100%",
+			"12 rows",
+			"16 rows",
+			"20 rows",
+			"24 rows",
+		],
+		read: (v) =>
+			typeof v.maxRenderHeight === "number" ? `${v.maxRenderHeight} rows` : v.maxRenderHeight,
+		patch: (value) => ({ maxRenderHeight: parseRenderSize(value) }),
 	}),
 	row({
 		section: "Collapse",
@@ -154,7 +215,6 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 				return;
 			}
 
-			const boxW = 52;
 			await ui.custom(
 				(
 					tui: { requestRender(): void; terminal?: { rows?: number } },
@@ -208,7 +268,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					};
 
 					return {
-						render: () => {
+						render: (width: number) => {
 							const labelW = Math.max(...SETTINGS.map((r) => r.label.length));
 							const body: string[] = [];
 							const settingBodyLines: number[] = [];
@@ -230,8 +290,11 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								body.push(`${cursor} ${label}  ${theme.fg(isDefault ? "dim" : "success", value)}`);
 							}
 							const result = frameModal({
-								width: boxW,
-								maxHeight: modalHeight(tui.terminal?.rows),
+								width,
+								maxHeight: modalHeight(
+									tui.terminal?.rows,
+									runtime.get(prettySection).maxRenderHeight,
+								),
 								header: [theme.fg("accent", theme.bold("  pix settings")), ""],
 								body,
 								footer: [
@@ -282,7 +345,18 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						},
 					};
 				},
-				{ overlay: true, overlayOptions: { anchor: "center", width: boxW, maxHeight: "80%" } },
+				{
+					overlay: true,
+					overlayOptions: () => {
+						const pretty = runtime.get(prettySection);
+						return {
+							anchor: "center",
+							width: pretty.maxRenderWidth,
+							maxHeight: pretty.maxRenderHeight,
+							margin: 2,
+						};
+					},
+				},
 			);
 		},
 	});
@@ -309,9 +383,9 @@ interface RuntimeModalResult {
 	maxBodyOffset: number;
 }
 
-function modalHeight(rows = 24): number {
+function modalHeight(rows = 24, limit: RenderSize = "80%"): number {
 	const safe = Number.isFinite(rows) ? Math.max(1, Math.floor(rows)) : 24;
-	return Math.max(1, Math.min(safe, Math.floor(safe * 0.8)));
+	return Math.max(1, Math.min(safe, resolveRenderSize(limit, safe)));
 }
 
 function pageBodyOffset(offset: number, size: number, max: number, direction: -1 | 1): number {

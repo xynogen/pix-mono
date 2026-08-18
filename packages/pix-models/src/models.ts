@@ -24,6 +24,7 @@ import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
 	ModalPager,
+	modalOverlayOptions,
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
@@ -550,7 +551,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				},
 			};
 		},
-		{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+		{ overlay: true, overlayOptions: modalOverlayOptions() },
 	);
 
 	if (!result) return;

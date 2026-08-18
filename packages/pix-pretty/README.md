@@ -74,6 +74,8 @@ Configuration is read from **`~/.pi/agent/pix.json`** (the unified config file o
     "icons": "nerd",          // nerd | unicode | ascii
     "maxPreviewLines": 80,
     "maxRenderLines": 150,
+    "maxRenderWidth": "65%",  // modal frame width; percentage or columns
+    "maxRenderHeight": "80%", // pagination threshold; percentage or rows
     "maxHighlightChars": 80000,
     "cacheLimit": 128,
     "diff": {
@@ -84,7 +86,7 @@ Configuration is read from **`~/.pi/agent/pix.json`** (the unified config file o
 }
 ```
 
-Syntax highlighting, diffs, and tool surfaces use the active Pi theme. Color overrides do not live in `pix.json`.
+Syntax highlighting, diffs, and tool surfaces use the active Pi theme. Color overrides do not live in `pix.json`. `/pix` exposes modal width and height under **Pretty**; percentage choices move in 5% steps.
 
 ### Environment Variables (override `pix.json`)
 

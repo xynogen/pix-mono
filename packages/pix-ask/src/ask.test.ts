@@ -7,6 +7,8 @@
 
 import { afterEach, describe, expect, test } from "bun:test";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
+import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
 	buildResponseText,
 	formatAnswerScalar,
@@ -293,6 +295,43 @@ describe("registerAsk", () => {
 			.join("\n")
 			.trimEnd();
 		expect(result).toBe("✓  ask_user REST · 1 answer");
+	});
+
+	test("fills its overlay width so background content cannot bleed through on the right", async () => {
+		let tool: { execute: (...args: any[]) => Promise<unknown> } | undefined;
+		const pi = {
+			events: createEventBus(),
+			registerTool(definition: typeof tool) {
+				tool = definition;
+			},
+		};
+		const { default: registerAsk } = await import("./index.ts");
+		registerAsk(pi as never);
+		if (!tool) throw new Error("ask_user not registered");
+
+		await tool.execute("id", { questions: [qSingle] }, undefined, undefined, {
+			hasUI: true,
+			ui: {
+				custom: async (
+					factory: (...args: any[]) => { render: (width: number) => string[] },
+					options: unknown,
+				) => {
+					expect(options).toEqual({ overlay: true, overlayOptions: modalOverlayOptions() });
+					const component = factory(
+						{ terminal: { rows: 40 }, requestRender() {} },
+						{
+							fg: (_color: string, text: string) => text,
+							bg: (_color: string, text: string) => text,
+							bold: (text: string) => text,
+						},
+						{ matches: () => false },
+						() => {},
+					);
+					expect(component.render(96).every((line) => visibleWidth(line) === 96)).toBe(true);
+					return { answers: [], cancelled: true };
+				},
+			},
+		});
 	});
 
 	test("reports blocked while waiting for user input", async () => {

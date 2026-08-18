@@ -42,7 +42,7 @@ const ENCODINGS = ["legacy", "kitty"] as const;
 // ── Harness ───────────────────────────────────────────────────────────────────
 
 interface Overlay {
-	render(): string[];
+	render(width: number): string[];
 	invalidate(): void;
 	handleInput(data: string): void;
 }
@@ -58,6 +58,8 @@ interface Driver {
 	timeoutValue(): number;
 	triggerPercentValue(): number;
 	minimumTokensValue(): number;
+	maxRenderWidthValue(): number | `${number}%`;
+	maxRenderHeightValue(): number | `${number}%`;
 	cleanup(): void;
 }
 
@@ -120,14 +122,16 @@ async function openOverlay(kb = getKeybindings()): Promise<Driver> {
 		// The overlay's cycle() fires `void runtime.update(...)` without awaiting;
 		// yield to the event loop so the write lands before the test reads back.
 		settle: () => new Promise((resolve) => setTimeout(resolve, 0)),
-		lines: () => comp.render(),
-		cursorLine: () => comp.render().find((l) => l.includes("→")),
+		lines: () => comp.render(52),
+		cursorLine: () => comp.render(52).find((l) => l.includes("→")),
 		closed: () => closed,
 		// First row is Pretty/icons; read the live value through the runtime.
 		iconsValue: () => iso.runtime.get(prettySection).icons,
 		timeoutValue: () => iso.runtime.get(ioSection).timeoutSec,
 		triggerPercentValue: () => iso.runtime.get(compactionSection).triggerPercent,
 		minimumTokensValue: () => iso.runtime.get(compactionSection).minimumTokens,
+		maxRenderWidthValue: () => iso.runtime.get(prettySection).maxRenderWidth,
+		maxRenderHeightValue: () => iso.runtime.get(prettySection).maxRenderHeight,
 		cleanup: () => iso.cleanup(),
 	};
 }
@@ -219,13 +223,38 @@ for (const enc of ENCODINGS) {
 	});
 }
 
-describe("/pix network timeout", () => {
-	it("exposes and updates the shared timeout row", async () => {
+describe("/pix modal sizing", () => {
+	it("exposes and updates width and height limits", async () => {
 		const d = await openOverlay();
 		d.feed(KEYS.down.legacy);
 		d.feed(KEYS.down.legacy);
+		expect(d.cursorLine()).toContain("max modal width");
+		expect(d.maxRenderWidthValue()).toBe("65%");
+		d.feed(KEYS.right.legacy);
+		await d.settle();
+		expect(d.maxRenderWidthValue()).toBe("70%");
+		for (let i = 0; i < 5; i++) d.feed(KEYS.left.legacy);
+		await d.settle();
+		expect(d.maxRenderWidthValue()).toBe(120);
+		expect(d.cursorLine()).toContain("120 cols");
+
 		d.feed(KEYS.down.legacy);
-		d.feed(KEYS.down.legacy);
+		expect(d.cursorLine()).toContain("max modal height");
+		expect(d.maxRenderHeightValue()).toBe("80%");
+		d.feed(KEYS.left.legacy);
+		await d.settle();
+		expect(d.maxRenderHeightValue()).toBe("75%");
+		for (let i = 0; i < 6; i++) d.feed(KEYS.right.legacy);
+		await d.settle();
+		expect(d.maxRenderHeightValue()).toBe(12);
+		expect(d.cursorLine()).toContain("12 rows");
+	});
+});
+
+describe("/pix network timeout", () => {
+	it("exposes and updates the shared timeout row", async () => {
+		const d = await openOverlay();
+		for (let i = 0; i < 6; i++) d.feed(KEYS.down.legacy);
 		expect(d.cursorLine()).toContain("timeout (sec)");
 		expect(d.timeoutValue()).toBe(30);
 		d.feed(KEYS.right.legacy);
@@ -237,7 +266,7 @@ describe("/pix network timeout", () => {
 describe("/pix compaction floor", () => {
 	it("rapid right presses each advance one step (no stale-read collapse)", async () => {
 		const d = await openOverlay();
-		for (let i = 0; i < 5; i++) d.feed(KEYS.down.legacy);
+		for (let i = 0; i < 7; i++) d.feed(KEYS.down.legacy);
 		expect(d.cursorLine()).toContain("Trigger (% ctx)");
 		expect(d.triggerPercentValue()).toBe(60);
 		// Two presses before any settle — both must land: 60 → 65 → 70.
@@ -249,7 +278,7 @@ describe("/pix compaction floor", () => {
 
 	it("down moves from trigger to minimum tokens without changing either number", async () => {
 		const d = await openOverlay();
-		for (let i = 0; i < 5; i++) d.feed(KEYS.down.legacy);
+		for (let i = 0; i < 7; i++) d.feed(KEYS.down.legacy);
 		expect(d.cursorLine()).toContain("Trigger (% ctx)");
 		const triggerPercent = d.triggerPercentValue();
 		const minimumTokens = d.minimumTokensValue();
@@ -262,7 +291,7 @@ describe("/pix compaction floor", () => {
 
 	it("offers 25k through 600k and defaults to 100k", async () => {
 		const d = await openOverlay();
-		for (let i = 0; i < 6; i++) d.feed(KEYS.down.legacy);
+		for (let i = 0; i < 8; i++) d.feed(KEYS.down.legacy);
 		expect(d.cursorLine()).toContain("Minimum tokens");
 		expect(d.cursorLine()).toContain("100k");
 		expect(d.minimumTokensValue()).toBe(100_000);

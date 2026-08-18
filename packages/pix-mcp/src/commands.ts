@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import { padIcon } from "@xynogen/pix-pretty/utils";
 import {
 	ensureCompatibilityImports,
@@ -353,7 +354,7 @@ export async function openMcpSetup(
 					theme,
 				);
 			},
-			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+			{ overlay: true, overlayOptions: modalOverlayOptions() },
 		);
 	});
 }
@@ -432,7 +433,7 @@ async function openMcpAddOverlay(
 					keybindings,
 				);
 			},
-			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+			{ overlay: true, overlayOptions: modalOverlayOptions() },
 		);
 	});
 }
@@ -494,7 +495,7 @@ export async function openMcpPanel(
 					{ noticeLines, keybindings, theme },
 				);
 			},
-			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+			{ overlay: true, overlayOptions: modalOverlayOptions() },
 		);
 	});
 

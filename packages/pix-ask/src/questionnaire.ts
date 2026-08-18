@@ -15,7 +15,6 @@ import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
 	ModalPager,
-	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
 import { ChipEditor } from "./chip-editor.js";
@@ -511,9 +510,8 @@ export class AskQuestionnaire extends Container {
 	}
 
 	override render(termWidth: number): string[] {
-		// Cap to a fixed-width floating modal; render content at the inner width
-		// and frame it with a rounded border (see frameLines).
-		const mw = modalWidth(termWidth);
+		// Overlay owns configured bounds; fill them so background cannot bleed through.
+		const mw = Math.max(1, Math.floor(termWidth));
 		const width = mw - 4; // border (2) + padding (2)
 		const inner = Math.max(20, width);
 		const t = this.theme;

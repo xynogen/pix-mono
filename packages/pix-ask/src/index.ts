@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
@@ -84,7 +85,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 							}
 							return new AskQuestionnaire(typed, tui, theme, keybindings, done);
 						},
-						{ overlay: true },
+						{ overlay: true, overlayOptions: modalOverlayOptions() },
 					),
 				);
 

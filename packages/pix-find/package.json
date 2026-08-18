@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-find",
-	"version": "0.1.26",
+	"version": "0.1.27",
 	"description": "Pi tool — glob file search",
 	"type": "module",
 	"main": "src/index.ts",
@@ -36,7 +36,7 @@
 	"dependencies": {
 		"@xynogen/pix-data": "^0.4.3",
 		"@xynogen/pix-pretty": "^1.11.2",
-		"@xynogen/pix-runtime": "^0.6.0"
+		"@xynogen/pix-runtime": "^0.7.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*"

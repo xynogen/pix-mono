@@ -20,14 +20,11 @@ import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
 	ModalPager,
+	modalOverlayOptions,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
 import type { OptimizerHandle, OptimizerStatus, OptimizerTool } from "./status.ts";
 import { toolIcon } from "./status.ts";
-
-/** Min/max content width for the overlay box (excludes 4 cols of chrome). */
-const MIN_CONTENT = 28;
-const MAX_CONTENT = 60;
 
 /** Fixed render order — matches the status-bar cell. */
 const TOOL_ORDER: readonly OptimizerTool[] = ["caveman", "rtk", "ponytail"];
@@ -88,8 +85,9 @@ export function registerOptCommand(
 						overlay?: boolean;
 						overlayOptions?: {
 							anchor?: string;
-							width?: number;
-							maxHeight?: string;
+							width?: number | `${number}%`;
+							maxHeight?: number | `${number}%`;
+							margin?: number;
 						};
 					},
 				) => Promise<T>;
@@ -107,15 +105,6 @@ export function registerOptCommand(
 			const valueWidth = Math.max(
 				...TOOL_ORDER.flatMap((t) => handles[t].values.map((v) => v.length)),
 			);
-			// Fixed content width: widest help summary (the box's longest line) vs
-			// title, clamped. Fixed so the box doesn't resize as values/selection
-			// change and so the overlay can be centered at exactly this width.
-			const widestHelp = Math.max(
-				...TOOL_ORDER.map((t) => helpSummary(handles[t].help).length),
-				"󱎫  Optimizer".length,
-			);
-			const content = Math.min(MAX_CONTENT, Math.max(MIN_CONTENT, widestHelp));
-			const boxW = content + 4; // + chrome (2 border + 2 padding)
 
 			await ui.custom<null>(
 				(
@@ -144,7 +133,7 @@ export function registerOptCommand(
 					};
 
 					return {
-						render: () => {
+						render: (width: number) => {
 							const rows = TOOL_ORDER.map((tool, i) => {
 								const on = handles[tool].current() !== "off";
 								const sel = i === selected;
@@ -160,7 +149,7 @@ export function registerOptCommand(
 								return `${cursor} ${glyph}  ${name}  ${value}  ${bar}`;
 							});
 							const result = frameModal({
-								width: boxW,
+								width,
 								maxHeight: terminalModalHeight(tui.terminal?.rows),
 								minHeight: MIN_MODAL_HEIGHT,
 								header: [theme.fg("accent", theme.bold("󱎫  Optimizer")), ""],
@@ -212,10 +201,7 @@ export function registerOptCommand(
 						},
 					};
 				},
-				{
-					overlay: true,
-					overlayOptions: { anchor: "center", width: boxW, maxHeight: "80%" },
-				},
+				{ overlay: true, overlayOptions: modalOverlayOptions() },
 			);
 		},
 	});

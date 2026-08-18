@@ -44,6 +44,12 @@ const timeoutMs = ioTimeoutMs();                    // shared network timeout
 const signal = ioTimeoutSignal(toolSignal);         // timeout + cancellation
 ```
 
+Set `pretty.maxRenderWidth` and `pretty.maxRenderHeight` in `~/.pi/agent/pix.json`,
+or change **Pretty → max modal width/height** with `/pix`. Values accept terminal
+percentages such as `"65%"`/`"80%"` or fixed columns/rows such as `96`/`20`.
+Percentage choices in `/pix` move in 5% steps. Width is the rendered frame width;
+height is the threshold where modal content starts paging.
+
 Set `io.timeoutSec` in `~/.pi/agent/pix.json`, or change **Network → timeout (sec)**
 with `/pix`. The default is 30 seconds. It applies to Pix network operations,
 including remote skills, web fetch/search/transcription, MCP requests and

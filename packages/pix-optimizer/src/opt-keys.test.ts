@@ -36,7 +36,7 @@ const ENCODINGS = ["legacy", "kitty"] as const;
 // ── Harness ───────────────────────────────────────────────────────────────────
 
 interface Overlay {
-	render(): string[];
+	render(width: number): string[];
 	invalidate(): void;
 	handleInput(data: string): void;
 }
@@ -132,7 +132,7 @@ async function openOverlay(): Promise<Driver> {
 		selectedRow: () => {
 			// The selected row is the one rendered with the "→" cursor.
 			const rows = comp
-				.render()
+				.render(96)
 				.filter((l) => l.includes("caveman") || l.includes("rtk") || l.includes("ponytail"));
 			return rows.findIndex((l) => l.includes("→"));
 		},

@@ -2,8 +2,10 @@
  * pix-pretty/gate-overlay — shared permission dialog component.
  *
  * One component, two modes:
- *   "confirm" — SelectList only. Used by pix-gate for command gating.
- *   "sudo"    — SelectList → masked password input. Used by pix-sudo.
+ *   "confirm" — SelectList only. Used by pix-gate (command gating) and pix-ssh
+ *               (host confirm when no password is missing).
+ *   "sudo"    — SelectList → masked password input. Used by pix-sudo and pix-ssh
+ *               (SSH login + remote sudo password entry).
  *
  * Both modes share: rounded modal frame (╭─╮╰─╯), solid bg, accent border,
  * title, body lines, optional countdown. Same visual style as pix-ask.
@@ -11,7 +13,7 @@
  * Design goals:
  *   - Pure function — no side effects, no global state.
  *   - Fully unit-testable: inject a mock `ui` to drive inputs deterministically.
- *   - Single source of truth for the overlay look across pix-gate and pix-sudo.
+ *   - Single source of truth for the overlay look across pix-gate, pix-sudo, and pix-ssh.
  */
 
 import { Input, type SelectItem, SelectList } from "@earendil-works/pi-tui";
@@ -20,6 +22,7 @@ import {
 	MIN_PERMISSION_MODAL_HEIGHT,
 	type ModalPageKeybindings,
 	ModalPager,
+	modalOverlayOptions,
 	modalWidth,
 	selectListTheme,
 	terminalModalHeight,
@@ -109,7 +112,7 @@ export interface OverlayUI {
 			kb: unknown,
 			done: (v: T) => void,
 		) => OverlayComponent,
-		opts?: { overlay?: boolean; overlayOptions?: { maxHeight?: number | `${number}%` } },
+		opts?: { overlay?: boolean; overlayOptions?: ReturnType<typeof modalOverlayOptions> },
 	): Promise<T | undefined>;
 }
 
@@ -387,7 +390,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 					},
 				};
 			},
-			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+			{ overlay: true, overlayOptions: modalOverlayOptions() },
 		).then((result) => {
 			resolve(result ?? { action: "denied" });
 		});

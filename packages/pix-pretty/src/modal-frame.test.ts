@@ -27,8 +27,10 @@ function render(offset = 0): ModalFrameResult {
 	});
 }
 
-test("modalHeight uses 80% without exceeding the terminal", () => {
+test("modalHeight resolves configured percentages and rows without exceeding the terminal", () => {
 	expect(modalHeight(40)).toBe(32);
+	expect(modalHeight(40, "50%")).toBe(20);
+	expect(modalHeight(40, 12)).toBe(12);
 	expect(modalHeight(10)).toBe(8);
 	expect(modalHeight(1)).toBe(1);
 });
@@ -38,12 +40,14 @@ test("modalHeight is defensive about junk row counts", () => {
 	expect(modalHeight(Number.POSITIVE_INFINITY)).toBe(19);
 	expect(modalHeight(0)).toBe(1);
 	expect(modalHeight(-5)).toBe(1);
-	expect(modalHeight(40, 100)).toBe(40);
+	expect(modalHeight(40, "100%")).toBe(40);
 });
 
-test("modalWidth never exceeds the available render width", () => {
-	expect(modalWidth(200)).toBe(96);
-	expect(modalWidth(50)).toBe(46);
+test("modalWidth resolves configured percentages and columns without exceeding available width", () => {
+	expect(modalWidth(200)).toBe(200);
+	expect(modalWidth(200, "50%")).toBe(100);
+	expect(modalWidth(200, 88)).toBe(88);
+	expect(modalWidth(50)).toBe(50);
 	expect(modalWidth(10)).toBe(10);
 	expect(modalWidth(1)).toBe(1);
 });

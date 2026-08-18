@@ -16,6 +16,8 @@ import {
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
+import { config } from "@xynogen/pix-runtime/config";
+import { prettySection, type RenderSize } from "@xynogen/pix-runtime/sections";
 
 export { truncateToWidth, visibleWidth, wrapTextWithAnsi };
 
@@ -24,18 +26,36 @@ export { truncateToWidth, visibleWidth, wrapTextWithAnsi };
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MIN_WIDTH = 40;
-const MAX_WIDTH = 96;
-const MARGIN = 4;
 /** 2 border cols + 2 padding spaces */
 const CHROME = 4;
 
 // ── Width ─────────────────────────────────────────────────────────────────────
 
-/** Prefer a 40–96 column modal without exceeding the available render width. */
-export function modalWidth(termWidth: number): number {
+function resolveRenderSize(limit: RenderSize, available: number): number {
+	if (typeof limit === "number") return Math.floor(limit);
+	return Math.floor((available * Number.parseFloat(limit)) / 100);
+}
+
+/** Resolve modal width without exceeding available render width. */
+export function modalWidth(termWidth: number, limit: RenderSize = "100%"): number {
 	const available = Number.isFinite(termWidth) ? Math.max(1, Math.floor(termWidth)) : MIN_WIDTH;
-	const preferred = Math.max(MIN_WIDTH, available - MARGIN);
-	return Math.min(MAX_WIDTH, available, preferred);
+	return Math.max(1, Math.min(available, resolveRenderSize(limit, available)));
+}
+
+/** Native overlay options matching shared modal size contract. */
+export function modalOverlayOptions(): {
+	anchor: "center";
+	width: RenderSize;
+	maxHeight: RenderSize;
+	margin: 2;
+} {
+	const pretty = config(prettySection);
+	return {
+		anchor: "center",
+		width: pretty.maxRenderWidth,
+		maxHeight: pretty.maxRenderHeight,
+		margin: 2,
+	};
 }
 
 // ── Frame ─────────────────────────────────────────────────────────────────────
@@ -185,25 +205,26 @@ export function frameLines(opts: FrameOptions): string[] {
 
 // ── Height ────────────────────────────────────────────────────────────────────
 
-export const DEFAULT_MODAL_HEIGHT_PERCENT = 80;
 /** Fail-closed floor for ordinary overlays. Compare against modalHeight(), not raw rows. */
 export const MIN_MODAL_HEIGHT = 6;
 /** Fail-closed floor for permission overlays. Compare against modalHeight(), not raw rows. */
 export const MIN_PERMISSION_MODAL_HEIGHT = 12;
 
-/** Rows a modal may occupy: `percent` of the terminal, never more than it has. */
-export function modalHeight(terminalRows: number, percent = DEFAULT_MODAL_HEIGHT_PERCENT): number {
+/** Rows a modal may occupy before paging, never more than terminal has. */
+export function modalHeight(
+	terminalRows: number,
+	limit: RenderSize = config(prettySection).maxRenderHeight,
+): number {
 	const rows = Number.isFinite(terminalRows) ? Math.max(1, Math.floor(terminalRows)) : 24;
-	const ratio = Math.min(100, Math.max(1, percent)) / 100;
-	return Math.max(1, Math.min(rows, Math.floor(rows * ratio)));
+	return Math.max(1, Math.min(rows, resolveRenderSize(limit, rows)));
 }
 
-/** Current modal budget. Pass host TUI rows when available; stdout is the fallback. */
+/** Current modal budget. Pass host TUI rows when available; stdout is fallback. */
 export function terminalModalHeight(
 	terminalRows = process.stdout.rows ?? 24,
-	percent = DEFAULT_MODAL_HEIGHT_PERCENT,
+	limit: RenderSize = config(prettySection).maxRenderHeight,
 ): number {
-	return modalHeight(terminalRows, percent);
+	return modalHeight(terminalRows, limit);
 }
 
 /** Rows available for variable body content: total − borders − pinned rows. */

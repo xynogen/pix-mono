@@ -38,6 +38,7 @@ import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
 	ModalPager,
+	modalOverlayOptions,
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
@@ -530,7 +531,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 					},
 				};
 			},
-			{ overlay: true, overlayOptions: { anchor: "center", maxHeight: "80%" } },
+			{ overlay: true, overlayOptions: modalOverlayOptions() },
 		);
 	}
 

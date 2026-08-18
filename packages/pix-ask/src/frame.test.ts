@@ -4,9 +4,9 @@ import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
 
 const noColor = (s: string) => s;
 
-test("modalWidth prefers 40–96 columns without exceeding the render width", () => {
-	expect(modalWidth(200)).toBe(96);
-	expect(modalWidth(50)).toBe(46);
+test("modalWidth fills the width reserved by the overlay host", () => {
+	expect(modalWidth(200)).toBe(200);
+	expect(modalWidth(50)).toBe(50);
 	expect(modalWidth(10)).toBe(10);
 });
 

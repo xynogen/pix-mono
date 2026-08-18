@@ -10,6 +10,7 @@ import {
 	frameModal,
 	MIN_PERMISSION_MODAL_HEIGHT,
 	ModalPager,
+	modalOverlayOptions,
 	modalWidth,
 	selectListTheme,
 	terminalModalHeight,
@@ -37,7 +38,7 @@ export interface ConfirmUI {
 			kb: KeybindingsManager,
 			done: (v: T) => void,
 		) => CustomComponent,
-		opts?: { overlay?: boolean; overlayOptions?: { maxHeight?: number | `${number}%` } },
+		opts?: { overlay?: boolean; overlayOptions?: ReturnType<typeof modalOverlayOptions> },
 	): Promise<T | undefined>;
 }
 
@@ -156,7 +157,7 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 					},
 				};
 			},
-			{ overlay: true, overlayOptions: { maxHeight: "80%" } },
+			{ overlay: true, overlayOptions: modalOverlayOptions() },
 		).then((result) => {
 			if (timer !== undefined) clearTimeout(timer);
 			resolve(result ?? false);

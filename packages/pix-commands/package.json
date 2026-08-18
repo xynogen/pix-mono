@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-commands",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "Pi extension — slash commands for cache clearing and isolated side questions",
 	"type": "module",
 	"main": "src/index.ts",
@@ -47,6 +47,6 @@
 	"dependencies": {
 		"@xynogen/pix-data": "^0.4.0",
 		"@xynogen/pix-pretty": "^1.13.0",
-		"@xynogen/pix-runtime": "^0.6.0"
+		"@xynogen/pix-runtime": "^0.7.0"
 	}
 }

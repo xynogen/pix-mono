@@ -20,6 +20,7 @@ export {
 	type LsStyle,
 	type PrettyConfig,
 	prettySection,
+	type RenderSize,
 } from "./pretty.ts";
 
 import { collapseSection } from "./collapse.ts";

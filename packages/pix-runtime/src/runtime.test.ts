@@ -9,9 +9,9 @@ import { stripDefaults } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { compactionSection } from "./sections/compaction.ts";
 import { gateSection } from "./sections/gate.ts";
+import { prettySection } from "./sections/index.ts";
 import { ioSection } from "./sections/io.ts";
 import { optimizerSection } from "./sections/optimizer.ts";
-import { prettySection } from "./sections/pretty.ts";
 import { createIsolatedRuntime, type IsolatedRuntime } from "./testing.ts";
 
 let iso: IsolatedRuntime | null = null;
@@ -33,11 +33,32 @@ describe("schema and normalization", () => {
 	it("resolves defaults for a missing file", () => {
 		const { runtime } = fresh();
 		expect(runtime.get(prettySection).icons).toBe("nerd");
+		expect(runtime.get(prettySection).maxRenderWidth).toBe("65%");
+		expect(runtime.get(prettySection).maxRenderHeight).toBe("80%");
 		expect(runtime.get(collapseSection).enabled).toBe(true);
 		expect(runtime.get(compactionSection).minimumTokens).toBe(100_000);
 		expect(runtime.get(gateSection).guardrails).toBe("on");
 		expect(runtime.get(ioSection).timeoutSec).toBe(30);
 		expect(runtime.get(optimizerSection).rtk).toBe("on");
+	});
+
+	it("parses modal size limits and falls back for invalid values", async () => {
+		const { runtime, agentDir } = fresh();
+		writeFileSync(
+			join(agentDir, "pix.json"),
+			JSON.stringify({ pretty: { maxRenderWidth: 88, maxRenderHeight: "70%" } }),
+		);
+		await runtime.reload();
+		expect(runtime.get(prettySection).maxRenderWidth).toBe(88);
+		expect(runtime.get(prettySection).maxRenderHeight).toBe("70%");
+
+		writeFileSync(
+			join(agentDir, "pix.json"),
+			JSON.stringify({ pretty: { maxRenderWidth: "wide", maxRenderHeight: "120%" } }),
+		);
+		await runtime.reload();
+		expect(runtime.get(prettySection).maxRenderWidth).toBe("65%");
+		expect(runtime.get(prettySection).maxRenderHeight).toBe("80%");
 	});
 
 	it("parses a positive network timeout and falls back for invalid values", async () => {
