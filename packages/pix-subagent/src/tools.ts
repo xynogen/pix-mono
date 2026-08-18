@@ -550,7 +550,8 @@ export function createAgentTool(
 				const line = dotJoin(
 					[
 						`  ${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(details.displayName))}${modelLabel}`,
-						`${theme.fg("muted", details.description)}${statsText}`,
+						theme.fg("muted", details.description),
+						statsText,
 					],
 					dot,
 				);

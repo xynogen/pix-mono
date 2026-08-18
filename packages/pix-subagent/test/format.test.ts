@@ -204,6 +204,37 @@ test("agent uses the self-rendered shell so terminal status marks have no box pa
 	expect(tool.renderShell).toBe("self");
 });
 
+test("foreground live row separates description from every stat like completed row", () => {
+	const tool = createAgentTool({} as never, {} as never, new Map(), () => {});
+	const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text };
+	const context = formatContext({ tokens: 5_200, contextWindow: 372_000, percent: 1 });
+	const component = tool.renderResult?.(
+		{
+			content: [{ type: "text", text: "" }],
+			details: {
+				displayName: "Explore",
+				description: "Retest subagent call",
+				subagentType: "Explore",
+				toolUses: 1,
+				context,
+				durationMs: 6_100,
+				status: "running",
+				modelName: "openai: gpt-5.6 sol",
+				turnCount: 2,
+				maxTurns: 3,
+				spinnerFrame: 0,
+			},
+		},
+		{ expanded: false, isPartial: true },
+		theme as never,
+		{} as never,
+	);
+
+	expect(component?.render(200).join("\n").trimEnd()).toBe(
+		`  ⠋ Explore [openai: gpt-5.6 sol] · Retest subagent call · ${formatTurns(2, 3)} · ${formatToolUses(1)} · ${context} · 6.1s`,
+	);
+});
+
 test("foreground terminal rows begin directly with their status mark", () => {
 	const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text };
 	const rendered = formatAgentFinishedLine(
