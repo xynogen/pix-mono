@@ -16,21 +16,21 @@
  *          cached PAM ticket; the password cannot be auto-typed).
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { EventBus, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { lookupBenchmark } from "@xynogen/pix-data";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import {
+	getUnattendedMode,
+	hasYoloConsent,
+	setUnattendedMode,
+	setYoloConsent,
+	type UnattendedMode,
+} from "@xynogen/pix-runtime";
 
 /** Minimum model score allowed to hold YOLO. Below this, red+root auto-approve is off-limits. */
 export const YOLO_MIN_SCORE = 75;
 
-export type UnattendedMode = "off" | "afk" | "yolo";
-type UnattendedGlobal = typeof globalThis & {
-	__pixAfk?: boolean;
-	__pixYolo?: boolean;
-	/** Session-scoped: user acknowledged the YOLO damage warning this session. */
-	__pixYoloConsent?: boolean;
-};
 type StatusUI = {
 	theme: { fg(color: "error", text: string): string };
 	setStatus(key: string, text: string | undefined): void;
@@ -40,21 +40,9 @@ type ModelCtx = { model?: { id?: string } };
 
 const STATUS_KEY = "unattended";
 
-export function getMode(): UnattendedMode {
-	const g = globalThis as UnattendedGlobal;
-	if (g.__pixYolo === true) return "yolo";
-	if (g.__pixAfk === true) return "afk";
-	return "off";
-}
+export { getUnattendedMode as getMode, setUnattendedMode as setMode };
 
-/** Set the mode; the two globals are mutually exclusive so gate/sudo never see both. */
-export function setMode(mode: UnattendedMode): void {
-	const g = globalThis as UnattendedGlobal;
-	g.__pixAfk = mode === "afk";
-	g.__pixYolo = mode === "yolo";
-}
-
-function syncStatus(ui: StatusUI): void {
+function syncStatus(events: EventBus, ui: StatusUI): void {
 	// ponytail: reuses the existing "afk"/"warn" glyphs instead of adding a YOLO
 	//           icon to pix-pretty (that is a public-API minor bump + approval).
 	const labels: Record<UnattendedMode, string | undefined> = {
@@ -62,7 +50,7 @@ function syncStatus(ui: StatusUI): void {
 		afk: `${icon("afk")} AFK`,
 		off: undefined,
 	};
-	const label = labels[getMode()];
+	const label = labels[getUnattendedMode(events)];
 	ui.setStatus(STATUS_KEY, label ? ui.theme.fg("error", label) : undefined);
 }
 
@@ -73,9 +61,8 @@ function syncStatus(ui: StatusUI): void {
  * across sessions — a fresh session asks again (moral speed-bump, not a
  * once-and-forget click-through).
  */
-export async function confirmYoloConsent(ctx: ModelCtx): Promise<boolean> {
-	const g = globalThis as UnattendedGlobal;
-	if (g.__pixYoloConsent === true) return true;
+export async function confirmYoloConsent(events: EventBus, ctx: ModelCtx): Promise<boolean> {
+	if (hasYoloConsent(events)) return true;
 	const ui = (ctx as { ui?: unknown }).ui as Parameters<typeof showOverlay>[0] | undefined;
 	if (!ui) return false;
 	const result = await showOverlay(ui, {
@@ -101,7 +88,7 @@ export async function confirmYoloConsent(ctx: ModelCtx): Promise<boolean> {
 		],
 	});
 	const ok = result.action === "approved";
-	if (ok) g.__pixYoloConsent = true;
+	if (ok) setYoloConsent(events, true);
 	return ok;
 }
 
@@ -116,8 +103,8 @@ export function modelScore(ctx: ModelCtx): number | null {
  * Per-turn awareness banner. Injected via `before_agent_start` so the model is
  * told, every turn, that the human safety net is off and what it now owns.
  */
-export function unattendedBanner(): string | undefined {
-	const mode = getMode();
+export function unattendedBanner(events: EventBus): string | undefined {
+	const mode = getUnattendedMode(events);
 	if (mode === "yolo") {
 		return [
 			'<pix-unattended mode="yolo">',
@@ -148,11 +135,11 @@ export function unattendedBanner(): string | undefined {
 }
 
 export default function registerUnattended(pi: ExtensionAPI): void {
-	pi.on("session_start", (_event, ctx) => syncStatus(ctx.ui));
+	pi.on("session_start", (_event, ctx) => syncStatus(pi.events, ctx.ui));
 
 	// Every turn: prepend the awareness banner while a mode is active.
-	pi.on("before_agent_start", async (event) => {
-		const banner = unattendedBanner();
+	pi.on("before_agent_start", (event) => {
+		const banner = unattendedBanner(pi.events);
 		if (!banner) return undefined;
 		const existing = (event as { systemPrompt?: string }).systemPrompt ?? "";
 		return { systemPrompt: `${banner}\n\n${existing}` };
@@ -161,9 +148,9 @@ export default function registerUnattended(pi: ExtensionAPI): void {
 	pi.registerCommand("afk", {
 		description: "Toggle AFK mode — yellow gates auto-allow; red and root auto-deny",
 		handler: async (_args, ctx) => {
-			const turningOn = getMode() !== "afk";
-			setMode(turningOn ? "afk" : "off");
-			syncStatus(ctx.ui);
+			const turningOn = getUnattendedMode(pi.events) !== "afk";
+			setUnattendedMode(pi.events, turningOn ? "afk" : "off");
+			syncStatus(pi.events, ctx.ui);
 			ctx.ui.notify(
 				turningOn
 					? "AFK mode on — yellow gates auto-allow; red and root auto-deny."
@@ -176,9 +163,9 @@ export default function registerUnattended(pi: ExtensionAPI): void {
 	pi.registerCommand("yolo", {
 		description: "Toggle YOLO mode — auto-approve everything including red and root",
 		handler: async (_args, ctx) => {
-			if (getMode() === "yolo") {
-				setMode("off");
-				syncStatus(ctx.ui);
+			if (getUnattendedMode(pi.events) === "yolo") {
+				setUnattendedMode(pi.events, "off");
+				syncStatus(pi.events, ctx.ui);
 				ctx.ui.notify("YOLO mode off — approval prompts restored.", "info");
 				return;
 			}
@@ -199,12 +186,12 @@ export default function registerUnattended(pi: ExtensionAPI): void {
 				);
 				return;
 			}
-			if (!(await confirmYoloConsent(ctx as ModelCtx))) {
+			if (!(await confirmYoloConsent(pi.events, ctx as ModelCtx))) {
 				ctx.ui.notify("YOLO cancelled — approval prompts remain in place.", "info");
 				return;
 			}
-			setMode("yolo");
-			syncStatus(ctx.ui);
+			setUnattendedMode(pi.events, "yolo");
+			syncStatus(pi.events, ctx.ui);
 			ctx.ui.notify(
 				`YOLO mode on (model score ${score}) — every gate including red and root ` +
 					"auto-approves. No human will stop a destructive action. You are accountable.",

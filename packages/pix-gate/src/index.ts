@@ -72,7 +72,7 @@ export default function (pi: ExtensionAPI): void {
 			return undefined;
 		}
 
-		const unattended = unattendedGateDecision(hit.severity === "block" ? 4 : 2);
+		const unattended = unattendedGateDecision(pi.events, hit.severity === "block" ? 4 : 2);
 		if (unattended === "allow") return undefined;
 		if (unattended === "deny") {
 			return {
@@ -160,7 +160,7 @@ export default function (pi: ExtensionAPI): void {
 		// sudo: hard redirect — no prompt, no bypass. Even YOLO cannot run bare
 		// `sudo` in bash (the password can't be auto-typed); it must use sudo_run.
 		if (isSudoCommand(command)) {
-			if (unattendedGateDecision(highest.tier) === "deny") {
+			if (unattendedGateDecision(pi.events, highest.tier) === "deny") {
 				return { block: true, reason: "[AFK] sudo is denied while user is away." };
 			}
 			ctx.ui.notify(
@@ -176,13 +176,13 @@ export default function (pi: ExtensionAPI): void {
 		// Circuit breaker: catastrophic commands never auto-approve, even under YOLO.
 		// They fall through to the interactive dialog (or the no-UI block below).
 		const breaker = isCircuitBreaker(command);
-		if (breaker && unattendedGateDecision(highest.tier) === "allow") {
+		if (breaker && unattendedGateDecision(pi.events, highest.tier) === "allow") {
 			ctx.ui.notify(
 				`⛔ ${ctx.ui.theme.fg("error", "CIRCUIT BREAKER")} — refused even under YOLO; confirm manually`,
 				"error",
 			);
 		}
-		const unattended = breaker ? undefined : unattendedGateDecision(highest.tier);
+		const unattended = breaker ? undefined : unattendedGateDecision(pi.events, highest.tier);
 		if (unattended === "allow") return undefined;
 		if (unattended === "deny") {
 			return {

@@ -43,7 +43,7 @@ import {
 	ruleFrame,
 	termW,
 } from "@xynogen/pix-pretty/utils";
-import { withAgentBlock } from "@xynogen/pix-runtime";
+import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import {
@@ -284,9 +284,9 @@ export default function (pi: ExtensionAPI): void {
 			const key = cacheKey(effectiveSpec);
 			const creds = credCache.get(key) ?? {};
 
-			const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
-			const yolo = g.__pixYolo === true;
-			if (g.__pixAfk === true && !yolo) {
+			const mode = getUnattendedMode(pi.events);
+			const yolo = mode === "yolo";
+			if (mode === "afk") {
 				return {
 					content: [{ type: "text", text: "ssh_run denied immediately — AFK mode is active." }],
 					details: makeDetails(command, host, sudo, reason, {

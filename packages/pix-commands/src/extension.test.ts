@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { createEventBus, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
 import extension from "./extension.ts";
 
 afterEach(() => {
 	delete (globalThis as { __pixOnce?: WeakMap<object, Set<string>> }).__pixOnce;
-	delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
-	delete (globalThis as { __pixYolo?: boolean }).__pixYolo;
 });
 
 describe("pix-commands registration", () => {
@@ -15,6 +14,7 @@ describe("pix-commands registration", () => {
 		const handlers = new Map<string, (args: string, ctx: never) => Promise<void>>();
 		const renderers: string[] = [];
 		const pi = {
+			events: createEventBus(),
 			registerCommand(
 				name: string,
 				options: { handler?: (args: string, ctx: never) => Promise<void> },
@@ -63,12 +63,12 @@ describe("pix-commands registration", () => {
 		if (!handler) throw new Error("/afk not registered");
 
 		await handler("", ctx as never);
-		expect((globalThis as { __pixAfk?: boolean }).__pixAfk).toBe(true);
+		expect(getUnattendedMode(pi.events)).toBe("afk");
 		expect(statuses.at(-1)).toBe(`<error>${icon("afk")} AFK</error>`);
 		expect(notices.at(-1)).toContain("yellow gates auto-allow");
 
 		await handler("", ctx as never);
-		expect((globalThis as { __pixAfk?: boolean }).__pixAfk).toBe(false);
+		expect(getUnattendedMode(pi.events)).toBe("off");
 		expect(statuses.at(-1)).toBeUndefined();
 	});
 });

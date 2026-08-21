@@ -1,6 +1,7 @@
 import type { EventBus } from "@earendil-works/pi-coding-agent";
 
 export type PixAgentState = "working" | "blocked" | "idle";
+export type UnattendedMode = "off" | "afk" | "yolo";
 export type PixAgentStateEvent = {
 	state: PixAgentState;
 	message?: string;
@@ -12,6 +13,8 @@ type Entry = { source: string; message?: string };
 type Coordinator = {
 	activities: Map<symbol, Entry>;
 	blocks: Map<symbol, Entry>;
+	unattendedMode: UnattendedMode;
+	yoloConsent: boolean;
 };
 
 function coordinators(): WeakMap<EventBus, Coordinator> {
@@ -24,7 +27,12 @@ function coordinator(events: EventBus): Coordinator {
 	const registry = coordinators();
 	let state = registry.get(events);
 	if (!state) {
-		state = { activities: new Map(), blocks: new Map() };
+		state = {
+			activities: new Map(),
+			blocks: new Map(),
+			unattendedMode: "off",
+			yoloConsent: false,
+		};
 		registry.set(events, state);
 	}
 	return state;
@@ -98,6 +106,28 @@ export async function withAgentBlock<T>(
 	} finally {
 		release();
 	}
+}
+
+export function getUnattendedMode(events: EventBus): UnattendedMode {
+	return coordinator(events).unattendedMode;
+}
+
+export function setUnattendedMode(events: EventBus, mode: UnattendedMode): void {
+	coordinator(events).unattendedMode = mode;
+}
+
+export function hasYoloConsent(events: EventBus): boolean {
+	return coordinator(events).yoloConsent;
+}
+
+export function setYoloConsent(events: EventBus, consent: boolean): void {
+	coordinator(events).yoloConsent = consent;
+}
+
+export function resetUnattendedState(events: EventBus): void {
+	const state = coordinator(events);
+	state.unattendedMode = "off";
+	state.yoloConsent = false;
 }
 
 /** Bind state replay/reset to one Pi session lifecycle. */

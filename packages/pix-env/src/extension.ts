@@ -18,7 +18,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { withAgentBlock } from "@xynogen/pix-runtime";
+import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { once } from "@xynogen/pix-runtime/once";
 import { collectRefs, loadRegistry, resolveInput } from "./lib.ts";
 
@@ -48,17 +48,16 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			const keys = collectRefs(event.input, reg);
 			if (keys.length === 0) return undefined;
 
-			// Same AFK/YOLO globals pix-sudo honours (set by the optimizer/gate).
-			const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
+			const mode = getUnattendedMode(pi.events);
 			const list = keys.sort((a, b) => a.localeCompare(b)).join(", ");
 
-			// AFK (and not YOLO): auto-deny so no secret is injected while away.
-			if (g.__pixAfk === true && g.__pixYolo !== true) {
+			// AFK: auto-deny so no secret is injected while away.
+			if (mode === "afk") {
 				return { block: true, reason: `[pix-env] secret injection auto-denied (AFK): ${list}` };
 			}
 
 			// YOLO: auto-inject without the popup.
-			if (g.__pixYolo === true) {
+			if (mode === "yolo") {
 				ctx.ui?.notify?.(`🔑 YOLO — secret auto-injected: ${list}`, "warning");
 				resolveInput(event.input, reg, shell);
 				return undefined;

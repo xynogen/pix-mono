@@ -39,7 +39,7 @@ import {
 	ruleFrame,
 	termW,
 } from "@xynogen/pix-pretty/utils";
-import { withAgentBlock } from "@xynogen/pix-runtime";
+import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import {
@@ -183,9 +183,9 @@ export default function (pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
 			const { command, reason } = params;
 
-			const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
-			const yolo = g.__pixYolo === true;
-			if (g.__pixAfk === true && !yolo) {
+			const mode = getUnattendedMode(pi.events);
+			const yolo = mode === "yolo";
+			if (mode === "afk") {
 				return {
 					content: [{ type: "text", text: "sudo_run denied immediately — AFK mode is active." }],
 					details: makeDetails(command, reason, {

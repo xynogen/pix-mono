@@ -1,12 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
+import { beginAgentBlock } from "./herdr-state.ts";
 import {
 	beginAgentActivity,
-	beginAgentBlock,
 	bindAgentStateEvents,
+	getUnattendedMode,
+	hasYoloConsent,
 	type PixAgentStateEvent,
+	resetUnattendedState,
+	setUnattendedMode,
+	setYoloConsent,
 	withAgentBlock,
-} from "./herdr-state.ts";
+} from "./index.ts";
 
 afterEach(() => {
 	delete (globalThis as { __pixAgentState?: WeakMap<object, unknown> }).__pixAgentState;
@@ -19,6 +24,35 @@ function observe() {
 	const unbind = bindAgentStateEvents(events);
 	return { events, states, unbind };
 }
+
+describe("unattended session state", () => {
+	test("isolates mode and consent by event bus", () => {
+		const first = createEventBus();
+		const second = createEventBus();
+
+		setUnattendedMode(first, "yolo");
+		setYoloConsent(first, true);
+
+		expect(getUnattendedMode(first)).toBe("yolo");
+		expect(hasYoloConsent(first)).toBe(true);
+		expect(getUnattendedMode(second)).toBe("off");
+		expect(hasYoloConsent(second)).toBe(false);
+	});
+
+	test("reset clears one session without changing another", () => {
+		const first = createEventBus();
+		const second = createEventBus();
+		setUnattendedMode(first, "afk");
+		setUnattendedMode(second, "yolo");
+		setYoloConsent(first, true);
+
+		resetUnattendedState(first);
+
+		expect(getUnattendedMode(first)).toBe("off");
+		expect(hasYoloConsent(first)).toBe(false);
+		expect(getUnattendedMode(second)).toBe("yolo");
+	});
+});
 
 describe("agent state coordinator", () => {
 	test("reports nested activity as working until every activity ends", () => {

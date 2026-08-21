@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { bindHerdrNotify } from "./herdr-notify.ts";
-import { bindAgentStateEvents, resetAgentState } from "./herdr-state.ts";
+import { bindAgentStateEvents, resetAgentState, resetUnattendedState } from "./herdr-state.ts";
 import { once } from "./once.ts";
 import { registerPixCommand } from "./pix-command.ts";
 import { pixRuntime } from "./runtime.ts";
@@ -23,6 +23,7 @@ export default function registerRuntime(pi: ExtensionAPI): void {
 
 		let initialized = false;
 		pi.on("session_start", async () => {
+			resetUnattendedState(pi.events);
 			if (initialized) {
 				await runtime.reload({ origin: "reload", source: "session_start" });
 			} else {
@@ -34,6 +35,7 @@ export default function registerRuntime(pi: ExtensionAPI): void {
 
 		pi.on("session_shutdown", async () => {
 			resetAgentState(pi.events);
+			resetUnattendedState(pi.events);
 			unbindHerdrNotify();
 			unbindAgentState();
 			await runtime.flush();

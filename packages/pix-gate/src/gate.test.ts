@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { createEventBus } from "@earendil-works/pi-coding-agent";
+import { setUnattendedMode } from "@xynogen/pix-runtime";
 import {
 	buildRules,
 	classify,
@@ -66,43 +68,26 @@ describe("isSudoCommand", () => {
 // ── AFK behavior ──────────────────────────────────────────────────────────────
 
 describe("unattendedGateDecision", () => {
-	type G = { __pixAfk?: boolean; __pixYolo?: boolean };
-	const reset = () => {
-		delete (globalThis as G).__pixAfk;
-		delete (globalThis as G).__pixYolo;
-	};
-
 	test("does nothing while every mode is off", () => {
-		reset();
-		expect(unattendedGateDecision(5)).toBeUndefined();
+		expect(unattendedGateDecision(createEventBus(), 5)).toBeUndefined();
 	});
 
 	test("AFK allows yellow concerns and denies red concerns", () => {
-		reset();
-		(globalThis as G).__pixAfk = true;
-		expect(unattendedGateDecision(1)).toBe("allow");
-		expect(unattendedGateDecision(2)).toBe("allow");
-		expect(unattendedGateDecision(3)).toBe("allow");
-		expect(unattendedGateDecision(4)).toBe("deny");
-		expect(unattendedGateDecision(5)).toBe("deny");
-		reset();
+		const events = createEventBus();
+		setUnattendedMode(events, "afk");
+		expect(unattendedGateDecision(events, 1)).toBe("allow");
+		expect(unattendedGateDecision(events, 2)).toBe("allow");
+		expect(unattendedGateDecision(events, 3)).toBe("allow");
+		expect(unattendedGateDecision(events, 4)).toBe("deny");
+		expect(unattendedGateDecision(events, 5)).toBe("deny");
 	});
 
 	test("YOLO allows every tier including red/critical", () => {
-		reset();
-		(globalThis as G).__pixYolo = true;
-		expect(unattendedGateDecision(1)).toBe("allow");
-		expect(unattendedGateDecision(4)).toBe("allow");
-		expect(unattendedGateDecision(5)).toBe("allow");
-		reset();
-	});
-
-	test("YOLO wins when both flags are somehow set", () => {
-		reset();
-		(globalThis as G).__pixAfk = true;
-		(globalThis as G).__pixYolo = true;
-		expect(unattendedGateDecision(5)).toBe("allow");
-		reset();
+		const events = createEventBus();
+		setUnattendedMode(events, "yolo");
+		expect(unattendedGateDecision(events, 1)).toBe("allow");
+		expect(unattendedGateDecision(events, 4)).toBe("allow");
+		expect(unattendedGateDecision(events, 5)).toBe("allow");
 	});
 });
 

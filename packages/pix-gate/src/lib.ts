@@ -2,6 +2,8 @@
  * Pure helpers for pix-gate — no Pi API deps, fully unit-testable.
  */
 
+import type { EventBus } from "@earendil-works/pi-coding-agent";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { config } from "@xynogen/pix-runtime/config";
 import { type GateRuleConfig, gateSection } from "@xynogen/pix-runtime/sections";
 
@@ -318,11 +320,13 @@ export function isCircuitBreaker(command: string): boolean {
  *   yolo — auto-allow every tier, including red/critical.
  *   afk  — auto-allow yellow (tier < 4), auto-deny red (tier >= 4).
  *   off  — undefined (fall through to the interactive dialog).
- * Mutually exclusive globals set by pix-commands' /afk and /yolo.
  */
-export function unattendedGateDecision(tier: number): "allow" | "deny" | undefined {
-	const g = globalThis as { __pixAfk?: boolean; __pixYolo?: boolean };
-	if (g.__pixYolo === true) return "allow";
-	if (g.__pixAfk === true) return tier >= 4 ? "deny" : "allow";
+export function unattendedGateDecision(
+	events: EventBus,
+	tier: number,
+): "allow" | "deny" | undefined {
+	const mode = getUnattendedMode(events);
+	if (mode === "yolo") return "allow";
+	if (mode === "afk") return tier >= 4 ? "deny" : "allow";
 	return undefined;
 }

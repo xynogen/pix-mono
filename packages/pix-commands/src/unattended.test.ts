@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
+import { createEventBus } from "@earendil-works/pi-coding-agent";
 import {
 	confirmYoloConsent,
 	getMode,
@@ -8,26 +9,17 @@ import {
 	YOLO_MIN_SCORE,
 } from "./unattended.ts";
 
-type G = { __pixAfk?: boolean; __pixYolo?: boolean; __pixYoloConsent?: boolean };
-
-afterEach(() => {
-	delete (globalThis as G).__pixAfk;
-	delete (globalThis as G).__pixYolo;
-	delete (globalThis as G).__pixYoloConsent;
-});
-
 describe("unattended mode state", () => {
-	test("setMode keeps the two globals mutually exclusive", () => {
-		setMode("afk");
-		expect(getMode()).toBe("afk");
-		expect((globalThis as G).__pixYolo).toBe(false);
+	test("setMode updates one session", () => {
+		const events = createEventBus();
+		setMode(events, "afk");
+		expect(getMode(events)).toBe("afk");
 
-		setMode("yolo");
-		expect(getMode()).toBe("yolo");
-		expect((globalThis as G).__pixAfk).toBe(false);
+		setMode(events, "yolo");
+		expect(getMode(events)).toBe("yolo");
 
-		setMode("off");
-		expect(getMode()).toBe("off");
+		setMode(events, "off");
+		expect(getMode(events)).toBe("off");
 	});
 });
 
@@ -40,20 +32,23 @@ describe("modelScore", () => {
 
 describe("unattendedBanner", () => {
 	test("off => no banner", () => {
-		setMode("off");
-		expect(unattendedBanner()).toBeUndefined();
+		const events = createEventBus();
+		setMode(events, "off");
+		expect(unattendedBanner(events)).toBeUndefined();
 	});
 
 	test("afk banner names auto-deny of red and root", () => {
-		setMode("afk");
-		const b = unattendedBanner() ?? "";
+		const events = createEventBus();
+		setMode(events, "afk");
+		const b = unattendedBanner(events) ?? "";
 		expect(b).toContain('mode="afk"');
 		expect(b).toContain("auto-DENY");
 	});
 
 	test("yolo banner demands red/root self-justification", () => {
-		setMode("yolo");
-		const b = unattendedBanner() ?? "";
+		const events = createEventBus();
+		setMode(events, "yolo");
+		const b = unattendedBanner(events) ?? "";
 		expect(b).toContain('mode="yolo"');
 		expect(b).toContain("blast radius");
 		expect(b).toContain("reversible");
@@ -68,12 +63,14 @@ describe("YOLO score threshold", () => {
 
 describe("confirmYoloConsent (session gate)", () => {
 	test("short-circuits true once consent is recorded for the session", async () => {
-		(globalThis as G).__pixYoloConsent = true;
+		const events = createEventBus();
+		const { setYoloConsent } = await import("@xynogen/pix-runtime");
+		setYoloConsent(events, true);
 		// No ui passed: if it did not short-circuit it would return false.
-		expect(await confirmYoloConsent({})).toBe(true);
+		expect(await confirmYoloConsent(events, {})).toBe(true);
 	});
 
 	test("refuses when there is no ui to render the warning", async () => {
-		expect(await confirmYoloConsent({})).toBe(false);
+		expect(await confirmYoloConsent(createEventBus(), {})).toBe(false);
 	});
 });

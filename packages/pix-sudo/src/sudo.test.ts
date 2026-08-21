@@ -158,6 +158,7 @@ describe("detectAuthFailure", () => {
 
 import { mock } from "bun:test";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
+import { setUnattendedMode } from "@xynogen/pix-runtime";
 import type { SudoResult } from "./lib.ts";
 
 // Swappable runWithSudo stub — index.ts imports the mocked module.
@@ -258,6 +259,7 @@ function makeHost(onState?: (state: string) => void) {
 	} as never;
 	registerSudo(pi);
 	return {
+		events,
 		get execute(): ExecuteFn {
 			if (!captured) throw new Error("tool not registered");
 			return captured.execute;
@@ -373,8 +375,8 @@ describe("sudo_run tool execute()", () => {
 	});
 
 	test("AFK mode denies immediately without opening UI", async () => {
-		(globalThis as { __pixAfk?: boolean }).__pixAfk = true;
 		const host = makeHost();
+		setUnattendedMode(host.events, "afk");
 		let opened = false;
 		const result = await host.execute(
 			"id",
@@ -387,7 +389,6 @@ describe("sudo_run tool execute()", () => {
 				},
 			}),
 		);
-		delete (globalThis as { __pixAfk?: boolean }).__pixAfk;
 		expect(opened).toBe(false);
 		expect(text(result)).toContain("denied immediately");
 		expect(result.details.outcome).toBe("denied");
@@ -407,10 +408,10 @@ describe("sudo_run tool execute()", () => {
 	});
 
 	test("YOLO + cached ticket auto-approves without opening the overlay", async () => {
-		(globalThis as { __pixYolo?: boolean }).__pixYolo = true;
 		ticketMock = true;
 		sudoMock = async () => ({ stdout: "root", stderr: "", code: 0 });
 		const host = makeHost();
+		setUnattendedMode(host.events, "yolo");
 		let opened = false;
 		const result = await host.execute(
 			"id",
@@ -423,7 +424,6 @@ describe("sudo_run tool execute()", () => {
 				},
 			}),
 		);
-		delete (globalThis as { __pixYolo?: boolean }).__pixYolo;
 		ticketMock = false;
 		sudoMock = async () => {
 			throw new Error("runWithSudo not stubbed for this test");
@@ -434,9 +434,9 @@ describe("sudo_run tool execute()", () => {
 	});
 
 	test("YOLO WITHOUT a cached ticket still prompts for the password", async () => {
-		(globalThis as { __pixYolo?: boolean }).__pixYolo = true;
 		ticketMock = false;
 		const host = makeHost();
+		setUnattendedMode(host.events, "yolo");
 		let opened = false;
 		const result = await host.execute(
 			"id",
@@ -450,7 +450,6 @@ describe("sudo_run tool execute()", () => {
 				},
 			}),
 		);
-		delete (globalThis as { __pixYolo?: boolean }).__pixYolo;
 		expect(opened).toBe(true); // no ticket => cannot auto-type password => overlay shown
 		expect(text(result)).toContain("Denied by user");
 	});
