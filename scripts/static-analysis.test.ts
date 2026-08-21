@@ -17,6 +17,7 @@ describe("pre-publish static analysis", () => {
 			["bun", "run", "ci"],
 			["bun", "run", "typecheck"],
 			["bun", "test", "scripts/deps.test.ts"],
+			["bun", "scripts/package-smoke.ts"],
 			["bun", "audit", "--audit-level=high"],
 		]);
 	});

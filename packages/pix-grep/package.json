@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-grep",
-	"version": "0.1.27",
+	"version": "0.1.28",
 	"description": "Pi tool — pattern search in files",
 	"type": "module",
 	"main": "src/index.ts",
@@ -34,9 +34,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-data": "^0.4.3",
 		"@xynogen/pix-pretty": "^1.11.2",
-		"@xynogen/pix-runtime": "^0.7.0"
+		"@xynogen/pix-runtime": "^0.8.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

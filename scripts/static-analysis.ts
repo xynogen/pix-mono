@@ -18,6 +18,7 @@ export const STATIC_ANALYSIS_COMMANDS: readonly StaticAnalysisCommand[] = [
 	{ name: "Biome lint and format check", argv: ["bun", "run", "ci"] },
 	{ name: "TypeScript typecheck", argv: ["bun", "run", "typecheck"] },
 	{ name: "Dependency hygiene", argv: ["bun", "test", "scripts/deps.test.ts"] },
+	{ name: "Package tarball smoke test", argv: ["bun", "scripts/package-smoke.ts"] },
 	{ name: "High-severity dependency audit", argv: ["bun", "audit", "--audit-level=high"] },
 ];
 
