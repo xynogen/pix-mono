@@ -232,8 +232,8 @@ Tokens are stored per-server in `~/.pi/agent/mcp-oauth/sha256-<server-hash>/toke
 ```json
 {
   "tokens": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
+    "accessToken": "<access-token>",
+    "refreshToken": "<refresh-token>",
     "expiresAt": 1709769600,
     "scope": "read write"
   },
