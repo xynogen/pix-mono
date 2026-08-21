@@ -202,20 +202,21 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 		widget.ensureTimer();
 	});
 
-	pi.on("session_shutdown", () => {
+	let disposed = false;
+	const runtimeCleanup = () => {
+		if (disposed) return;
+		disposed = true;
 		for (const t of pendingNudges.values()) clearTimeout(t);
 		pendingNudges.clear();
 		manager.abortAll();
 		manager.dispose();
 		widget.dispose();
 		agentActivity.clear();
+	};
+
+	pi.on("session_shutdown", () => {
+		runtimeCleanup();
 		if (g[CLEANUP_KEY] === runtimeCleanup) delete g[CLEANUP_KEY];
 	});
-
-	const runtimeCleanup = () => {
-		for (const t of pendingNudges.values()) clearTimeout(t);
-		pendingNudges.clear();
-		widget.dispose();
-	};
 	g[CLEANUP_KEY] = runtimeCleanup;
 }
