@@ -2,6 +2,7 @@ import {
 	createEditToolDefinition,
 	createEditTool as createEditToolFallback,
 	type EditToolInput,
+	type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
 import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
 import { attachResizeListener, trackInvalidator } from "@xynogen/pix-pretty/resize";
@@ -10,7 +11,8 @@ import { shortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { once } from "@xynogen/pix-runtime/once";
 import { registerEditTool } from "./edit.js";
 
-export default function pixEditExtension(pi: PiPrettyApi): void {
+export default function pixEditExtension(pi: ExtensionAPI): void {
+	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-edit", () => {
 		const createEditTool = (createEditToolDefinition ??
 			createEditToolFallback) as unknown as ToolFactory<EditToolInput>;
@@ -29,7 +31,7 @@ export default function pixEditExtension(pi: PiPrettyApi): void {
 		attachResizeListener();
 
 		registerEditTool(
-			pi,
+			prettyPi,
 			createEditTool,
 			{
 				cwd,

@@ -1,6 +1,7 @@
 import {
 	createFindToolDefinition,
 	createFindTool as createFindToolFallback,
+	type ExtensionAPI,
 	type FindToolInput,
 } from "@earendil-works/pi-coding-agent";
 import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
@@ -9,7 +10,8 @@ import { shortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { once } from "@xynogen/pix-runtime/once";
 import { registerFindTool } from "./find.js";
 
-export default function pixFindExtension(pi: PiPrettyApi): void {
+export default function pixFindExtension(pi: ExtensionAPI): void {
+	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-find", () => {
 		const createFindTool = (createFindToolDefinition ??
 			createFindToolFallback) as unknown as ToolFactory<FindToolInput>;
@@ -25,7 +27,7 @@ export default function pixFindExtension(pi: PiPrettyApi): void {
 		const cwd = process.cwd();
 		const home = process.env.HOME ?? "";
 
-		registerFindTool(pi, createFindTool, {
+		registerFindTool(prettyPi, createFindTool, {
 			cwd,
 			sp: (p: string) => shortPath(cwd, home, p),
 			TextComponent: viewportTextConstructor(TextComponent),

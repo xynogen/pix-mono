@@ -1,6 +1,7 @@
 import {
 	createWriteToolDefinition,
 	createWriteTool as createWriteToolFallback,
+	type ExtensionAPI,
 	type WriteToolInput,
 } from "@earendil-works/pi-coding-agent";
 import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
@@ -11,7 +12,8 @@ import { shortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { once } from "@xynogen/pix-runtime/once";
 import { registerWriteTool } from "./write.js";
 
-export default function pixWriteExtension(pi: PiPrettyApi): void {
+export default function pixWriteExtension(pi: ExtensionAPI): void {
+	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-write", () => {
 		const createWriteTool = (createWriteToolDefinition ??
 			createWriteToolFallback) as unknown as ToolFactory<WriteToolInput>;
@@ -30,7 +32,7 @@ export default function pixWriteExtension(pi: PiPrettyApi): void {
 		attachResizeListener();
 
 		registerWriteTool(
-			pi,
+			prettyPi,
 			createWriteTool,
 			{
 				cwd,

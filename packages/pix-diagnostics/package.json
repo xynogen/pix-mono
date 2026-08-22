@@ -1,9 +1,13 @@
 {
 	"name": "@xynogen/pix-diagnostics",
-	"version": "0.1.15",
+	"version": "0.2.0",
 	"description": "Pi extension — compact session-touched-files widget (overrides pi-lens)",
 	"type": "module",
 	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./extension": "./src/extension.ts"
+	},
 	"scripts": {
 		"test": "bun test"
 	},

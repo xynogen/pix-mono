@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import registerCommands from "@xynogen/pix-commands/src/extension.ts";
-import registerSubagent from "@xynogen/pix-subagent/src/extension.ts";
-import registerTodo from "@xynogen/pix-todo/src/todo.ts";
+import registerCommands from "@xynogen/pix-commands/extension";
+import registerSubagent from "@xynogen/pix-subagent/extension";
+import registerTodo from "@xynogen/pix-todo";
 
 // Mirror of the per-instance guard. pix-core does not own once.ts (each member
 // duplicates it to stay cross-dep-free), so we re-declare the contract here and

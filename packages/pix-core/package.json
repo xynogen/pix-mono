@@ -1,9 +1,13 @@
 {
 	"name": "@xynogen/pix-core",
-	"version": "0.5.18",
+	"version": "0.5.19",
 	"description": "Pi extension bundle — installs and activates all core pix-* extensions",
 	"type": "module",
 	"main": "src/extension.ts",
+	"exports": {
+		".": "./src/extension.ts",
+		"./extension": "./src/extension.ts"
+	},
 	"pi": {
 		"extensions": [
 			"src/extension.ts"
@@ -40,29 +44,29 @@
 	"dependencies": {
 		"@xynogen/pix-runtime": "^0.8.0",
 		"@xynogen/pix-data": "^0.4.6",
-		"@xynogen/pix-pretty": "^1.17.1",
-		"@xynogen/pix-welcome": "^0.1.25",
-		"@xynogen/pix-footer": "^0.1.27",
-		"@xynogen/pix-diagnostics": "^0.1.15",
+		"@xynogen/pix-pretty": "^1.17.2",
+		"@xynogen/pix-welcome": "^0.2.0",
+		"@xynogen/pix-footer": "^0.2.0",
+		"@xynogen/pix-diagnostics": "^0.2.0",
 		"@xynogen/pix-display": "^0.1.16",
-		"@xynogen/pix-prompts": "^0.3.10",
+		"@xynogen/pix-prompts": "^0.4.0",
 		"@xynogen/pix-skills": "^0.7.17",
-		"@xynogen/pix-models": "^0.1.35",
-		"@xynogen/pix-update": "^0.1.23",
-		"@xynogen/pix-commands": "^0.4.2",
-		"@xynogen/pix-nudge": "^0.1.19",
-		"@xynogen/pix-read": "^0.1.27",
-		"@xynogen/pix-write": "^0.1.26",
-		"@xynogen/pix-edit": "^0.1.29",
-		"@xynogen/pix-find": "^0.1.28",
-		"@xynogen/pix-grep": "^0.1.28",
-		"@xynogen/pix-ls": "^0.1.28",
-		"@xynogen/pix-bash": "^0.1.28",
+		"@xynogen/pix-models": "^0.2.0",
+		"@xynogen/pix-update": "^0.2.0",
+		"@xynogen/pix-commands": "^0.5.0",
+		"@xynogen/pix-nudge": "^0.2.0",
+		"@xynogen/pix-read": "^0.2.0",
+		"@xynogen/pix-write": "^0.2.0",
+		"@xynogen/pix-edit": "^0.2.0",
+		"@xynogen/pix-find": "^0.2.0",
+		"@xynogen/pix-grep": "^0.2.0",
+		"@xynogen/pix-ls": "^0.2.0",
+		"@xynogen/pix-bash": "^0.2.0",
 		"@xynogen/pix-todo": "^0.1.27",
 		"@xynogen/pix-ask": "^0.2.22",
 		"@xynogen/pix-optimizer": "^1.1.26",
 		"@xynogen/pix-gate": "^0.2.10",
-		"@xynogen/pix-subagent": "^0.6.12"
+		"@xynogen/pix-subagent": "^0.7.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-ai": "*",

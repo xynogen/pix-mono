@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
 	createGrepToolDefinition,
 	createGrepTool as createGrepToolFallback,
+	type ExtensionAPI,
 	type ExtensionContext,
 	type GrepToolInput,
 	getAgentDir,
@@ -25,7 +26,8 @@ import { getErrorMessage, shortPath, viewportTextConstructor } from "@xynogen/pi
 import { once } from "@xynogen/pix-runtime/once";
 import { registerGrepTool } from "./grep.js";
 
-export default function pixGrepExtension(pi: PiPrettyApi): void {
+export default function pixGrepExtension(pi: ExtensionAPI): void {
+	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-grep", () => {
 		const createGrepTool = (createGrepToolDefinition ??
 			createGrepToolFallback) as unknown as ToolFactory<GrepToolInput>;
@@ -94,7 +96,7 @@ export default function pixGrepExtension(pi: PiPrettyApi): void {
 			fffDestroy();
 		});
 
-		registerGrepTool(pi, createGrepTool, {
+		registerGrepTool(prettyPi, createGrepTool, {
 			cwd,
 			sp: (p: string) => shortPath(cwd, home, p),
 			TextComponent: viewportTextConstructor(TextComponent),

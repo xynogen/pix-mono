@@ -8,13 +8,15 @@
  * UI features (paste chips, thinking blocks) live in pix-display.
  */
 
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerFffCommands } from "./commands/fff.js";
 import { fffState } from "./fff.js";
 import { clearHighlightCache } from "./highlight.js";
 import { initIconMode } from "./icon-persist.js";
 import type { PiPrettyApi } from "./types.js";
 
-export default function piPrettyExtension(pi: PiPrettyApi): void {
+export default function piPrettyExtension(pi: ExtensionAPI): void {
+	const prettyPi = pi as unknown as PiPrettyApi;
 	clearHighlightCache();
 
 	// ── Icon mode ───────────────────────────────────────────
@@ -25,5 +27,5 @@ export default function piPrettyExtension(pi: PiPrettyApi): void {
 	// ── FFF slash commands ──────────────────────────────────────────────
 	// fffState is a module-level singleton shared with pix-grep/pix-find.
 	// Commands become available once pix-grep initialises the finder.
-	registerFffCommands(pi, fffState);
+	registerFffCommands(prettyPi, fffState);
 }
