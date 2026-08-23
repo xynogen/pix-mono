@@ -3,7 +3,7 @@ import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { UrlElicitationRequiredError } from "@modelcontextprotocol/sdk/types.js";
+import { UrlElicitationRequiredError } from "@modelcontextprotocol/client";
 import { abortable, throwIfAborted } from "./abort.ts";
 import { getFailureAgeSeconds, lazyConnect } from "./init.ts";
 import { authenticate, supportsOAuth } from "./mcp-auth-flow.ts";
@@ -412,13 +412,12 @@ export function createDirectToolExecutor(
 					arguments: params ?? {},
 					_meta: uiSession?.requestMeta,
 				},
-				undefined,
 				requestOptions,
 			);
 
 			const result = await abortable(resultPromise, signal);
 			uiSession?.sendToolResult(
-				result as unknown as import("@modelcontextprotocol/sdk/types.js").CallToolResult,
+				result as unknown as import("@modelcontextprotocol/client").CallToolResult,
 			);
 
 			if (result.isError) {

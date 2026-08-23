@@ -1,16 +1,14 @@
 import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import {
-	type ElicitRequest,
-	type ElicitRequestFormParams,
-	ElicitRequestSchema,
-	type ElicitRequestURLParams,
-	type ElicitResult,
-	ErrorCode,
-	McpError,
-} from "@modelcontextprotocol/sdk/types.js";
-import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
-import type { JsonSchemaType } from "@modelcontextprotocol/sdk/validation/types.js";
+import type {
+	Client,
+	ElicitRequest,
+	ElicitRequestFormParams,
+	ElicitRequestURLParams,
+	ElicitResult,
+	JsonSchemaType,
+} from "@modelcontextprotocol/client";
+import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/client";
+import { AjvJsonSchemaValidator } from "@modelcontextprotocol/client/validators/ajv";
 import open from "open";
 
 export type ElicitationValue = string | number | boolean | string[] | undefined;
@@ -34,7 +32,7 @@ export function registerElicitationHandler(
 	client: Client,
 	options: ElicitationHandlerOptions,
 ): void {
-	client.setRequestHandler(ElicitRequestSchema, (request) =>
+	client.setRequestHandler("elicitation/create", (request) =>
 		handleElicitationRequest(options, request),
 	);
 }
@@ -350,17 +348,20 @@ export async function handleUrlElicitation(
 	params: ElicitRequestURLParams,
 ): Promise<ElicitResult> {
 	if (!options.allowUrl)
-		throw new McpError(ErrorCode.InvalidParams, "URL elicitation is not supported");
+		throw new ProtocolError(ProtocolErrorCode.InvalidParams, "URL elicitation is not supported");
 
 	let parsed: URL;
 	try {
 		parsed = new URL(params.url);
 	} catch {
-		throw new McpError(ErrorCode.InvalidParams, "URL elicitation supplied an invalid URL");
+		throw new ProtocolError(
+			ProtocolErrorCode.InvalidParams,
+			"URL elicitation supplied an invalid URL",
+		);
 	}
 	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-		throw new McpError(
-			ErrorCode.InvalidParams,
+		throw new ProtocolError(
+			ProtocolErrorCode.InvalidParams,
 			"URL elicitation only supports HTTP and HTTPS URLs",
 		);
 	}

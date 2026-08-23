@@ -1,9 +1,11 @@
 // types.ts - Core type definitions
 
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
-import type { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import type { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type {
+	SSEClientTransport,
+	StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import type { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import type { UiStreamMode } from "./ui-stream-types.ts";
 
 // Transport type (stdio + HTTP)
@@ -340,6 +342,7 @@ export interface McpOutputGuardSettings {
 export interface McpSettings {
 	toolPrefix?: "server" | "none" | "short";
 	idleTimeout?: number; // minutes, default 10, 0 to disable
+	requestTimeoutMs?: number; // per-request I/O timeout override (ms)
 	discoveryLimit?: number; // compact search/list/status result cap, default 12, max 50
 	directTools?: boolean;
 	disableProxyTool?: boolean;
@@ -426,6 +429,8 @@ export interface McpPanelResult {
 	cancelled: boolean;
 	addedServer?: AddPanelResultForPanel;
 	wantsAdd?: boolean;
+	/** Server the user asked to delete; confirmation + write happen after close. */
+	wantsDelete?: string;
 }
 
 /**

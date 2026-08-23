@@ -32,7 +32,13 @@ mock.module("../src/init.ts", () => ({
 	updateStatusBar: mocks.updateStatusBar,
 }));
 
-mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
+// SDK v2 collapsed Client + HTTP/SSE transports into @modelcontextprotocol/client
+// (stdio stays a subpath) and dropped the result-schema arg from callTool, so
+// it is now callTool(params, requestOptions). mock.module is process-global —
+// spread the real barrel so unrelated exports survive for other source files.
+const realClient = await import("@modelcontextprotocol/client");
+mock.module("@modelcontextprotocol/client", () => ({
+	...realClient,
 	Client: mock((info: unknown, options: unknown) => {
 		const client = {
 			info,
@@ -48,30 +54,24 @@ mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
 			listResources: mock((params: unknown, requestOptions: unknown) =>
 				mocks.listResourcesImpl(params, requestOptions),
 			),
-			callTool: mock((params: unknown, schema: unknown, requestOptions: unknown) =>
-				mocks.callToolImpl(params, schema, requestOptions),
+			callTool: mock((params: unknown, requestOptions: unknown) =>
+				mocks.callToolImpl(params, requestOptions),
 			),
 			close: mock(async () => undefined),
 		};
 		mocks.clients.push(client);
 		return client;
 	}),
+	StreamableHTTPClientTransport: mock(),
+	SSEClientTransport: mock(),
 }));
 
-mock.module("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+mock.module("@modelcontextprotocol/client/stdio", () => ({
 	StdioClientTransport: mock((options: unknown) => {
 		const transport = { options, close: mock(async () => undefined) };
 		mocks.transports.push(transport);
 		return transport;
 	}),
-}));
-
-mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
-	StreamableHTTPClientTransport: mock(),
-}));
-
-mock.module("@modelcontextprotocol/sdk/client/sse.js", () => ({
-	SSEClientTransport: mock(),
 }));
 
 mock.module("../src/npx-resolver.ts", () => ({
@@ -214,7 +214,7 @@ describe("proxy auto auth", () => {
 	});
 
 	it("runs URL elicitations returned by proxy tool calls", async () => {
-		const { UrlElicitationRequiredError } = await import("@modelcontextprotocol/sdk/types.js");
+		const { UrlElicitationRequiredError } = await import("@modelcontextprotocol/client");
 		const { executeCall } = await import("../src/proxy-modes.ts");
 		const error = new UrlElicitationRequiredError([
 			{
@@ -335,13 +335,13 @@ describe("proxy auto auth", () => {
 		);
 		expect(manager.connect).toHaveBeenCalledTimes(1);
 		expect(manager.getRequestOptions).toHaveBeenCalledWith("demo", controller.signal);
+		// SDK v2 callTool(params, requestOptions) — the result-schema arg is gone.
 		expect(connected.client.callTool).toHaveBeenCalledWith(
 			{
 				name: "search",
 				arguments: { q: "hello" },
 				_meta: undefined,
 			},
-			undefined,
 			{ timeout: 1234 },
 		);
 		expect(result.content[0]?.type === "text" ? result.content[0].text : "").toContain("ok");
@@ -394,7 +394,6 @@ describe("proxy auto auth", () => {
 		expect(manager.getRequestOptions).toHaveBeenCalledWith("demo", controller.signal);
 		expect(connection.client.callTool).toHaveBeenCalledWith(
 			{ name: "search", arguments: {}, _meta: undefined },
-			undefined,
 			requestOptions,
 		);
 		expect(result.details).toMatchObject({ error: "call_failed", message: "request aborted" });
@@ -474,16 +473,15 @@ describe("proxy auto auth", () => {
 		expect(client.listTools).toHaveBeenCalledWith(undefined, { timeout: 5000 });
 		expect(client.listResources).toHaveBeenCalledTimes(1);
 		expect(client.listResources).toHaveBeenCalledWith(undefined, { timeout: 5000 });
+		// SDK v2 callTool(params, requestOptions) — no result-schema arg.
 		expect(client.callTool).toHaveBeenNthCalledWith(
 			1,
 			{ name: "search", arguments: { q: "one" }, _meta: undefined },
-			undefined,
 			{ timeout: 5000 },
 		);
 		expect(client.callTool).toHaveBeenNthCalledWith(
 			2,
 			{ name: "search", arguments: { q: "two" }, _meta: undefined },
-			undefined,
 			{ timeout: 5000 },
 		);
 		expect(first.content[0]?.type === "text" ? first.content[0].text : "").toContain("ok");

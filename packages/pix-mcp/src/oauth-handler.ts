@@ -1,6 +1,7 @@
 // oauth-handler.ts - OAuth token management for MCP servers
+
 import { existsSync, readFileSync } from "node:fs";
-import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { OAuthTokens } from "@modelcontextprotocol/client";
 import { getAuthEntryFilePath } from "./mcp-auth.ts";
 
 // Token storage path for a server

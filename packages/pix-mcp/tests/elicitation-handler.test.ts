@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import type { ElicitRequest } from "@modelcontextprotocol/sdk/types.js";
+import type { ElicitRequest } from "@modelcontextprotocol/client";
 
 const mocks = {
 	open: mock(async () => undefined as any),

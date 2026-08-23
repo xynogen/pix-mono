@@ -1,12 +1,10 @@
-import { RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/app-bridge";
-import {
-	type ReadResourceResult,
-	UrlElicitationRequiredError,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { ReadResourceResult } from "@modelcontextprotocol/client";
+import { UrlElicitationRequiredError } from "@modelcontextprotocol/client";
 import { ResourceFetchError, ResourceParseError } from "./errors.ts";
 import { logger } from "./logger.ts";
 import type { McpServerManager } from "./server-manager.ts";
 import type { UiResourceContent, UiResourceMeta } from "./types.ts";
+import { RESOURCE_MIME_TYPE } from "./ui-app-bridge-helpers.ts";
 
 interface ResourceContentRecord {
 	uri?: string;

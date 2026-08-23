@@ -160,7 +160,7 @@ function fieldsForType(type: AddServerType): FieldDef[] {
 	if (type === "npx") {
 		return [
 			...common,
-			{ key: "pkg", label: "Package", placeholder: "@modelcontextprotocol/server-foo@latest" },
+			{ key: "pkg", label: "Package", placeholder: "@scope/mcp-server@latest" },
 			{ key: "args", label: "Extra args (optional)", placeholder: "--port 3000" },
 			{ key: "cwd", label: "Cwd (optional)", placeholder: "" },
 		];
@@ -661,6 +661,7 @@ export class McpAddPanel {
 			if (this.preview) {
 				const diffLines = this.preview.diffText.split("\n");
 				for (const line of diffLines) {
+					if (line === "--- before" || line === "+++ after") continue; // drop diff headers
 					if (line.startsWith("+ ")) body.push(row(fg(t.success, line)));
 					else if (line.startsWith("- ")) body.push(row(fg(t.error, line)));
 					else body.push(row(fg(t.muted, line)));

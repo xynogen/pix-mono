@@ -27,7 +27,13 @@ const mocks = {
 	httpTransports: [] as HttpTransportMock[],
 };
 
-mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
+// SDK v2 collapsed Client + HTTP/SSE transports into @modelcontextprotocol/client
+// (stdio stays a subpath). mock.module is process-global, so spread the real
+// barrel and override only the stubbed classes — otherwise unrelated exports
+// (ProtocolError, UrlElicitationRequiredError, …) vanish for other source files.
+const realClient = await import("@modelcontextprotocol/client");
+mock.module("@modelcontextprotocol/client", () => ({
+	...realClient,
 	Client: mock((info: unknown, options: unknown) => {
 		const client = {
 			info,
@@ -42,22 +48,16 @@ mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
 		mocks.clients.push(client);
 		return client;
 	}),
-}));
-
-mock.module("@modelcontextprotocol/sdk/client/stdio.js", () => ({
-	StdioClientTransport: mock(),
-}));
-
-mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
 	StreamableHTTPClientTransport: mock((url: URL, options: TransportOptions) => {
 		const transport = { url, options, close: mock(async () => undefined) };
 		mocks.httpTransports.push(transport);
 		return transport;
 	}),
+	SSEClientTransport: mock(),
 }));
 
-mock.module("@modelcontextprotocol/sdk/client/sse.js", () => ({
-	SSEClientTransport: mock(),
+mock.module("@modelcontextprotocol/client/stdio", () => ({
+	StdioClientTransport: mock(),
 }));
 
 mock.module("../src/npx-resolver.ts", () => ({

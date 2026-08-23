@@ -207,13 +207,20 @@ describe("UI Streaming", () => {
 				}
 			).attachAdapterNotificationHandlers(serverName, client);
 			expect(client.setNotificationHandler).toHaveBeenCalledTimes(1);
-			return (client.setNotificationHandler as any).mock.calls[0][1] as (notification: {
+			// SDK v2 3-arg form: (method, { params: schema }, handler). The handler is
+			// arg[2] and receives params directly. Wrap it so existing tests can keep
+			// passing a full { method, params } notification object.
+			const handler = (client.setNotificationHandler as any).mock.calls[0][2] as (params: {
+				streamToken: string;
+				result: { content?: unknown[]; structuredContent?: Record<string, unknown> };
+			}) => void;
+			return (notification: {
 				method: string;
 				params: {
 					streamToken: string;
 					result: { content?: unknown[]; structuredContent?: Record<string, unknown> };
 				};
-			}) => void;
+			}) => handler(notification.params);
 		}
 
 		it("routes notifications to the matching listener", () => {

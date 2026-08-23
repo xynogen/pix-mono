@@ -333,12 +333,9 @@ The implementation uses these SDK exports:
 import {
   auth,
   UnauthorizedError,
-  OAuthClientProvider,
-} from "@modelcontextprotocol/sdk/client/auth.js"
-
-import {
+  type OAuthClientProvider,
   StreamableHTTPClientTransport,
-} from "@modelcontextprotocol/sdk/client/streamableHttp.js"
+} from "@modelcontextprotocol/client"
 ```
 
 The `McpOAuthProvider` class implements `OAuthClientProvider` and is passed to `StreamableHTTPClientTransport`:

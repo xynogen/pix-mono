@@ -364,6 +364,25 @@ describe("config discovery", () => {
 		expect(sharedPreview.diffText).toContain('+     "repoprompt": {');
 	});
 
+	it("previews and removes a server entry, leaving siblings intact", async () => {
+		const home = mkdtempSync(join(tmpdir(), "pi-mcp-remove-home-"));
+		process.env.HOME = home;
+
+		const cfgPath = join(home, ".pi", "agent", "mcp.json");
+		writeJson(cfgPath, { mcpServers: { keep: { command: "a" }, drop: { command: "b" } } });
+
+		const { previewRemoveServerEntry, removeServerEntry } = await importConfig();
+
+		const preview = previewRemoveServerEntry(cfgPath, "drop");
+		expect(preview.changed).toBe(true);
+		expect(preview.diffText).toContain('-     "drop": {');
+		expect(preview.diffText).toContain('  "keep"'); // keep survives (context line)
+
+		removeServerEntry(cfgPath, "drop");
+		const after = readJson(cfgPath);
+		expect(after.mcpServers).toEqual({ keep: { command: "a" } });
+	});
+
 	it("writes selected compatibility imports and a starter project config", async () => {
 		const home = mkdtempSync(join(tmpdir(), "pi-mcp-setup-home-"));
 		const project = mkdtempSync(join(tmpdir(), "pi-mcp-setup-project-"));

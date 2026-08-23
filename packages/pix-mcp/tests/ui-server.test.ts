@@ -142,7 +142,7 @@ function createMockResource(overrides: Partial<UiResourceContent> = {}): UiResou
 		html: "<h1>Test App</h1>",
 		mimeType: "text/html",
 		meta: {
-			permissions: [],
+			permissions: {},
 		},
 		...overrides,
 	};
@@ -457,12 +457,12 @@ describe("UiServer", () => {
 				result: { content: [{ type: "text", text: "tool result" }] },
 			});
 			expect(manager.getRequestOptions).toHaveBeenCalledWith("test-server");
+			// SDK v2 callTool(params, requestOptions) — no result-schema arg.
 			expect(mockClient.callTool).toHaveBeenCalledWith(
 				{
 					name: "some_tool",
 					arguments: { arg1: "value1" },
 				},
-				undefined,
 				requestOptions,
 			);
 		});
@@ -906,7 +906,9 @@ describe("UiServer", () => {
 
 	describe("initialResultPromise", () => {
 		it("pushes result when promise resolves", async () => {
-			const resultPromise = Promise.resolve({ data: "initial" });
+			const resultPromise = Promise.resolve({
+				content: [{ type: "text" as const, text: "initial" }],
+			});
 			handle = await startUiServer(createServerOptions({ initialResultPromise: resultPromise }));
 
 			const url = `http://localhost:${handle.port}/events?session=${handle.sessionToken}`;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { Api, Model } from "@earendil-works/pi-ai";
-import type { CreateMessageRequest, ModelPreferences } from "@modelcontextprotocol/sdk/types.js";
+import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import type { CreateMessageRequest, ModelPreferences } from "@modelcontextprotocol/client";
 import type { SamplingHandlerOptions } from "../src/sampling-handler.ts";
 
 const mocks = {
@@ -169,10 +170,12 @@ describe("sampling handler", () => {
 
 	it("asks for approval with inspectable request and response content", async () => {
 		const { handleSamplingRequest } = await import("../src/sampling-handler.ts");
-		const ui = { confirm: mock(async () => true) };
+		// confirm is the only UI method the sampling flow calls; type its args so
+		// mock.calls[n][0|1] are indexable, and cast the partial to the full ctx.
+		const ui = { confirm: mock(async (_title: string, _body: string) => true) };
 
 		await handleSamplingRequest(
-			createOptions({ autoApprove: false, ui }),
+			createOptions({ autoApprove: false, ui: ui as unknown as ExtensionUIContext }),
 			createSamplingRequest({
 				systemPrompt: "Translate tersely.",
 				messages: [{ role: "user", content: { type: "text", text: "Hello" } }],

@@ -17,7 +17,8 @@ function createState(prompts: string[]): McpExtensionState {
 				},
 			},
 		],
-	} as McpExtensionState;
+		// Partial fixture — only the fields executeUiMessages reads.
+	} as unknown as McpExtensionState;
 }
 
 describe("executeUiMessages", () => {

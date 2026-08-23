@@ -7,15 +7,13 @@
 
 import type {
 	AddClientAuthentication,
-	OAuthClientProvider,
-} from "@modelcontextprotocol/sdk/client/auth.js";
-import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
-import type {
 	OAuthClientInformation,
 	OAuthClientInformationFull,
 	OAuthClientMetadata,
+	OAuthClientProvider,
 	OAuthTokens,
-} from "@modelcontextprotocol/sdk/shared/auth.js";
+} from "@modelcontextprotocol/client";
+import { UnauthorizedError } from "@modelcontextprotocol/client";
 import {
 	clearAllCredentials,
 	clearClientInfo,

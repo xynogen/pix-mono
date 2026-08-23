@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { fileURLToPath } from "node:url";
-import type { ExtensionMode, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { createDirectToolExecutor } from "../src/direct-tools.ts";
 import { isTuiMode } from "../src/init.ts";
 import { executeCall } from "../src/proxy-modes.ts";
@@ -24,7 +24,7 @@ function createUi(answers: string[] = []): ExtensionUIContext {
 	} as unknown as ExtensionUIContext;
 }
 
-async function createConnectedManager(mode: ExtensionMode, answers: string[] = []) {
+async function createConnectedManager(mode: ExtensionContext["mode"], answers: string[] = []) {
 	const ui = createUi(answers);
 	const manager = new McpServerManager();
 	manager.setElicitationConfig({
@@ -37,6 +37,7 @@ async function createConnectedManager(mode: ExtensionMode, answers: string[] = [
 }
 
 function createState(manager: McpServerManager, metadata: ToolMetadata[]): McpExtensionState {
+	// Partial fixture — only the fields the elicitation path reads.
 	return {
 		manager,
 		config: { settings: {}, mcpServers: { real: definition } },
@@ -45,7 +46,7 @@ function createState(manager: McpServerManager, metadata: ToolMetadata[]): McpEx
 		uiResourceHandler: new UiResourceHandler(manager),
 		completedUiSessions: [],
 		uiServer: null,
-	} as McpExtensionState;
+	} as unknown as McpExtensionState;
 }
 
 function resultText(result: { content?: Array<{ type: string; text?: string }> }): string {
@@ -132,7 +133,7 @@ describe("elicitation with the real MCP SDK", () => {
 							description: metadata.description,
 							...spec,
 						} as DirectToolSpec,
-					)("id", {});
+					)("id", {}, undefined, undefined, {} as never);
 
 		expect(result.details).toMatchObject({ error: "url_elicitation_required", action: "accept" });
 		expect(result.content[0]).toMatchObject({

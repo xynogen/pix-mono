@@ -13,7 +13,7 @@
 		"test": "bun test --isolate",
 		"test:unit": "bun test --isolate",
 		"test:tidy": "rm -rf coverage",
-		"typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/pix-mcp/tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/pix-mcp/tsconfig.json && tsc --noEmit -p packages/pix-mcp/tsconfig.tests.json",
 		"lint": "biome lint packages",
 		"lint:check": "biome lint packages",
 		"lint:fix": "biome lint --write packages",

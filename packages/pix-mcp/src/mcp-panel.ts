@@ -397,6 +397,15 @@ class McpPanel {
 		});
 	}
 
+	private requestDelete(serverName: string): void {
+		this.cleanup();
+		this.done({
+			cancelled: false,
+			changes: new Map<string, true | string[] | false>(),
+			wantsDelete: serverName,
+		});
+	}
+
 	handleInput(data: string): void {
 		if (this.addChild) {
 			this.addChild.handleInput(data);
@@ -543,6 +552,22 @@ class McpPanel {
 		if (matchesKey(data, "ctrl+a")) {
 			const item = this.visibleItems[this.cursorIndex];
 			if (item) this.authenticateSelectedServer(item);
+			return;
+		}
+
+		if (matchesKey(data, "ctrl+d")) {
+			const item = this.visibleItems[this.cursorIndex];
+			if (!item || item.type === "add") return;
+			const server = this.servers[item.serverIndex];
+			if (!server) return;
+			// Import-sourced entries live in a read-only external config until the
+			// user saves them here; deletion only applies to owned user/project files.
+			if (server.source === "import") {
+				this.importNotice = `${sanitizeDisplayText(server.name)} is imported (read-only) — remove it from its source config instead.`;
+				this.tui.requestRender();
+				return;
+			}
+			this.requestDelete(server.name);
 			return;
 		}
 
@@ -874,9 +899,10 @@ class McpPanel {
 			guide("↑↓", "navigate"),
 			guide("space", "toggle"),
 			guide("⏎", "expand/add"),
+			guide("?", "desc search"),
 			guide("ctrl+a", "auth"),
 			guide("ctrl+r", "reconnect"),
-			guide("?", "desc search"),
+			guide("ctrl+d", "delete"),
 			guide("ctrl+s", "save"),
 			guide("esc", "clear/close"),
 			guide("ctrl+c", "quit"),

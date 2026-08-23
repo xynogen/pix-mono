@@ -3,11 +3,11 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { getToolUiResourceUri } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { getAgentPath } from "./agent-dir.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
 import type { McpResource, McpTool, ServerEntry, ToolMetadata } from "./types.ts";
 import { formatToolName, isToolExcluded } from "./types.ts";
+import { getToolUiResourceUri } from "./ui-app-bridge-helpers.ts";
 import {
 	extractToolUiStreamMode,
 	interpolateEnvRecord,

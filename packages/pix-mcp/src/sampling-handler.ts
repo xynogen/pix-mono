@@ -1,15 +1,14 @@
 import type { Api, AssistantMessage, Message, Model, TextContent } from "@earendil-works/pi-ai";
 import { complete } from "@earendil-works/pi-ai/compat";
 import type { ExtensionUIContext, ModelRegistry } from "@earendil-works/pi-coding-agent";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import {
-	type CreateMessageRequest,
-	CreateMessageRequestSchema,
-	type CreateMessageResult,
-	type ModelPreferences,
-	type SamplingMessage,
-	type SamplingMessageContentBlock,
-} from "@modelcontextprotocol/sdk/types.js";
+import type {
+	Client,
+	CreateMessageRequest,
+	CreateMessageResult,
+	ModelPreferences,
+	SamplingMessage,
+	SamplingMessageContentBlock,
+} from "@modelcontextprotocol/client";
 import { truncateAtWord } from "./utils.ts";
 
 export interface SamplingHandlerOptions {
@@ -24,7 +23,7 @@ export interface SamplingHandlerOptions {
 export type ServerSamplingConfig = Omit<SamplingHandlerOptions, "serverName">;
 
 export function registerSamplingHandler(client: Client, options: SamplingHandlerOptions): void {
-	client.setRequestHandler(CreateMessageRequestSchema, (request) => {
+	client.setRequestHandler("sampling/createMessage", (request) => {
 		return handleSamplingRequest(options, request as CreateMessageRequest);
 	});
 }

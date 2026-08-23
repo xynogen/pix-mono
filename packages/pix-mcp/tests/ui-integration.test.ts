@@ -207,7 +207,7 @@ describe("MCP UI Integration", () => {
 				uri: "ui://test/app",
 				html: "<h1>Test App</h1>",
 				mimeType: "text/html",
-				meta: { permissions: [] },
+				meta: { permissions: {} },
 			};
 
 			const receivedMessages: UiSessionMessages = { prompts: [], notifications: [], intents: [] };
@@ -254,7 +254,7 @@ describe("MCP UI Integration", () => {
 				uri: "ui://test/chat",
 				html: "<div id='chat'></div>",
 				mimeType: "text/html",
-				meta: { permissions: [] },
+				meta: { permissions: {} },
 			};
 
 			handle = await startUiServer({
@@ -295,7 +295,7 @@ describe("MCP UI Integration", () => {
 				uri: "ui://test/app",
 				html: "<h1>App</h1>",
 				mimeType: "text/html",
-				meta: { permissions: [] },
+				meta: { permissions: {} },
 			};
 
 			handle = await startUiServer({
@@ -329,7 +329,7 @@ describe("MCP UI Integration", () => {
 				uri: "ui://test/app",
 				html: "<h1>App</h1>",
 				mimeType: "text/html",
-				meta: { permissions: [] },
+				meta: { permissions: {} },
 			};
 
 			handle = await startUiServer({
@@ -396,7 +396,7 @@ describe("MCP UI Integration", () => {
 					uri: "ui://test/app",
 					html: "<h1>App</h1>",
 					mimeType: "text/html",
-					meta: { permissions: [] },
+					meta: { permissions: {} },
 				},
 				manager,
 				consentManager,
@@ -424,7 +424,7 @@ describe("MCP UI Integration", () => {
 					uri: "ui://test/app",
 					html: "<h1>App</h1>",
 					mimeType: "text/html",
-					meta: { permissions: [] },
+					meta: { permissions: {} },
 				},
 				manager,
 				consentManager,
@@ -467,7 +467,7 @@ describe("MCP UI Integration", () => {
 					uri: "ui://test/app",
 					html: "<h1>App</h1>",
 					mimeType: "text/html",
-					meta: { permissions: [] },
+					meta: { permissions: {} },
 				},
 				manager,
 				consentManager,
@@ -507,7 +507,7 @@ describe("MCP UI Integration", () => {
 					uri: "ui://test/app",
 					html: "<h1>App</h1>",
 					mimeType: "text/html",
-					meta: { permissions: [] },
+					meta: { permissions: {} },
 				},
 				manager,
 				consentManager,
@@ -534,7 +534,7 @@ describe("MCP UI Integration", () => {
 					uri: "ui://test/app",
 					html: "<h1>App</h1>",
 					mimeType: "text/html",
-					meta: { permissions: [] },
+					meta: { permissions: {} },
 				},
 				manager,
 				consentManager,

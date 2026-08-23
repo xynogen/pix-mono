@@ -654,6 +654,24 @@ export function writeSharedServerEntry(
 	return filePath;
 }
 
+export function previewRemoveServerEntry(filePath: string, serverName: string): ConfigWritePreview {
+	const raw = readRawConfigObject(filePath);
+	const nextRaw = { ...raw };
+	const servers = { ...getServersObject(nextRaw) };
+	delete servers[serverName];
+	setServersObject(nextRaw, servers);
+	return buildConfigWritePreview(filePath, nextRaw);
+}
+
+export function removeServerEntry(filePath: string, serverName: string): string {
+	const raw = readRawConfigObject(filePath);
+	const servers = getServersObject(raw);
+	delete servers[serverName];
+	setServersObject(raw, servers);
+	writeRawConfigObject(filePath, raw);
+	return filePath;
+}
+
 export function getServerProvenance(
 	overridePath?: string,
 	cwd = process.cwd(),

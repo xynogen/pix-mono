@@ -5,6 +5,13 @@ import { lazyConnect } from "../src/init.ts";
 import { executeCall, executeConnect } from "../src/proxy-modes.ts";
 import { McpServerManager } from "../src/server-manager.ts";
 
+// SDK v2 types content[0] as a TextContent | ImageContent union, so `.text`
+// needs a narrow. Mirror the firstText helper used in the other test files.
+function firstText(result: { content: Array<{ type: string; text?: string }> }): string {
+	const first = result.content[0];
+	return first && first.type === "text" ? (first.text ?? "") : "";
+}
+
 function connectedState(client: Record<string, unknown>) {
 	return {
 		config: {
@@ -68,11 +75,11 @@ describe("AbortSignal propagation", () => {
 		controller.abort(new Error("user cancelled"));
 
 		const result = await inFlight;
-		expect(result.content[0].text).toContain("Failed to call tool: user cancelled");
+		expect(firstText(result)).toContain("Failed to call tool: user cancelled");
 		expect(result.details.error).toBe("call_failed");
+		// SDK v2 callTool(params, requestOptions) — no result-schema arg.
 		expect(callTool).toHaveBeenCalledWith(
 			{ name: "slow", arguments: {}, _meta: undefined },
-			undefined,
 			{ signal: controller.signal },
 		);
 		expect(state.manager.decrementInFlight).toHaveBeenCalledWith("demo");
@@ -88,11 +95,11 @@ describe("AbortSignal propagation", () => {
 		controller.abort(new Error("user cancelled"));
 
 		const result = await inFlight;
-		expect(result.content[0].text).toContain("Failed to call tool: user cancelled");
+		expect(firstText(result)).toContain("Failed to call tool: user cancelled");
 		expect(result.details.error).toBe("call_failed");
+		// SDK v2 callTool(params, requestOptions) — no result-schema arg.
 		expect(callTool).toHaveBeenCalledWith(
 			{ name: "slow", arguments: {}, _meta: undefined },
-			undefined,
 			{ signal: controller.signal },
 		);
 		expect(state.manager.decrementInFlight).toHaveBeenCalledWith("demo");

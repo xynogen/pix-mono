@@ -1,5 +1,5 @@
 import type { AgentToolResult, ToolInfo } from "@earendil-works/pi-coding-agent";
-import { UrlElicitationRequiredError } from "@modelcontextprotocol/sdk/types.js";
+import { UrlElicitationRequiredError } from "@modelcontextprotocol/client";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { padIcon } from "@xynogen/pix-pretty/utils";
 import { checkSync } from "recheck";
@@ -786,7 +786,8 @@ export async function executeConnect(
 //   3. performToolCall      — run the tool/resource call and guard the output
 
 type Connection = NonNullable<ReturnType<McpExtensionState["manager"]["getConnection"]>>;
-type CallRequestOptions = Parameters<Connection["client"]["callTool"]>[2];
+// SDK v2 dropped the result-schema arg from callTool; options are now arg[1].
+type CallRequestOptions = Parameters<Connection["client"]["callTool"]>[1];
 
 function authRequiredResult(state: McpExtensionState, serverName: string): ProxyToolResult {
 	const message = getAuthRequiredMessage(state, serverName);
@@ -1243,12 +1244,11 @@ async function performClientCall(
 			arguments: args ?? {},
 			_meta: uiSession?.requestMeta,
 		},
-		undefined,
 		requestOptions,
 	);
 	const result = await abortable(resultPromise, signal);
 	uiSession?.sendToolResult(
-		result as unknown as import("@modelcontextprotocol/sdk/types.js").CallToolResult,
+		result as unknown as import("@modelcontextprotocol/client").CallToolResult,
 	);
 
 	if (result.isError) {

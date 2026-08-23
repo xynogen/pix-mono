@@ -3,9 +3,11 @@
  *
  * High-level OAuth flow management using the MCP SDK's built-in auth functions.
  */
-
-import { auth as runSdkAuth, UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+	auth as runSdkAuth,
+	StreamableHTTPClientTransport,
+	UnauthorizedError,
+} from "@modelcontextprotocol/client";
 import open from "open";
 import {
 	clearAllCredentials,
@@ -23,6 +25,7 @@ import {
 import {
 	cancelPendingCallback,
 	ensureCallbackServer,
+	type OAuthCallbackResult,
 	releaseCallbackServer,
 	stopCallbackServer,
 	waitForCallback,
@@ -247,14 +250,14 @@ export async function startAuth(
 		});
 		await setPendingTransport(serverName, pendingTransport, oauthState);
 		const callbackCompletion = options.waitForBrowserCallback
-			? waitForCallback(oauthState).then(async (code) => {
+			? waitForCallback(oauthState).then(async (result) => {
 					const storedState = await getOAuthState(serverName);
 					if (storedState !== oauthState) {
 						await clearOAuthState(serverName);
 						throw new Error("OAuth state mismatch - potential CSRF attack");
 					}
 					await clearOAuthState(serverName);
-					return completeAuth(serverName, code);
+					return completeAuth(serverName, result);
 				})
 			: undefined;
 		return { authorizationUrl: capturedUrl.toString(), callbackCompletion };
@@ -325,10 +328,14 @@ function getSearchParamsFromInput(input: string): URLSearchParams | undefined {
 }
 
 /**
- * Extract an OAuth authorization code from either a raw code, a query string,
- * or the full localhost redirect URL copied from the browser address bar.
+ * Extract an OAuth authorization code (and the RFC 9207 `iss`, when present)
+ * from either a raw code, a query string, or the full localhost redirect URL
+ * copied from the browser address bar.
  */
-export function parseAuthorizationCodeInput(input: string, expectedState?: string): string {
+export function parseAuthorizationCodeInput(
+	input: string,
+	expectedState?: string,
+): OAuthCallbackResult {
 	const trimmed = input.trim();
 	if (!trimmed) {
 		throw new Error("Authorization code or redirect URL is required");
@@ -351,11 +358,14 @@ export function parseAuthorizationCodeInput(input: string, expectedState?: strin
 		}
 
 		const code = params.get("code");
-		if (code) return code;
+		if (code) {
+			const iss = params.get("iss");
+			return { code, ...(iss !== null ? { iss } : {}) };
+		}
 	}
 
 	if (/^[A-Za-z0-9._~+/=-]+$/.test(trimmed)) {
-		return trimmed;
+		return { code: trimmed };
 	}
 
 	throw new Error("Could not find an OAuth authorization code in the provided input");
@@ -369,27 +379,38 @@ export async function completeAuthFromInput(
 	input: string,
 ): Promise<AuthStatus> {
 	const oauthState = await getOAuthState(serverName);
-	const code = parseAuthorizationCodeInput(input, oauthState);
-	return completeAuth(serverName, code);
+	const result = parseAuthorizationCodeInput(input, oauthState);
+	return completeAuth(serverName, result);
 }
 
 /**
  * Complete OAuth authentication with the authorization code.
+ *
+ * Accepts either a bare code (back-compat) or the full callback result. When
+ * the RFC 9207 `iss` is present, it is forwarded to finishAuth so the SDK can
+ * validate it against the discovered issuer — required by authorization
+ * servers that advertise `authorization_response_iss_parameter_supported`.
  */
 export async function completeAuth(
 	serverName: string,
-	authorizationCode: string,
+	authorizationCode: string | OAuthCallbackResult,
 ): Promise<AuthStatus> {
 	const transport = pendingTransports.get(serverName);
 	if (!transport) {
 		throw new Error(`No pending OAuth flow for server: ${serverName}`);
 	}
 
+	const { code, iss } =
+		typeof authorizationCode === "string"
+			? { code: authorizationCode, iss: undefined }
+			: authorizationCode;
+
 	const oauthState = await getOAuthState(serverName);
 
 	try {
-		// Complete the auth using the transport's finishAuth method
-		await transport.finishAuth(authorizationCode);
+		// finishAuth(code, iss?) — the iss overload lets the SDK bind the
+		// authorization response to the issuer it discovered.
+		await transport.finishAuth(code, iss);
 		return "authenticated";
 	} finally {
 		await clearPendingAuth(serverName, oauthState);
@@ -450,8 +471,8 @@ export async function authenticate(
 				);
 			}
 
-			// Wait for callback
-			const code = await callbackPromise;
+			// Wait for callback (carries the RFC 9207 iss when the AS sends one)
+			const result = await callbackPromise;
 
 			// Validate state
 			const storedState = await getOAuthState(serverName);
@@ -462,7 +483,7 @@ export async function authenticate(
 			await clearOAuthState(serverName);
 
 			// Complete the auth
-			return await completeAuth(serverName, code);
+			return await completeAuth(serverName, result);
 		} catch (error) {
 			cancelPendingCallback(oauthState);
 			await clearPendingAuth(serverName, oauthState);

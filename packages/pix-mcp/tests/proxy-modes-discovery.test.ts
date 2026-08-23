@@ -2,6 +2,12 @@ import { describe, expect, it } from "bun:test";
 import { executeCall, executeSearch } from "../src/proxy-modes.ts";
 import type { McpExtensionState } from "../src/state.ts";
 
+// SDK v2 types content[0] as a TextContent | ImageContent union; narrow to text.
+function firstText(result: { content: Array<{ type: string; text?: string }> }): string {
+	const first = result.content[0];
+	return first && first.type === "text" ? (first.text ?? "") : "";
+}
+
 function createState(): McpExtensionState {
 	return {
 		config: {
@@ -33,7 +39,7 @@ describe("proxy discovery", () => {
 	it("searches MCP tools only", () => {
 		const result = executeSearch(createState(), "read");
 
-		expect(result.content[0].text).toBe('No tools matching "read"');
+		expect(firstText(result)).toBe('No tools matching "read"');
 		expect(result.details).toMatchObject({ count: 0, matches: [] });
 	});
 
@@ -72,7 +78,7 @@ describe("proxy discovery", () => {
 			{ name: "read", description: "Read a file" } as any,
 		]);
 
-		expect(result.content[0].text).toBe(
+		expect(firstText(result)).toBe(
 			'"read" is a native Pi tool. Call read directly instead of using mcp({ tool: "read" }).',
 		);
 		expect(result.details).toMatchObject({ error: "native_tool", requestedTool: "read" });

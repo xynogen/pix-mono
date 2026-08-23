@@ -10,7 +10,15 @@ const mocks = {
 
 mock.module("open", () => ({ default: mocks.open }));
 
-mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
+// SDK v2 collapsed Client + HTTP/SSE transports into the single
+// @modelcontextprotocol/client barrel (only stdio stays a subpath). mock.module
+// is process-global, so this same barrel also feeds ProtocolError,
+// ProtocolErrorCode, UrlElicitationRequiredError, etc. to other source files.
+// Spread the real module and override only the classes this suite stubs, or
+// those unrelated exports vanish and unrelated files fail to import.
+const realClient = await import("@modelcontextprotocol/client");
+mock.module("@modelcontextprotocol/client", () => ({
+	...realClient,
 	Client: mock((info: unknown, options: unknown) => {
 		const client = {
 			info,
@@ -25,9 +33,11 @@ mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
 		mocks.clients.push(client);
 		return client;
 	}),
+	StreamableHTTPClientTransport: mock(),
+	SSEClientTransport: mock(),
 }));
 
-mock.module("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+mock.module("@modelcontextprotocol/client/stdio", () => ({
 	StdioClientTransport: mock((options: unknown) => {
 		const transport = {
 			options,
@@ -36,14 +46,6 @@ mock.module("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 		mocks.transports.push(transport);
 		return transport;
 	}),
-}));
-
-mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
-	StreamableHTTPClientTransport: mock(),
-}));
-
-mock.module("@modelcontextprotocol/sdk/client/sse.js", () => ({
-	SSEClientTransport: mock(),
 }));
 
 mock.module("../src/npx-resolver.ts", () => ({
@@ -80,7 +82,10 @@ describe("McpServerManager sampling", () => {
 		await manager.connect("demo", { command: "node", args: ["server.js"] });
 
 		const client = mocks.clients[0];
-		expect(client.options).toEqual({ capabilities: { sampling: {} } });
+		expect(client.options).toEqual({
+			capabilities: { sampling: {} },
+			versionNegotiation: { mode: "auto" },
+		});
 		expect(client.setRequestHandler).toHaveBeenCalledTimes(1);
 		expect(client.setRequestHandler.mock.invocationCallOrder[0]).toBeLessThan(
 			client.connect.mock.invocationCallOrder[0],
@@ -105,6 +110,7 @@ describe("McpServerManager sampling", () => {
 					url: {},
 				},
 			},
+			versionNegotiation: { mode: "auto" },
 		});
 		expect(client.setRequestHandler).toHaveBeenCalledTimes(1);
 		expect(client.setRequestHandler.mock.invocationCallOrder[0]).toBeLessThan(
@@ -121,6 +127,7 @@ describe("McpServerManager sampling", () => {
 
 		expect(mocks.clients[0].options).toEqual({
 			capabilities: { elicitation: { form: {} } },
+			versionNegotiation: { mode: "auto" },
 		});
 	});
 
@@ -160,7 +167,7 @@ describe("McpServerManager sampling", () => {
 	});
 
 	it("handles every URL in a URL-required error", async () => {
-		const { UrlElicitationRequiredError } = await import("@modelcontextprotocol/sdk/types.js");
+		const { UrlElicitationRequiredError } = await import("@modelcontextprotocol/client");
 		const { McpServerManager } = await import("../src/server-manager.ts");
 		const ui = {
 			select: mock().mockResolvedValue("Open"),
@@ -206,6 +213,7 @@ describe("McpServerManager sampling", () => {
 					url: {},
 				},
 			},
+			versionNegotiation: { mode: "auto" },
 		});
 		expect(mocks.clients[0].setRequestHandler).toHaveBeenCalledTimes(2);
 	});
@@ -217,7 +225,8 @@ describe("McpServerManager sampling", () => {
 		await manager.connect("demo", { command: "node", args: ["server.js"] });
 
 		const client = mocks.clients[0];
-		expect(client.options).toBeUndefined();
+		// No capabilities, but mode:'auto' negotiation is always passed now.
+		expect(client.options).toEqual({ versionNegotiation: { mode: "auto" } });
 		expect(client.setRequestHandler).not.toHaveBeenCalled();
 	});
 

@@ -1,8 +1,6 @@
 import { randomUUID } from "node:crypto";
-import {
-	type CallToolResult,
-	UrlElicitationRequiredError,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/client";
+import { UrlElicitationRequiredError } from "@modelcontextprotocol/client";
 import { isGlimpseAvailable, openGlimpseWindow } from "./glimpse-ui.ts";
 import { logger } from "./logger.ts";
 import type { McpExtensionState } from "./state.ts";
@@ -55,11 +53,11 @@ function withStreamEnvelope(
 		return result;
 	}
 
-	const structuredContent =
+	const structuredContent: Record<string, unknown> =
 		result.structuredContent &&
 		typeof result.structuredContent === "object" &&
 		!Array.isArray(result.structuredContent)
-			? { ...result.structuredContent }
+			? { ...(result.structuredContent as Record<string, unknown>) }
 			: {};
 
 	const rawEnvelope = structuredContent[UI_STREAM_STRUCTURED_CONTENT_KEY];

@@ -709,6 +709,7 @@ export class McpSetupPanel {
 		);
 		lines.push("");
 		for (const line of preview.diffText.split("\n")) {
+			if (line === "--- before" || line === "+++ after") continue; // drop diff headers
 			lines.push(...wrapText(line, 74));
 		}
 		return lines;

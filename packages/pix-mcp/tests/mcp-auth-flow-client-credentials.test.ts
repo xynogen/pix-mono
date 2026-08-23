@@ -23,12 +23,15 @@ class MockStreamableHTTPClientTransport {
 	finishAuth = mocks.finishAuth;
 }
 
-mock.module("@modelcontextprotocol/sdk/client/auth.js", () => ({
+// SDK v2 collapsed auth() + StreamableHTTPClientTransport + UnauthorizedError
+// into the @modelcontextprotocol/client barrel. mock.module is process-global —
+// spread the real barrel and override only these three, so unrelated exports
+// (ProtocolError, UrlElicitationRequiredError, …) still resolve elsewhere.
+const realClient = await import("@modelcontextprotocol/client");
+mock.module("@modelcontextprotocol/client", () => ({
+	...realClient,
 	auth: mocks.sdkAuth,
 	UnauthorizedError: MockUnauthorizedError,
-}));
-
-mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
 	StreamableHTTPClientTransport: MockStreamableHTTPClientTransport,
 }));
 
@@ -79,20 +82,30 @@ describe("mcp-auth-flow explicit auth", () => {
 	it("parses manual OAuth redirect URL and code input", async () => {
 		const { parseAuthorizationCodeInput } = await import("../src/mcp-auth-flow.ts");
 
+		// Returns the callback result { code, iss? }; iss omitted when absent.
 		expect(
 			parseAuthorizationCodeInput(
 				"http://localhost:19876/callback?code=abc123&state=state123",
 				"state123",
 			),
-		).toBe("abc123");
-		expect(parseAuthorizationCodeInput("code=abc123&state=state123", "state123")).toBe("abc123");
+		).toEqual({ code: "abc123" });
+		expect(parseAuthorizationCodeInput("code=abc123&state=state123", "state123")).toEqual({
+			code: "abc123",
+		});
 		expect(
 			parseAuthorizationCodeInput(
 				"http://localhost:19876/callback#code=abc123&state=state123",
 				"state123",
 			),
-		).toBe("abc123");
-		expect(parseAuthorizationCodeInput("abc123")).toBe("abc123");
+		).toEqual({ code: "abc123" });
+		expect(parseAuthorizationCodeInput("abc123")).toEqual({ code: "abc123" });
+		// RFC 9207 iss is carried through when the redirect includes it.
+		expect(
+			parseAuthorizationCodeInput(
+				"http://localhost:19876/callback?code=abc123&state=state123&iss=https%3A%2F%2Fissuer.example.com",
+				"state123",
+			),
+		).toEqual({ code: "abc123", iss: "https://issuer.example.com" });
 	});
 
 	it("rejects invalid manual OAuth redirect input", async () => {
@@ -145,7 +158,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("clears stale dynamic client info before client_credentials auth", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toBeUndefined();
 			await provider.saveClientInformation({
 				client_id: "fresh-service-client",
@@ -253,7 +266,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("refreshes expired tokens through SDK auth before returning them", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			await provider.saveTokens({
 				access_token: "new-access",
 				token_type: "Bearer",
@@ -287,7 +300,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("re-registers dynamic OAuth clients when only stale client info is stored", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toBeUndefined();
 			await provider.saveClientInformation({
 				client_id: "fresh-client",
@@ -317,7 +330,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("preserves stored dynamic client info when tokens exist", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toEqual({
 				client_id: "stored-client",
 				client_secret: "stored-secret",
@@ -371,7 +384,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("re-registers dynamic OAuth clients when cached redirect URIs are stale", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toBeUndefined();
 			await provider.saveClientInformation({
 				client_id: "fresh-client",
@@ -427,7 +440,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("re-registers dynamic OAuth clients when cached redirect URI metadata is missing", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toBeUndefined();
 			await provider.saveClientInformation({
 				client_id: "fresh-client",
@@ -466,7 +479,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("re-registers dynamic OAuth clients when cached redirect URI metadata is malformed", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toBeUndefined();
 			await provider.saveClientInformation({
 				client_id: "fresh-client",
@@ -504,7 +517,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("refreshes expired tokens even when cached dynamic redirect URIs are stale", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toEqual({
 				client_id: "refresh-client",
 				client_secret: "refresh-secret",
@@ -549,7 +562,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("preserves pre-registered OAuth client behavior", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toEqual({
 				client_id: "registered-client",
 				client_secret: undefined,
@@ -585,12 +598,12 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("continues waiting for the OAuth callback when the browser cannot open", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			await provider.redirectToAuthorization(new URL("https://auth.example.com/authorize"));
 			return "REDIRECT";
 		});
 		mocks.open.mockRejectedValueOnce(new Error("no browser"));
-		mocks.waitForCallback.mockResolvedValueOnce("manual-code");
+		mocks.waitForCallback.mockResolvedValueOnce({ code: "manual-code" });
 		const { authenticate } = await import("../src/mcp-auth-flow.ts");
 		const { getOAuthState } = await import("../src/mcp-auth.ts");
 
@@ -601,7 +614,8 @@ describe("mcp-auth-flow explicit auth", () => {
 			}),
 		).resolves.toBe("authenticated");
 
-		expect(mocks.finishAuth).toHaveBeenCalledWith("manual-code");
+		// finishAuth(code, iss?) — iss is undefined when the AS omits it.
+		expect(mocks.finishAuth).toHaveBeenCalledWith("manual-code", undefined);
 		expect(mocks.cancelPendingCallback).not.toHaveBeenCalled();
 		expect(mocks.transportClose).toHaveBeenCalledTimes(1);
 		expect(getOAuthState("browser-fail")).toBeUndefined();
@@ -610,11 +624,11 @@ describe("mcp-auth-flow explicit auth", () => {
 	it("uses a custom authorization URL handler instead of raw console output", async () => {
 		const authorizationUrl =
 			"https://auth.example.com/authorize?resource=https%3A%2F%2Fmcp.sentry.dev%2Fmcp";
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			await provider.redirectToAuthorization(new URL(authorizationUrl));
 			return "REDIRECT";
 		});
-		mocks.waitForCallback.mockResolvedValueOnce("manual-code");
+		mocks.waitForCallback.mockResolvedValueOnce({ code: "manual-code" });
 		const onAuthorizationUrl = mock();
 		const consoleLog = spyOn(console, "log").mockImplementation(() => undefined);
 		const { authenticate } = await import("../src/mcp-auth-flow.ts");
@@ -641,7 +655,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("releases reserved callback state after direct completeAuth", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			await provider.redirectToAuthorization(new URL("https://auth.example.com/authorize"));
 			return "REDIRECT";
 		});
@@ -656,14 +670,14 @@ describe("mcp-auth-flow explicit auth", () => {
 
 		await expect(completeAuth("direct-complete", "auth-code")).resolves.toBe("authenticated");
 
-		expect(mocks.finishAuth).toHaveBeenCalledWith("auth-code");
+		expect(mocks.finishAuth).toHaveBeenCalledWith("auth-code", undefined);
 		expect(mocks.releaseCallbackServer).toHaveBeenCalledWith(oauthState);
 		expect(mocks.transportClose).toHaveBeenCalledTimes(1);
 		expect(getOAuthState("direct-complete")).toBeUndefined();
 	});
 
 	it("uses an explicit OAuth redirect URI for callback binding and metadata", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(provider.redirectUrl).toBe("http://127.0.0.1:3118/callback");
 			expect(provider.clientMetadata.redirect_uris).toEqual(["http://127.0.0.1:3118/callback"]);
 			expect(provider.clientMetadata.client_name).toBe("Custom MCP");
@@ -698,7 +712,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("enforces strict callback port for pre-registered OAuth clients", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			await provider.redirectToAuthorization(new URL("https://auth.example.com/authorize"));
 			return "REDIRECT";
 		});
@@ -724,7 +738,7 @@ describe("mcp-auth-flow explicit auth", () => {
 	});
 
 	it("allows callback port fallback for dynamic registration", async () => {
-		mocks.sdkAuth.mockImplementationOnce(async (provider) => {
+		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			await provider.redirectToAuthorization(new URL("https://auth.example.com/authorize"));
 			return "REDIRECT";
 		});

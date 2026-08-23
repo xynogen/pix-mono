@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import path from "node:path";
-import { buildAllowAttribute } from "@modelcontextprotocol/ext-apps/app-bridge";
-import type { CallToolRequest, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolRequest, CallToolResult } from "@modelcontextprotocol/client";
 import type { ConsentManager } from "./consent-manager.ts";
 import { ServerError, wrapError } from "./errors.ts";
 import { applyCspMeta, buildCspMetaContent, buildHostHtmlTemplate } from "./host-html-template.ts";
@@ -25,6 +24,7 @@ import {
 	type UiSessionMessages,
 	type UiStreamSummary,
 } from "./types.ts";
+import { buildAllowAttribute } from "./ui-app-bridge-helpers.ts";
 
 const MAX_BODY_SIZE = 2 * 1024 * 1024;
 const ABANDONED_GRACE_MS = 60_000;
@@ -346,7 +346,6 @@ export async function startUiServer(options: UiServerOptions): Promise<UiServerH
 							? callParams.arguments
 							: {},
 				},
-				undefined,
 				options.manager.getRequestOptions?.(options.serverName),
 			);
 			sendJson(res, 200, { ok: true, result });

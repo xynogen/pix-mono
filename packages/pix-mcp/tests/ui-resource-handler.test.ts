@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
-import { UrlElicitationRequiredError } from "@modelcontextprotocol/sdk/types.js";
+import { UrlElicitationRequiredError } from "@modelcontextprotocol/client";
 import type { McpServerManager } from "../src/server-manager.ts";
 import { UiResourceHandler } from "../src/ui-resource-handler.ts";
 
@@ -195,10 +195,12 @@ describe("UiResourceHandler", () => {
 					Promise.resolve({
 						contents: [
 							{
+								uri: "ui://test/json",
 								mimeType: "application/json",
 								text: "{}",
 							},
 							{
+								uri: "ui://test/widget",
 								mimeType: "text/html",
 								text: "<h1>HTML</h1>",
 							},
@@ -307,6 +309,8 @@ describe("UiResourceHandler", () => {
 
 		it("throws when content has no text or blob", async () => {
 			const manager = createMockManager({
+				// Deliberately omits text/blob to exercise the "no content" throw;
+				// cast because v2 types require one of them.
 				readResource: mock(() =>
 					Promise.resolve({
 						contents: [
@@ -316,7 +320,7 @@ describe("UiResourceHandler", () => {
 								// No text or blob
 							},
 						],
-					}),
+					} as unknown as Awaited<ReturnType<McpServerManager["readResource"]>>),
 				),
 			});
 			const handler = new UiResourceHandler(manager);

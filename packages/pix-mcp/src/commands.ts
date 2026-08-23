@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import { padIcon } from "@xynogen/pix-pretty/utils";
@@ -9,8 +10,10 @@ import {
 	isServerNameTaken,
 	previewAddServerEntry,
 	previewCompatibilityImports,
+	previewRemoveServerEntry,
 	previewSharedServerEntry,
 	previewStarterProjectConfig,
+	removeServerEntry,
 	resolveAddTargetPath,
 	writeAddServerEntry,
 	writeDirectToolsConfig,
@@ -37,6 +40,24 @@ import type {
 	ServerEntry,
 } from "./types.ts";
 import { openPath } from "./utils.ts";
+
+type FgTheme = { fg: (key: string, text: string) => string };
+
+/**
+ * Colorize a unified-diff string per line — additions success, deletions error,
+ * everything else muted. Same scheme the add-server panel uses for its preview
+ * (mcp-add-panel.ts), so add and delete read identically.
+ */
+function colorizeConfigDiff(diffText: string, th: FgTheme): string[] {
+	const out: string[] = [];
+	for (const line of diffText.split("\n")) {
+		if (line === "--- before" || line === "+++ after") continue; // drop diff headers
+		if (line.startsWith("+")) out.push(th.fg("success", line));
+		else if (line.startsWith("-")) out.push(th.fg("error", line));
+		else out.push(th.fg("muted", line));
+	}
+	return out;
+}
 
 export async function showStatus(state: McpExtensionState, ctx: ExtensionContext): Promise<void> {
 	if (!ctx.hasUI) return;
@@ -459,6 +480,7 @@ export async function openMcpPanel(
 	const { createMcpPanel } = await import("./mcp-panel.ts");
 	let configChanged = false;
 	let wantsAdd = false;
+	let wantsDelete: string | undefined;
 	let addedServer: import("./mcp-add-panel.ts").AddPanelResult | undefined;
 
 	await new Promise<void>((resolve) => {
@@ -473,6 +495,12 @@ export async function openMcpPanel(
 					(result: McpPanelResult) => {
 						if (result.wantsAdd) {
 							wantsAdd = true;
+							done(undefined);
+							resolve();
+							return;
+						}
+						if (result.wantsDelete) {
+							wantsDelete = result.wantsDelete;
 							done(undefined);
 							resolve();
 							return;
@@ -516,6 +544,41 @@ export async function openMcpPanel(
 		}
 		// cancelled add → return to panel
 		return openMcpPanel(state, pi, ctx, configOverridePath);
+	}
+
+	if (wantsDelete) {
+		const prov = provenanceMap.get(wantsDelete);
+		if (!prov || prov.kind === "import") {
+			ctx.ui.notify(
+				`${wantsDelete} is not owned by an editable config — remove it from its source instead.`,
+				"warning",
+			);
+			return openMcpPanel(state, pi, ctx, configOverridePath);
+		}
+		const preview = previewRemoveServerEntry(prov.path, wantsDelete);
+		const th = ctx.ui.theme;
+		// Theme.fg takes a narrow ThemeColor; the helper accepts a wider string
+		// key — same runtime fn, cast to bridge the variance.
+		const diffBody = colorizeConfigDiff(preview.diffText, th as unknown as FgTheme);
+		const result = await showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
+			mode: "confirm",
+			title: `${icon("mcp")}  Delete MCP server "${wantsDelete}"?`,
+			body: [
+				th.fg("text", `Removes it from ${prov.path} — edits the file on disk.`),
+				"",
+				...diffBody,
+			],
+			accent: "error",
+			choices: [
+				{ value: "yes", label: "Delete", description: `Remove ${wantsDelete} and its saved auth` },
+				{ value: "no", label: "Cancel", description: "Keep the server" },
+			],
+		});
+		if (result.action !== "approved") return openMcpPanel(state, pi, ctx, configOverridePath);
+		removeServerEntry(prov.path, wantsDelete);
+		await removeAuth(wantsDelete).catch(() => {});
+		ctx.ui.notify(`Removed ${wantsDelete} from ${prov.path}. Pi will reload.`, "info");
+		return { configChanged: true };
 	}
 
 	if (addedServer) {

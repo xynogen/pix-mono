@@ -1,14 +1,16 @@
-import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type {
+	ReadResourceResult,
+	RequestOptions,
+	UrlElicitationRequiredError,
+} from "@modelcontextprotocol/client";
 import {
-	ElicitationCompleteNotificationSchema,
-	type ReadResourceResult,
-	type UrlElicitationRequiredError,
-} from "@modelcontextprotocol/sdk/types.js";
+	Client,
+	SdkHttpError,
+	SSEClientTransport,
+	StreamableHTTPClientTransport,
+	UnauthorizedError,
+} from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { abortable, throwIfAborted } from "./abort.ts";
 import {
 	handleUrlElicitation,
@@ -17,6 +19,23 @@ import {
 } from "./elicitation-handler.ts";
 import { logger } from "./logger.ts";
 import { extractOAuthConfig, supportsOAuth } from "./mcp-auth-flow.ts";
+
+// A still-401 after the auth provider's retry means the server genuinely needs
+// auth. SDK v1 threw UnauthorizedError; SDK v2 throws SdkHttpError{status:401}.
+// Treat both as terminal auth failures (never fall through to SSE).
+function isUnauthorizedHttpError(error: unknown): boolean {
+	return (
+		error instanceof UnauthorizedError || (error instanceof SdkHttpError && error.status === 401)
+	);
+}
+
+// Only a typed endpoint-shape mismatch means the server doesn't speak
+// StreamableHTTP and SSE is worth trying. Any other error (403/500/network/
+// protocol) is real and must propagate rather than be masked as "try SSE".
+function shouldFallbackToSse(error: unknown): boolean {
+	return error instanceof SdkHttpError && [404, 405, 406, 415].includes(error.status);
+}
+
 import { McpOAuthProvider } from "./mcp-oauth-provider.ts";
 import { resolveNpxBinary } from "./npx-resolver.ts";
 import { registerSamplingHandler, type ServerSamplingConfig } from "./sampling-handler.ts";
@@ -27,7 +46,10 @@ import type {
 	ServerStreamResultPatchNotification,
 	Transport,
 } from "./types.ts";
-import { serverStreamResultPatchNotificationSchema } from "./types.ts";
+import {
+	SERVER_STREAM_RESULT_PATCH_METHOD,
+	serverStreamResultPatchNotificationSchema,
+} from "./types.ts";
 import { interpolateEnvRecord, resolveBearerToken, resolveConfigPath } from "./utils.ts";
 
 interface ServerConnection {
@@ -181,8 +203,8 @@ export class McpServerManager {
 				status: "connected",
 			};
 		} catch (error) {
-			// Check for UnauthorizedError - server requires OAuth
-			if (error instanceof UnauthorizedError && supportsOAuth(definition)) {
+			// Check for a terminal 401 (UnauthorizedError or SdkHttpError) - server requires OAuth
+			if (isUnauthorizedHttpError(error) && supportsOAuth(definition)) {
 				// Clean up both client and transport before reporting needs-auth.
 				await client.close().catch(() => {});
 				await transport.close().catch(() => {});
@@ -224,7 +246,13 @@ export class McpServerManager {
 		const capabilities = this.buildClientCapabilities();
 		const client = new Client(
 			{ name: `pi-mcp-${serverName}`, version: "1.0.0" },
-			Object.keys(capabilities).length > 0 ? { capabilities } : undefined,
+			// mode 'auto' probes server/discover and upgrades to the modern
+			// (2026-07-28+) protocol era when the server offers it, falling back
+			// to the plain 2025 handshake otherwise. Use it when available.
+			{
+				...(Object.keys(capabilities).length > 0 ? { capabilities } : {}),
+				versionNegotiation: { mode: "auto" },
+			},
 		);
 		if (this.samplingConfig) {
 			registerSamplingHandler(client, { ...this.samplingConfig, serverName });
@@ -236,7 +264,7 @@ export class McpServerManager {
 				onUrlAccepted: (elicitationId) => this.rememberUrlElicitation(serverName, elicitationId),
 			});
 			if (this.elicitationConfig.allowUrl) {
-				client.setNotificationHandler(ElicitationCompleteNotificationSchema, (notification) => {
+				client.setNotificationHandler("notifications/elicitation/complete", (notification) => {
 					const accepted = this.acceptedUrlElicitations.get(serverName);
 					if (!accepted?.delete(notification.params.elicitationId)) return;
 					this.elicitationConfig?.ui.notify(
@@ -326,7 +354,10 @@ export class McpServerManager {
 
 		try {
 			// Create a test client to verify the transport works
-			const testClient = new Client({ name: "pi-mcp-probe", version: "2.1.2" });
+			const testClient = new Client(
+				{ name: "pi-mcp-probe", version: "2.1.2" },
+				{ versionNegotiation: { mode: "auto" } },
+			);
 			await testClient.connect(streamableTransport, this.buildRequestOptions(definition, signal));
 			await testClient.close().catch(() => {});
 			// Close probe transport before creating fresh one
@@ -344,8 +375,17 @@ export class McpServerManager {
 				throwIfAborted(signal);
 			}
 
-			// If this was an UnauthorizedError, don't try SSE - the server needs auth
-			if (error instanceof UnauthorizedError) {
+			// Terminal auth failure — never fall through to SSE, the server needs auth.
+			// SDK v2 surfaces a still-401 (after any provider retry) as SdkHttpError,
+			// not UnauthorizedError, so both must be treated as auth-required.
+			if (isUnauthorizedHttpError(error)) {
+				throw error;
+			}
+
+			// Only fall back to SSE for a typed endpoint-shape mismatch (the server
+			// doesn't speak StreamableHTTP). Any other error — 403/500/network/
+			// protocol — is real and must propagate, not be masked as "try SSE".
+			if (!shouldFallbackToSse(error)) {
 				throw error;
 			}
 
@@ -392,11 +432,17 @@ export class McpServerManager {
 	}
 
 	private attachAdapterNotificationHandlers(serverName: string, client: Client): void {
-		client.setNotificationHandler(serverStreamResultPatchNotificationSchema, (notification) => {
-			const listener = this.uiStreamListeners.get(notification.params.streamToken);
-			if (!listener) return;
-			listener(serverName, notification.params);
-		});
+		// SDK v2: 3-arg setNotificationHandler(method, { params: shape }, handler).
+		// The handler now receives params directly (not the full notification).
+		client.setNotificationHandler(
+			SERVER_STREAM_RESULT_PATCH_METHOD,
+			{ params: serverStreamResultPatchNotificationSchema.shape.params },
+			(params) => {
+				const listener = this.uiStreamListeners.get(params.streamToken);
+				if (!listener) return;
+				listener(serverName, params);
+			},
+		);
 	}
 
 	registerUiStreamListener(streamToken: string, listener: UiStreamListener): void {
