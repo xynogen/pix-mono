@@ -6,7 +6,7 @@ import type {
 	TextComponentCtor,
 	ThemeLike,
 } from "@xynogen/pix-pretty/types";
-import { applyGrepDefaults, DEFAULT_GREP_LIMIT, registerGrepTool } from "./grep";
+import { applyGrepDefaults, DEFAULT_GREP_LIMIT, grepHighlight, registerGrepTool } from "./grep";
 
 class MockTextComponent {
 	private text = "";
@@ -28,6 +28,42 @@ describe("applyGrepDefaults", () => {
 			pattern: "TODO",
 			limit: 5,
 		});
+	});
+});
+
+describe("grepHighlight", () => {
+	it("returns the raw string for a literal search (utils escapes it)", () => {
+		expect(
+			grepHighlight({
+				_type: "grepResult",
+				text: "",
+				pattern: "a.b",
+				matchCount: 0,
+				literal: true,
+			}),
+		).toBe("a.b");
+	});
+
+	it("compiles a case-sensitive regex by default", () => {
+		const re = grepHighlight({ _type: "grepResult", text: "", pattern: "te.t", matchCount: 0 });
+		expect(re).toBeInstanceOf(RegExp);
+		expect((re as RegExp).flags).toBe("g");
+		expect((re as RegExp).test("test")).toBe(true);
+	});
+
+	it("adds the i flag when ignoreCase is set", () => {
+		const re = grepHighlight({
+			_type: "grepResult",
+			text: "",
+			pattern: "todo",
+			matchCount: 0,
+			ignoreCase: true,
+		});
+		expect((re as RegExp).flags).toBe("gi");
+	});
+
+	it("falls back to the literal source on an invalid regex", () => {
+		expect(grepHighlight({ _type: "grepResult", text: "", pattern: "(", matchCount: 0 })).toBe("(");
 	});
 });
 

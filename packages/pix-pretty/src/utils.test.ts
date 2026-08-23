@@ -402,4 +402,27 @@ describe("renderDimPreview", () => {
 		expect(plain(raw)).toContain("call(foo)");
 		expect(raw).toContain("\x1b[");
 	});
+
+	it("highlights every regex match, not just a literal substring", () => {
+		// /te.t/ must light up both 'test' and 'text' — a literal indexOf can't.
+		const raw = renderDimPreview("test text", theme, { highlight: /te.t/g });
+		// Two bold-open codes = two highlighted hits.
+		expect(raw.split("\x1b[1m").length - 1).toBe(2);
+		expect(plain(raw)).toContain("test text");
+	});
+
+	it("does not loop on a zero-width regex match", () => {
+		// /x*/ matches empty everywhere — must terminate and keep content intact.
+		const raw = renderDimPreview("abc", theme, { highlight: /x*/g });
+		expect(plain(raw)).toContain("abc");
+	});
+
+	it("skips highlighting a line that already carries ANSI (no escape corruption)", () => {
+		// Pre-colored input: a match inside an escape would corrupt it, so the
+		// whole line is dimmed instead — no BOLD hit is injected.
+		const preColored = "\x1b[31mtest\x1b[0m done";
+		const raw = renderDimPreview(preColored, theme, { highlight: "test" });
+		expect(raw).not.toContain("\x1b[1m"); // no bold hit
+		expect(raw).toContain("\x1b[31m"); // original ANSI preserved
+	});
 });

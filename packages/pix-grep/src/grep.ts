@@ -38,6 +38,21 @@ export function applyGrepDefaults(params: GrepParams): GrepParams {
 	return params.limit === undefined ? { ...params, limit: DEFAULT_GREP_LIMIT } : params;
 }
 
+/**
+ * Build the highlight argument for renderDimPreview from a grep result.
+ * A literal search returns the raw string (utils escapes it, case-insensitive).
+ * A regex search compiles the pattern so real regex matches light up too;
+ * an invalid regex falls back to a literal highlight of the source text.
+ */
+export function grepHighlight(d: GrepResultDetails): string | RegExp {
+	if (d.literal) return d.pattern;
+	try {
+		return new RegExp(d.pattern, d.ignoreCase ? "gi" : "g");
+	} catch {
+		return d.pattern;
+	}
+}
+
 export function registerGrepTool(
 	pi: PiPrettyApi,
 	createGrepTool: ToolFactory<GrepToolInput>,
@@ -105,6 +120,8 @@ export function registerGrepTool(
 							pattern: effectiveParams.pattern,
 							path: effectiveParams.path,
 							matchCount: Math.min(grep.items.length, effectiveLimit),
+							literal: effectiveParams.literal,
+							ignoreCase: effectiveParams.ignoreCase,
 						});
 					}
 				} catch {
@@ -129,6 +146,8 @@ export function registerGrepTool(
 					pattern: params.pattern,
 					path: params.path,
 					matchCount,
+					literal: params.literal,
+					ignoreCase: params.ignoreCase,
 				});
 
 				return result;
@@ -143,6 +162,8 @@ export function registerGrepTool(
 						pattern: params.pattern,
 						path: params.path,
 						matchCount: 0,
+						literal: params.literal,
+						ignoreCase: params.ignoreCase,
 					},
 					isError: true,
 				};
@@ -216,7 +237,7 @@ export function registerGrepTool(
 				renderDimPreview(output, theme, {
 					frame: true,
 					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
-					highlight: d?._type === "grepResult" ? d.pattern : undefined,
+					highlight: d?._type === "grepResult" ? grepHighlight(d) : undefined,
 				}),
 			);
 			return text;

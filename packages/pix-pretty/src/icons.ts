@@ -100,3 +100,16 @@ export function fileIcon(fp: string, theme?: FgTheme): string {
 export function dirIcon(theme?: FgTheme): string {
 	return USE_ICONS ? `${paint({ glyph: "\ue5ff", color: "accent" }, theme)} ` : "";
 }
+
+/**
+ * Color a filename by its type, reusing the same per-extension palette the
+ * icons use (so name and icon share a hue). Unknown types fall back to the
+ * theme's default text color. Pure passthrough when no theme is supplied.
+ */
+export function fileColor(fp: string, name: string, theme?: FgTheme): string {
+	if (!theme) return name;
+	const base = basename(fp).toLowerCase();
+	const ext = extname(fp).slice(1).toLowerCase();
+	const spec = NAME_ICON[base] ?? EXT_ICON[ext];
+	return theme.fg(spec?.color ?? "text", name);
+}

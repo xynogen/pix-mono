@@ -196,6 +196,10 @@ export type GrepResultDetails = {
 	pattern: string;
 	path?: string;
 	matchCount: number;
+	/** Search flags, so the renderer can rebuild the matcher to highlight hits:
+	 *  literal → escape metacharacters; ignoreCase → case-insensitive. */
+	literal?: boolean;
+	ignoreCase?: boolean;
 };
 
 export type RenderDetails =

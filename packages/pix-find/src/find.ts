@@ -34,6 +34,25 @@ export function applyFindDefaults(params: FindParams): FindParams {
 	return params.limit === undefined ? { ...params, limit: DEFAULT_FIND_LIMIT } : params;
 }
 
+/**
+ * Build a highlight regex from a glob pattern by keeping only its literal runs
+ * (the wildcard-free fragments) as case-insensitive alternatives. `**​/*.test.ts`
+ * → highlight `.test.ts`; `*.ts` → highlight `.ts`. A pattern with no literal
+ * run (e.g. `*`) yields undefined — nothing meaningful to emphasize.
+ */
+export function globHighlight(pattern: string): RegExp | undefined {
+	const literals = pattern
+		.split(/[*?{}[\],/]+/) // split on glob metacharacters + path separators
+		.filter((s) => s.length >= 2); // skip single chars/dots — too noisy
+	if (literals.length === 0) return undefined;
+	const alt = literals.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+	try {
+		return new RegExp(alt, "gi");
+	} catch {
+		return undefined;
+	}
+}
+
 export function registerFindTool(
 	pi: PiPrettyApi,
 	createFindTool: ToolFactory<FindToolInput>,
@@ -193,6 +212,7 @@ export function registerFindTool(
 				renderDimPreview(output, theme, {
 					frame: true,
 					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
+					highlight: d?._type === "findResult" ? globHighlight(d.pattern) : undefined,
 				}),
 			);
 			return text;

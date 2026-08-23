@@ -6,9 +6,10 @@ import {
 	BG_BASE,
 	BG_ERROR,
 	BOLD,
-	FG_GREEN,
+	BOLD_OFF,
 	FG_LNUM,
 	FG_RULE,
+	hasAnsi,
 	RST,
 } from "./ansi.js";
 import { MAX_PREVIEW_LINES } from "./config.js";
@@ -323,28 +324,62 @@ export type DimPreviewOptions = {
 	 *  the header is intentionally dropped (the collapsed row already carries the
 	 *  count, so a floating header above the frame is redundant). */
 	header?: string;
-	/** Pattern whose matches are highlighted (green bold) inside dim lines. */
-	highlight?: string;
+	/** Pattern whose matches are highlighted (bold, themed) inside dim lines.
+	 *  A string is matched literally (case-insensitive); a RegExp is used as-is
+	 *  (callers pass the compiled search pattern so regex greps highlight too). */
+	highlight?: string | RegExp;
 	/** Wrap the body in a top/bottom rule frame (overflow below), like bash/ls/mcp. */
 	frame?: boolean;
 	/** Tint the frame rules (green ok, red error) — same status color as bash/ls. */
 	paint?: RulePaint;
 };
 
-function dimLineWithHighlight(line: string, theme: FgTheme, pattern?: string): string {
-	if (!pattern) return theme.fg("dim", line);
-	const foldedLine = line.toLocaleLowerCase();
-	const foldedPattern = pattern.toLocaleLowerCase();
-	if (!foldedPattern) return theme.fg("dim", line);
+/** Compile a highlight pattern into a global RegExp, or null when it can't
+ *  match anything. Strings match literally (case-insensitive); a RegExp is
+ *  re-flagged global so every occurrence on a line lights up. */
+function toHighlightRegex(pattern: string | RegExp): RegExp | null {
+	if (typeof pattern !== "string") {
+		const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+		try {
+			return new RegExp(pattern.source, flags);
+		} catch {
+			return null;
+		}
+	}
+	if (!pattern) return null;
+	// Literal string → escape regex metacharacters, case-insensitive.
+	const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	try {
+		return new RegExp(escaped, "gi");
+	} catch {
+		return null;
+	}
+}
 
+function dimLineWithHighlight(line: string, theme: FgTheme, pattern?: string | RegExp): string {
+	if (!pattern) return theme.fg("dim", line);
+	// A line that already carries ANSI (e.g. a source that emitted its own color)
+	// can't be safely index-sliced — a match could land inside an escape and
+	// corrupt it. Skip highlighting and dim the whole line instead.
+	if (hasAnsi(line)) return theme.fg("dim", line);
+	const re = pattern ? toHighlightRegex(pattern) : null;
+	if (!re) return theme.fg("dim", line);
+
+	// Themed bold hit: theme.fg carries its own reset, so re-open BOLD after it
+	// and close with the bold-off code (\x1b[22m) to avoid leaking bold onward.
+	const hit = (s: string) => `${BOLD}${theme.fg("success", s)}${BOLD_OFF}`;
 	const parts: string[] = [];
 	let start = 0;
-	for (;;) {
-		const match = foldedLine.indexOf(foldedPattern, start);
-		if (match < 0) break;
-		if (match > start) parts.push(theme.fg("dim", line.slice(start, match)));
-		parts.push(`${FG_GREEN}${BOLD}${line.slice(match, match + pattern.length)}${RST}`);
-		start = match + pattern.length;
+	for (let m = re.exec(line); m !== null; m = re.exec(line)) {
+		const idx = m.index;
+		const text = m[0];
+		if (text.length === 0) {
+			re.lastIndex++; // zero-width match (e.g. /a*/) — advance to avoid a loop
+			continue;
+		}
+		if (idx > start) parts.push(theme.fg("dim", line.slice(start, idx)));
+		parts.push(hit(text));
+		start = idx + text.length;
 	}
 	if (start < line.length) parts.push(theme.fg("dim", line.slice(start)));
 	return parts.length > 0 ? parts.join("") : theme.fg("dim", line);

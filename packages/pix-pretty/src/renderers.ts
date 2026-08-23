@@ -5,7 +5,7 @@ import { prettySection } from "@xynogen/pix-runtime/sections";
 import { FG_DIM, FG_RULE, RST } from "./ansi.js";
 import { MAX_PREVIEW_LINES } from "./config.js";
 import { hlBlock } from "./highlight.js";
-import { dirIcon, fileIcon } from "./icons.js";
+import { dirIcon, fileColor, fileIcon } from "./icons.js";
 import { lang } from "./lang.js";
 import type { FgTheme } from "./types.js";
 import { lnum, normalizeLineEndings, pluralize, rule, termW } from "./utils.js";
@@ -82,6 +82,13 @@ export function renderTree(text: string, basePath: string, theme?: FgTheme): str
 }
 
 /** Vertical tree view with connectors and icons. */
+/** Color a listing entry: dirs use the theme accent, files use their
+ *  per-extension hue (fileColor). Pure passthrough without a theme. */
+function entryColor(isDir: boolean, name: string, theme?: FgTheme): string {
+	if (!theme) return name;
+	return isDir ? theme.fg("accent", name) : fileColor(name, name, theme);
+}
+
 function renderLsTree(text: string, _basePath: string, theme?: FgTheme): string {
 	const lines = text.trim().split("\n").filter(Boolean);
 	if (!lines.length) return `${FG_DIM}(empty directory)${RST}`;
@@ -99,7 +106,7 @@ function renderLsTree(text: string, _basePath: string, theme?: FgTheme): string 
 		const isDir = entry.endsWith("/");
 		const name = isDir ? entry.slice(0, -1) : entry;
 		const icon = isDir ? dirIcon(theme) : fileIcon(name, theme);
-		const displayName = isDir && theme ? theme.fg("accent", name) : name;
+		const displayName = entryColor(isDir, name, theme);
 
 		out.push(`${connector}${icon}${displayName}`);
 	}
@@ -130,7 +137,7 @@ function renderLsGrid(text: string, _basePath: string, theme?: FgTheme): string 
 		const isDir = entry.endsWith("/");
 		const name = isDir ? entry.slice(0, -1) : entry;
 		const icon = isDir ? dirIcon(theme) : fileIcon(name, theme);
-		const displayName = isDir && theme ? theme.fg("accent", name) : name;
+		const displayName = entryColor(isDir, name, theme);
 		const cell = `${icon}${displayName}`;
 		cells.push(cell);
 		cellWidths.push(visibleWidth(cell));

@@ -1,5 +1,6 @@
 export let RST = "\x1b[0m";
 export const BOLD = "\x1b[1m";
+export const BOLD_OFF = "\x1b[22m";
 
 export const FG_LNUM = "\x1b[38;2;100;100;100m";
 export const FG_DIM = "\x1b[38;2;80;80;80m";
@@ -22,6 +23,14 @@ export function resolveBaseBackground(_theme: unknown): void {
 }
 
 export const ANSI_CAPTURE_RE = /\x1b\[([0-9;]*)m/g;
+
+/** The ESC byte that opens every ANSI escape sequence. */
+export const ESC = "\x1b";
+
+/** True when a string already contains an ANSI escape sequence. */
+export function hasAnsi(s: string): boolean {
+	return s.includes(ESC);
+}
 
 // ---------------------------------------------------------------------------
 // Low-contrast fix (same as pi-diff)
