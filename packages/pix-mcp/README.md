@@ -25,10 +25,20 @@ Preferred project config: `.mcp.json`
     "chrome-devtools": {
       "command": "npx",
       "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
+    "parallel-search": {
+      "url": "https://search.parallel.ai/mcp"
     }
   }
 }
 ```
+
+After explicitly installing the extension, choose the personal project
+`.mcp.json` above to opt in to Parallel Search MCP. It needs no Parallel account
+or API key. The optional server follows the default lazy lifecycle and does not
+change provider selection, defaults, or other configured servers. When its tools
+are used, user-provided search objectives, search queries, and requested URLs
+are sent to Parallel.
 
 Preferred shared user config: `~/.config/mcp/mcp.json`.
 
