@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-bash",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Pi tool — bash shell execution with pretty output",
 	"type": "module",
 	"main": "src/index.ts",

@@ -27,6 +27,7 @@ import {
 	renderCollapsedToolRow,
 	renderToolError,
 	ruleFrame,
+	sectionRule,
 	setResultDetails,
 	termW,
 } from "@xynogen/pix-pretty/utils";
@@ -222,8 +223,9 @@ export function registerBashTool(
 				const exitCode = d.exitCode as number | null;
 				const statusKey = exitCode === null ? "dim" : exitCode === 0 ? "success" : "error";
 				const paint = (s: string) => theme.fg(statusKey, s);
+				const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
 				const out = ruleFrame(
-					show.map((line) => `  ${line}`),
+					show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`),
 					footer,
 					termW(),
 					paint,

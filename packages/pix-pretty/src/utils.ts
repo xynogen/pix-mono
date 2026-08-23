@@ -394,9 +394,12 @@ export function renderDimPreview(
 	const highlight = opts.highlight;
 	const output = normalizeLineEndings(text).trim() || "done";
 	const lines = output.split("\n");
+	const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
 	const body = lines
 		.slice(0, maxLines)
-		.map((line) => `  ${dimLineWithHighlight(line, theme, highlight)}`);
+		.map(
+			(line) => `  ${sectionRule(line, theme, sw) ?? dimLineWithHighlight(line, theme, highlight)}`,
+		);
 	const header = opts.header ? `  ${theme.fg("dim", opts.header)}` : undefined;
 	const overflow =
 		lines.length > maxLines
@@ -492,6 +495,35 @@ export type RulePaint = (glyphs: string) => string;
 export function rule(w: number, paint?: RulePaint): string {
 	const glyphs = "─".repeat(w);
 	return paint ? paint(glyphs) : `${FG_RULE}${glyphs}${RST}`;
+}
+
+/** Matches an `=== label ===` separator line (a common shell/echo idiom). */
+const SECTION_RE = /^\s*={2,}\s*(.+?)\s*={2,}\s*$/;
+
+/** Max width of a section divider — a full-width rule on an ultra-wide
+ *  terminal reads as noise, so cap it regardless of available columns. */
+const SECTION_RULE_MAX = 72;
+
+/** Fixed dash count before a left-aligned section label. */
+const SECTION_RULE_LEAD = 4;
+
+/**
+ * If `line` is an `=== label ===` separator, render it as a left-aligned
+ * section divider (`──── label ───────────`); otherwise return null. Callers
+ * fall back to their normal per-line rendering on null. Sized to `width` but
+ * capped at SECTION_RULE_MAX so it stays readable on wide terminals. Label and
+ * rule both use the muted role — theme-driven, ANSI-safe.
+ */
+export function sectionRule(line: string, theme: FgTheme, width: number): string | null {
+	const m = SECTION_RE.exec(line);
+	if (!m || hasAnsi(line)) return null;
+	const label = ` ${m[1]} `;
+	const w = Math.min(width, SECTION_RULE_MAX);
+	const trail = w - SECTION_RULE_LEAD - visibleWidth(label);
+	// Label fits → lead rule + trailing fill. Too long to fill → don't force a
+	// full-width rule; wrap it snugly with 2 dashes each side (`── long text ──`).
+	const [lead, tail] = trail >= 2 ? [SECTION_RULE_LEAD, trail] : [2, 2];
+	return theme.fg("muted", `${"─".repeat(lead)}${label}${"─".repeat(tail)}`);
 }
 
 /**

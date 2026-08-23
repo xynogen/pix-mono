@@ -13,6 +13,7 @@ import {
 	renderCollapsedToolRow,
 	renderDimPreview,
 	ruleFrame,
+	sectionRule,
 	setResultDetails,
 	viewportText,
 } from "./utils.js";
@@ -424,5 +425,54 @@ describe("renderDimPreview", () => {
 		const raw = renderDimPreview(preColored, theme, { highlight: "test" });
 		expect(raw).not.toContain("\x1b[1m"); // no bold hit
 		expect(raw).toContain("\x1b[31m"); // original ANSI preserved
+	});
+
+	it("renders an === label === separator as a section divider", () => {
+		const raw = renderDimPreview("=== branch ===\nmain", theme, {});
+		// Label survives; the raw === markers are gone (replaced by a rule).
+		expect(plain(raw)).toContain("branch");
+		expect(plain(raw)).not.toContain("===");
+		expect(plain(raw)).toContain("─"); // divider glyph
+		expect(plain(raw)).toContain("main"); // ordinary lines untouched
+	});
+});
+
+describe("sectionRule", () => {
+	// Tagging theme so we can assert which role each fragment uses.
+	const tag: FgTheme = { fg: (key, text) => `<${key}>${text}</${key}>` };
+
+	it("left-aligns the label after a short lead rule, all muted", () => {
+		const out = sectionRule("=== versions ===", tag, 40) ?? "";
+		expect(out).not.toBeNull();
+		// One muted span wrapping the whole divider; label starts after 4 dashes.
+		expect(out).toBe("<muted>──── versions ──────────────────────────</muted>");
+	});
+
+	it("wraps an over-long label snugly with 2 dashes each side", () => {
+		const out = sectionRule("=== a very long section label here ===", tag, 20) ?? "";
+		expect(out).toBe("<muted>── a very long section label here ──</muted>");
+	});
+
+	it("accepts extra whitespace and 2+ equals signs", () => {
+		expect(sectionRule("==  dirty?  ==", tag, 40)).toContain("──── dirty? ");
+		expect(sectionRule("===== a b c =====", tag, 40)).toContain("──── a b c ");
+	});
+
+	it("returns null for a non-separator line", () => {
+		expect(sectionRule("just a normal line", tag, 20)).toBeNull();
+		expect(sectionRule("=== no closing", tag, 20)).toBeNull();
+		// Must span the whole line — leading text before the === disqualifies it.
+		expect(sectionRule("plain === middle === text", tag, 20)).toBeNull();
+	});
+
+	it("returns null when the line already carries ANSI", () => {
+		expect(sectionRule("\x1b[31m=== x ===\x1b[0m", tag, 20)).toBeNull();
+	});
+
+	it("caps the divider width on an ultra-wide terminal", () => {
+		// Ask for 400 columns — the visible width must stay capped (<= 72).
+		const out = sectionRule("=== x ===", tag, 400) ?? "";
+		const visible = out.replace(/<\/?[a-z]+>/g, "");
+		expect([...visible].length).toBeLessThanOrEqual(72);
 	});
 });

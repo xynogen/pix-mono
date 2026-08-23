@@ -37,6 +37,7 @@ import {
 	renderCollapsedToolRow,
 	renderToolError,
 	ruleFrame,
+	sectionRule,
 	termW,
 } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
@@ -538,8 +539,9 @@ export default function (pi: ExtensionAPI): void {
 			// dropped — the collapsed row already carries status.
 			const statusKey = code === null ? "dim" : code === 0 ? "success" : "error";
 			const paint = (s: string) => theme.fg(statusKey, s);
+			const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
 			const out = ruleFrame(
-				show.map((line) => `  ${line}`),
+				show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`),
 				footer,
 				termW(),
 				paint,
