@@ -30,6 +30,10 @@ Preferred project config: `.mcp.json`
 }
 ```
 
+`chrome-devtools` above is a generic, illustrative example of the config
+shape — not a recommendation or endorsement. Any MCP server works; Pix stays
+provider-neutral.
+
 Preferred shared user config: `~/.config/mcp/mcp.json`.
 
 Pix MCP also reads, in increasing precedence:
