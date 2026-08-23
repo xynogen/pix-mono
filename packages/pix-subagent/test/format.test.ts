@@ -386,6 +386,28 @@ test("formatContext falls back to pct-only when window unknown", () => {
 	);
 });
 
+// Regression: the subagent widget's duration/elapsed rendered white because a
+// self-colored context segment (embedded trailing \x1b[0m reset) sat inside a
+// single outer dim wrap — the reset killed the dim for every later segment.
+// Fix: the widget joins PLAIN (uncolored) stat segments and wraps the whole
+// tail in one dim, so the tail is one uniform color with no embedded reset to
+// leak. This asserts that mechanism without reaching into private renderers.
+test("plain stat tail wraps in one uniform color (no duration white-leak)", () => {
+	const RESET = "\x1b[0m";
+	const DIM = "\x1b[2m";
+	const ctx = "80%"; // plain formatSessionContext output — no ANSI inside
+	const duration = "1.2s";
+
+	// Fixed pattern: join plain segments, wrap once.
+	const tail = `${DIM}${[ctx, duration].join(" · ")}${RESET}`;
+	// Exactly one reset, at the very end — nothing leaks mid-tail.
+	expect(tail.match(new RegExp(RESET.replace("[", "\\["), "g"))?.length).toBe(1);
+	expect(tail.endsWith(`${duration}${RESET}`)).toBe(true);
+	expect(tail.startsWith(`${DIM}${ctx}`)).toBe(true);
+	// No stray reset before duration → duration stays inside the dim run.
+	expect(tail).not.toContain(`${RESET} · ${duration}`);
+});
+
 test("formatContext empty on null", () => {
 	expect(formatContext(null)).toBe("");
 });

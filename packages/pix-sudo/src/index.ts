@@ -447,7 +447,7 @@ export default function (pi: ExtensionAPI): void {
 			const command = safeOneLine(args.command) || "(empty command)";
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("sudo"))} ${theme.fg("accent", command)}`,
+					`${theme.fg("toolTitle", theme.bold("sudo"))} ${theme.fg("muted", command)}`,
 				),
 			);
 			return text;

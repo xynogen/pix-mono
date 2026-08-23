@@ -536,7 +536,7 @@ export default function (pi: ExtensionAPI): void {
 			const prefix = args.sudo ? "sudo " : "";
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("ssh"))} ${theme.fg("dim", host)} ${theme.fg("accent", prefix + command)}`,
+					`${theme.fg("toolTitle", theme.bold("ssh"))} ${theme.fg("dim", host)} ${theme.fg("muted", prefix + command)}`,
 				),
 			);
 			return text;

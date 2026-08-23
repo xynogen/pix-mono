@@ -97,7 +97,7 @@ export function makeRenderCall<TArgs>(title: string, pickArg: (args: TArgs) => s
 		)
 			return text;
 		const arg = pickArg(args);
-		text.setText(`${theme.fg("toolTitle", theme.bold(title))} ${theme.fg("accent", arg)}`);
+		text.setText(`${theme.fg("toolTitle", theme.bold(title))} ${theme.fg("muted", arg)}`);
 		return text;
 	};
 }

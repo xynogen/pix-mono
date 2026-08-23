@@ -36,11 +36,13 @@ const config = {
 	meta: (details: { _type: "fetchResult"; chars: number }) => `${details.chars} chars`,
 };
 
-test("renderCall shows title + accent arg", () => {
+test("renderCall shows title + muted arg", () => {
 	const stub = stubComponent();
 	const rc = makeRenderCall<{ url: string }>("fetch", (a) => a.url);
 	rc({ url: "https://x.com" }, theme, context(stub));
-	expect(stub.get()).toBe("[toolTitle]*fetch* [accent]https://x.com");
+	// Only the tool name is accent/toolTitle-colored; the arg is muted so the
+	// header doesn't render as one solid blue line (accent === toolTitle).
+	expect(stub.get()).toBe("[toolTitle]*fetch* [muted]https://x.com");
 });
 
 test("renderCall hides only an effectively collapsed call row", () => {
@@ -54,7 +56,7 @@ test("renderCall hides only an effectively collapsed call row", () => {
 		theme,
 		context(stub, { state: { collapsed: true }, expanded: true }),
 	);
-	expect(stub.get()).toBe("[toolTitle]*fetch* [accent]https://x.com");
+	expect(stub.get()).toBe("[toolTitle]*fetch* [muted]https://x.com");
 });
 
 test("renderResult renders structured compact details after collapse", () => {

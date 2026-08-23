@@ -97,7 +97,7 @@ export function registerLsTool(
 				return text;
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("ls"))} ${theme.fg("accent", sp(fp))}`,
+					`${theme.fg("toolTitle", theme.bold("ls"))} ${theme.fg("muted", sp(fp))}`,
 				),
 			);
 			return text;

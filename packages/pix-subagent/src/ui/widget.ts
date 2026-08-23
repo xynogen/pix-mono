@@ -69,9 +69,17 @@ export function formatSessionContext(
 	usage: ContextUsageLike | null,
 	theme: Theme,
 	compactions = 0,
+	// plain=true returns uncolored text (no embedded ANSI reset) so the caller
+	// can wrap the whole stats tail in one uniform color. Colored mode keeps the
+	// warning/error tint at high context utilization.
+	plain = false,
 ): string {
 	if (usage?.percent == null && compactions === 0) return "";
 	const base = formatContext(usage);
+	if (plain) {
+		if (compactions > 0) return base ? `${base} (⇊${compactions})` : `⇊${compactions}`;
+		return base;
+	}
 	const color =
 		usage?.percent != null && usage.percent >= 85
 			? "error"
@@ -224,8 +232,10 @@ export class AgentWidget {
 		if (a.toolUses > 0) parts.push(formatToolUses(a.toolUses));
 		// Context% + speed read from the record (survives the
 		// agentActivity delete that fires in onComplete before this renders).
+		// plain=true: no embedded color/reset, so the single outer dim wrap below
+		// tints the whole stats tail uniformly (no white-leak past ctxText).
 		const contextUsage = a.session ? getSessionContextUsage(a.session as SessionLike) : null;
-		const ctxText = formatSessionContext(contextUsage, theme, a.compactionCount ?? 0);
+		const ctxText = formatSessionContext(contextUsage, theme, a.compactionCount ?? 0, true);
 		if (ctxText) parts.push(ctxText);
 		const speed = formatSpeed(a.lifetimeUsage?.output ?? 0, a.streamingMs ?? durationMs);
 		if (speed) parts.push(speed);
@@ -281,7 +291,8 @@ export class AgentWidget {
 			const bg = this.agentActivity.get(a.id);
 			const toolUses = bg?.toolUses ?? a.toolUses;
 			const contextUsage = bg?.session ? getSessionContextUsage(bg.session as SessionLike) : null;
-			const ctxText = formatSessionContext(contextUsage, theme, a.compactionCount);
+			// plain=true: uniform dim tail (statsText is wrapped once below).
+			const ctxText = formatSessionContext(contextUsage, theme, a.compactionCount, true);
 
 			const parts: string[] = [];
 			if (bg && bg.turnCount > 0) parts.push(formatTurns(bg.turnCount, bg.maxTurns));

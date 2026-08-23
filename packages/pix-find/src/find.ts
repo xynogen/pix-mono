@@ -138,7 +138,7 @@ export function registerFindTool(
 				return text;
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("find"))} ${theme.fg("accent", pattern)}${path}`,
+					`${theme.fg("toolTitle", theme.bold("find"))} ${theme.fg("muted", pattern)}${path}`,
 				),
 			);
 			return text;

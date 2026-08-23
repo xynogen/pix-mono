@@ -202,7 +202,7 @@ export function registerEditTool(
 				)
 			)
 				return text;
-			const hdr = `${theme.fg("toolTitle", theme.bold("edit"))} ${theme.fg("accent", sp(fp))}`;
+			const hdr = `${theme.fg("toolTitle", theme.bold("edit"))} ${theme.fg("muted", sp(fp))}`;
 
 			if (operations.length === 0) {
 				text.setText(fillToolBackground(hdr));

@@ -130,7 +130,7 @@ export function registerReadTool(
 			const limit = args.limit ? ` ${theme.fg("muted", `(${args.limit} lines)`)}` : "";
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("read"))} ${theme.fg("accent", sp(fp))}${offset}${limit}`,
+					`${theme.fg("toolTitle", theme.bold("read"))} ${theme.fg("muted", sp(fp))}${offset}${limit}`,
 				),
 			);
 			return text;

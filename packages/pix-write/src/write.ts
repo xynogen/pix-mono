@@ -131,7 +131,7 @@ export function registerWriteTool(
 				)
 			)
 				return text;
-			const hdr = `${theme.fg("toolTitle", theme.bold(label))} ${theme.fg("accent", sp(fp))}`;
+			const hdr = `${theme.fg("toolTitle", theme.bold(label))} ${theme.fg("muted", sp(fp))}`;
 
 			if (args?.content && isNew) {
 				const previewKey = `create:${diffThemeCacheKey(theme)}:${fp}:${String(args.content).length}:${renderCtx.expanded ? "full" : "preview"}`;
