@@ -49,8 +49,6 @@ const ANSI_CAPTURE_RE = new RegExp(`${ESC_RE}\\[([^m]*)m`, "g");
 // Terminal bounds + thresholds
 // ---------------------------------------------------------------------------
 
-const MAX_TERM_WIDTH = 210;
-
 const MAX_PREVIEW_LINES = envInt("PRETTY_MAX_PREVIEW_LINES", 80);
 
 const SPLIT_MIN_WIDTH = envInt("DIFF_SPLIT_MIN_WIDTH", dc.splitMinWidth || 150);
@@ -158,8 +156,8 @@ function tabs(s: string): string {
 function termW(): number {
 	// Single source of truth: utils.termW caches, falls back to tty ioctl, and
 	// invalidates on resize. Diff layout needs a hard floor of 80 cols for the
-	// split-view column math, so clamp the shared value here.
-	return Math.max(80, Math.min(utilsTermW(), MAX_TERM_WIDTH));
+	// split-view column math (no ceiling — fill the true width on ultrawide).
+	return Math.max(80, utilsTermW());
 }
 
 /** Pad/truncate `s` to exactly `w` visible chars. ANSI-aware. */
@@ -557,8 +555,7 @@ export async function renderUnified(
 		if (l.type === "sep") {
 			const gap = l.newNum;
 			const label = gap && gap > 0 ? ` ${gap} unmodified lines ` : "···";
-			const totalW = Math.min(tw, 72);
-			const pad = Math.max(0, totalW - label.length - 2);
+			const pad = Math.max(0, tw - label.length - 2);
 			const half1 = Math.floor(pad / 2);
 			const half2 = pad - half1;
 			out.push(`${BG_BASE}${FG_DIM}${"─".repeat(half1)}${label}${"─".repeat(half2)}${RST}`);

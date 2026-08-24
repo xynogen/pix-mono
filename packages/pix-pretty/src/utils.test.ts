@@ -15,6 +15,7 @@ import {
 	ruleFrame,
 	sectionRule,
 	setResultDetails,
+	termW,
 	viewportText,
 } from "./utils.js";
 
@@ -159,6 +160,35 @@ const ANSI = /\x1b\[[0-9;]*m/g;
 function plain(text: string): string {
 	return text.replace(ANSI, "");
 }
+
+describe("termW", () => {
+	// termW() caches and invalidates on a stdout 'resize' event. Set columns then
+	// emit resize so the next call re-reads.
+	function setCols(cols: number): void {
+		(process.stdout as { columns?: number }).columns = cols;
+		process.stdout.emit("resize");
+	}
+
+	it("returns the true terminal width with no upper clamp (ultrawide)", () => {
+		const orig = process.stdout.columns;
+		try {
+			setCols(384); // wider than the old 210 cap
+			expect(termW()).toBe(384);
+		} finally {
+			setCols(orig ?? 80);
+		}
+	});
+
+	it("floors width at 1 for a degenerate column count", () => {
+		const orig = process.stdout.columns;
+		try {
+			setCols(0); // falsy — falls through resolution chain, never < 1
+			expect(termW()).toBeGreaterThanOrEqual(1);
+		} finally {
+			setCols(orig ?? 80);
+		}
+	});
+});
 
 describe("ruleFrame", () => {
 	it("wraps body with a rule top and bottom, then footer below the close", () => {
@@ -469,10 +499,9 @@ describe("sectionRule", () => {
 		expect(sectionRule("\x1b[31m=== x ===\x1b[0m", tag, 20)).toBeNull();
 	});
 
-	it("caps the divider width on an ultra-wide terminal", () => {
-		// Ask for 400 columns — the visible width must stay capped (<= 72).
+	it("fills the full requested width so it aligns with the tool frame", () => {
 		const out = sectionRule("=== x ===", tag, 400) ?? "";
 		const visible = out.replace(/<\/?[a-z]+>/g, "");
-		expect([...visible].length).toBeLessThanOrEqual(72);
+		expect([...visible].length).toBe(400);
 	});
 });

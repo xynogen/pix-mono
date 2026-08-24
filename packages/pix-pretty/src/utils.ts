@@ -52,6 +52,9 @@ export function fillToolBackground(text: string, bg = BG_BASE, width?: number): 
 }
 
 export function viewportTextConstructor(TextComponent: TextComponentCtor): TextComponentCtor {
+	// SAFETY: a `new`-able ctor and a plain factory returning the same instance
+	// shape are interchangeable to callers here; TS can't see the returned
+	// ViewportText satisfies TextComponentCtor's construct signature.
 	return function ViewportTextComponent(text = "") {
 		const component = viewportText(TextComponent);
 		component.setText(text);
@@ -451,7 +454,9 @@ export function termW(): number {
 		Number.parseInt(process.env.COLUMNS ?? "", 10) ||
 		_readTtyColumns() ||
 		120;
-	_cachedTermW = Math.max(1, Math.min(raw, 210));
+	// No upper clamp: frames must fill the true terminal width so our rules align
+	// with Pi's native full-width UI on ultrawide displays.
+	_cachedTermW = Math.max(1, raw);
 
 	return _cachedTermW;
 }
@@ -500,26 +505,21 @@ export function rule(w: number, paint?: RulePaint): string {
 /** Matches an `=== label ===` separator line (a common shell/echo idiom). */
 const SECTION_RE = /^\s*={2,}\s*(.+?)\s*={2,}\s*$/;
 
-/** Max width of a section divider — a full-width rule on an ultra-wide
- *  terminal reads as noise, so cap it regardless of available columns. */
-const SECTION_RULE_MAX = 72;
-
 /** Fixed dash count before a left-aligned section label. */
 const SECTION_RULE_LEAD = 4;
 
 /**
  * If `line` is an `=== label ===` separator, render it as a left-aligned
  * section divider (`──── label ───────────`); otherwise return null. Callers
- * fall back to their normal per-line rendering on null. Sized to `width` but
- * capped at SECTION_RULE_MAX so it stays readable on wide terminals. Label and
- * rule both use the muted role — theme-driven, ANSI-safe.
+ * fall back to their normal per-line rendering on null. Fills the full `width`
+ * so the divider aligns with the surrounding tool frame. Label and rule both
+ * use the muted role — theme-driven, ANSI-safe.
  */
 export function sectionRule(line: string, theme: FgTheme, width: number): string | null {
 	const m = SECTION_RE.exec(line);
 	if (!m || hasAnsi(line)) return null;
 	const label = ` ${m[1]} `;
-	const w = Math.min(width, SECTION_RULE_MAX);
-	const trail = w - SECTION_RULE_LEAD - visibleWidth(label);
+	const trail = width - SECTION_RULE_LEAD - visibleWidth(label);
 	// Label fits → lead rule + trailing fill. Too long to fill → don't force a
 	// full-width rule; wrap it snugly with 2 dashes each side (`── long text ──`).
 	const [lead, tail] = trail >= 2 ? [SECTION_RULE_LEAD, trail] : [2, 2];
