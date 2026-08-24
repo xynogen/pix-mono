@@ -46,21 +46,45 @@ export interface WidgetTheme {
 }
 
 const MAX_WIDGET_LINES = 12;
-const FINISHED_LINGER_MS = 5_000;
-const ERROR_LINGER_MS = 15_000;
 const ERROR_STATUSES = new Set<BtwJobStatus>(["error", "stopped"]);
 
+// /btw is fire-and-leave, so a finished job lingers far longer than a normal
+// collapsing tool card. Both windows scale off the shared collapse delay
+// (config `collapse.delaySec`, default 10s) so one knob tunes everything:
+//   ok linger    = base × 3   (30s at default)
+//   error linger = base × 9   (90s at default)
+// The durable answer card in render.ts is the permanent record; these only
+// govern the transient above-editor line.
+export const OK_LINGER_SCALE = 3;
+export const ERROR_LINGER_SCALE = 9;
+/** Fallback base when no config delay is threaded in (pure-module/test use). */
+export const DEFAULT_LINGER_BASE_MS = 10_000;
+
+/** Resolve the ok/error linger windows from a base collapse delay. */
+export function lingerWindows(baseMs: number = DEFAULT_LINGER_BASE_MS): {
+	ok: number;
+	error: number;
+} {
+	const base = baseMs > 0 ? baseMs : DEFAULT_LINGER_BASE_MS;
+	return { ok: base * OK_LINGER_SCALE, error: base * ERROR_LINGER_SCALE };
+}
+
 /** True while a finished job should still linger in the widget. */
-export function shouldShowFinished(job: BtwWidgetJob, now: number): boolean {
+export function shouldShowFinished(job: BtwWidgetJob, now: number, baseMs?: number): boolean {
 	if (job.status === "running" || job.completedAt == null) return false;
-	const linger = ERROR_STATUSES.has(job.status) ? ERROR_LINGER_MS : FINISHED_LINGER_MS;
+	const w = lingerWindows(baseMs);
+	const linger = ERROR_STATUSES.has(job.status) ? w.error : w.ok;
 	return now - job.completedAt < linger;
 }
 
 /** Any job worth painting right now (running or lingering finished). */
-export function hasVisibleJobs(jobs: Iterable<BtwWidgetJob>, now: number): boolean {
+export function hasVisibleJobs(
+	jobs: Iterable<BtwWidgetJob>,
+	now: number,
+	baseMs?: number,
+): boolean {
 	for (const job of jobs) {
-		if (job.status === "running" || shouldShowFinished(job, now)) return true;
+		if (job.status === "running" || shouldShowFinished(job, now, baseMs)) return true;
 	}
 	return false;
 }
@@ -115,9 +139,10 @@ export function renderBtwWidget(
 	frame: number,
 	now: number,
 	width: number,
+	baseMs?: number,
 ): string[] {
 	const running = jobs.filter((j) => j.status === "running");
-	const finished = jobs.filter((j) => j.status !== "running" && shouldShowFinished(j, now));
+	const finished = jobs.filter((j) => j.status !== "running" && shouldShowFinished(j, now, baseMs));
 	if (running.length === 0 && finished.length === 0) return [];
 
 	const truncate = (line: string) => truncateToWidth(line, width);

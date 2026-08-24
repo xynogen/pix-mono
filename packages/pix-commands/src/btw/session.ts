@@ -28,6 +28,8 @@ export interface BtwRunOptions {
 	question: string;
 	snapshot: BtwSnapshot;
 	ctx: ExtensionContext;
+	/** Optional read-only preamble (e.g. recent main-session turns from `--ctx`). */
+	contextPreamble?: string;
 	onSession?: (session: AgentSession) => void;
 	onTextDelta?: (delta: string, fullText: string) => void;
 	onToolStart?: (toolName: string) => void;
@@ -82,6 +84,59 @@ export function makeLeanExtensions(base: LoadExtensionsResult): LoadExtensionsRe
 			return { ...extension, handlers };
 		}),
 	};
+}
+
+/** How many recent conversation turns `--ctx` folds into the aside. */
+export const BTW_CTX_TURNS = 10;
+
+/** One flattened conversation line: role + its text (tool noise dropped). */
+interface CtxLine {
+	role: string;
+	text: string;
+}
+
+/**
+ * Flatten the main session's recent user/assistant turns into a plain-text
+ * preamble for `--ctx`. Reads `buildContextEntries()` (the active,
+ * compaction-aware list), keeps only message entries with extractable text,
+ * and returns the last `turns` of them. Returns "" when there's nothing to show
+ * so callers can skip the preamble entirely.
+ *
+ * Kept a pure function over a minimal entry shape (not the full SessionManager)
+ * so it unit-tests without a Pi host.
+ */
+export function buildContextPreamble(
+	entries: readonly { type: string; message?: unknown }[],
+	turns = BTW_CTX_TURNS,
+): string {
+	const lines: CtxLine[] = [];
+	for (const entry of entries) {
+		if (entry.type !== "message") continue;
+		const msg = entry.message as { role?: string; content?: unknown } | undefined;
+		if (!msg || (msg.role !== "user" && msg.role !== "assistant")) continue;
+		const text = extractMessageText(msg.content);
+		if (text) lines.push({ role: msg.role, text });
+	}
+	const recent = lines.slice(-Math.max(1, turns));
+	if (recent.length === 0) return "";
+	const body = recent
+		.map((l) => `${l.role === "user" ? "User" : "Assistant"}: ${l.text}`)
+		.join("\n\n");
+	return `Recent conversation from the main session (most recent ${recent.length} turn(s), read-only context):\n\n${body}`;
+}
+
+/** Pull plain text out of a message's content (string or content-block array). */
+function extractMessageText(content: unknown): string {
+	if (typeof content === "string") return content.trim();
+	if (!Array.isArray(content)) return "";
+	return content
+		.filter((b): b is { type: "text"; text: string } => {
+			const block = b as { type?: string; text?: unknown };
+			return block.type === "text" && typeof block.text === "string";
+		})
+		.map((b) => b.text)
+		.join("\n")
+		.trim();
 }
 
 /** Extract the final assistant text if no streaming deltas were observed. */
@@ -171,8 +226,11 @@ export async function runBtw(options: BtwRunOptions): Promise<BtwRunResult> {
 		}
 	});
 
+	const prompt = options.contextPreamble
+		? `${options.contextPreamble}\n\n---\n\nQuestion: ${question}`
+		: question;
 	try {
-		await session.prompt(question, { source: "extension" });
+		await session.prompt(prompt, { source: "extension" });
 		return {
 			text: text.trim() || lastAssistantText(session.messages),
 			thinking: thinking.trim(),

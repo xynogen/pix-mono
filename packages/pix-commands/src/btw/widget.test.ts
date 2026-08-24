@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
 	type BtwWidgetJob,
+	DEFAULT_LINGER_BASE_MS,
+	ERROR_LINGER_SCALE,
 	hasVisibleJobs,
+	lingerWindows,
+	OK_LINGER_SCALE,
 	renderBtwWidget,
 	shouldShowFinished,
 	type WidgetTheme,
@@ -47,8 +51,9 @@ describe("BTW widget layout", () => {
 
 	test("finished jobs linger with a check, then drop after the window", () => {
 		const done = job({ status: "completed", completedAt: 1_000, toolUses: 2, turnCount: 1 });
+		// Default base 10s × 3 = 30s ok-window.
 		expect(shouldShowFinished(done, 1_500)).toBe(true);
-		expect(shouldShowFinished(done, 10_000)).toBe(false);
+		expect(shouldShowFinished(done, 40_000)).toBe(false); // 39s elapsed > 30s window
 
 		const out = render([done], 1_500);
 		expect(out).toContain("\u2713");
@@ -58,8 +63,26 @@ describe("BTW widget layout", () => {
 
 	test("errors linger longer and show the message", () => {
 		const failed = job({ status: "error", completedAt: 1_000, error: "boom" });
-		expect(shouldShowFinished(failed, 6_000)).toBe(true); // past the 5s ok-window
-		expect(render([failed], 6_000)).toContain("boom");
+		// Default base 10s × 9 = 90s error-window; 40s elapsed is past ok (30s) but well inside error.
+		expect(shouldShowFinished(failed, 40_000)).toBe(true);
+		expect(render([failed], 40_000)).toContain("boom");
+	});
+
+	test("linger windows scale off the config collapse delay", () => {
+		// Defaults derive from the fallback base.
+		expect(lingerWindows()).toEqual({
+			ok: DEFAULT_LINGER_BASE_MS * OK_LINGER_SCALE,
+			error: DEFAULT_LINGER_BASE_MS * ERROR_LINGER_SCALE,
+		});
+		// A custom base (e.g. config collapse.delaySec = 4 → 4000ms) scales both.
+		expect(lingerWindows(4_000)).toEqual({ ok: 12_000, error: 36_000 });
+		// Non-positive base falls back to the default so windows never collapse to 0.
+		expect(lingerWindows(0)).toEqual(lingerWindows());
+
+		// shouldShowFinished honors the threaded base: a 4s base drops an ok job at 13s.
+		const done = job({ status: "completed", completedAt: 0 });
+		expect(shouldShowFinished(done, 11_000, 4_000)).toBe(true); // < 12s
+		expect(shouldShowFinished(done, 13_000, 4_000)).toBe(false); // > 12s
 	});
 
 	test("overflow collapses excess rows into a +N more line", () => {

@@ -6,8 +6,9 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Text, type TUI } from "@earendil-works/pi-tui";
 import { getSessionContextUsage } from "@xynogen/pix-pretty/widget-format";
+import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
 import { type BtwMessageDetails, registerBtwRenderer } from "./render.ts";
-import { runBtw, snapshotMainSettings } from "./session.ts";
+import { BTW_CTX_TURNS, buildContextPreamble, runBtw, snapshotMainSettings } from "./session.ts";
 import { type BtwWidgetJob, hasVisibleJobs, renderBtwWidget } from "./widget.ts";
 
 const STATUS_KEY = "pix-btw";
@@ -68,7 +69,8 @@ export function registerBtw(pi: ExtensionAPI): void {
 		if (!active || !latestUi) return;
 		const now = Date.now();
 		const allJobs = [...jobs.values()];
-		if (!hasVisibleJobs(allJobs.map(toWidgetJob), now)) {
+		const baseMs = collapseDelayMs();
+		if (!hasVisibleJobs(allJobs.map(toWidgetJob), now, baseMs)) {
 			latestUi.setStatus(STATUS_KEY, undefined);
 			latestUi.setWidget(WIDGET_KEY, undefined);
 			if (refreshTimer) clearInterval(refreshTimer);
@@ -85,7 +87,11 @@ export function registerBtw(pi: ExtensionAPI): void {
 					render: (width: number) => {
 						const w = width || tui.terminal.columns;
 						const widgetJobs = [...jobs.values()].map(toWidgetJob);
-						text.setText(renderBtwWidget(widgetJobs, theme, frame, Date.now(), w).join("\n"));
+						text.setText(
+							renderBtwWidget(widgetJobs, theme, frame, Date.now(), w, collapseDelayMs()).join(
+								"\n",
+							),
+						);
 						return text.render(w);
 					},
 					invalidate: () => text.invalidate(),
@@ -119,12 +125,28 @@ export function registerBtw(pi: ExtensionAPI): void {
 	pi.registerCommand("btw", {
 		description: "Ask an isolated side question without interrupting the main agent",
 		handler: async (rawArgs, ctx) => {
-			const question = rawArgs.trim();
 			latestUi = ctx.ui;
+
+			// Flag: --ctx folds in the last N main-session turns as read-only context.
+			const tokens = rawArgs.trim().split(/\s+/).filter(Boolean);
+			const withCtx = tokens.includes("--ctx");
+			const question = tokens.filter((t) => t !== "--ctx").join(" ");
+
 			if (!question) {
-				ctx.ui.notify("Usage: /btw <question>", "warning");
+				ctx.ui.notify(
+					[
+						"Usage: /btw [--ctx] <question>",
+						`  --ctx  include the last ${BTW_CTX_TURNS} main-session turns as read-only context`,
+						"By default the aside is fully isolated (sees no main conversation).",
+					].join("\n"),
+					"warning",
+				);
 				return;
 			}
+
+			const contextPreamble = withCtx
+				? buildContextPreamble(ctx.sessionManager.buildContextEntries())
+				: undefined;
 
 			let snapshot: ReturnType<typeof snapshotMainSettings>;
 			try {
@@ -156,6 +178,7 @@ export function registerBtw(pi: ExtensionAPI): void {
 				question,
 				snapshot,
 				ctx,
+				contextPreamble,
 				onSession: (session) => {
 					job.session = session;
 				},

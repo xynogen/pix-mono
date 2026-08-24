@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { LoadExtensionsResult } from "@earendil-works/pi-coding-agent";
 import {
+	BTW_CTX_TURNS,
 	BTW_SYSTEM_PROMPT,
+	buildContextPreamble,
 	lastAssistantText,
 	makeLeanExtensions,
 	selectBtwTools,
@@ -64,6 +66,43 @@ describe("makeLeanExtensions", () => {
 		expect(result.extensions[1]?.handlers.has("before_agent_start")).toBe(true);
 		// Do not mutate the loader's original extension records.
 		expect(regularHandlers.has("before_agent_start")).toBe(true);
+	});
+});
+
+describe("buildContextPreamble", () => {
+	const msg = (role: string, text: string) => ({
+		type: "message",
+		message: { role, content: [{ type: "text", text }] },
+	});
+
+	test("flattens recent user/assistant turns into a labeled preamble", () => {
+		const out = buildContextPreamble([msg("user", "hi"), msg("assistant", "hello")]);
+		expect(out).toContain("User: hi");
+		expect(out).toContain("Assistant: hello");
+		expect(out).toContain("read-only context");
+	});
+
+	test("keeps only the last N turns", () => {
+		const entries = Array.from({ length: BTW_CTX_TURNS + 5 }, (_, i) => msg("user", `q${i}`));
+		const out = buildContextPreamble(entries);
+		expect(out).not.toContain("q0"); // dropped
+		expect(out).toContain(`q${BTW_CTX_TURNS + 4}`); // kept
+		expect(out).toContain(`most recent ${BTW_CTX_TURNS} turn`);
+	});
+
+	test("skips non-message entries, tool noise, and string content", () => {
+		const out = buildContextPreamble([
+			{ type: "model_change", message: undefined },
+			{ type: "message", message: { role: "tool", content: "ignored" } },
+			{ type: "message", message: { role: "user", content: "plain string" } },
+		]);
+		expect(out).toContain("User: plain string");
+		expect(out).not.toContain("ignored");
+	});
+
+	test("returns empty when there are no usable turns", () => {
+		expect(buildContextPreamble([{ type: "compaction", message: undefined }])).toBe("");
+		expect(buildContextPreamble([])).toBe("");
 	});
 });
 

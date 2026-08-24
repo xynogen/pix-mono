@@ -3,7 +3,7 @@
 Pi extension providing focused slash commands:
 
 - `/clear` — flush Pi's cached model data.
-- `/btw <question>` — ask an isolated side question without interrupting the main agent.
+- `/btw [--ctx] <question>` — ask an isolated side question without interrupting the main agent (`--ctx` folds in recent main-session turns).
 - `/afk` — toggle AFK mode for unattended runs (yellow auto-allow, red/root auto-deny).
 - `/yolo` — toggle YOLO mode for unattended runs (auto-approve nearly everything incl. red/root; capable models only, session consent required).
 
@@ -17,13 +17,19 @@ Deletes `~/.cache/pi` to flush stale model-data cache, then prompts you to run `
 
 ```text
 /btw what is the difference between a mutex and a semaphore?
+/btw --ctx given what we just did, what should I test first?
 ```
+
+Run `/btw` with no question to print usage. The live
+above-editor widget lingers finished asides for `collapse.delaySec × 3` (errors
+`× 9`), so a fire-and-leave aside stays visible while you are away; the durable
+answer card in the log never expires.
 
 The child session:
 
 - starts with an empty conversation and a lean Pix system prompt;
 - snapshots the main session's model, thinking level, active tools, credentials, extensions, and working directory;
-- never imports the main conversation;
+- never imports the main conversation **unless you pass `--ctx`**, which folds the last 10 main-session turns in as a one-shot, read-only preamble (visible in the question, still a fresh isolated session — nothing is written back to the main thread);
 - publishes its Markdown answer in a visually distinct side-thread card;
 - keeps rendered BTW answers out of future main-agent LLM context;
 - supports multiple concurrent side questions.
