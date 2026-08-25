@@ -22,17 +22,19 @@ Or use the [one-shot installer](#install) to set up Pi, a theme, and the distro 
 
 ### Core bundle
 
-Bundled together by [`@xynogen/pix-core`](packages/pix-core) — a single `pi install npm:@xynogen/pix-core` pulls and activates all of these.
+One `pi install npm:@xynogen/pix-core` pulls and activates everything below. Each package installs the [foundation libraries](#foundation-layer) it depends on.
 
-You never install a shared library to "get the tools." It works the other way round: you install a feature package (or `pix-core`, which is all of them), and it quietly pulls in the small set of libraries it stands on. Those foundation packages are listed [at the bottom](#foundation-layer) so the parts you actually pick from come first.
+### Theme
 
-**Theme** — standalone, zero deps
+Standalone, zero deps.
 
 | Package | Description |
 | --- | --- |
 | [`@xynogen/pix-themes`](packages/pix-themes) | Theme pack — 7 dark themes |
 
-**UI / UX extensions**
+### UI / UX extensions
+
+Widgets, slash commands, and display improvements for the TUI.
 
 | Package | Description |
 | --- | --- |
@@ -45,11 +47,11 @@ You never install a shared library to "get the tools." It works the other way ro
 | [`@xynogen/pix-diagnostics`](packages/pix-diagnostics) | Compact LSP diagnostic widget — recent files list, overrides pi-lens |
 | [`@xynogen/pix-display`](packages/pix-display) | Paste chip rendering (`[paste image #1]`) + leaked `<think>` tag → native thinking blocks |
 | [`@xynogen/pix-prompts`](packages/pix-prompts) | System-prompt injection — bundled `AGENT.md` baseline + repo directive files |
-| [`@xynogen/pix-skills`](packages/pix-skills) | `read_skills` discovery and loader — names-only listing, description and full-instruction loading, reference reads, safe bundled resource copies, and on-demand TOON guidance |
+| [`@xynogen/pix-skills`](packages/pix-skills) | `read_skills` discovery and loading — includes references, bundled resources, and on-demand TOON guidance |
 
 ### Tool suite
 
-Drop-in replacements registered under the **same tool name** as the Pi built-in (`read`, `write`, …), so they shadow the built-ins transparently — the model calls them with no prompt changes, only the rendered output differs ([`pix-pretty`](packages/pix-pretty): highlighting, diffs, icon trees, FFF search).
+These replace Pi's built-in tools under the same names, so model calls stay unchanged. [`pix-pretty`](packages/pix-pretty) improves their output: highlighting, diffs, icon trees, FFF search.
 
 | Package | Description |
 | --- | --- |
@@ -63,7 +65,9 @@ Drop-in replacements registered under the **same tool name** as the Pi built-in 
 | [`@xynogen/pix-ask`](packages/pix-ask) | `ask_user` — structured TUI questionnaire (multi-choice, multi-select, previews) |
 | [`@xynogen/pix-todo`](packages/pix-todo) | `todo` — durable execution checklist, survives context compaction |
 
-**Behaviour**
+### Behaviour
+
+How the agent acts — output optimization, permission gating, sub-agents.
 
 | Package | Description |
 | --- | --- |
@@ -77,17 +81,17 @@ Not bundled by `pix-core` — install each only if you want it. These are delibe
 
 | Package | Why it's opt-in |
 | --- | --- |
-| [`@xynogen/pix-9router`](packages/pix-9router) | 9Router LLM provider + `fetch`/`search`/`transcribe` tools — needs a 9Router API key, so only useful if you route through 9Router |
-| [`@xynogen/pix-sudo`](packages/pix-sudo) | `sudo_run` — root execution via a PAM password overlay; a privileged capability you opt into explicitly (blocked in non-interactive mode) |
-| [`@xynogen/pix-ssh`](packages/pix-ssh) | `ssh_run` — run commands on a remote host over SSH (key/password auth + remote `sudo`); a networked, privileged capability you enable deliberately |
-| [`@xynogen/pix-env`](packages/pix-env) | Broker `.env` secrets to tools via `$KEY` references without putting the values in the model's context; opt-in since it wires secret injection |
-| [`@xynogen/pix-toolbox`](packages/pix-toolbox) | `/toolbox` — fuzzy-search picker to enable/disable tools at runtime; a power-user utility, not needed for normal use |
-| [`@xynogen/pix-mcp`](packages/pix-mcp) | Token-efficient MCP gateway — external servers can execute commands or access sensitive services, so configure and enable it explicitly |
-| [`@xynogen/pix-graph`](packages/pix-graph) | `graph` tool — native-TS code knowledge graph (build/query, no Python); TS/JS only, opt-in extra for codebase Q&A |
+| [`@xynogen/pix-9router`](packages/pix-9router) | 9Router LLM provider + `fetch`/`search`/`transcribe` tools — needs a 9Router API key |
+| [`@xynogen/pix-sudo`](packages/pix-sudo) | `sudo_run` — root execution via a PAM password overlay (blocked in non-interactive mode) |
+| [`@xynogen/pix-ssh`](packages/pix-ssh) | `ssh_run` — run commands on a remote host over SSH (key/password auth + remote `sudo`) |
+| [`@xynogen/pix-env`](packages/pix-env) | Broker `.env` secrets to tools via `$KEY` references, keeping the values out of the model's context |
+| [`@xynogen/pix-toolbox`](packages/pix-toolbox) | `/toolbox` — fuzzy-search picker to enable/disable tools at runtime |
+| [`@xynogen/pix-mcp`](packages/pix-mcp) | Token-efficient MCP gateway — external servers can execute commands or reach sensitive services |
+| [`@xynogen/pix-graph`](packages/pix-graph) | `graph` tool — native-TS code knowledge graph (build/query, no Python); TS/JS only |
 
 ### Roadmap — third-party extensions
 
-Upstream Pi community extensions we currently lean on. The future-development goal is to fork or rewrite these as first-class `@xynogen/pix-*` packages so they're maintained and bundled in-house.
+Upstream Pi extensions Pix currently uses. We plan to replace these with maintained `@xynogen/pix-*` packages.
 
 | Package | Description |
 | --- | --- |
@@ -95,19 +99,17 @@ Upstream Pi community extensions we currently lean on. The future-development go
 
 ### Foundation layer
 
-The bottom of the dependency tree. Every feature package above depends on these, so they arrive automatically whenever you install anything else — you rarely install them on purpose. Reach for one directly only when you're building your own extension against it.
-
-`pi install npm:@xynogen/pix-core` resolves to the 25 feature packages, each of which pulls `pix-pretty` and `pix-runtime` (a few also `pix-data`). `pix-pretty` in turn brings four third-party libraries (`chalk`, `cli-highlight`, `@ff-labs/fff-node`, `diff`), and the packages with tool schemas add `typebox`. That's the whole tree. Install a single package like `pix-read` and the same foundation resolves — you just get one tool instead of the distro.
+Auto-installed with any feature package. Install one directly only when building your own extension against it — the `Depends on` column shows the full tree.
 
 | Package | Depends on | Description |
 | --- | --- | --- |
-| [`@xynogen/pix-runtime`](packages/pix-runtime) | — (zero deps) | Base runtime — `pix.json` config, `once()` guard, collapse policy. Everything sits on this. |
+| [`@xynogen/pix-runtime`](packages/pix-runtime) | — (zero deps) | Base runtime used by every feature package — `pix.json` config, `once()` guard, collapse policy |
 | [`@xynogen/pix-pretty`](packages/pix-pretty) | `pix-runtime` + `chalk`, `cli-highlight`, `@ff-labs/fff-node`, `diff` | Rendering lib — syntax highlighting, icons, tree views, diff, FFF, gate-overlay |
 | [`@xynogen/pix-data`](packages/pix-data) | `pix-runtime` | Model data layer (modelgrep catalog + coding score), cached at `~/.cache/pi` |
 
 ## Install
 
-One-shot installer — installs Pi, sets theme/tools, then installs the whole pix distro.
+The installer sets up Pi, configures its theme and tools, and installs Pix.
 
 Straight from GitHub (no clone needed):
 
@@ -115,7 +117,7 @@ Straight from GitHub (no clone needed):
 curl -fsSL https://raw.githubusercontent.com/xynogen/pix-mono/main/scripts/install.sh | sh
 ```
 
-Or from a local clones:
+Or from a local clone:
 
 ```bash
 sh scripts/install.sh   # or: bun run distro:install
@@ -160,7 +162,7 @@ bun run publish:dry      # run the gate, then verify what would be published
 bun run publish:all      # run the gate, then publish every new package version
 ```
 
-The pre-publish gate runs Biome, TypeScript, dependency-policy tests, and a high-severity dependency audit before any npm registry request. A failure preserves the analyzer output and prints a GitHub Actions `::error` annotation plus a `STATIC_ANALYSIS_FAILURE=<json>` marker containing the failed check, command, exit code, and exact reproduction command. This lets humans and CI coding agents identify and rerun the failing stage from the logs.
+Before publishing, the gate runs Biome, TypeScript, dependency-policy tests, and a high-severity dependency audit. On failure it preserves the analyzer output and prints the failed check, exit code, and reproduction command for humans and CI agents.
 
 ## Lineage
 
