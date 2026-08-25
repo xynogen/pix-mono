@@ -49,7 +49,7 @@ You never install a shared library to "get the tools." It works the other way ro
 
 ### Tool suite
 
-Bundled by `pix-core`. Drop-in replacements for the tools Pi exposes to the model (`read`, `write`, `edit`, `find`, `grep`, `ls`, `bash`, `todo`, `ask_user`). Each registers under the **same tool name** as the Pi built-in, so the model calls them transparently — no prompt changes needed. The only difference is the rendered output: syntax highlighting, side-by-side diffs, icon trees, and FFF-accelerated search, all via [`pix-pretty`](packages/pix-pretty). Install `pix-core` and the whole suite is active; the built-ins are shadowed.
+Drop-in replacements registered under the **same tool name** as the Pi built-in (`read`, `write`, …), so they shadow the built-ins transparently — the model calls them with no prompt changes, only the rendered output differs ([`pix-pretty`](packages/pix-pretty): highlighting, diffs, icon trees, FFF search).
 
 | Package | Description |
 | --- | --- |
