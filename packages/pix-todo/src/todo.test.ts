@@ -702,6 +702,71 @@ describe("skip-guard on marking done", () => {
 	});
 });
 
+// ─── Unordered lists (ordered:false) ────────────────────────────────────
+
+describe("unordered lists", () => {
+	test("ordered:false opening a later item does NOT cascade-close earlier ones", async () => {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		await run(host.execute, { action: "set", items: "a\nb\nc", ordered: false });
+		const result = await run(host.execute, { action: "update", id: 3, status: "in_progress" });
+		// Earlier items stay pending — no silent completion.
+		expect(text(result)).toContain("\u25cb 1. a");
+		expect(text(result)).toContain("\u25cb 2. b");
+		expect(text(result)).toContain("\u25d0 3. c");
+	});
+
+	test("ordered:false marking a later item done does NOT warn about earlier ones", async () => {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		await run(host.execute, { action: "set", items: "a\nb\nc", ordered: false });
+		const result = await run(host.execute, { action: "update", id: 3, status: "done" });
+		expect(text(result)).not.toContain("\u26a0");
+	});
+
+	test("defaults to ordered (cascade-close) when ordered omitted", async () => {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		await run(host.execute, { action: "set", items: "a\nb\nc" });
+		const result = await run(host.execute, { action: "update", id: 3, status: "in_progress" });
+		expect(text(result)).toContain("\u25cf 1. a"); // cascade-closed to done
+	});
+
+	test("ordered flag persists and restores", async () => {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		host.appendCalls.length = 0;
+		await run(host.execute, { action: "set", items: "a\nb", ordered: false });
+		const data = host.appendCalls[0]?.data as { ordered?: boolean };
+		expect(data.ordered).toBe(false);
+
+		// Restore into a fresh host and confirm cascade stays disabled.
+		delete (globalThis as { __pixOnce?: WeakMap<object, Set<string>> }).__pixOnce;
+		const host2 = makeHost([
+			{
+				type: "custom",
+				customType: "todo-state",
+				data: {
+					todos: [
+						{ id: 1, text: "a", status: "pending" },
+						{ id: 2, text: "b", status: "pending" },
+					],
+					nextTodoId: 3,
+					ordered: false,
+				},
+			},
+		]);
+		registerTodo(host2.pi);
+		await host2.emit("session_start", {}, { sessionManager: host2.sessionManager });
+		const result = await run(host2.execute, { action: "update", id: 2, status: "in_progress" });
+		expect(text(result)).toContain("\u25cb 1. a"); // NOT cascade-closed
+	});
+});
+
 // ─── Turn-based reminder ────────────────────────────────────────────────────────────
 
 describe("turn-based todo reminder", () => {
@@ -764,29 +829,22 @@ describe("renderTodoLines (colored TUI render)", () => {
 		expect(renderTodoLines([], tagTheme)).toBe("[muted](no todos)[/]");
 	});
 
-	test("tints each glyph by status", () => {
+	test("colors each card cell by status (glyph + body one unit)", () => {
 		const out = renderTodoLines(items, tagTheme);
-		expect(out).toContain("[success]●[/]"); // done
-		expect(out).toContain("[accent]◐[/]"); // in_progress
-		expect(out).toContain("[muted]○[/]"); // pending
-		expect(out).toContain("[error]⊘[/]"); // blocked
+		// Cards are padded cells colored as a whole; assert the tint wraps each card
+		// body (glyph-agnostic — glyph codepoint comes from the icon catalog/mode).
+		expect(out).toMatch(/\[success\][^\n]*alpha/); // done card success
+		expect(out).toMatch(/<b>\[accent\][^\n]*bravo[^\n]*<\/b>/); // in_progress bold+accent
+		expect(out).toMatch(/\[text\][^\n]*charlie/); // pending card white (text)
+		expect(out).toMatch(/\[error\][^\n]*delta/); // blocked card error
 	});
 
-	test("highlights the in-progress row bold + accent", () => {
+	test("renders a header row with one column per status", () => {
 		const out = renderTodoLines(items, tagTheme);
-		expect(out).toContain("<b>[accent]2. bravo[/]</b>");
-	});
-
-	test("dims completed rows and uses text color for active-but-not-running", () => {
-		const out = renderTodoLines(items, tagTheme);
-		expect(out).toContain("[muted]1. alpha[/]"); // done body muted
-		expect(out).toContain("[text]3. charlie[/]"); // pending body text
-	});
-
-	test("shows the done/total count header in blue", () => {
-		const out = renderTodoLines(items, tagTheme);
-		expect(out).toContain("[accent]Todos 1/4 done:[/]");
-		expect(out).not.toContain("[muted]Todos 1/4 done:[/]");
+		expect(out).toContain("To Do (1)");
+		expect(out).toContain("In Progress (1)");
+		expect(out).toContain("Blocked (1)");
+		expect(out).toContain("Done (1)");
 	});
 });
 
@@ -797,11 +855,19 @@ describe("todo card layout", () => {
 		expect(host.renderShell).toBe("self");
 	});
 
-	test("keeps the call row empty so the collapsed card is one line", () => {
+	test("shows the todo <action> title while open, empty once collapsed", () => {
 		const host = makeHost();
 		registerTodo(host.pi);
-		const call = host.renderCall({ action: "list" }, tagTheme, {});
-		expect(call.render(80).join("\n")).toBe("");
+		// Open card: title + action visible.
+		const open = host.renderCall({ action: "set" }, tagTheme, { state: {}, expanded: false });
+		expect(open.render(80).join("\n")).toContain("todo");
+		expect(open.render(80).join("\n")).toContain("set");
+		// Collapsed card: call row hides so the summary row is the only line.
+		const closed = host.renderCall({ action: "set" }, tagTheme, {
+			state: { collapsed: true },
+			expanded: false,
+		});
+		expect(closed.render(80).join("\n")).toBe("");
 	});
 
 	test("expanded mode restores a collapsed checklist", async () => {
@@ -817,9 +883,38 @@ describe("todo card layout", () => {
 			.render(80)
 			.join("\n");
 
-		expect(rendered).toContain("1. alpha");
-		expect(rendered).toContain("[muted]○[/]");
+		expect(rendered).toContain("alpha");
+		expect(rendered).toContain("[text]○ alpha"); // pending card, no id number
 		expect(rendered).not.toContain("[success]✓ [/] [toolTitle]<b>todo</b>[/]");
+	});
+
+	test("opening a new todo card collapses the previously open one", async () => {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		const r1 = await run(host.execute, { action: "set", items: "a" });
+		const r2 = await run(host.execute, { action: "add", items: "b" });
+
+		// Card 1 renders open (not yet collapsed).
+		let invalidated1 = false;
+		const state1 = { collapsed: false } as { collapsed?: boolean };
+		host.render(r1, { expanded: false }, tagTheme, {
+			state: state1,
+			invalidate: () => {
+				invalidated1 = true;
+			},
+		});
+		expect(state1.collapsed).toBe(false);
+
+		// Card 2 renders open → it claims focus and collapses card 1.
+		const state2 = { collapsed: false } as { collapsed?: boolean };
+		host.render(r2, { expanded: false }, tagTheme, {
+			state: state2,
+			invalidate: () => {},
+		});
+		expect(state1.collapsed).toBe(true); // previous card force-collapsed
+		expect(invalidated1).toBe(true); // and re-rendered
+		expect(state2.collapsed).toBe(false); // newest stays open
 	});
 
 	test("failed todo actions render their exact error", async () => {
@@ -882,8 +977,8 @@ describe("renderResult snapshot isolation", () => {
 			})
 			.render(80)
 			.join("\n");
-		expect(rendered).toContain("1. alpha");
-		expect(rendered).toContain("2. bravo");
+		expect(rendered).toContain("alpha");
+		expect(rendered).toContain("bravo");
 		expect(rendered).not.toContain("changed");
 	});
 });

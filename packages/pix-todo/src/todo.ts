@@ -12,7 +12,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { dotJoin, formatCollapsedToolRow } from "@xynogen/pix-pretty/utils";
+import { dotJoin, formatCollapsedToolRow, termW } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
@@ -47,7 +47,7 @@ function todoGlyph(status: TodoStatus): string {
 
 /** Theme color key per status — drives both glyph and (for active) row tint. */
 const TODO_COLOR: Record<TodoStatus, string> = {
-	pending: "muted",
+	pending: "text",
 	in_progress: "accent",
 	done: "success",
 	blocked: "error",
@@ -76,23 +76,78 @@ export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme): stri
 	return formatCollapsedToolRow(theme, "todo", target, meta, status);
 }
 
-/** Colored checklist for the TUI: glyphs tinted by status, active row bold. */
+/** Kanban columns in workflow order: To Do → In Progress → Done → Blocked. */
+const KANBAN_LANES: ReadonlyArray<{ status: TodoStatus; title: string }> = [
+	{ status: "pending", title: "To Do" },
+	{ status: "in_progress", title: "In Progress" },
+	{ status: "done", title: "Done" },
+	{ status: "blocked", title: "Blocked" },
+];
+
+const COL_SEP = " │ "; // vertical separator between columns
+const MIN_COL_WIDTH = 12;
+
+/** Pad plain text to `w` (truncate with … if longer) BEFORE coloring, so ANSI
+ *  codes never throw off column alignment. */
+function cell(text: string, w: number): string {
+	if (text.length > w) return `${text.slice(0, Math.max(0, w - 1))}…`;
+	return text.padEnd(w);
+}
+
+/**
+ * Horizontal kanban board for the TUI: one column per status, cards stacked
+ * under each header, aligned into a table. Each column sizes to its own widest
+ * cell (header or card) so the table stays compact, capped at the even terminal
+ * split so a single long card can't blow out the row (text truncates with …).
+ * ponytail: per-column shrink-to-fit, capped at even split. Upgrade path is a
+ * width-responsive fallback to stacked swimlanes on very narrow terminals
+ * (see pix-sec design doc).
+ */
 export function renderTodoLines(items: TodoItem[], theme: TodoTheme): string {
 	if (!items.length) return theme.fg("muted", "(no todos)");
-	const done = items.filter((t) => t.status === "done").length;
-	const head = theme.fg("accent", `Todos ${done}/${items.length} done:`);
-	const lines = items.map((t) => {
-		const color = TODO_COLOR[t.status];
-		const glyph = theme.fg(color, todoGlyph(t.status));
-		const body = `${t.id}. ${t.text}`;
-		// Highlight the in-flight task so the eye lands on it first.
-		const label =
-			t.status === "in_progress"
-				? theme.bold(theme.fg("accent", body))
-				: theme.fg(t.status === "done" ? "muted" : "text", body);
-		return `${glyph} ${label}`;
+
+	const cols = KANBAN_LANES.map((lane) => {
+		const laneItems = items.filter((t) => t.status === lane.status);
+		return {
+			...lane,
+			items: laneItems,
+			header: `${lane.title} (${laneItems.length})`,
+			cards: laneItems.map((t) => `${todoGlyph(t.status)} ${t.text}`),
+		};
 	});
-	return `${head}\n${lines.join("\n")}`;
+	const gutters = (cols.length - 1) * COL_SEP.length;
+	// Cap: even terminal split — the old fixed width, now an upper bound.
+	const cap = Math.max(MIN_COL_WIDTH, Math.floor((termW() - gutters) / cols.length));
+	// Compact: shrink each column to its widest cell, but never past the cap.
+	const widths = cols.map((c) =>
+		Math.min(cap, Math.max(c.header.length, ...c.cards.map((s) => s.length))),
+	);
+	const rowCount = Math.max(...cols.map((c) => c.items.length));
+	const sep = theme.fg("muted", COL_SEP);
+
+	const headerRow = cols
+		.map((c, i) => theme.fg(TODO_COLOR[c.status], cell(c.header, widths[i] ?? 0)))
+		.join(sep);
+
+	const rows: string[] = [];
+	for (let r = 0; r < rowCount; r++) {
+		const row = cols
+			.map((c, i) => {
+				const w = widths[i] ?? 0;
+				const t = c.items[r];
+				if (!t) return " ".repeat(w);
+				const padded = cell(c.cards[r] ?? "", w);
+				// Card body shares its status color (matches the glyph); the in-flight
+				// card is also bolded so the eye lands on it first.
+				return t.status === "in_progress"
+					? theme.bold(theme.fg("accent", padded))
+					: theme.fg(TODO_COLOR[t.status], padded);
+			})
+			.join(sep);
+		rows.push(row);
+	}
+
+	return [headerRow, ...rows].join("\n");
 }
 
 /**
@@ -121,9 +176,33 @@ export default function registerTodo(pi: ExtensionAPI): void {
 	once(pi, "pix-todo", () => {
 		let todos: TodoItem[] = [];
 		let nextTodoId = 1;
+		// Whether the current list is a sequential run. Ordered lists cascade-close
+		// earlier items and warn on out-of-order completion; unordered lists treat
+		// every item as independent. Default true — plans are usually sequential.
+		let ordered = true;
+
+		// Single-open policy: only the newest todo card stays expanded. When a new
+		// card first renders (its state bag is unseen), collapse the previously
+		// focused card so two boards are never open at once. A card that is itself
+		// already collapsed never steals focus, so the invalidate re-render it
+		// triggers can't ping-pong.
+		let focused: { state: CollapseState; invalidate: () => void } | undefined;
+		function focusCard(state: CollapseState, invalidate: () => void) {
+			if (focused?.state === state) return; // already the focused card
+			const prev = focused;
+			focused = { state, invalidate };
+			if (prev && !prev.state.collapsed) {
+				if (prev.state.timer) {
+					clearTimeout(prev.state.timer);
+					prev.state.timer = undefined;
+				}
+				prev.state.collapsed = true;
+				prev.invalidate();
+			}
+		}
 
 		function persistTodos() {
-			pi.appendEntry("todo-state", { todos, nextTodoId });
+			pi.appendEntry("todo-state", { todos, nextTodoId, ordered });
 		}
 
 		function todoSummary(): string {
@@ -150,6 +229,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				"When you start executing a multi-step plan in BUILD mode, seed the todo list with `todo(action:'set', items: <plan Implementation Phases>)`.",
 				"Mark each item in_progress before working it via `todo(action:'update', id, status)`; opening one auto-closes every earlier item, so just open the next and skipped steps mark done themselves.",
 				"When marking an item done, the tool checks for earlier incomplete items and warns you — resolve each skipped item (mark done or blocked) before moving on.",
+				"If the list is NOT a sequential run (items independent, done in any order), pass `ordered:false` on `set` — that disables the cascade-close and skip warning.",
 				"Call `todo(action:'list')` to recover your place after long runs or context compaction.",
 			],
 			parameters: Type.Object({
@@ -176,11 +256,22 @@ export default function registerTodo(pi: ExtensionAPI): void {
 						description: "For update: replacement text (optional).",
 					}),
 				),
+				ordered: Type.Optional(
+					Type.Boolean({
+						description:
+							"For set: true (default) = sequential run (opening/completing an item cascades to earlier ones and warns on skips); false = independent items done in any order.",
+					}),
+				),
 			}),
-			// The result already owns the checklist and its collapsed `✓ todo …` row.
-			// Keeping the call renderer empty prevents a duplicate standalone header.
-			renderCall() {
-				return new Text("", 0, 0);
+			// Show the `todo <action>` title like other tool calls. Hidden once the
+			// card collapses — the collapsed summary row already carries the title.
+			renderCall(args, theme, context) {
+				const state = context.state as CollapseState;
+				if (state?.collapsed && !context.expanded) return new Text("", 0, 0);
+				const t = theme as TodoTheme;
+				const action = (args as { action?: string })?.action ?? "";
+				const title = t.fg("toolTitle", t.bold("todo"));
+				return new Text(action ? `${title} ${t.fg("muted", action)}` : title, 0, 0);
 			},
 			renderResult(result, options, theme, context) {
 				const details = result.details as TodoResultDetails | undefined;
@@ -198,6 +289,8 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					context.invalidate,
 					options.expanded,
 				);
+				// An open card claims focus, collapsing any earlier open board.
+				if (!collapsed) focusCard(context.state as CollapseState, context.invalidate);
 				const render = collapsed ? renderTodoSummaryLine : renderTodoLines;
 				return new Text(render(details.snapshot, theme as TodoTheme), 0, 0);
 			},
@@ -226,6 +319,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					case "set": {
 						const texts = parseItems(params.items ?? "");
 						if (!texts.length) return fail("set requires non-empty `items`.");
+						ordered = (params.ordered as boolean | undefined) ?? true;
 						nextTodoId = 1;
 						todos = texts.map((text) => ({
 							id: nextTodoId++,
@@ -249,11 +343,12 @@ export default function registerTodo(pi: ExtensionAPI): void {
 						if (!t) return fail(`No todo with id ${params.id}.`);
 						let skipWarning = "";
 						if (params.status) {
-							// Sequential-progress invariant: opening a task means everything
-							// before it is finished. Cascade-close every earlier pending or
-							// in_progress item (ids are sequential) so the model never has to
-							// mark skipped steps done by hand. `blocked` is left untouched.
-							if (params.status === "in_progress")
+							// Sequential-progress invariant (ordered lists only): opening a task
+							// means everything before it is finished. Cascade-close every earlier
+							// pending or in_progress item so the model never has to mark skipped
+							// steps done by hand. `blocked` is left untouched. Unordered lists
+							// treat each item independently — no cascade, no skip warning.
+							if (ordered && params.status === "in_progress")
 								for (const other of todos)
 									if (
 										other.id < t.id &&
@@ -261,7 +356,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 									)
 										other.status = "done";
 
-							if (params.status === "done") skipWarning = buildSkipWarning(todos, t.id);
+							if (ordered && params.status === "done") skipWarning = buildSkipWarning(todos, t.id);
 
 							t.status = params.status;
 						}
@@ -273,6 +368,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					case "clear":
 						todos = [];
 						nextTodoId = 1;
+						ordered = true;
 						persistTodos();
 						return ok("Todos cleared.");
 
@@ -313,7 +409,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 			const entries = ctx.sessionManager.getEntries() as Array<{
 				type: string;
 				customType?: string;
-				data?: { todos?: TodoItem[]; nextTodoId?: number };
+				data?: { todos?: TodoItem[]; nextTodoId?: number; ordered?: boolean };
 			}>;
 			const lastTodo = entries
 				.filter((e) => e.type === "custom" && e.customType === "todo-state")
@@ -321,6 +417,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 			if (Array.isArray(lastTodo?.data?.todos)) {
 				todos = lastTodo.data.todos;
 				nextTodoId = lastTodo.data.nextTodoId ?? todos.reduce((m, t) => Math.max(m, t.id + 1), 1);
+				ordered = lastTodo.data.ordered ?? true;
 			}
 		});
 	});
