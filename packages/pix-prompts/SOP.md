@@ -21,7 +21,7 @@
 | Condition | Do | Not |
 |---|---|---|
 | Symbol def/refs/type/callers | `lsp_navigation` | grep the symbol |
-| `graphify-out/` exists + codebase question | `graphify query` first | open files blind |
+| `.pi/pix-graph/` exists + codebase question | `graph(mode:"query")` first | open files blind |
 | JSON >20 lines entering context | `jq` + `toon` | raw JSON dump |
 | Same pattern across ≥2 files | `ast-grep` | text find/replace |
 | After any code edit | `lsp_diagnostics` | build first |
@@ -54,7 +54,7 @@ Load the file, don't inline. `read_skills()` to discover; else `read` from `<ava
 
 - **Auto** (match → load): clone · command-runner · debug · diff · environment · explain · plan · review · search · subagent · suggest · task · test · tldr · verify
 - **Manual**: audit · bootstrap · brainstorm · commit · finish · handoff · human · notion · readme · runner · standup · ui
-- **Capability** (§2 triggers): ast-grep · lsp-navigation · toon-json · graphify · ask-user · write-ast-grep-rule · write-tree-sitter-rule
+- **Capability** (§2 triggers): ast-grep · lsp-navigation · toon-json · graph · ask-user · write-ast-grep-rule · write-tree-sitter-rule
 
 Improvising what a loaded skill covers = defect.
 

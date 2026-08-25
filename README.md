@@ -134,27 +134,40 @@ bun test           # run all tests
 bun run typecheck  # tsc across all packages
 ```
 
-### Graph analysis
+### Graph — `@xynogen/pix-graph`
 
-The graph analyzer reads `graphify-out/graph.json`, validates inferred call edges against TypeScript bindings, removes invalid hyperedges, repairs recoverable hyperedge IDs, and extracts repeated structural and semantic patterns.
+Native-TS code knowledge graph. No Python, no external service: TS/JS is parsed
+with the TypeScript compiler API into a graph of files and symbols, clustered
+into communities (Louvain), and queried by BFS/DFS traversal. Exposed as a
+model-callable `graph` tool (`mode:"build"` / `mode:"query"`), a CLI, and a library.
+
+```bash
+bun run graph:build                       # extract + cluster + analyze current dir
+bun packages/pix-graph/src/cli.ts query "how does auth work"
+bun packages/pix-graph/src/cli.ts path "run()" "greet()"
+```
+
+`build` writes into `.pi/pix-graph/` (gitignored):
+
+| Output | Description |
+|---|---|
+| `.pi/pix-graph/graph.json` | Full graph (nodes, links, communities) |
+| `.pi/pix-graph/graph.cleaned.json` | Inferred call edges validated against TS bindings; false ones removed |
+| `.pi/pix-graph/GRAPH_REPORT.md` | Communities, god nodes, surprising connections |
+
+The standalone analyzer (validate + clean an existing `graph.json`, e.g. one
+produced by external graphify) is still available:
 
 ```bash
 bun run graph:analyze
 ```
 
-It writes the following files without replacing the original graph:
+It writes `graph.cleaned.json`, `patterns.json`, and `PATTERN_REPORT.md`
+without replacing the original graph.
 
-| Output | Description |
-|---|---|
-| `graphify-out/graph.cleaned.json` | Graph with unreliable inferred calls removed and source paths normalized |
-| `graphify-out/patterns.json` | Machine-readable quality findings and extracted patterns |
-| `graphify-out/PATTERN_REPORT.md` | Human-readable pattern and graph-quality report |
-
-Use the cleaned graph for subsequent queries:
-
-```bash
-graphify query "your question" --graph graphify-out/graph.cleaned.json
-```
+> Scope ceiling: TS/JS only, Louvain clustering. Other languages need a
+> tree-sitter extractor; Leiden refinement is a future pass. For non-code
+> corpora (docs, PDFs, images) use external graphify.
 
 ## Publishing
 

@@ -218,18 +218,28 @@ describe("registerCapabilityNudge", () => {
 describe("graphifyHint", () => {
 	const tmpDir = join(import.meta.dir, ".graphify-hint-test-tmp");
 
-	test("returns undefined when graphify-out/graph.json absent", () => {
+	test("returns undefined when no graph.json present", () => {
 		expect(graphifyHint(tmpDir)).toBeUndefined();
 	});
 
-	test("returns hint string when graphify-out/graph.json exists", () => {
+	test("returns hint for the pix-graph output dir (.pi/pix-graph)", () => {
+		try {
+			mkdirSync(join(tmpDir, ".pi/pix-graph"), { recursive: true });
+			writeFileSync(join(tmpDir, ".pi/pix-graph", "graph.json"), "{}");
+			const hint = graphifyHint(tmpDir);
+			expect(hint).toBeTypeOf("string");
+			expect(hint).toContain(".pi/pix-graph/graph.json");
+			expect(hint).toContain('graph(mode:"query"');
+		} finally {
+			rmSync(tmpDir, { recursive: true, force: true });
+		}
+	});
+
+	test("still detects the legacy graphify-out dir", () => {
 		try {
 			mkdirSync(join(tmpDir, "graphify-out"), { recursive: true });
 			writeFileSync(join(tmpDir, "graphify-out", "graph.json"), "{}");
-			const hint = graphifyHint(tmpDir);
-			expect(hint).toBeTypeOf("string");
-			expect(hint).toContain("graphify");
-			expect(hint).toContain("graphify query");
+			expect(graphifyHint(tmpDir)).toContain("graphify-out/graph.json");
 		} finally {
 			rmSync(tmpDir, { recursive: true, force: true });
 		}

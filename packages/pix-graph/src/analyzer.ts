@@ -113,7 +113,11 @@ function packageFromPath(path: string | null | undefined): string | undefined {
 	return match?.[1];
 }
 
-function packageFromModule(moduleName: string, sourceFile: string, repoRoot: string): string | undefined {
+function packageFromModule(
+	moduleName: string,
+	sourceFile: string,
+	repoRoot: string,
+): string | undefined {
 	const pixPackage = moduleName.match(/^@xynogen\/([^/]+)/)?.[1];
 	if (pixPackage) return pixPackage;
 	if (!moduleName.startsWith(".")) return undefined;
@@ -141,7 +145,11 @@ function bindingName(name: ts.BindingName): string[] {
 	return names;
 }
 
-function findCall(sourceFile: ts.SourceFile, name: string, line: number): ts.CallExpression | undefined {
+function findCall(
+	sourceFile: ts.SourceFile,
+	name: string,
+	line: number,
+): ts.CallExpression | undefined {
 	let match: ts.CallExpression | undefined;
 	function visit(node: ts.Node): void {
 		if (match) return;
@@ -159,12 +167,18 @@ function findCall(sourceFile: ts.SourceFile, name: string, line: number): ts.Cal
 	return match;
 }
 
-function findBinding(sourceFile: ts.SourceFile, call: ts.CallExpression, name: string): Binding | undefined {
+function findBinding(
+	sourceFile: ts.SourceFile,
+	call: ts.CallExpression,
+	name: string,
+): Binding | undefined {
 	for (const statement of sourceFile.statements) {
-		if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+		if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))
+			continue;
 		const clause = statement.importClause;
 		if (!clause) continue;
-		if (clause.name?.text === name) return { kind: "import", module: statement.moduleSpecifier.text };
+		if (clause.name?.text === name)
+			return { kind: "import", module: statement.moduleSpecifier.text };
 		const bindings = clause.namedBindings;
 		if (bindings && ts.isNamespaceImport(bindings) && bindings.name.text === name) {
 			return { kind: "import", module: statement.moduleSpecifier.text };
@@ -205,11 +219,37 @@ function findBinding(sourceFile: ts.SourceFile, call: ts.CallExpression, name: s
 	return local ? { kind: "local" } : undefined;
 }
 
+/**
+ * Parse a source file once and memoize the AST. The call-edge validator hits
+ * the same handful of files thousands of times (once per inferred call edge),
+ * so without this cache the whole clean pass re-parses each file repeatedly
+ * — the dominant cost of a large build. Returns undefined on read failure.
+ */
+function cachedSource(
+	sourceFile: string,
+	repoRoot: string,
+	readSource: (path: string) => string,
+	cache: Map<string, ts.SourceFile | null>,
+): ts.SourceFile | undefined {
+	const hit = cache.get(sourceFile);
+	if (hit !== undefined) return hit ?? undefined;
+	let parsed: ts.SourceFile | null = null;
+	try {
+		const text = readSource(resolve(repoRoot, sourceFile));
+		parsed = ts.createSourceFile(sourceFile, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	} catch {
+		parsed = null;
+	}
+	cache.set(sourceFile, parsed);
+	return parsed ?? undefined;
+}
+
 function callEdgeProblem(
 	edge: GraphLink,
 	nodesById: Map<string, GraphNode>,
 	repoRoot: string,
 	readSource: (path: string) => string,
+	sourceCache: Map<string, ts.SourceFile | null>,
 ): string | undefined {
 	if (edge.relation !== "calls" || edge.confidence !== "INFERRED") return undefined;
 	const sourceNode = nodesById.get(edge.source);
@@ -224,19 +264,16 @@ function callEdgeProblem(
 	const name = targetNode?.label.replace(/^\./, "").replace(/\(\)$/, "");
 	if (!line || !name) return undefined;
 
-	let text: string;
-	try {
-		text = readSource(resolve(repoRoot, sourceFile));
-	} catch {
-		return undefined;
-	}
-	const source = ts.createSourceFile(sourceFile, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const source = cachedSource(sourceFile, repoRoot, readSource, sourceCache);
+	if (!source) return undefined;
 	const call = findCall(source, name, line);
 	if (!call) return undefined;
 	const binding = findBinding(source, call, name);
 	if (!binding) return undefined;
-	if (binding.kind === "parameter") return `callee ${name} is a function parameter, not a cross-file symbol`;
-	if (binding.kind === "local") return `callee ${name} is declared locally, not in ${targetPackage}`;
+	if (binding.kind === "parameter")
+		return `callee ${name} is a function parameter, not a cross-file symbol`;
+	if (binding.kind === "local")
+		return `callee ${name} is declared locally, not in ${targetPackage}`;
 
 	const expectedPackage = binding.module
 		? packageFromModule(binding.module, sourceFile, repoRoot)
@@ -341,10 +378,8 @@ function graphShape(graph: GraphData): { isolatedNodeIds: string[]; connectedCom
 	return { isolatedNodeIds, connectedComponents };
 }
 
-export function analyzeGraph(graph: GraphData, options: AnalyzeGraphOptions = {}): GraphAnalysis {
-	const repoRoot = resolve(options.repoRoot ?? process.cwd());
-	const readSource = options.readSource ?? ((path: string) => readFileSync(path, "utf8"));
-	const cleanedGraph = structuredClone(graph);
+/** Normalize every source_file to a repo-relative POSIX path; return the count changed. */
+function normalizeSourcePaths(cleanedGraph: GraphData, repoRoot: string): number {
 	let normalizedSourcePaths = 0;
 	for (const item of [
 		...cleanedGraph.nodes,
@@ -356,27 +391,59 @@ export function analyzeGraph(graph: GraphData, options: AnalyzeGraphOptions = {}
 		if (normalized !== item.source_file) normalizedSourcePaths += 1;
 		item.source_file = normalized;
 	}
+	return normalizedSourcePaths;
+}
 
-	const nodesById = new Map(cleanedGraph.nodes.map((node) => [node.id, node]));
-	const removedSuspiciousEdges: RemovedSuspiciousEdge[] = [];
-	cleanedGraph.links = cleanedGraph.links.filter((edge) => {
-		const reason = callEdgeProblem(edge, nodesById, repoRoot, readSource);
-		if (!reason) return true;
-		removedSuspiciousEdges.push({
-			source: edge.source,
-			target: edge.target,
-			sourceFile: edge.source_file ?? nodesById.get(edge.source)?.source_file ?? "unknown",
-			...(edge.source_location ? { sourceLocation: edge.source_location } : {}),
-			reason,
-		});
-		return false;
-	});
+/** Mutable partition state shared across chunked passes. */
+interface EdgePartition {
+	kept: GraphLink[];
+	removed: RemovedSuspiciousEdge[];
+	sourceCache: Map<string, ts.SourceFile | null>;
+}
 
+/** Classify edges `[from, to)` into `part.kept` / `part.removed` (synchronous). */
+function partitionEdges(
+	links: GraphLink[],
+	from: number,
+	to: number,
+	nodesById: Map<string, GraphNode>,
+	repoRoot: string,
+	readSource: (path: string) => string,
+	part: EdgePartition,
+): void {
+	for (let i = from; i < to; i++) {
+		const edge = links[i];
+		if (!edge) continue;
+		const reason = callEdgeProblem(edge, nodesById, repoRoot, readSource, part.sourceCache);
+		if (reason) {
+			part.removed.push({
+				source: edge.source,
+				target: edge.target,
+				sourceFile: edge.source_file ?? nodesById.get(edge.source)?.source_file ?? "unknown",
+				...(edge.source_location ? { sourceLocation: edge.source_location } : {}),
+				reason,
+			});
+		} else {
+			part.kept.push(edge);
+		}
+	}
+}
+
+const newPartition = (): EdgePartition => ({
+	kept: [],
+	removed: [],
+	sourceCache: new Map(),
+});
+
+/** Finish the analysis after call edges are filtered (all in-memory, fast). */
+function finishAnalysis(
+	cleanedGraph: GraphData,
+	normalizedSourcePaths: number,
+	removedSuspiciousEdges: RemovedSuspiciousEdge[],
+): GraphAnalysis {
 	const nodeIds = new Set(cleanedGraph.nodes.map((node) => node.id));
 	const hyperedgeIds = new Set(
-		(cleanedGraph.hyperedges ?? []).flatMap((hyperedge) =>
-			hyperedge.id ? [hyperedge.id] : [],
-		),
+		(cleanedGraph.hyperedges ?? []).flatMap((hyperedge) => (hyperedge.id ? [hyperedge.id] : [])),
 	);
 	const invalidHyperedges: InvalidHyperedge[] = [];
 	const repairedHyperedgeIds: Array<{ id: string; label?: string }> = [];
@@ -420,6 +487,74 @@ export function analyzeGraph(graph: GraphData, options: AnalyzeGraphOptions = {}
 	};
 }
 
+/** Shared setup: clone, normalize paths, index nodes. */
+function prepareAnalysis(graph: GraphData, options: AnalyzeGraphOptions) {
+	const repoRoot = resolve(options.repoRoot ?? process.cwd());
+	const readSource = options.readSource ?? ((path: string) => readFileSync(path, "utf8"));
+	const cleanedGraph = structuredClone(graph);
+	const normalizedSourcePaths = normalizeSourcePaths(cleanedGraph, repoRoot);
+	const nodesById = new Map(cleanedGraph.nodes.map((node) => [node.id, node]));
+	return { repoRoot, readSource, cleanedGraph, normalizedSourcePaths, nodesById };
+}
+
+/**
+ * Validate + clean a graph: normalize source paths, drop unreliable inferred
+ * `calls` edges (checked against real TS bindings), repair hyperedges, and
+ * extract repeated structural patterns. Synchronous — used by the CLI and tests.
+ */
+export function analyzeGraph(graph: GraphData, options: AnalyzeGraphOptions = {}): GraphAnalysis {
+	const { repoRoot, readSource, cleanedGraph, normalizedSourcePaths, nodesById } = prepareAnalysis(
+		graph,
+		options,
+	);
+	const part = newPartition();
+	partitionEdges(
+		cleanedGraph.links,
+		0,
+		cleanedGraph.links.length,
+		nodesById,
+		repoRoot,
+		readSource,
+		part,
+	);
+	cleanedGraph.links = part.kept;
+	return finishAnalysis(cleanedGraph, normalizedSourcePaths, part.removed);
+}
+
+const yieldToLoop = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+/**
+ * Async variant of {@link analyzeGraph} that yields to the event loop every
+ * `chunkSize` edges (default 500) so a live progress widget stays responsive
+ * during the call-edge validation — the slowest step of a large analyze pass.
+ * `onProgress` receives (done, total) edge counts; `signal` aborts cooperatively.
+ */
+export async function analyzeGraphProgress(
+	graph: GraphData,
+	options: AnalyzeGraphOptions & {
+		onProgress?: (done: number, total: number) => void;
+		signal?: AbortSignal;
+		chunkSize?: number;
+	} = {},
+): Promise<GraphAnalysis> {
+	const { repoRoot, readSource, cleanedGraph, normalizedSourcePaths, nodesById } = prepareAnalysis(
+		graph,
+		options,
+	);
+	const chunkSize = options.chunkSize ?? 500;
+	const part = newPartition();
+	const total = cleanedGraph.links.length;
+	for (let from = 0; from < total; from += chunkSize) {
+		if (options.signal?.aborted) throw new Error("Operation aborted");
+		const to = Math.min(from + chunkSize, total);
+		partitionEdges(cleanedGraph.links, from, to, nodesById, repoRoot, readSource, part);
+		options.onProgress?.(to, total);
+		await yieldToLoop();
+	}
+	cleanedGraph.links = part.kept;
+	return finishAnalysis(cleanedGraph, normalizedSourcePaths, part.removed);
+}
+
 function codeSpan(labels: string[]): string {
 	return labels.map((label) => `\`${label.split("`").join("\\`")}\``).join(" + ");
 }
@@ -456,7 +591,9 @@ export function renderPatternReport(result: GraphAnalysis): string {
 		`- Isolated nodes: ${quality.isolatedNodeIds.length}`,
 		"",
 		...repeatedSection("Repeated code structures", patterns.repeatedStructures, ["code"]),
-		...repeatedSection("Repeated data and schema structures", patterns.repeatedStructures, ["data"]),
+		...repeatedSection("Repeated data and schema structures", patterns.repeatedStructures, [
+			"data",
+		]),
 		...repeatedSection("Repeated test structures", patterns.repeatedStructures, ["test"]),
 		"## Metadata repetition",
 		"",

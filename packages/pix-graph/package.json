@@ -1,9 +1,17 @@
 {
-	"name": "@xynogen/pix-skills",
-	"version": "0.8.0",
-	"description": "Pi extension — agent skill loader (skill tool + skills bundle)",
+	"name": "@xynogen/pix-graph",
+	"version": "0.1.0",
+	"description": "Pi extension — native TS code knowledge graph (extract, cluster, analyze, query)",
 	"type": "module",
 	"main": "src/index.ts",
+	"bin": {
+		"pix-graph": "src/cli.ts"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./analyzer": "./src/analyzer.ts",
+		"./extension": "./src/extension.ts"
+	},
 	"scripts": {
 		"test": "bun test"
 	},
@@ -15,7 +23,7 @@
 	],
 	"pi": {
 		"extensions": [
-			"src/index.ts"
+			"src/extension.ts"
 		],
 		"skills": [
 			"./skills"
@@ -25,16 +33,18 @@
 		"pi",
 		"pi-package",
 		"pi-extension",
-		"pix"
+		"pix",
+		"knowledge-graph",
+		"code-analysis"
 	],
 	"author": "xynogen",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/xynogen/pix-mono.git",
-		"directory": "packages/pix-skills"
+		"directory": "packages/pix-graph"
 	},
-	"homepage": "https://github.com/xynogen/pix-mono/tree/main/packages/pix-skills#readme",
+	"homepage": "https://github.com/xynogen/pix-mono/tree/main/packages/pix-graph#readme",
 	"bugs": {
 		"url": "https://github.com/xynogen/pix-mono/issues"
 	},
@@ -46,8 +56,9 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-gate": "^0.2.6",
-		"@xynogen/pix-pretty": "^1.11.2",
-		"@xynogen/pix-runtime": "^0.8.0"
+		"@xynogen/pix-pretty": "^1.18.1",
+		"@xynogen/pix-runtime": "^0.8.0",
+		"typebox": "^1.1.38",
+		"typescript": "^5.7.0"
 	}
 }

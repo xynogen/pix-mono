@@ -21,6 +21,7 @@ import registerSkills, {
 	interpolateSkill,
 	readSkillResource,
 	replaceSpan,
+	scanSiblingPackageSkills,
 	type ThemeLike,
 	tokenizeCommand,
 } from "./index.ts";
@@ -48,6 +49,42 @@ describe("bundled TOON skill", () => {
 		expect(skill).toContain("disable-model-invocation: true");
 		expect(skill).toContain("jq '.data'");
 		expect(skill).toContain("toon -d");
+	});
+});
+
+describe("scanSiblingPackageSkills", () => {
+	let scope: string;
+	beforeEach(async () => {
+		scope = await mkdtemp(join(tmpdir(), "pix-scope-"));
+	});
+	afterEach(async () => {
+		await rm(scope, { recursive: true, force: true });
+	});
+
+	it("discovers a sibling package's pi.skills entries", async () => {
+		const pkg = join(scope, "pix-graph");
+		await mkdir(join(pkg, "skills"), { recursive: true });
+		await writeFile(
+			join(pkg, "package.json"),
+			JSON.stringify({ name: "@xynogen/pix-graph", pi: { skills: ["./skills"] } }),
+		);
+		await writeFile(join(pkg, "skills", "graph.md"), "---\nname: graph\n---\nbody");
+
+		const found = scanSiblingPackageSkills(scope);
+		expect(found.map((s) => s.name)).toContain("graph");
+	});
+
+	it("skips pix-skills itself and packages without pi.skills", async () => {
+		await mkdir(join(scope, "pix-skills", "skills"), { recursive: true });
+		await writeFile(join(scope, "pix-skills", "skills", "self.md"), "---\nname: self\n---\n");
+		await mkdir(join(scope, "pix-footer"), { recursive: true });
+		await writeFile(join(scope, "pix-footer", "package.json"), JSON.stringify({ name: "x" }));
+
+		expect(scanSiblingPackageSkills(scope)).toEqual([]);
+	});
+
+	it("returns empty when the scope dir is absent", () => {
+		expect(scanSiblingPackageSkills(join(scope, "nope"))).toEqual([]);
 	});
 });
 

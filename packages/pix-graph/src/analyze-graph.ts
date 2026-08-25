@@ -2,7 +2,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { analyzeGraph, type GraphData, renderPatternReport } from "./graph-analyzer.js";
+import { analyzeGraph, type GraphData, renderPatternReport } from "./analyzer.js";
 
 interface CliOptions {
 	graphPath: string;
@@ -70,10 +70,7 @@ function main(): void {
 		resolve(options.outputDirectory, "patterns.json"),
 		`${JSON.stringify({ quality: result.quality, patterns: result.patterns }, null, 2)}\n`,
 	);
-	writeFileSync(
-		resolve(options.outputDirectory, "PATTERN_REPORT.md"),
-		renderPatternReport(result),
-	);
+	writeFileSync(resolve(options.outputDirectory, "PATTERN_REPORT.md"), renderPatternReport(result));
 	process.stdout.write(
 		`Graph analyzed: ${result.patterns.repeatedStructures.length} repeated structures, ${result.patterns.semanticPatterns.length} semantic patterns, ${result.quality.removedSuspiciousEdges.length} unreliable links removed.\n`,
 	);

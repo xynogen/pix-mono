@@ -1,15 +1,8 @@
-import {
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, test } from "bun:test";
-import { analyzeGraph, type GraphData, renderPatternReport } from "./graph-analyzer.js";
+import { analyzeGraph, type GraphData, renderPatternReport } from "./analyzer.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -28,7 +21,7 @@ function fixtureRoot(): string {
 		join(root, "packages/a/src/main.ts"),
 		[
 			'import { readFile } from "node:fs/promises";',
-			'import { icon } from "@xynogen/b/icon";',
+			`import { icon } from ${'"@xynogen/b/icon"'};`,
 			"export async function load() {",
 			'\tawait readFile("input.txt");',
 			'\ticon("model");',
@@ -201,10 +194,7 @@ describe("graph analyzer", () => {
 			occurrences: 2,
 			labels: ["once()", "once.ts"],
 		});
-		expect(repeated?.sourceFiles).toEqual([
-			"packages/a/src/once.ts",
-			"packages/b/src/once.ts",
-		]);
+		expect(repeated?.sourceFiles).toEqual(["packages/a/src/once.ts", "packages/b/src/once.ts"]);
 
 		const report = renderPatternReport(result);
 		expect(report).toContain("## Repeated code structures");

@@ -30,7 +30,8 @@
 		"publish:all": "bun scripts/publish-all.ts",
 		"publish:dry": "bun scripts/publish-all.ts --dry-run",
 		"static-analysis": "bun scripts/static-analysis.ts",
-		"graph:analyze": "bun scripts/analyze-graph.ts"
+		"graph:build": "bun packages/pix-graph/src/cli.ts build",
+		"graph:analyze": "bun packages/pix-graph/src/analyze-graph.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.16",

@@ -153,7 +153,6 @@ as `/skill:<name>` slash commands.
 | `environment` | Detect OS/distro/kernel/arch/user/CPU before running platform-specific commands |
 | `explain` | Technical deconstruction and logic tracing of existing code |
 | `finish` | Structured branch completion — verify, decide, clean up |
-| `graphify` | Codebase questions via a persistent knowledge graph |
 | `handoff` | Toggle session handoff — write or read+delete `HANDOFF.md` |
 | `human` | Audit and rewrite content to remove AI writing patterns ("AI-isms") |
 | `plan` | Write detailed, bite-sized implementation plans before coding |

@@ -41,14 +41,16 @@ export const CAPABILITY_REMINDER =
 	"Matching skill? Call read_skills() first.";
 
 /**
- * Build the optional graphify hint line.
- * Returns a string if graphify-out/graph.json exists in cwd, else undefined.
+ * Build the optional graph hint line.
+ * Returns a string if a built graph.json exists in cwd (the pix-graph tool writes
+ * `.pi/pix-graph/`, external graphify / older CLI wrote `graphify-out/`), else undefined.
  */
 export function graphifyHint(cwd: string): string | undefined {
-	if (existsSync(join(cwd, "graphify-out", "graph.json"))) {
+	const dir = [".pi/pix-graph", "graphify-out"].find((d) => existsSync(join(cwd, d, "graph.json")));
+	if (dir) {
 		return (
-			"graphify-out/graph.json exists — for codebase questions (how does X work, " +
-			'where is Y, trace Z) run `graphify query "<question>"` before reading files.'
+			`${dir}/graph.json exists — for codebase questions (how does X work, ` +
+			'where is Y, trace Z) call graph(mode:"query", question) before reading files.'
 		);
 	}
 	return undefined;

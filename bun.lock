@@ -17,7 +17,7 @@
     },
     "packages/pix-9router": {
       "name": "@xynogen/pix-9router",
-      "version": "0.3.18",
+      "version": "0.3.19",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -44,7 +44,7 @@
     },
     "packages/pix-bash": {
       "name": "@xynogen/pix-bash",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.13.0",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -56,7 +56,7 @@
     },
     "packages/pix-commands": {
       "name": "@xynogen/pix-commands",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "dependencies": {
         "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.13.0",
@@ -70,7 +70,7 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.5.19",
+      "version": "0.5.23",
       "dependencies": {
         "@xynogen/pix-ask": "^0.2.15",
         "@xynogen/pix-bash": "^0.1.18",
@@ -139,7 +139,7 @@
     },
     "packages/pix-edit": {
       "name": "@xynogen/pix-edit",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -163,7 +163,7 @@
     },
     "packages/pix-find": {
       "name": "@xynogen/pix-find",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -197,9 +197,26 @@
         "@earendil-works/pi-tui": "*",
       },
     },
+    "packages/pix-graph": {
+      "name": "@xynogen/pix-graph",
+      "version": "0.1.0",
+      "bin": {
+        "pix-graph": "src/cli.ts",
+      },
+      "dependencies": {
+        "@xynogen/pix-pretty": "^1.18.1",
+        "@xynogen/pix-runtime": "^0.8.0",
+        "typebox": "^1.1.38",
+        "typescript": "^5.7.0",
+      },
+      "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+      },
+    },
     "packages/pix-grep": {
       "name": "@xynogen/pix-grep",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -214,7 +231,7 @@
     },
     "packages/pix-ls": {
       "name": "@xynogen/pix-ls",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -226,7 +243,7 @@
     },
     "packages/pix-mcp": {
       "name": "@xynogen/pix-mcp",
-      "version": "0.3.2",
+      "version": "0.4.0",
       "bin": {
         "pix-mcp": "cli.ts",
       },
@@ -289,7 +306,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "1.17.2",
+      "version": "1.18.1",
       "dependencies": {
         "@ff-labs/fff-node": "^0.5.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -314,7 +331,7 @@
     },
     "packages/pix-read": {
       "name": "@xynogen/pix-read",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -347,7 +364,7 @@
     },
     "packages/pix-ssh": {
       "name": "@xynogen/pix-ssh",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.16.0",
         "@xynogen/pix-runtime": "^0.6.0",
@@ -360,7 +377,7 @@
     },
     "packages/pix-subagent": {
       "name": "@xynogen/pix-subagent",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.10.0",
@@ -375,7 +392,7 @@
     },
     "packages/pix-sudo": {
       "name": "@xynogen/pix-sudo",
-      "version": "0.3.19",
+      "version": "0.3.20",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -392,7 +409,7 @@
     },
     "packages/pix-todo": {
       "name": "@xynogen/pix-todo",
-      "version": "0.1.27",
+      "version": "0.2.0",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -440,7 +457,7 @@
     },
     "packages/pix-write": {
       "name": "@xynogen/pix-write",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -669,6 +686,8 @@
     "@xynogen/pix-footer": ["@xynogen/pix-footer@workspace:packages/pix-footer"],
 
     "@xynogen/pix-gate": ["@xynogen/pix-gate@workspace:packages/pix-gate"],
+
+    "@xynogen/pix-graph": ["@xynogen/pix-graph@workspace:packages/pix-graph"],
 
     "@xynogen/pix-grep": ["@xynogen/pix-grep@workspace:packages/pix-grep"],
 

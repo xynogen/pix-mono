@@ -99,17 +99,52 @@ function scanSkillsDir(root: string): SkillEntry[] {
 }
 
 /**
- * Discover all skills from bundled skills/ AND ~/.pi/agent/skills/.
- * Bundled skills take precedence on name collision.
+ * Scan sibling `@xynogen/*` packages that declare `pi.skills` in their manifest.
+ * pix-skills lives in the same scope dir (node_modules/@xynogen in an install,
+ * packages/ in dev), so other pix packages can own their own skills (e.g.
+ * pix-graph ships `graph`) and still be found by `read_skills`. Pi's host loads
+ * these via the manifest too; this keeps the agent-facing loader in sync.
+ */
+export function scanSiblingPackageSkills(scope?: string): SkillEntry[] {
+	const scopeDir = scope ?? resolve(skillsRoot(), "..", ".."); // .../@xynogen
+	if (!existsSync(scopeDir)) return [];
+	const out: SkillEntry[] = [];
+	for (const entry of readdirSync(scopeDir, { withFileTypes: true })) {
+		if (!entry.isDirectory() || entry.name === "pix-skills") continue;
+		const pkgDir = join(scopeDir, entry.name);
+		let dirs: string[];
+		try {
+			const manifest = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8"));
+			const skills = manifest?.pi?.skills;
+			if (!Array.isArray(skills)) continue;
+			dirs = skills.filter((s: unknown): s is string => typeof s === "string");
+		} catch {
+			continue;
+		}
+		for (const rel of dirs) out.push(...scanSkillsDir(resolve(pkgDir, rel)));
+	}
+	return out;
+}
+
+/**
+ * Discover all skills from bundled skills/, sibling `@xynogen/*` packages that
+ * declare `pi.skills`, AND ~/.pi/agent/skills/.
+ * Earlier sources win on name collision (bundled > sibling packages > user).
  * Results sorted alphabetically by name.
  */
 function discoverSkills(): SkillEntry[] {
 	const bundled = scanSkillsDir(skillsRoot());
+	const siblings = scanSiblingPackageSkills();
 	const user = scanSkillsDir(userSkillsRoot());
 
-	// Merge: bundled wins on collision
-	const seen = new Set(bundled.map((s) => s.name));
-	const merged = [...bundled, ...user.filter((s) => !seen.has(s.name))];
+	// Merge in precedence order; first occurrence of a name wins.
+	const seen = new Set<string>();
+	const merged: SkillEntry[] = [];
+	for (const skill of [...bundled, ...siblings, ...user]) {
+		if (seen.has(skill.name)) continue;
+		seen.add(skill.name);
+		merged.push(skill);
+	}
 
 	return merged.sort((a, b) => a.name.localeCompare(b.name));
 }

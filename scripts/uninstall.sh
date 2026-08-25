@@ -63,6 +63,7 @@ npm:@xynogen/pix-sudo
 npm:@xynogen/pix-todo
 npm:@xynogen/pix-ask
 npm:@xynogen/pix-toolbox
+npm:@xynogen/pix-graph
 npm:@xynogen/pix-gate
 "
 
