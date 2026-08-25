@@ -19,10 +19,10 @@ same `.pi/pix-graph/graph.json`.
 One tool, two modes:
 
 ```
-graph(mode:"build")                          # build/update the graph for the whole repo
-graph(mode:"build", path:"packages/foo")     # scope the scan to a subtree
-graph(mode:"query", question:"how does auth work")        # BFS — broad neighborhood
-graph(mode:"query", question:"trace build → write", dfs:true)   # DFS — follow one path
+graph(action:"build")                          # build/update the graph for the whole repo
+graph(action:"build", path:"packages/foo")     # scope the scan to a subtree
+graph(action:"query", question:"how does auth work")        # BFS — broad neighborhood
+graph(action:"query", question:"trace build → write", dfs:true)   # DFS — follow one path
 ```
 
 - **build** extracts + clusters and writes `.pi/pix-graph/{graph.json, graph.cleaned.json, GRAPH_REPORT.md}`. A live progress widget streams scan → parse → cluster → analyze → write. Re-run after edits to refresh (this is the "update" path).
@@ -30,15 +30,15 @@ graph(mode:"query", question:"trace build → write", dfs:true)   # DFS — foll
 
 ## When to use it
 
-- Any "how does X work / what calls Y / where is Z / trace the flow" question about the code → `graph(mode:"query", …)` **before** reading files. The graph already maps the call structure.
-- After you change code and expect to query again → `graph(mode:"build")` to refresh.
+- Any "how does X work / what calls Y / where is Z / trace the flow" question about the code → `graph(action:"query", …)` **before** reading files. The graph already maps the call structure.
+- After you change code and expect to query again → `graph(action:"build")` to refresh.
 - `pix-nudge` reminds you automatically when `.pi/pix-graph/graph.json` exists.
 
 ## Fast path — a graph already exists
 
 If `.pi/pix-graph/graph.json` (or a legacy `graphify-out/graph.json`) is present
 and the request is a natural-language question about the codebase, go straight
-to `graph(mode:"query", question)`. Do not rebuild first unless the code changed
+to `graph(action:"query", question)`. Do not rebuild first unless the code changed
 materially since the last build.
 
 ## CLI (outside Pi, or when the tool isn't loaded)
@@ -81,4 +81,4 @@ The `.pi/` directory is gitignored, so the graph never gets committed.
   symbol names and paths. Use concrete identifiers when recall matters.
 - **Code only.** For docs, PDFs, images, or video, use the external
   [graphify](https://github.com/safishamsi/graphify) project instead; its JSON
-  schema is compatible, so a graph built there also answers `graph(mode:"query")`.
+  schema is compatible, so a graph built there also answers `graph(action:"query")`.

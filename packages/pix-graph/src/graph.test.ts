@@ -59,7 +59,7 @@ async function run(params: Record<string, unknown>, cwd: string) {
 describe("graph tool", () => {
 	test("build mode writes the graph and reports counts", async () => {
 		const root = fixture();
-		const res = await run({ mode: "build" }, root);
+		const res = await run({ action: "build" }, root);
 		expect(res.isError).toBeFalsy();
 		const text = res.content.map((c) => c.text).join("");
 		expect(text).toContain("Graph built");
@@ -68,29 +68,29 @@ describe("graph tool", () => {
 
 	test("query mode traverses a built graph", async () => {
 		const root = fixture();
-		await run({ mode: "build" }, root);
-		const res = await run({ mode: "query", question: "greet util" }, root);
+		await run({ action: "build" }, root);
+		const res = await run({ action: "query", question: "greet util" }, root);
 		expect(res.isError).toBeFalsy();
 		expect(res.content.map((c) => c.text).join("")).toContain("greet");
 	});
 
 	test("query without a graph errors with guidance", async () => {
 		const root = fixture();
-		const res = await run({ mode: "query", question: "anything" }, root);
+		const res = await run({ action: "query", question: "anything" }, root);
 		expect(res.isError).toBe(true);
 		expect(res.content.map((c) => c.text).join("")).toContain("build");
 	});
 
 	test("query without a question errors", async () => {
 		const root = fixture();
-		const res = await run({ mode: "query" }, root);
+		const res = await run({ action: "query" }, root);
 		expect(res.isError).toBe(true);
 	});
 
 	test("query returns structured hits for the tree render", async () => {
 		const root = fixture();
-		await run({ mode: "build" }, root);
-		const res = await run({ mode: "query", question: "greet util" }, root);
+		await run({ action: "build" }, root);
+		const res = await run({ action: "query", question: "greet util" }, root);
 		const q = (res.details as { query?: { question: string; traversal: string; hits: unknown[] } })
 			.query;
 		expect(q?.traversal).toBe("bfs");
@@ -101,9 +101,9 @@ describe("graph tool", () => {
 
 	test("stop-words don't drown real seeds (recall)", async () => {
 		const root = fixture();
-		await run({ mode: "build" }, root);
+		await run({ action: "build" }, root);
 		// "how does" is filler; "greet" must still seed the greet node.
-		const res = await run({ mode: "query", question: "how does greet work" }, root);
+		const res = await run({ action: "query", question: "how does greet work" }, root);
 		const hits = (res.details as { query?: { hits: Array<{ label: string }> } }).query?.hits ?? [];
 		expect(hits.some((h) => h.label.includes("greet"))).toBe(true);
 	});

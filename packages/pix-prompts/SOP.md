@@ -21,7 +21,7 @@
 | Condition | Do | Not |
 |---|---|---|
 | Symbol def/refs/type/callers | `lsp_navigation` | grep the symbol |
-| `.pi/pix-graph/` exists + codebase question | `graph(mode:"query")` first | open files blind |
+| `.pi/pix-graph/` exists + codebase question | `graph(action:"query")` first | open files blind |
 | JSON >20 lines entering context | `jq` + `toon` | raw JSON dump |
 | Same pattern across ≥2 files | `ast-grep` | text find/replace |
 | After any code edit | `lsp_diagnostics` | build first |

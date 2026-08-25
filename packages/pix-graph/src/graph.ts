@@ -47,7 +47,7 @@ interface QueryHitRow {
 
 interface GraphResultDetails {
 	_type: "graphResult";
-	mode: "build" | "query";
+	action: "build" | "query";
 	outcome: "success" | "error" | "running";
 	/** Set while a build is in flight, for the progress-bar render. */
 	progress?: BuildProgress;
@@ -152,18 +152,18 @@ export default function registerGraph(pi: ExtensionAPI): void {
 			name: "graph",
 			label: "Graph",
 			description:
-				"Code knowledge graph (TS/JS). mode=build extracts+clusters the codebase into " +
-				`${OUT_DIR}/graph.json (also use to update after edits). mode=query answers a ` +
+				"Code knowledge graph (TS/JS). action=build extracts+clusters the codebase into " +
+				`${OUT_DIR}/graph.json (also use to update after edits). action=query answers a ` +
 				"codebase question by traversing an existing graph — prefer it over grepping for " +
 				'"how does X work", "what calls Y", "trace Z".',
 			promptSnippet:
-				'graph(mode, path?, question?, dfs?) — mode: build|query. build [path=.] (re)builds the graph; query "<question>" traverses it.',
+				'graph(action, path?, question?, dfs?) — action: build|query. build [path=.] (re)builds the graph; query "<question>" traverses it.',
 			promptGuidelines: [
-				`For codebase questions, if ${OUT_DIR}/graph.json exists, call graph(mode:"query", question) before reading files.`,
-				'After changing code, graph(mode:"build") refreshes the graph so later queries stay accurate.',
+				`For codebase questions, if ${OUT_DIR}/graph.json exists, call graph(action:"query", question) before reading files.`,
+				'After changing code, graph(action:"build") refreshes the graph so later queries stay accurate.',
 			],
 			parameters: Type.Object({
-				mode: Type.Enum(["build", "query"] as const, {
+				action: Type.Enum(["build", "query"] as const, {
 					type: "string",
 					description:
 						'"build" (re)builds/updates the graph from source; "query" answers a question from the existing graph.',
@@ -183,9 +183,9 @@ export default function registerGraph(pi: ExtensionAPI): void {
 
 			renderCall(args, theme) {
 				const t = theme as Theme;
-				const a = args as { mode?: string; question?: string; path?: string; dfs?: boolean };
+				const a = args as { action?: string; question?: string; path?: string; dfs?: boolean };
 				const title = t.fg("toolTitle", t.bold("graph"));
-				if (a.mode === "query") {
+				if (a.action === "query") {
 					const trav = a.dfs ? "dfs" : "bfs";
 					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
 					return new Text(`${title} ${t.fg("muted", `query · ${trav}`)} ${q}`, 0, 0);
@@ -207,17 +207,17 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				if (details?.query) {
 					return new Text(renderQuery(details.query, t), 0, 0);
 				}
-				if (details?.mode === "build") {
+				if (details?.action === "build") {
 					return new Text(`${t.fg("success", icon("status.done"))} ${text}`, 0, 0);
 				}
 				return new Text(text, 0, 0);
 			},
 
 			async execute(_id, params, signal, onUpdate) {
-				const mode = params.mode as "build" | "query";
+				const action = params.action as "build" | "query";
 				const details = (outcome: "success" | "error"): GraphResultDetails => ({
 					_type: "graphResult",
-					mode,
+					action,
 					outcome,
 				});
 				const ok = (text: string) => ({
@@ -230,7 +230,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					isError: true,
 				});
 
-				if (mode === "build") {
+				if (action === "build") {
 					const input = (params.path as string | undefined)?.trim() || ".";
 					const startedAt = Date.now();
 					let frame = 0;
@@ -241,7 +241,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 							content: [{ type: "text" as const, text: last.label }],
 							details: {
 								_type: "graphResult",
-								mode,
+								action,
 								outcome: "running",
 								progress: last,
 								spinnerFrame: frame++,
@@ -275,13 +275,13 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					}
 				}
 
-				// mode === "query"
+				// action === "query"
 				const question = (params.question as string | undefined)?.trim();
 				if (!question) return fail('query requires a "question".');
 				const graph = loadGraph(cwd);
 				if (!graph) {
 					return fail(
-						`No graph found. Run graph(mode:"build") first to create ${OUT_DIR}/graph.json.`,
+						`No graph found. Run graph(action:"build") first to create ${OUT_DIR}/graph.json.`,
 					);
 				}
 				const traversal = params.dfs ? "dfs" : "bfs";
@@ -303,7 +303,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					content: [{ type: "text" as const, text }],
 					details: {
 						_type: "graphResult" as const,
-						mode,
+						action,
 						outcome: "success" as const,
 						query: { question, traversal, hits: rows },
 					},

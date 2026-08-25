@@ -50,7 +50,7 @@ export function graphifyHint(cwd: string): string | undefined {
 	if (dir) {
 		return (
 			`${dir}/graph.json exists — for codebase questions (how does X work, ` +
-			'where is Y, trace Z) call graph(mode:"query", question) before reading files.'
+			'where is Y, trace Z) call graph(action:"query", question) before reading files.'
 		);
 	}
 	return undefined;

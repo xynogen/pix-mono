@@ -229,7 +229,7 @@ describe("graphifyHint", () => {
 			const hint = graphifyHint(tmpDir);
 			expect(hint).toBeTypeOf("string");
 			expect(hint).toContain(".pi/pix-graph/graph.json");
-			expect(hint).toContain('graph(mode:"query"');
+			expect(hint).toContain('graph(action:"query"');
 		} finally {
 			rmSync(tmpDir, { recursive: true, force: true });
 		}

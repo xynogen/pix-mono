@@ -139,7 +139,7 @@ bun run typecheck  # tsc across all packages
 Native-TS code knowledge graph. No Python, no external service: TS/JS is parsed
 with the TypeScript compiler API into a graph of files and symbols, clustered
 into communities (Louvain), and queried by BFS/DFS traversal. Exposed as a
-model-callable `graph` tool (`mode:"build"` / `mode:"query"`), a CLI, and a library.
+model-callable `graph` tool (`action:"build"` / `action:"query"`), a CLI, and a library.
 
 ```bash
 bun run graph:build                       # extract + cluster + analyze current dir

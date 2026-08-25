@@ -15,10 +15,10 @@ One tool, two modes:
 
 | Call | Effect |
 |---|---|
-| `graph(mode:"build", path?)` | (Re)build/update the graph from source into `.pi/pix-graph/`. Run again after edits to refresh. |
-| `graph(mode:"query", question, dfs?)` | Answer a codebase question by traversing the existing graph. BFS (default) for broad context, `dfs:true` to trace a path. |
+| `graph(action:"build", path?)` | (Re)build/update the graph from source into `.pi/pix-graph/`. Run again after edits to refresh. |
+| `graph(action:"query", question, dfs?)` | Answer a codebase question by traversing the existing graph. BFS (default) for broad context, `dfs:true` to trace a path. |
 
-`pix-nudge` also drops a one-line reminder to prefer `graph(mode:"query")` over
+`pix-nudge` also drops a one-line reminder to prefer `graph(action:"query")` over
 grepping when `.pi/pix-graph/graph.json` exists (it also detects a legacy
 `graphify-out/graph.json`). Output lives under the gitignored `.pi/` dir.
 
