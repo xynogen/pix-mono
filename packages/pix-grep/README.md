@@ -4,7 +4,12 @@ Pi tool — pattern search in files with FFF acceleration.
 
 ## What it does
 
-Replaces Pi's default `grep` tool with an enhanced version backed by `pix-pretty`. Owns the FFF (frecency-ranked, SIMD-accelerated file index) session lifecycle — initializes the finder on `session_start` and tears it down on `session_shutdown`. Constrained searches (`path` or `glob` set) skip FFF and use the SDK's ripgrep directly to avoid a known FFF 0.5.2 abort on Unicode filenames. Falls back to standard ripgrep if `@ff-labs/fff-node` is not installed. Results are rendered with a match-count header, the matched pattern highlighted, file paths and line numbers, and a dim inline preview. Call labels show the pattern, search path, and glob. When more matches are available than were returned, the result includes a `cursor` id and a `Use cursor="…" to continue` notice for paginating the rest. Depends on `@xynogen/pix-pretty`, installed automatically as a dependency.
+Replaces Pi's default `grep` tool with an enhanced version backed by `pix-pretty`.
+
+- **FFF lifecycle** — owns the frecency-ranked, SIMD-accelerated file index: inits on `session_start`, tears down on `session_shutdown`.
+- **Constrained searches** (`path`/`glob` set) skip FFF and use the SDK's ripgrep directly, avoiding a known FFF 0.5.2 abort on Unicode filenames. Falls back to plain ripgrep if `@ff-labs/fff-node` isn't installed.
+- **Rendering** — match-count header, highlighted pattern, file paths + line numbers, dim inline preview. Call labels show pattern, path, glob.
+- **Pagination** — when more matches exist than returned, the result carries a `cursor` id and a `Use cursor="…" to continue` notice.
 
 ## Auto-collapse
 

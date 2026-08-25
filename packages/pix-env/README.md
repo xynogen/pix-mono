@@ -45,9 +45,17 @@ pix-ssh (set via the unattended toggle in pix-commands):
 - **Normal** — the approval popup is shown per tool call, including a leak
   warning (see below).
 
+## Install
+
+```bash
+pi install npm:@xynogen/pix-env
+```
+
+> Standalone/opt-in — **not** bundled by [`@xynogen/pix-core`](https://www.npmjs.com/package/@xynogen/pix-core). It wires secret injection into tool calls, so you enable it deliberately.
+
 ## Usage
 
-Install the package into Pi. On session start it loads `.env` and `.env.local`
+On session start it loads `.env` and `.env.local`
 from the current directory. The model is told, once:
 
 > Secret env vars available (VALUES HIDDEN)… reference them as `$KEY` or `${KEY}`.

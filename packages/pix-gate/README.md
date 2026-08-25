@@ -4,9 +4,32 @@ Pi extension — permission gate for dangerous bash commands.
 
 ## What it does
 
-Intercepts every `bash` tool call and classifies the command against a set of severity rules before it runs. Two rule sets: **path rules** (block / warn / info) protect the `read` / `write` / `edit` tools from touching private keys, credential files, etc. — `block` is deny-first (15s timeout), `warn` is allow-first (30s), `info` is a blue notify that never blocks. **Command rules** (critical / dangerous / risky) gate `bash` invocations: `critical` (force pushes to main, recursive deletes, `dd` to disks, etc.) is hard-blocked in non-interactive mode and hard-denied via a 15-second auto-deny dialog in TUI mode; `dangerous` commands (including any `sudo` invocation, which is hard-redirected to the `sudo_run` tool — no bypass) show a 30-second auto-deny confirmation dialog; `risky` commands show a 60-second allow-first dialog and silently pass in non-interactive mode. Auto-approve patterns and extra rules can be configured in the `gate` section of `~/.pi/agent/pix.json`. Built-in rules can be turned off entirely by setting `guardrails: "off"` in that section.
+Intercepts every tool call and classifies it against severity rules before it runs. Two rule sets:
 
-While an approval dialog is open, the gate holds the shared **agent-state** coordinator in the `blocked` state (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)). Inside a herdr pane that fires a "needs attention" notification, so an away user is pinged when a command is waiting on approval. Pairs with the unattended modes in pix-commands: with `/afk` on, yellow gates auto-allow and red/root auto-deny, so only genuine stops surface; with `/yolo` on, every tier including red auto-approves (capable models only). Bare `sudo` in bash is always redirected to `sudo_run` regardless of mode.
+**Path rules** — protect `read`/`write`/`edit` from private keys, credential files, etc.
+
+| Tier | Behavior |
+|---|---|
+| `block` | deny-first, 15s timeout |
+| `warn` | allow-first, 30s |
+| `info` | blue notify, never blocks |
+
+**Command rules** — gate `bash` invocations.
+
+| Tier | Examples | Behavior |
+|---|---|---|
+| `critical` | force-push to main, recursive delete, `dd` to disk | hard-block (non-interactive) / 15s auto-deny dialog (TUI) |
+| `dangerous` | any `sudo` (hard-redirected to `sudo_run`, no bypass) | 30s auto-deny confirmation |
+| `risky` | — | 60s allow-first dialog; silently passes non-interactive |
+
+Auto-approve patterns and extra rules go in the `gate` section of `~/.pi/agent/pix.json`; set `guardrails: "off"` to disable built-in rules entirely.
+
+**Away notifications** — while a dialog is open, the gate holds the shared **agent-state** coordinator `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so a herdr pane pings an away user. Pairs with pix-commands unattended modes:
+
+- `/afk` — yellow gates auto-allow, red/root auto-deny, so only genuine stops surface.
+- `/yolo` — every tier including red auto-approves (capable models only).
+
+Bare `sudo` in bash is always redirected to `sudo_run`, regardless of mode.
 
 **Circuit breaker.** A small set of catastrophic, unrecoverable commands — `rm -rf /` or `~`, `dd`/redirect onto a raw disk, `mkfs` on a device, a fork bomb — can never be auto-approved by any mode, including YOLO. They always fall through to the interactive dialog (or a no-UI block). This mirrors Claude Code's `bypassPermissions` floor, which still prompts on root/home wipes.
 

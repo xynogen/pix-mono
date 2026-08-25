@@ -12,8 +12,9 @@ and [LICENSE](LICENSE) for the retained MIT license.
 pi install npm:@xynogen/pix-mcp
 ```
 
-Restart Pi after installation. Pix keeps MCP opt-in because external servers
-may require credentials, execute local commands, or expose sensitive data.
+Restart Pi after installation.
+
+> Standalone/opt-in — **not** bundled by [`@xynogen/pix-core`](https://www.npmjs.com/package/@xynogen/pix-core). External servers may require credentials, execute local commands, or expose sensitive data, so you enable it deliberately.
 
 ## Configure
 

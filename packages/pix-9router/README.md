@@ -17,6 +17,8 @@ Pi coding agent extension — **9Router provider** + **fetch**, **search**, and 
 pi install npm:@xynogen/pix-9router
 ```
 
+> Standalone/opt-in — **not** bundled by [`@xynogen/pix-core`](https://www.npmjs.com/package/@xynogen/pix-core). Needs a 9Router API key, so only useful if you route through 9Router.
+
 ## Environment
 
 | Variable | Required | Default | Description |

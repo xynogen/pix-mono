@@ -7,7 +7,12 @@ Pi tool — `ssh_run`: run a command through a remote host's configured SSH shel
 
 ## What it does
 
-Registers the `ssh_run` tool, which executes a command through the configured SSH shell on a remote machine behind a permission dialog (the shared overlay from `@xynogen/pix-pretty`, the same one pix-sudo uses). Initial and privileged calls require Allow/Deny approval in the UI, with a 60-second auto-deny timeout. Non-privileged calls may be auto-approved during the 15-minute per-host approval window or in YOLO mode when no password is missing; each host-window auto-approval emits a notification. Output is truncated to 50 KB / 2000 lines. In non-interactive (RPC/JSON) mode the tool is blocked immediately.
+Registers the `ssh_run` tool — run a command through the configured SSH shell on a remote machine, behind the same permission dialog pix-sudo uses (shared overlay from `@xynogen/pix-pretty`).
+
+- **Initial + privileged calls** → Allow/Deny approval, 60-second auto-deny timeout.
+- **Non-privileged calls** → may auto-approve during the 15-minute per-host window, or in YOLO mode when no password is missing; each auto-approval emits a notification.
+
+Output is truncated to 50 KB / 2000 lines. Non-interactive (RPC/JSON) mode blocks the tool immediately.
 
 **Parameters:** `host` as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`), `command`, optional `sudo` (run through POSIX `sudo` as root), optional `reason`.
 
@@ -36,6 +41,8 @@ Completed calls collapse after the configured Pix delay into a status row such a
 ```bash
 pi install npm:@xynogen/pix-ssh
 ```
+
+> Standalone/opt-in — **not** bundled by [`@xynogen/pix-core`](https://www.npmjs.com/package/@xynogen/pix-core). Remote execution over SSH is a networked, privileged capability, so you install it deliberately.
 
 ## Full distro
 

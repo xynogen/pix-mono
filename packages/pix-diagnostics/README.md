@@ -4,7 +4,13 @@ Pi extension — lightweight file-touched widget.
 
 ## What it does
 
-Registers a compact widget using the `pi-lens` widget id, overriding the external pi-lens package when both are installed. The widget tracks files touched in the current session via `write` and `edit` tool results and renders a single line showing the up-to-3 most recently-touched file basenames with a `+N more` suffix when more exist, plus a hint to run `/lens-booboo` for full details. The widget does not currently query live LSP diagnostics (that requires a full LSP client) — the file list is the placeholder, intended to be filled by LSP integration in a future version. Widget state is per-session and cleared on `session_shutdown`.
+Registers a compact widget on the `pi-lens` widget id, overriding the external pi-lens package when both are installed.
+
+- Tracks files touched this session via `write`/`edit` tool results.
+- Renders one line: up to 3 most-recently-touched basenames + `+N more`, plus a hint to run `/lens-booboo` for full details.
+- State is per-session, cleared on `session_shutdown`.
+
+> Does **not** yet query live LSP diagnostics (needs a full LSP client) — the file list is a placeholder for future LSP integration.
 
 ## Install
 

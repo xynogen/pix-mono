@@ -70,3 +70,25 @@ a graph built by either tool works with the other's `query`.
 - **Lexical query seeds, no embeddings.** Upgrade path: rank seed nodes with a
   similarity model if recall proves weak.
 - **Code only.** For docs, PDFs, images, or video, use external graphify.
+
+## Install
+
+```bash
+pi install npm:@xynogen/pix-graph
+```
+
+> Standalone/opt-in — **not** bundled by [`@xynogen/pix-core`](https://www.npmjs.com/package/@xynogen/pix-core). Install it directly if you want code-graph Q&A; the one recurring `graph` tool schema is only present when it's installed.
+
+## Full distro
+
+Source: [github.com/xynogen/pix-mono](https://github.com/xynogen/pix-mono)
+
+To install the complete pix suite (all packages + Pi itself):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xynogen/pix-mono/main/scripts/install.sh | sh
+```
+
+## License
+
+MIT

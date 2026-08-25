@@ -8,6 +8,8 @@ Theme pack for Pi Coding Agent. Bundles Pix Dark Themes.
 pi install npm:@xynogen/pix-themes
 ```
 
+> Standalone — **not** bundled by [`@xynogen/pix-core`](https://www.npmjs.com/package/@xynogen/pix-core). The theme pack installs on its own; the one-shot [distro installer](#full-distro) sets a default theme for you.
+
 ## Themes
 
 ```text

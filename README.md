@@ -2,11 +2,21 @@
 
 Monorepo of Pix, a distro of [Pi Coding Agent](https://github.com/badlogic/pi-mono).
 
-> **🎨 Opinionated by design.** This distro reflects a specific terminal aesthetic and workflow. Colors, layout, information density, and visual choices are intentional — not configurable-by-default. Style PRs may be declined; capability PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+## What to install
 
-> **⚠ Expect breaking changes.** This project is under active development. Packages are regularly split, merged, renamed, or removed. The recommended upgrade path is to **uninstall then reinstall** the distro rather than incrementally updating individual packages. When in doubt, run the uninstall script first.
+**Just want the distro?** One package — `pix-core` pulls the rest:
 
-> **🐧 Linux and macOS tested.** This project has been tested on Linux and used successfully on macOS. Some tools are designed around Linux/Unix utilities and may be less efficient on macOS. Windows is **not tested** and may not work correctly.
+```bash
+pi install npm:@xynogen/pix-core
+```
+
+Or use the [one-shot installer](#install) to set up Pi, a theme, and the distro in one go. [Package breakdown](#packages) and [what's opt-in](#standalone-extensions-opt-in) below.
+
+> **🎨 Opinionated** — visual choices are intentional; style PRs may be declined. See [CONTRIBUTING.md](CONTRIBUTING.md).
+>
+> **⚠ Breaking changes** — upgrade via [uninstall + reinstall](#upgrade--clean-reinstall), not incremental updates.
+>
+> **🐧 Linux/macOS** tested; Windows not.
 
 ## Packages
 
@@ -14,16 +24,9 @@ Monorepo of Pix, a distro of [Pi Coding Agent](https://github.com/badlogic/pi-mo
 
 Bundled together by [`@xynogen/pix-core`](packages/pix-core) — a single `pi install npm:@xynogen/pix-core` pulls and activates all of these.
 
-**Libraries**
+You never install a shared library to "get the tools." It works the other way round: you install a feature package (or `pix-core`, which is all of them), and it quietly pulls in the small set of libraries it stands on. Those foundation packages are listed [at the bottom](#foundation-layer) so the parts you actually pick from come first.
 
-Shared dependencies pulled in automatically — install directly only if you need them standalone.
-
-| Package | Description |
-| --- | --- |
-| [`@xynogen/pix-data`](packages/pix-data) | Shared model data layer (modelgrep catalog + coding score), cached at `~/.cache/pi` |
-| [`@xynogen/pix-pretty`](packages/pix-pretty) | Enhanced tool output rendering — syntax highlighting, icons, tree views, FFF, gate-overlay |
-
-**Theme**
+**Theme** — standalone, zero deps
 
 | Package | Description |
 | --- | --- |
@@ -44,14 +47,6 @@ Shared dependencies pulled in automatically — install directly only if you nee
 | [`@xynogen/pix-prompts`](packages/pix-prompts) | System-prompt injection — bundled `AGENT.md` baseline + repo directive files |
 | [`@xynogen/pix-skills`](packages/pix-skills) | `read_skills` discovery and loader — names-only listing, description and full-instruction loading, reference reads, safe bundled resource copies, and on-demand TOON guidance |
 
-**Behaviour**
-
-| Package | Description |
-| --- | --- |
-| [`@xynogen/pix-optimizer`](packages/pix-optimizer) | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/optimizer` overlay) |
-| [`@xynogen/pix-gate`](packages/pix-gate) | Permission gate for dangerous bash + path commands — 4 severity tiers (block/critical/dangerous/risky) + sudo redirect, configurable |
-| [`@xynogen/pix-subagent`](packages/pix-subagent) | Sub-agent spawning — 3 tools (`agent`, `agent_result`, `agent_steer`), live model widget, work-splitting |
-
 ### Tool suite
 
 Bundled by `pix-core`. Drop-in replacements for the tools Pi exposes to the model (`read`, `write`, `edit`, `find`, `grep`, `ls`, `bash`, `todo`, `ask_user`). Each registers under the **same tool name** as the Pi built-in, so the model calls them transparently — no prompt changes needed. The only difference is the rendered output: syntax highlighting, side-by-side diffs, icon trees, and FFF-accelerated search, all via [`pix-pretty`](packages/pix-pretty). Install `pix-core` and the whole suite is active; the built-ins are shadowed.
@@ -68,6 +63,14 @@ Bundled by `pix-core`. Drop-in replacements for the tools Pi exposes to the mode
 | [`@xynogen/pix-ask`](packages/pix-ask) | `ask_user` — structured TUI questionnaire (multi-choice, multi-select, previews) |
 | [`@xynogen/pix-todo`](packages/pix-todo) | `todo` — durable execution checklist, survives context compaction |
 
+**Behaviour**
+
+| Package | Description |
+| --- | --- |
+| [`@xynogen/pix-optimizer`](packages/pix-optimizer) | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/optimizer` overlay) |
+| [`@xynogen/pix-gate`](packages/pix-gate) | Permission gate for dangerous bash + path commands — 4 severity tiers (block/critical/dangerous/risky) + sudo redirect, configurable |
+| [`@xynogen/pix-subagent`](packages/pix-subagent) | Sub-agent spawning — 3 tools (`agent`, `agent_result`, `agent_steer`), live model widget, work-splitting |
+
 ### Standalone extensions (opt-in)
 
 Not bundled by `pix-core` — install each only if you want it. These are deliberately kept out of the default distro because each carries a setup cost or a sensitive capability: a provider API key, root execution, or a manual tool-toggling UI. Install with `pi install npm:@xynogen/<name>`.
@@ -76,8 +79,11 @@ Not bundled by `pix-core` — install each only if you want it. These are delibe
 | --- | --- |
 | [`@xynogen/pix-9router`](packages/pix-9router) | 9Router LLM provider + `fetch`/`search`/`transcribe` tools — needs a 9Router API key, so only useful if you route through 9Router |
 | [`@xynogen/pix-sudo`](packages/pix-sudo) | `sudo_run` — root execution via a PAM password overlay; a privileged capability you opt into explicitly (blocked in non-interactive mode) |
+| [`@xynogen/pix-ssh`](packages/pix-ssh) | `ssh_run` — run commands on a remote host over SSH (key/password auth + remote `sudo`); a networked, privileged capability you enable deliberately |
+| [`@xynogen/pix-env`](packages/pix-env) | Broker `.env` secrets to tools via `$KEY` references without putting the values in the model's context; opt-in since it wires secret injection |
 | [`@xynogen/pix-toolbox`](packages/pix-toolbox) | `/toolbox` — fuzzy-search picker to enable/disable tools at runtime; a power-user utility, not needed for normal use |
 | [`@xynogen/pix-mcp`](packages/pix-mcp) | Token-efficient MCP gateway — external servers can execute commands or access sensitive services, so configure and enable it explicitly |
+| [`@xynogen/pix-graph`](packages/pix-graph) | `graph` tool — native-TS code knowledge graph (build/query, no Python); TS/JS only, opt-in extra for codebase Q&A |
 
 ### Roadmap — third-party extensions
 
@@ -86,6 +92,18 @@ Upstream Pi community extensions we currently lean on. The future-development go
 | Package | Description |
 | --- | --- |
 | [`pi-lens`](https://github.com/apmantza/pi-lens) | Real-time code feedback — LSP navigation/diagnostics, linters, formatters, type-checking, structural (ast-grep) analysis |
+
+### Foundation layer
+
+The bottom of the dependency tree. Every feature package above depends on these, so they arrive automatically whenever you install anything else — you rarely install them on purpose. Reach for one directly only when you're building your own extension against it.
+
+`pi install npm:@xynogen/pix-core` resolves to the 25 feature packages, each of which pulls `pix-pretty` and `pix-runtime` (a few also `pix-data`). `pix-pretty` in turn brings four third-party libraries (`chalk`, `cli-highlight`, `@ff-labs/fff-node`, `diff`), and the packages with tool schemas add `typebox`. That's the whole tree. Install a single package like `pix-read` and the same foundation resolves — you just get one tool instead of the distro.
+
+| Package | Depends on | Description |
+| --- | --- | --- |
+| [`@xynogen/pix-runtime`](packages/pix-runtime) | — (zero deps) | Base runtime — `pix.json` config, `once()` guard, collapse policy. Everything sits on this. |
+| [`@xynogen/pix-pretty`](packages/pix-pretty) | `pix-runtime` + `chalk`, `cli-highlight`, `@ff-labs/fff-node`, `diff` | Rendering lib — syntax highlighting, icons, tree views, diff, FFF, gate-overlay |
+| [`@xynogen/pix-data`](packages/pix-data) | `pix-runtime` | Model data layer (modelgrep catalog + coding score), cached at `~/.cache/pi` |
 
 ## Install
 
@@ -134,41 +152,6 @@ bun test           # run all tests
 bun run typecheck  # tsc across all packages
 ```
 
-### Graph — `@xynogen/pix-graph`
-
-Native-TS code knowledge graph. No Python, no external service: TS/JS is parsed
-with the TypeScript compiler API into a graph of files and symbols, clustered
-into communities (Louvain), and queried by BFS/DFS traversal. Exposed as a
-model-callable `graph` tool (`action:"build"` / `action:"query"`), a CLI, and a library.
-
-```bash
-bun run graph:build                       # extract + cluster + analyze current dir
-bun packages/pix-graph/src/cli.ts query "how does auth work"
-bun packages/pix-graph/src/cli.ts path "run()" "greet()"
-```
-
-`build` writes into `.pi/pix-graph/` (gitignored):
-
-| Output | Description |
-|---|---|
-| `.pi/pix-graph/graph.json` | Full graph (nodes, links, communities) |
-| `.pi/pix-graph/graph.cleaned.json` | Inferred call edges validated against TS bindings; false ones removed |
-| `.pi/pix-graph/GRAPH_REPORT.md` | Communities, god nodes, surprising connections |
-
-The standalone analyzer (validate + clean an existing `graph.json`, e.g. one
-produced by external graphify) is still available:
-
-```bash
-bun run graph:analyze
-```
-
-It writes `graph.cleaned.json`, `patterns.json`, and `PATTERN_REPORT.md`
-without replacing the original graph.
-
-> Scope ceiling: TS/JS only, Louvain clustering. Other languages need a
-> tree-sitter extractor; Leiden refinement is a future pass. For non-code
-> corpora (docs, PDFs, images) use external graphify.
-
 ## Publishing
 
 ```bash
@@ -185,15 +168,15 @@ Several packages here originated as forks or merges of community Pi packages:
 
 | Upstream | Disposition |
 |---|---|
-| [`npm:pi-caveman`](https://www.npmjs.com/package/pi-caveman) | starting point for the `pix-optimizer` caveman-mode rewrite |
-| `npm:pi-rtk-optimizer` | merged into `pix-optimizer` |
-| [`git:github.com/DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail) | ruleset adapted as ponytail mode in `pix-optimizer` |
-| `npm:@heyhuynhgiabuu/pi-pretty` | replaced by `@xynogen/pix-pretty` |
-| `npm:@heyhuynhgiabuu/pi-diff` | superseded (merged into `pix-core`) |
-| `npm:@juicesharp/rpiv-ask-user-question` | rewritten as the `ask-user` skill in `pix-skills` |
-| [`git:github.com/tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) | spawn engine ported into `pix-subagent` |
-| [`git:github.com/nicobailon/pi-subagents`](https://github.com/nicobailon/pi-subagents) | work-splitting design adapted in `pix-subagent` |
-| [`git:github.com/nicobailon/pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter) | v2.11.0 (`82724dc`) adopted as `@xynogen/pix-mcp`; MIT license retained, with bounded on-demand discovery and lazy startup behavior |
+| [`jonjonrankin/pi-caveman`](https://github.com/jonjonrankin/pi-caveman) | starting point for the `pix-optimizer` caveman-mode rewrite |
+| [`MasuRii/pi-rtk-optimizer`](https://github.com/MasuRii/pi-rtk-optimizer) | merged into `pix-optimizer` |
+| [`DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail) | ruleset adapted as ponytail mode in `pix-optimizer` |
+| [`heyhuynhgiabuu/pi-pretty`](https://github.com/heyhuynhgiabuu/pi-pretty) | replaced by `@xynogen/pix-pretty` |
+| [`buddingnewinsights/pi-diff`](https://github.com/buddingnewinsights/pi-diff) | superseded (merged into `pix-core`) |
+| [`juicesharp/rpiv-mono`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-ask-user-question) | rewritten as the `ask-user` skill in `pix-skills` |
+| [`tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) | spawn engine ported into `pix-subagent` |
+| [`nicobailon/pi-subagents`](https://github.com/nicobailon/pi-subagents) | work-splitting design adapted in `pix-subagent` |
+| [`nicobailon/pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter) | v2.11.0 (`82724dc`) adopted as `@xynogen/pix-mcp`; MIT license retained, with bounded on-demand discovery and lazy startup behavior |
 
 Previous standalone repos migrated into this monorepo: `pix-optimizer`, `pix-themes`, `pix-pretty`, `pix-core`, `pix-9router`, `pix-data`.
 
