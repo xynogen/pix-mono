@@ -1,13 +1,15 @@
+import { rm } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-async function clearCache(pi: ExtensionAPI, ctx: ExtensionCommandContext) {
+async function clearCache(_pi: ExtensionAPI, ctx: ExtensionCommandContext) {
 	ctx.ui.notify("Clearing ~/.cache/pi", "info");
-	const result = await pi.exec("/bin/sh", ["-lc", 'rm -rf "$HOME/.cache/pi"'], {
-		timeout: 10_000,
-	});
-	const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
-	if ((result.code ?? 0) !== 0) {
-		ctx.ui.notify(`Cache clear failed. ${output || "No output."}`, "error");
+	try {
+		await rm(join(homedir(), ".cache", "pi"), { recursive: true, force: true });
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		ctx.ui.notify(`Cache clear failed. ${msg}`, "error");
 		return;
 	}
 	ctx.ui.notify("~/.cache/pi cleared. Run /reload to apply changes.", "warning");

@@ -19,11 +19,31 @@
  *   3. createRequire against the extension's own node_modules.
  */
 
-import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	accessSync,
+	constants,
+	existsSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { join, sep } from "node:path";
+import { delimiter, join, sep } from "node:path";
+
+/** Locate `pi` on PATH (a pure-JS `which`), returning its real (symlink-resolved) path. */
+function resolvePiBinary(): string | undefined {
+	for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+		if (!dir) continue;
+		const candidate = join(dir, "pi");
+		try {
+			accessSync(candidate, constants.X_OK);
+			return realpathSync(candidate);
+		} catch {}
+	}
+	return undefined;
+}
 
 // The assignment appears once per build. `\s*=\s*\[` avoids the `.map(...)`
 // references and tolerates both `= [` (pretty) and `=[` (minified) spacing.
@@ -42,16 +62,11 @@ function packageRoots(): string[] {
 		if (r && !roots.includes(r)) roots.push(r);
 	};
 
-	// 1. Resolve via the running `pi` binary → realpath → strip at /dist/.
-	try {
-		const piReal = execSync("realpath $(which pi)", {
-			encoding: "utf8",
-			stdio: ["pipe", "pipe", "pipe"],
-		}).trim();
+	// 1. Resolve via the `pi` binary on PATH → realpath → strip at /dist/.
+	const piReal = resolvePiBinary();
+	if (piReal) {
 		const idx = piReal.indexOf(`${sep}dist${sep}`);
 		if (idx >= 0) pushRoot(piReal.slice(0, idx));
-	} catch {
-		// `pi` not on PATH or `which`/`realpath` unavailable — skip
 	}
 
 	// 2. Well-known global install locations.
