@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-env",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "Pi extension — broker .env secrets to tools via $KEY references with gated injection",
 	"type": "module",
 	"main": "src/index.ts",
