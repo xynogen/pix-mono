@@ -1,9 +1,9 @@
 /**
  * pix-ssh — Pi extension
  *
- * Registers an `ssh_run` tool: run a shell command on a remote host over SSH,
- * optionally as root (remote sudo). One overlay handles confirm + any needed
- * password entry, mirroring pix-sudo.
+ * Registers an `ssh_run` tool: run a command or transfer files/directories over
+ * SSH. Commands may optionally run as root through remote sudo. One overlay
+ * handles confirmation and any needed password entry, mirroring pix-sudo.
  *
  * Auth:
  *   - SSH: key/agent/existing-master first (BatchMode probe). If that fails,
@@ -20,7 +20,7 @@
  *
  * Security notes:
  *   - Passwords never leave JS memory; never written to disk; never in argv.
- *   - Every command still requires explicit per-call confirmation in the UI.
+ *   - File transfers are warning-level and show their overwrite risk in the UI.
  *   - No UI (RPC / JSON mode) = blocked immediately.
  *   - Output truncated to 50 KB / 2000 lines.
  */
@@ -44,6 +44,7 @@ import {
 	sectionRule,
 	termW,
 } from "@xynogen/pix-pretty/utils";
+import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
@@ -62,11 +63,15 @@ import {
 	probeKeyAuth,
 	resolveSshHost,
 	runSsh,
+	runTransfer,
+	type TransferDirection,
+	transferApprovalDecision,
 	truncate,
 } from "./lib.ts";
 
 const PROMPT_TIMEOUT_MS = 60_000;
 const MAX_PASSWORD_ATTEMPTS = 3;
+const SPINNER_INTERVAL_MS = 120;
 
 // In-memory per-host credential cache (session-scoped, never persisted).
 // Key = canonical "user@host:port". Cleared on process exit.
@@ -115,6 +120,78 @@ export interface SshResultDetails {
 	_render?: string;
 }
 
+type SshParams =
+	| {
+			action?: "command";
+			host: string;
+			command: string;
+			sudo?: boolean;
+			reason?: string;
+	  }
+	| {
+			action: "file";
+			host: string;
+			direction: TransferDirection;
+			source: string;
+			destination: string;
+			recursive?: boolean;
+			reason?: string;
+	  };
+
+interface SshOperation {
+	action: "command" | "file";
+	command: string;
+	sudo: boolean;
+	reason?: string;
+	direction?: TransferDirection;
+	source: string;
+	destination: string;
+	recursive: boolean;
+}
+
+function normalizeOperation(params: SshParams): SshOperation {
+	if (params.action === "file") {
+		const source = params.source.trim();
+		const destination = params.destination.trim();
+		return {
+			action: "file",
+			command: `${params.direction} ${source || "(empty source)"} → ${destination || "(empty destination)"}`,
+			sudo: false,
+			reason: params.reason,
+			direction: params.direction,
+			source,
+			destination,
+			recursive: params.recursive === true,
+		};
+	}
+	return {
+		action: "command",
+		command: params.command,
+		sudo: params.sudo === true,
+		reason: params.reason,
+		source: "",
+		destination: "",
+		recursive: false,
+	};
+}
+
+function approvalBody(operation: SshOperation, host: string, port?: number): string[] {
+	const { action, command, destination, direction, reason, recursive, source, sudo } = operation;
+	return [
+		reason?.trim() ? `Intent: ${reason.trim()}` : "No reason provided by AI",
+		`Host: ${host}${port ? ` (port ${port})` : ""}`,
+		...(action === "command"
+			? [`Command: ${sudo ? "sudo " : ""}${command}`]
+			: [
+					`Direction: ${direction === "download" ? "Download" : "Upload"}`,
+					`From: ${source}`,
+					`To: ${destination}`,
+					`Mode: ${recursive ? "Recursive copy" : "Single item"}`,
+					"Warning: existing destination may be overwritten",
+				]),
+	];
+}
+
 function safeOneLine(value: string): string {
 	return value
 		.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
@@ -151,12 +228,15 @@ function updatePresentation(
 	sudo: boolean,
 	reason: string | undefined,
 	outcome: "awaiting-approval" | "running",
+	message?: string,
 ): void {
 	onUpdate?.({
 		content: [
 			{
 				type: "text",
-				text: outcome === "awaiting-approval" ? "Awaiting approval…" : `Running on ${host}…`,
+				text:
+					message ??
+					(outcome === "awaiting-approval" ? "Awaiting approval…" : `Running on ${host}…`),
 			},
 		],
 		details: makeDetails(command, host, sudo, reason, { outcome }),
@@ -218,7 +298,7 @@ export default function (pi: ExtensionAPI): void {
 		name: "ssh_run",
 		label: "Run over SSH",
 		description:
-			"Run a command through the remote host's configured SSH shell, optionally through POSIX sudo. " +
+			"Run a command or transfer files/directories through SSH. Commands may optionally use POSIX sudo. " +
 			"Basic cmd/PowerShell/pwsh commands may work, but Windows shells are best-effort: shell selection, " +
 			"quoting, PowerShell error/stream/encoding semantics, interactive prompts, and Windows " +
 			"administrator/UAC elevation are not supported. Back away and tell the user when correctness " +
@@ -226,40 +306,80 @@ export default function (pi: ExtensionAPI): void {
 			"A configured approval window or YOLO mode may auto-approve non-privileged commands when no password is missing. " +
 			"SSH auth tries key/agent first, then prompts for a login password if needed. " +
 			"Set `sudo: true` to run the command as root on the remote machine (prompts for the " +
-			"remote sudo password). Always provide a clear `reason`.",
-		promptSnippet: "Run a remote SSH command (Windows shells best-effort; POSIX sudo only)",
+			'remote sudo password). For transfer, set `action: "file"`, `direction`, `source`, ' +
+			"`destination`, and optional `recursive`. Transfers may overwrite the destination. Always provide a clear `reason`.",
+		promptSnippet: "Run a remote command or transfer files over SSH",
 		promptGuidelines: [
-			"ssh_run sends commands to the remote host's configured SSH shell. Basic cmd, PowerShell, or " +
+			"ssh_run sends commands or transfers files/directories over SSH. Basic cmd, PowerShell, or " +
 				"pwsh commands may work, but treat Windows shells as best-effort. Back away and tell the user " +
 				"when correctness depends on explicit shell selection, complex quoting, PowerShell error/stream/encoding " +
 				"semantics, interactive prompts, or Windows administrator/UAC elevation. `sudo` covers POSIX sudo " +
-				"only. Provide `host` as `[user@]host[:port]` and always explain the intent in `reason`.",
+				'only. Provide `host` as `[user@]host[:port]`. For file transfer, use `action: "file"`, ' +
+				'`direction: "upload" | "download"`, `source`, `destination`, and optional `recursive`. ' +
+				"Transfers may overwrite the destination and are warning-level: AFK/YOLO auto-approve when " +
+				"no login password is missing. Always explain the intent in `reason`.",
 		],
 
 		renderShell: "self",
 
-		parameters: Type.Object({
-			host: Type.String({
-				description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
-			}),
-			command: Type.String({
-				description: "Command sent to the remote host's configured SSH shell.",
-			}),
-			sudo: Type.Optional(
-				Type.Boolean({
-					description: "Run the command as root on the remote host via sudo. Default false.",
+		parameters: Type.Union([
+			Type.Object({
+				action: Type.Optional(Type.Literal("command")),
+				host: Type.String({
+					description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
 				}),
-			),
-			reason: Type.Optional(
-				Type.String({
-					description: "Short plain-English explanation of intent, shown to the user.",
+				command: Type.String({
+					description: "Command sent to the remote host's configured SSH shell.",
 				}),
-			),
-		}),
+				sudo: Type.Optional(
+					Type.Boolean({
+						description: "Run the command as root on the remote host via sudo. Default false.",
+					}),
+				),
+				reason: Type.Optional(
+					Type.String({
+						description: "Short plain-English explanation of intent, shown to the user.",
+					}),
+				),
+			}),
+			Type.Object({
+				action: Type.Literal("file"),
+				host: Type.String({
+					description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
+				}),
+				direction: Type.Union([Type.Literal("upload"), Type.Literal("download")]),
+				source: Type.String({
+					description: "Source path. Local for upload; remote for download.",
+				}),
+				destination: Type.String({
+					description: "Destination path. Remote for upload; local for download.",
+				}),
+				recursive: Type.Optional(
+					Type.Boolean({ description: "Copy a directory recursively. Default false." }),
+				),
+				reason: Type.Optional(
+					Type.String({
+						description: "Short plain-English explanation of intent, shown to the user.",
+					}),
+				),
+			}),
+		]),
 
 		async execute(_toolCallId, params, sig, onUpdate, ctx) {
-			const { command, reason } = params;
-			const sudo = params.sudo === true;
+			const operation = normalizeOperation(params);
+			const { action, command, destination, direction, reason, recursive, source, sudo } =
+				operation;
+
+			if (action === "file" && (!source || !destination)) {
+				return {
+					content: [{ type: "text", text: "ssh_run failed: source and destination are required" }],
+					details: makeDetails(command, params.host, false, reason, {
+						outcome: "error",
+						errorKind: "execution",
+					}),
+					isError: true,
+				};
+			}
 
 			let spec: HostSpec;
 			try {
@@ -287,7 +407,7 @@ export default function (pi: ExtensionAPI): void {
 
 			const mode = getUnattendedMode(pi.events);
 			const yolo = mode === "yolo";
-			if (mode === "afk") {
+			if (action === "command" && mode === "afk") {
 				return {
 					content: [{ type: "text", text: "ssh_run denied immediately — AFK mode is active." }],
 					details: makeDetails(command, host, sudo, reason, {
@@ -327,12 +447,26 @@ export default function (pi: ExtensionAPI): void {
 				...(needLogin ? (["login"] as const) : []),
 				...(needSudo ? (["sudo"] as const) : []),
 			];
+			const transferDecision =
+				action === "file" ? transferApprovalDecision(mode, needLogin) : "ask";
+			if (transferDecision === "deny") {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "ssh_run file transfer denied — unattended mode cannot enter a missing SSH login password.",
+						},
+					],
+					details: makeDetails(command, host, false, reason, {
+						outcome: "denied",
+						cancellationKind: "denied",
+					}),
+				};
+			}
 
 			const body = [
-				reason?.trim() ? `Intent: ${reason.trim()}` : "No reason provided by AI",
-				`Host: ${host}${spec.port ? ` (port ${spec.port})` : ""}`,
-				`Command: ${sudo ? "sudo " : ""}${command}`,
-				...(keyOk && !creds.loginPassword ? ["(key-based auth — no login password needed)"] : []),
+				...approvalBody(operation, host, spec.port),
+				...(keyOk && !creds.loginPassword ? ["Auth: SSH key (no password)"] : []),
 			];
 
 			const collected: { login?: string; sudo?: string } = {};
@@ -345,29 +479,49 @@ export default function (pi: ExtensionAPI): void {
 			// the confirm overlay entirely (visible notify below). Privileged commands
 			// (sudo:true, or a sudo/su/doas/pkexec token in the command text) are never
 			// auto-approved — they always re-confirm.
-			const privileged = sudo || commandEscalatesPrivilege(command);
+			const privileged = action === "command" && (sudo || commandEscalatesPrivilege(command));
 			const alreadyApproved =
-				!privileged && hostApproved(approvedHosts, key) && promptFor.length === 0;
+				action === "command" &&
+				!privileged &&
+				hostApproved(approvedHosts, key) &&
+				promptFor.length === 0;
 			if (alreadyApproved) {
 				ctx.ui.notify(`🔐 ssh_run auto-approved — ${host} allowed this session`, "warning");
+			} else if (transferDecision === "allow") {
+				ctx.ui.notify(
+					`⚠ ssh_run file transfer auto-approved — ${mode.toUpperCase()} warning policy`,
+					"warning",
+				);
 			}
 
 			const runOverlay = (): Promise<OverlayResult> =>
 				withAgentBlock(pi.events, "ssh_run", "SSH approval required", async () => {
-					if ((yolo || alreadyApproved) && promptFor.length === 0) {
+					if ((transferDecision === "allow" || yolo || alreadyApproved) && promptFor.length === 0) {
 						return { action: "approved", password: "" } as OverlayResult;
 					}
 					// Confirm-only when no password is missing.
 					if (promptFor.length === 0) {
 						return showOverlay(ctx.ui, {
 							mode: "confirm",
-							title: "🔐 SSH COMMAND REQUEST",
+							title:
+								action === "file"
+									? `⚠ SSH ${direction === "download" ? "DOWNLOAD" : "UPLOAD"}`
+									: "🔐 SSH COMMAND REQUEST",
 							body,
-							accent: sudo ? "error" : "accent",
+							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
 							choices: [
-								{ value: "yes", label: "Allow", description: "Run the command" },
-								{ value: "no", label: "Deny", description: "Block the command" },
+								{
+									value: "yes",
+									label: "Allow",
+									description:
+										action === "file" ? "Copy to destination (may overwrite)" : "Run the command",
+								},
+								{
+									value: "no",
+									label: "Deny",
+									description: action === "file" ? "Cancel transfer" : "Block the command",
+								},
 							],
 						});
 					}
@@ -377,9 +531,12 @@ export default function (pi: ExtensionAPI): void {
 						const label = stage === "login" ? "SSH login password" : "Remote sudo password";
 						last = await showOverlay(ctx.ui, {
 							mode: "sudo",
-							title: "🔐 SSH COMMAND REQUEST",
+							title:
+								action === "file"
+									? `⚠ SSH ${direction === "download" ? "DOWNLOAD" : "UPLOAD"}`
+									: "🔐 SSH COMMAND REQUEST",
 							body: [...body, `Enter: ${label}`],
-							accent: sudo ? "error" : "accent",
+							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
 							maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
 							passwordLabel: `${label}:`,
@@ -410,8 +567,9 @@ export default function (pi: ExtensionAPI): void {
 				return r;
 			}
 
-			// Remember this host's approval until the TTL lapses (refreshed each call).
-			approvedHosts.set(key, Date.now() + APPROVAL_TTL_MS);
+			// File transfers remain warning-level: normal mode asks every time,
+			// AFK denies above, and YOLO may approve when no password is missing.
+			if (action === "command") approvedHosts.set(key, Date.now() + APPROVAL_TTL_MS);
 
 			// Persist newly-entered passwords in the session cache.
 			const loginPassword = creds.loginPassword ?? collected.login;
@@ -421,17 +579,47 @@ export default function (pi: ExtensionAPI): void {
 				...(sudoPassword ? { sudoPassword } : {}),
 			});
 
-			updatePresentation(onUpdate, command, host, sudo, reason, "running");
+			let spinnerFrame = 0;
+			const updateTransferPresentation = () => {
+				const verb = direction === "download" ? "Downloading from" : "Uploading to";
+				updatePresentation(
+					onUpdate,
+					command,
+					host,
+					sudo,
+					reason,
+					"running",
+					`${SPINNER[spinnerFrame] ?? ""} ${verb} ${host}…`,
+				);
+			};
+			if (action === "file") updateTransferPresentation();
+			else updatePresentation(onUpdate, command, host, sudo, reason, "running");
+			// ponytail: spinner shows liveness only; SCP has no stable byte-progress API.
+			// Use an SFTP client with byte callbacks if percentage progress is needed.
+			const spinnerTimer =
+				action === "file" && onUpdate
+					? setInterval(() => {
+							spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
+							updateTransferPresentation();
+						}, SPINNER_INTERVAL_MS)
+					: undefined;
 
 			let result: { stdout: string; stderr: string; code: number } | undefined;
 			try {
-				result = await runSsh(spec, command, {
-					controlPath,
-					...(loginPassword ? { loginPassword } : {}),
-					sudo,
-					...(sudo ? { sudoPassword: sudoPassword ?? "" } : {}),
-					...(sig ? { signal: sig } : {}),
-				});
+				result =
+					action === "file"
+						? await runTransfer(spec, direction ?? "upload", source, destination, recursive, {
+								controlPath,
+								...(loginPassword ? { loginPassword } : {}),
+								...(sig ? { signal: sig } : {}),
+							})
+						: await runSsh(spec, command, {
+								controlPath,
+								...(loginPassword ? { loginPassword } : {}),
+								sudo,
+								...(sudo ? { sudoPassword: sudoPassword ?? "" } : {}),
+								...(sig ? { signal: sig } : {}),
+							});
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				return {
@@ -447,6 +635,8 @@ export default function (pi: ExtensionAPI): void {
 					),
 					isError: sig?.aborted !== true,
 				};
+			} finally {
+				if (spinnerTimer) clearInterval(spinnerTimer);
 			}
 
 			if (!result) {
@@ -518,11 +708,7 @@ export default function (pi: ExtensionAPI): void {
 			};
 		},
 
-		renderCall: ((
-			args: { command: string; host: string; sudo?: boolean; reason?: string },
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) => {
+		renderCall: ((args: SshParams, theme: ThemeLike, renderCtx: RenderContextLike) => {
 			resolveBaseBackground(theme);
 			const text = renderCtx.lastComponent ?? new Text("", 0, 0);
 			if (
@@ -532,12 +718,13 @@ export default function (pi: ExtensionAPI): void {
 			)
 				return text;
 
-			const command = safeOneLine(args.command) || "(empty command)";
+			const operation = normalizeOperation(args);
+			const command = safeOneLine(operation.command) || "(empty command)";
 			const host = safeOneLine(args.host);
-			const prefix = args.sudo ? "sudo " : "";
+			const prefix = operation.sudo ? "sudo " : "";
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("ssh"))} ${theme.fg("dim", host)} ${theme.fg("muted", prefix + command)}`,
+					`${theme.fg("toolTitle", theme.bold(operation.action === "file" ? "ssh file" : "ssh"))} ${theme.fg("dim", host)} ${theme.fg("muted", prefix + command)}`,
 				),
 			);
 			return text;

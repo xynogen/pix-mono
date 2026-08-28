@@ -31,6 +31,7 @@ interface Wired {
 function makeUI(
 	onReady: (comp: Wired, finish: (v: unknown) => void) => void,
 	onOptions?: (options: unknown) => void,
+	renderTheme = theme,
 ): OverlayUI {
 	return {
 		custom: async <T>(
@@ -47,7 +48,7 @@ function makeUI(
 			const done = (v: T) => {
 				resolved = v;
 			};
-			const comp = cb({ requestRender: () => {} }, theme, undefined, done);
+			const comp = cb({ requestRender: () => {} }, renderTheme, undefined, done);
 			comp.render(80); // initialise render path
 			onReady(comp, done as (v: unknown) => void);
 			return resolved;
@@ -134,6 +135,47 @@ describe("showOverlay — confirm mode", () => {
 		const joined = captured.join("\n");
 		expect(joined).toContain("MY TITLE");
 		expect(joined).toContain("body-line-x");
+	});
+
+	test("uses semantic colors for transfer details", async () => {
+		const coloredTheme = {
+			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
+			bg: (_color: string, text: string) => text,
+			bold: (text: string) => text,
+		};
+		let captured: string[] = [];
+		await showOverlay(
+			makeUI(
+				(comp) => {
+					captured = comp.render(100);
+					comp.handleInput(ENTER);
+				},
+				undefined,
+				coloredTheme,
+			),
+			{
+				mode: "confirm",
+				title: "SSH FILE TRANSFER",
+				body: [
+					"Intent: Copy a release artifact",
+					"Host: deploy@example.com",
+					"Direction: Download",
+					"From: /srv/releases/app.tar.gz",
+					"To: /tmp/app.tar.gz",
+					"Mode: Single item",
+					"Warning: existing destination may be overwritten",
+					"Auth: SSH key (no password)",
+				],
+				timeoutMs: 0,
+			},
+		);
+		const joined = captured.join("\n");
+		expect(joined).toContain("<dim>Host:</dim> <accent>deploy@example.com</accent>");
+		expect(joined).toContain("<dim>Direction:</dim> <warning>Download</warning>");
+		expect(joined).toContain("<dim>From:</dim> <text>/srv/releases/app.tar.gz</text>");
+		expect(joined).toContain("<dim>To:</dim> <accent>/tmp/app.tar.gz</accent>");
+		expect(joined).toContain("<warning>Warning: existing destination may be overwritten</warning>");
+		expect(joined).toContain("<dim>Auth:</dim> <success>SSH key (no password)</success>");
 	});
 
 	test("wraps a long body command instead of truncating it", async () => {

@@ -178,7 +178,25 @@ function buildSections(opts: {
 	const body = (config.body ?? []).map((line) => {
 		if (line.startsWith("Intent:")) return theme.fg("text", line.slice(7).trimStart());
 		if (line.startsWith("Command:")) return theme.fg("dim", line.slice(8).trimStart());
-		return theme.fg("text", line);
+		if (line.startsWith("Warning:")) return theme.fg("warning", line);
+		if (line.startsWith("(") && line.endsWith(")")) return theme.fg("dim", line);
+
+		const separator = line.indexOf(":");
+		if (separator < 1) return theme.fg("text", line);
+		const label = line.slice(0, separator + 1);
+		const value = line.slice(separator + 1).trimStart();
+		const valueColors: Record<string, string> = {
+			"Host:": "accent",
+			"Direction:": "warning",
+			"From:": "text",
+			"To:": "accent",
+			"Mode:": "muted",
+			"Auth:": "success",
+		};
+		const valueColor = valueColors[label];
+		return valueColor
+			? `${theme.fg("dim", label)} ${theme.fg(valueColor, value)}`
+			: theme.fg("text", line);
 	});
 	const footer = [theme.fg("dim", "─".repeat(inner))];
 

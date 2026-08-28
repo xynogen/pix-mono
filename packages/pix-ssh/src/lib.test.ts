@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+	baseScpArgs,
 	baseSshArgs,
 	commandEscalatesPrivilege,
 	controlPathFor,
@@ -12,7 +13,10 @@ import {
 	parseHost,
 	parseSshConfig,
 	remoteCommand,
+	remoteTransferPath,
 	shellQuote,
+	transferApprovalDecision,
+	transferArgs,
 	truncate,
 } from "./lib.ts";
 
@@ -91,6 +95,53 @@ describe("baseSshArgs", () => {
 		const withPort = baseSshArgs({ host: "h", port: 2222 }, "s");
 		expect(withPort).toContain("-p");
 		expect(withPort).toContain("2222");
+	});
+});
+
+describe("transfer unattended approval", () => {
+	it("treats transfer as warning-level in AFK and YOLO", () => {
+		expect(transferApprovalDecision("off", false)).toBe("ask");
+		expect(transferApprovalDecision("afk", false)).toBe("allow");
+		expect(transferApprovalDecision("yolo", false)).toBe("allow");
+	});
+
+	it("denies unattended transfer when a login password is missing", () => {
+		expect(transferApprovalDecision("afk", true)).toBe("deny");
+		expect(transferApprovalDecision("yolo", true)).toBe("deny");
+	});
+});
+
+describe("SCP transfer arguments", () => {
+	it("builds upload and download endpoints", () => {
+		const spec = { user: "deploy", host: "example.com", port: 2222 };
+		expect(remoteTransferPath(spec, "/srv/app file")).toBe("deploy@example.com:/srv/app file");
+		expect(transferArgs(spec, "upload", "./build", "/srv/app")).toEqual([
+			"./build",
+			"deploy@example.com:/srv/app",
+		]);
+		expect(transferArgs(spec, "download", "/var/log/app.log", "./app.log")).toEqual([
+			"deploy@example.com:/var/log/app.log",
+			"./app.log",
+		]);
+		expect(baseScpArgs(spec, "/tmp/control.sock", true)).toEqual([
+			"-o",
+			"ControlMaster=auto",
+			"-o",
+			"ControlPath=/tmp/control.sock",
+			"-o",
+			"ControlPersist=120",
+			"-o",
+			"ConnectTimeout=10",
+			"-o",
+			"StrictHostKeyChecking=accept-new",
+			"-P",
+			"2222",
+			"-r",
+		]);
+	});
+
+	it("brackets IPv6 hosts for SCP remote-path syntax", () => {
+		expect(remoteTransferPath({ user: "root", host: "::1" }, "/tmp/x")).toBe("root@[::1]:/tmp/x");
 	});
 });
 

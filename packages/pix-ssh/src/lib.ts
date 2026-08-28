@@ -65,6 +65,18 @@ export interface SshResult {
 	code: number;
 }
 
+export type TransferDirection = "upload" | "download";
+export type UnattendedMode = "off" | "afk" | "yolo";
+
+/** Warning-level transfer policy. Password prompts cannot run unattended. */
+export function transferApprovalDecision(
+	mode: UnattendedMode,
+	loginPasswordMissing: boolean,
+): "ask" | "allow" | "deny" {
+	if (mode === "off") return "ask";
+	return loginPasswordMissing ? "deny" : "allow";
+}
+
 // ── Host parsing ─────────────────────────────────────────────────────────────
 
 /** Parse `[user@]host[:port]` into parts. Throws on empty host. */
@@ -158,7 +170,7 @@ export function controlPathFor(spec: HostSpec): string {
 
 /** Base ssh options shared by every invocation: multiplexing + timeouts +
  * non-interactive prompts (BatchMode is toggled by the caller). */
-export function baseSshArgs(spec: HostSpec, controlPath: string): string[] {
+function connectionArgs(spec: HostSpec, controlPath: string, portFlag: "-p" | "-P"): string[] {
 	const args = [
 		"-o",
 		"ControlMaster=auto",
@@ -171,8 +183,34 @@ export function baseSshArgs(spec: HostSpec, controlPath: string): string[] {
 		"-o",
 		"StrictHostKeyChecking=accept-new",
 	];
-	if (spec.port !== undefined) args.push("-p", String(spec.port));
+	if (spec.port !== undefined) args.push(portFlag, String(spec.port));
 	return args;
+}
+
+export function baseSshArgs(spec: HostSpec, controlPath: string): string[] {
+	return connectionArgs(spec, controlPath, "-p");
+}
+
+/** SCP shares SSH connection options but uses uppercase `-P` for its port. */
+export function baseScpArgs(spec: HostSpec, controlPath: string, recursive: boolean): string[] {
+	return [...connectionArgs(spec, controlPath, "-P"), ...(recursive ? ["-r"] : [])];
+}
+
+/** Format SCP's remote endpoint, bracketing IPv6 literals. */
+export function remoteTransferPath(spec: HostSpec, path: string): string {
+	const host = spec.host.includes(":") ? `[${spec.host}]` : spec.host;
+	return `${spec.user ? `${spec.user}@` : ""}${host}:${path}`;
+}
+
+export function transferArgs(
+	spec: HostSpec,
+	direction: TransferDirection,
+	source: string,
+	destination: string,
+): string[] {
+	return direction === "upload"
+		? [source, remoteTransferPath(spec, destination)]
+		: [remoteTransferPath(spec, source), destination];
 }
 
 /** Wrap a command for optional remote sudo. `sudo -S -p ''` reads the sudo
@@ -238,7 +276,7 @@ export function truncate(
 	const kept = lines.slice(0, maxLines);
 	let result = kept.join("\n");
 	if (Buffer.byteLength(result, "utf8") > maxBytes) {
-		result = Buffer.from(result, "utf8").slice(0, maxBytes).toString("utf8");
+		result = Buffer.from(result, "utf8").subarray(0, maxBytes).toString("utf8");
 	}
 	return { text: result, truncated: true };
 }
@@ -308,6 +346,25 @@ export interface RunOptions {
  * in `sshpass -e` (password via env, not argv). When `sudo` is set, the command
  * is wrapped in `sudo -S` and `sudoPassword` is written to the remote stdin.
  */
+export function runTransfer(
+	spec: HostSpec,
+	direction: TransferDirection,
+	source: string,
+	destination: string,
+	recursive: boolean,
+	opts: Pick<RunOptions, "controlPath" | "loginPassword" | "signal">,
+): Promise<SshResult> {
+	const scpArgs = [
+		...baseScpArgs(spec, opts.controlPath, recursive),
+		"--",
+		...transferArgs(spec, direction, source, destination),
+	];
+	const bin = opts.loginPassword ? "sshpass" : "scp";
+	const args = opts.loginPassword ? ["-e", "scp", ...scpArgs] : scpArgs;
+	const env = opts.loginPassword ? { ...process.env, SSHPASS: opts.loginPassword } : process.env;
+	return spawnResult(bin, args, env, opts.signal);
+}
+
 export function runSsh(spec: HostSpec, command: string, opts: RunOptions): Promise<SshResult> {
 	const remote = remoteCommand(command, opts.sudo === true);
 	const sshArgs = [...baseSshArgs(spec, opts.controlPath), hostTarget(spec), remote];
@@ -321,30 +378,36 @@ export function runSsh(spec: HostSpec, command: string, opts: RunOptions): Promi
 		env = { ...process.env, SSHPASS: opts.loginPassword };
 	}
 
+	// Remote sudo reads its password from stdin (first line); anything else
+	// closes stdin so the remote command sees EOF.
+	const stdin = opts.sudo && opts.sudoPassword !== undefined ? `${opts.sudoPassword}\n` : undefined;
+	return spawnResult(bin, args, env, opts.signal, opts.sudo ? filterSudoPrompt : undefined, stdin);
+}
+
+function spawnResult(
+	bin: string,
+	args: string[],
+	env: NodeJS.ProcessEnv,
+	sig?: AbortSignal,
+	filterStderr?: (value: string) => string,
+	stdin?: string,
+): Promise<SshResult> {
 	return new Promise((resolve, reject) => {
 		const proc = spawn(bin, args, { stdio: ["pipe", "pipe", "pipe"], env });
 		let stdout = "";
 		let stderr = "";
-
 		proc.stdout.on("data", (c: Buffer) => {
 			stdout += c.toString();
 		});
 		proc.stderr.on("data", (c: Buffer) => {
-			const filtered = opts.sudo ? filterSudoPrompt(c.toString()) : c.toString();
-			if (filtered) stderr += filtered;
+			const value = filterStderr ? filterStderr(c.toString()) : c.toString();
+			if (value) stderr += value;
 		});
-
 		proc.on("error", reject);
 		proc.on("close", (code) => resolve({ stdout, stderr, code: code ?? 1 }));
-
-		// Remote sudo reads its password from stdin (first line); anything else
-		// closes stdin so the remote command sees EOF.
-		if (opts.sudo && opts.sudoPassword !== undefined) {
-			proc.stdin.write(`${opts.sudoPassword}\n`);
-		}
+		if (stdin) proc.stdin.write(stdin);
 		proc.stdin.end();
-
-		signal(opts.signal, proc, reject);
+		signal(sig, proc, reject);
 	});
 }
 
