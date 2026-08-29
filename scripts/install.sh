@@ -13,6 +13,25 @@
 # Prerequisites: Bun (https://bun.sh).
 set -eu
 
+# Keep logs readable in redirected output and honor the NO_COLOR convention.
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+	blue='\033[0;34m'
+	green='\033[0;32m'
+	yellow='\033[0;33m'
+	red='\033[0;31m'
+	bold='\033[1m'
+	dim='\033[2m'
+	reset='\033[0m'
+else
+	blue=''
+	green=''
+	yellow=''
+	red=''
+	bold=''
+	dim=''
+	reset=''
+fi
+
 # The distro installs as two modules:
 #
 #   CORE_PACKAGE       — pix-core, the meta/aggregator extension. Its
@@ -71,10 +90,12 @@ npm:@agnishc/edb-context-viewer|Context viewer — inspect the system prompt and
 "
 
 # --- minimal logging helpers (no external lib dependency) ------------------
-info() { printf '\033[0;34m›\033[0m %s\n' "$*"; }
-success() { printf '\033[0;32m✓\033[0m %s\n' "$*"; }
-warn() { printf '\033[0;33m!\033[0m %s\n' "$*" >&2; }
-error() { printf '\033[0;31m✖\033[0m %s\n' "$*" >&2; }
+info() { printf '%b›%b %s\n' "$blue" "$reset" "$*"; }
+success() { printf '%b✓%b %s\n' "$green" "$reset" "$*"; }
+warn() { printf '%b!%b %s\n' "$yellow" "$reset" "$*" >&2; }
+error() { printf '%b✖%b %s\n' "$red" "$reset" "$*" >&2; }
+section() { printf '\n%b%s%b\n' "$bold" "$*" "$reset"; }
+show_output() { printf '%s\n' "$1" | sed 's/^/  /' >&2; }
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
@@ -100,8 +121,10 @@ ask_yes_no() {
 		return 1
 	fi
 
-	printf '\033[0;34m›\033[0m %s\n' "$reason"
-	printf '\033[0;34m›\033[0m %s [y/N] ' "$question"
+	label=${question#Install }
+	label=${label%?}
+	printf '\n%b%s%b\n%b%s%b\n%b› Install? [y/N]%b ' \
+		"$bold" "$label" "$reset" "$dim" "$reason" "$reset" "$blue" "$reset"
 	if [ "$tty_in" = tty ]; then
 		read -r answer </dev/tty || answer=""
 	else
@@ -114,7 +137,8 @@ ask_yes_no() {
 }
 
 # --- 1. install / update Pi -------------------------------------------------
-info "Setting up Pi Coding Agent..."
+printf '%bPix installer%b\n' "$bold" "$reset"
+section "1/5  Pi Coding Agent"
 
 if command_exists bun; then
 	info "Installing @earendil-works/pi-coding-agent globally (bun)..."
@@ -152,15 +176,17 @@ fi
 # a fresh install and an already-present package).
 install_pi_pkg() {
 	spec="$1"
-	info "Installing pi pkg: $spec"
-	out=$(pi install "$spec" 2>&1) || true
-	if printf '%s' "$out" | grep -qiF 'installed'; then
-		success "Pi pkg installed: $spec"
+	label=${spec#npm:}
+	info "Installing $label..."
+	status=0
+	out=$(pi install "$spec" 2>&1) || status=$?
+	if [ "$status" -eq 0 ] && printf '%s' "$out" | grep -qiF 'installed'; then
+		success "$label"
 		return 0
-	else
-		error "Failed to install pi pkg: $spec"
-		return 1
 	fi
+	error "Could not install $label."
+	[ -n "$out" ] && show_output "$out"
+	return 1
 }
 
 # Parse a "<spec>|<reason>" entry.
@@ -169,13 +195,12 @@ entry_reason() { printf '%s' "${1#*|}"; }
 
 # pix-core and pix-themes both install into the same node_modules tree —
 # `pi install` runs npm under the hood, so they must run sequentially.
-info "Installing Pix core + theme modules..."
+section "2/5  Pix core + themes"
 install_pi_pkg "$CORE_PACKAGE"
 install_pi_pkg "$THEME_PACKAGE"
 
 # Recommended community packages — installed unless declined.
-printf '\n'
-printf '\033[0;34m›\033[0m \033[1mRecommended community packages\033[0m (enhances Pi with LSP capabilities):\n'
+section "3/5  Recommended code intelligence"
 OLD_IFS=$IFS
 IFS='
 '
@@ -195,8 +220,7 @@ done
 IFS=$OLD_IFS
 
 # Opt-in pix extensions — each carries a setup cost or sensitive capability.
-printf '\n'
-printf '\033[0;34m›\033[0m \033[1mOptional Pix extensions\033[0m (need extra setup or grant sensitive capabilities):\n'
+section "4/5  Optional Pix extensions"
 OLD_IFS=$IFS
 IFS='
 '
@@ -216,8 +240,7 @@ done
 IFS=$OLD_IFS
 
 # Opt-in community extensions — third-party packages.
-printf '\n'
-printf '\033[0;34m›\033[0m \033[1mOptional community extensions\033[0m (third-party packages, not part of pix):\n'
+section "5/5  Optional community extensions"
 OLD_IFS=$IFS
 IFS='
 '
@@ -241,6 +264,6 @@ mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/pi/fff"
 # --- 4. done ----------------------------------------------------------------
 # Note: the built-in /model command is removed by pix-core at extension load
 # (self-healing across Pi upgrades) — no install-time patch needed here.
-info "Authentication Setup:"
-warn "Run 'pi' then '/login' to use a subscription (Claude/ChatGPT/Copilot)."
-success "pix-mono setup complete!"
+section "Setup complete"
+success "Pix is installed."
+info "Next: run 'pi'. Use '/login' to connect Claude, ChatGPT, or Copilot."

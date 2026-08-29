@@ -11,6 +11,23 @@
 #   sh scripts/uninstall.sh   # or: bun run distro:uninstall
 set -eu
 
+# Keep logs readable in redirected output and honor the NO_COLOR convention.
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+	blue='\033[0;34m'
+	green='\033[0;32m'
+	yellow='\033[0;33m'
+	red='\033[0;31m'
+	bold='\033[1m'
+	reset='\033[0m'
+else
+	blue=''
+	green=''
+	yellow=''
+	red=''
+	bold=''
+	reset=''
+fi
+
 # NOTE: this list is intentionally NOT symmetric with install.sh.
 #
 # install.sh installs only `pix-core` (npm pulls the member tree; the
@@ -67,10 +84,14 @@ npm:@xynogen/pix-graph
 npm:@xynogen/pix-gate
 "
 
-info() { printf '\033[0;34m›\033[0m %s\n' "$*"; }
-success() { printf '\033[0;32m✓\033[0m %s\n' "$*"; }
-warn() { printf '\033[0;33m!\033[0m %s\n' "$*" >&2; }
-error() { printf '\033[0;31m✖\033[0m %s\n' "$*" >&2; }
+info() { printf '%b›%b %s\n' "$blue" "$reset" "$*"; }
+success() { printf '%b✓%b %s\n' "$green" "$reset" "$*"; }
+warn() { printf '%b!%b %s\n' "$yellow" "$reset" "$*" >&2; }
+error() { printf '%b✖%b %s\n' "$red" "$reset" "$*" >&2; }
+section() { printf '\n%b%s%b\n' "$bold" "$*" "$reset"; }
+show_output() { printf '%s\n' "$1" | sed 's/^/  /' >&2; }
+
+printf '%bPix uninstaller%b\n' "$bold" "$reset"
 
 if ! command -v pi >/dev/null 2>&1; then
 	error "'pi' not found on PATH — nothing to uninstall."
@@ -135,30 +156,49 @@ restore_builtin_model_command() {
 	fi
 }
 
-# Snapshot installed packages once, then skip any not in the list.
+# Pi lists packages explicitly registered in settings. Dependencies such as
+# pix-write are removed with pix-core and must not be removed as standalone
+# packages unless they also appear here from an older or manual install.
 INSTALLED=$(pi list 2>&1)
+removed=0
 
 remove_pi_pkg() {
 	spec="$1"
-	if ! printf '%s' "$INSTALLED" | grep -qF "$spec"; then
-		info "Not installed, skipping: $spec"
+	label=${spec#npm:}
+	if ! printf '%s\n' "$INSTALLED" | grep -qF "$spec"; then
 		return 0
 	fi
-	info "Removing pi pkg: $spec"
-	out=$(pi remove "$spec" 2>&1) || true
-	if printf '%s' "$out" | grep -qiF 'removed'; then
-		success "Removed: $spec"
-	else
-		warn "Could not confirm removal of: $spec"
+
+	info "Removing $label..."
+	status=0
+	out=$(pi remove "$spec" 2>&1) || status=$?
+	if [ "$status" -eq 0 ]; then
+		success "$label"
+		removed=$((removed + 1))
+		return 0
 	fi
+
+	warn "Could not remove $label."
+	[ -n "$out" ] && show_output "$out"
 }
 
-# Remove all packages sequentially to avoid npm lock conflicts.
-info "Uninstalling Pix core + extension modules..."
+section "Removing Pix packages"
 for spec in $CORE_PACKAGES $EXTENSION_PACKAGES; do
 	remove_pi_pkg "$spec"
 done
 
 restore_builtin_model_command
 
-success "pix-mono uninstalled. Restart pi to apply."
+# Final state, not command wording, decides whether uninstall succeeded.
+REMAINING=$(pi list 2>&1)
+remaining_pix=$(printf '%s\n' "$REMAINING" | grep 'npm:@xynogen/pix-' || true)
+remaining_count=$(printf '%s\n' "$remaining_pix" | grep -c 'npm:@xynogen/pix-' || true)
+
+section "Summary"
+info "Removed: $removed · remaining: $remaining_count"
+if [ -n "$remaining_pix" ]; then
+	error "Uninstall incomplete. Pix packages still registered:"
+	show_output "$remaining_pix"
+	exit 1
+fi
+success "No Pix packages remain. Restart pi to apply."
