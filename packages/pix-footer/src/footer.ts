@@ -33,7 +33,7 @@ type Theme = {
 const THINKING_LEVELS = new Set<string>(["off", "minimal", "low", "medium", "high", "xhigh"]);
 
 export function renderThinkingLevel(theme: Theme, level: string, text: string): string {
-	if (!THINKING_LEVELS.has(level)) return theme.fg("muted", text);
+	if (!THINKING_LEVELS.has(level)) return theme.fg("dim", text);
 	return theme.getThinkingBorderColor(level as ThinkingLevel)(text);
 }
 
@@ -139,10 +139,10 @@ function computeSessionTotals(entries: Iterable<unknown>): SessionTotals {
 }
 
 /** Tokens block (in/out + cache/cost). Always returns a string; caller decides visibility. */
-function renderTokens(totals: SessionTotals, theme: Theme, dim = false): string {
+function renderTokens(totals: SessionTotals, theme: Theme, faded = false): string {
 	let s = `${icon("net.in")} ${fmtTokenCount(totals.input)} ${icon("net.out")} ${fmtTokenCount(totals.output)}`;
 	if (totals.cost > 0) s += ` $${totals.cost.toFixed(3)}`;
-	return theme.fg(dim ? "dim" : "muted", s);
+	return theme.fg(faded ? "muted" : "dim", s);
 }
 
 /** Context usage block: "used/total (pct%)". Always shown when available. */
@@ -170,7 +170,7 @@ function renderBranch(
 ): { branchSeg: string; markersSeg: string } {
 	if (!branch) return { branchSeg: "", markersSeg: "" };
 	const dirty = gs?.dirty ?? false;
-	const branchSeg = ` ${theme.fg("muted", branch) + (dirty ? theme.fg("error", "*") : "")}`;
+	const branchSeg = ` ${theme.fg("dim", branch) + (dirty ? theme.fg("error", "*") : "")}`;
 	const markers: string[] = [];
 	if (gs) {
 		if (gs.staged > 0) markers.push(theme.fg("success", `+${gs.staged}`));
@@ -240,17 +240,17 @@ export function compactStatus(key: string, value: string, theme: Theme): string 
 					`${icon("lsp")}  ${activeCount}${failedCount > 0 ? ` !${failedCount}` : ""}`,
 				);
 			if (failedCount > 0) return theme.fg("error", `${icon("lsp")}  !${failedCount}`);
-			if (/LSP Inactive/.test(raw)) return theme.fg("dim", `${icon("lsp")}  off`);
+			if (/LSP Inactive/.test(raw)) return theme.fg("muted", `${icon("lsp")}  off`);
 			return value;
 		}
 		case "mcp": {
 			const m = raw.match(/(\d+)\/(\d+)\s+servers/);
-			if (m) return theme.fg("muted", `${icon("mcp")} ${m[1]}/${m[2]}`);
+			if (m) return theme.fg("dim", `${icon("mcp")} ${m[1]}/${m[2]}`);
 			return value;
 		}
 		case "caveman": {
 			const m = raw.match(/caveman level:\s*(\S+)/);
-			if (m) return theme.fg("muted", `🪨 ${m[1]}`);
+			if (m) return theme.fg("dim", `🪨 ${m[1]}`);
 			return value;
 		}
 		default:
@@ -347,6 +347,7 @@ export default function (pi: ExtensionAPI) {
 			id: string;
 			usage?: { output?: number };
 		};
+		// SAFETY: Assistant messages expose stable runtime id/usage fields missing from published types.
 		const msg = event.message as unknown as RuntimeMsg;
 		activeStreams.set(msg.id, {
 			start: Date.now(),
@@ -367,6 +368,7 @@ export default function (pi: ExtensionAPI) {
 			id: string;
 			usage?: { output?: number };
 		};
+		// SAFETY: Assistant messages expose stable runtime id/usage fields missing from published types.
 		const msg = event.message as unknown as RuntimeMsg;
 		const id = msg.id;
 		const s = activeStreams.get(id);
@@ -384,6 +386,7 @@ export default function (pi: ExtensionAPI) {
 			id: string;
 			usage?: { output?: number };
 		};
+		// SAFETY: Assistant messages expose stable runtime id/usage fields missing from published types.
 		const msg = event.message as unknown as RuntimeMsg;
 		const id = msg.id;
 		const s = activeStreams.get(id);

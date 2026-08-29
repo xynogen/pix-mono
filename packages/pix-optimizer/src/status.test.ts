@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { OptimizerStatus, renderStatus, STATUS_KEY, toolIcon } from "./status.ts";
 
-/** Tagging colorizer: <accent>X</accent> / <dim>X</dim> for assertions. */
+/** Tagging colorizer: <accent>X</accent> / <muted>X</muted> for assertions. */
 const tag = (c: string, t: string) => `<${c}>${t}</${c}>`;
 
 // Icons resolve against the global pix-pretty mode (default "nerd" in tests).
@@ -16,19 +16,21 @@ describe("renderStatus", () => {
 		);
 	});
 
-	it("dims disabled tools but still shows them", () => {
+	it("mutes disabled tools but still shows them", () => {
 		expect(renderStatus({ caveman: false, rtk: true, ponytail: true }, tag)).toBe(
-			`<dim>${CV}</dim>  <accent>${RK}</accent>  <accent>${PT}</accent> `,
+			`<muted>${CV}</muted>  <accent>${RK}</accent>  <accent>${PT}</accent> `,
 		);
 	});
 
-	it("all dim when nothing enabled (cell never empty)", () => {
-		expect(renderStatus({}, tag)).toBe(`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim> `);
+	it("all muted when nothing enabled (cell never empty)", () => {
+		expect(renderStatus({}, tag)).toBe(
+			`<muted>${CV}</muted>  <muted>${RK}</muted>  <muted>${PT}</muted> `,
+		);
 	});
 
 	it("preserves fixed order regardless of insertion order", () => {
 		expect(renderStatus({ ponytail: true, caveman: true }, tag)).toBe(
-			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent> `,
+			`<accent>${CV}</accent>  <muted>${RK}</muted>  <accent>${PT}</accent> `,
 		);
 	});
 
@@ -51,15 +53,15 @@ describe("OptimizerStatus", () => {
 		} as const;
 	}
 
-	it("paints the shared key with per-icon accent/dim", () => {
+	it("paints the shared key with per-icon accent/muted", () => {
 		const status = new OptimizerStatus();
 		const ctx = fakeCtx();
 		status.set("rtk", true, ctx as never);
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
 		expect(last.key).toBe(STATUS_KEY);
-		// caveman + ponytail still unset (dim), rtk accent.
-		expect(last.text).toBe(`<dim>${CV}</dim>  <accent>${RK}</accent>  <dim>${PT}</dim> `);
+		// caveman + ponytail still unset (muted), rtk accent.
+		expect(last.text).toBe(`<muted>${CV}</muted>  <accent>${RK}</accent>  <muted>${PT}</muted> `);
 	});
 
 	it("accumulates state across tools", () => {
@@ -69,16 +71,16 @@ describe("OptimizerStatus", () => {
 		status.set("ponytail", true, ctx as never);
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
-		expect(last.text).toBe(`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent> `);
+		expect(last.text).toBe(`<accent>${CV}</accent>  <muted>${RK}</muted>  <accent>${PT}</accent> `);
 	});
 
-	it("dims an icon when its tool toggles off (cell stays populated)", () => {
+	it("mutes an icon when its tool toggles off (cell stays populated)", () => {
 		const status = new OptimizerStatus();
 		const ctx = fakeCtx();
 		status.set("rtk", true, ctx as never);
 		status.set("rtk", false, ctx as never);
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
-		expect(last.text).toBe(`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim> `);
+		expect(last.text).toBe(`<muted>${CV}</muted>  <muted>${RK}</muted>  <muted>${PT}</muted> `);
 	});
 });

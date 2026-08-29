@@ -72,6 +72,7 @@ export function registerWriteTool(
 			try {
 				result = (await origWrite.execute(
 					tid,
+					// SAFETY: WriteParams preserves the built-in write schema and only adds legacy file_path.
 					params as unknown as Parameters<typeof origWrite.execute>[1],
 					sig,
 					upd,
@@ -131,7 +132,7 @@ export function registerWriteTool(
 				)
 			)
 				return text;
-			const hdr = `${theme.fg("toolTitle", theme.bold(label))} ${theme.fg("muted", sp(fp))}`;
+			const hdr = `${theme.fg("toolTitle", theme.bold(label))} ${theme.fg("dim", sp(fp))}`;
 
 			if (args?.content && isNew) {
 				const previewKey = `create:${diffThemeCacheKey(theme)}:${fp}:${String(args.content).length}:${renderCtx.expanded ? "full" : "preview"}`;

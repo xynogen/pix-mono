@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-toolbox",
-	"version": "0.1.14",
+	"version": "0.1.15",
 	"description": "Pi tool — gated tool toggle UI (/toolbox)",
 	"type": "module",
 	"main": "src/index.ts",

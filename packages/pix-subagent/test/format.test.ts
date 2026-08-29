@@ -163,6 +163,29 @@ test("formatAgentCall includes the task prompt before auto-collapse", () => {
 	expect(rendered).toBe('agent Agent · Audit recording dead code\n"here"');
 });
 
+test("formatAgentCall follows tool, target, description, and metadata hierarchy", () => {
+	const theme = {
+		fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
+		bold: (text: string) => text,
+	};
+	const rendered = formatAgentCall(
+		{
+			type: "general",
+			description: "Audit recording dead code",
+			model: "haiku",
+			background: true,
+		},
+		theme,
+		false,
+	);
+
+	expect(rendered).toContain("<toolTitle>agent</toolTitle>");
+	expect(rendered).toContain("<dim>Agent</dim>");
+	expect(rendered).toContain("<dim>Audit recording dead code</dim>");
+	expect(rendered).toContain("<muted>[haiku]</muted>");
+	expect(rendered).toContain("<muted> · </muted>");
+});
+
 test("formatAgentCall hides the task prompt after auto-collapse", () => {
 	const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text };
 	const rendered = formatAgentCall(

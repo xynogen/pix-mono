@@ -205,6 +205,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 		handler: async (_args: string, ctx: ExtensionCommandContext) => {
 			// Re-parse pix.json so section parsers remain the single validation source.
 			await runtime.reload({ origin: "command", source: "pix" });
+			// SAFETY: Runtime UI supports custom overlays beyond the published command context type.
 			const ui = ctx.ui as unknown as {
 				custom?: (f: unknown, opts?: unknown) => Promise<unknown>;
 				notify(m: string, t?: "info" | "warning" | "error"): void;
@@ -227,8 +228,8 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					done: (v: null) => void,
 				) => {
 					const guide = (key: string, action: string) =>
-						theme.fg("text", key) + theme.fg("dim", ` ${action}`);
-					const guideSep = theme.fg("dim", " · ");
+						theme.fg("text", key) + theme.fg("muted", ` ${action}`);
+					const guideSep = theme.fg("muted", " · ");
 					let selected = 0;
 					let bodyOffset = 0;
 					let visibleBodyLines = 1;
@@ -241,8 +242,11 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						// Functional updater: the runtime queue serializes writes, and the
 						// callback sees the latest committed value — so rapid presses each
 						// advance exactly one step instead of collapsing on a stale snapshot.
-						const step = (current: unknown): unknown => {
-							const curVal = row.read(current);
+						type SettingsState = Record<string, unknown>;
+						const step = (current: unknown): SettingsState => {
+							const state: SettingsState =
+								current !== null && typeof current === "object" ? { ...(current as object) } : {};
+							const curVal = row.read(state);
 							let cur = row.values.indexOf(curVal);
 							// ponytail: unsupported custom values snap to section default on first change.
 							if (cur === -1) {
@@ -252,8 +256,8 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							}
 							const next = (cur + direction + row.values.length) % row.values.length;
 							const val = row.values[next];
-							if (val === undefined) return current;
-							return { ...(current as object), ...(row.patch(val) as object) };
+							if (val === undefined) return state;
+							return { ...state, ...(row.patch(val) as object) };
 						};
 						// Re-render AFTER the commit lands; the synchronous render in
 						// handleInput fires before the queued write and shows a stale value.

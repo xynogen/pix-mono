@@ -300,6 +300,16 @@ describe("formatJson", () => {
 describe("collapsed tool rows", () => {
 	const rowTheme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
 
+	it("uses dim for the target and muted for tertiary metadata", () => {
+		const taggedTheme = {
+			fg: (key: string, text: string) => `<${key}>${text}</${key}>`,
+			bold: (text: string) => text,
+		};
+		expect(formatCollapsedToolRow(taggedTheme, "read", "src/a.ts", "12 lines")).toContain(
+			"<dim>src/a.ts</dim> <muted>·</muted> <muted>12 lines</muted>",
+		);
+	});
+
 	it("renders a consistent status, tool, target, and metadata row", () => {
 		// The status marker is width-normalized to 2 cells (padIcon) so wide glyphs
 		// align with narrow ones; a 1-cell `✓` therefore carries one pad space.

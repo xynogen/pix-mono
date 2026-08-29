@@ -432,8 +432,8 @@ export function formatRemoteSkillSearchSummary(
 	const rows = ranked.map((result, index) => {
 		const rank = theme.fg("dim", String(index + 1).padStart(2));
 		const name = theme.fg("accent", theme.bold(result.name));
-		const source = theme.fg("muted", result.source);
-		const installs = theme.fg("dim", `${formatInstalls(result.installs)} installs`);
+		const source = theme.fg("dim", result.source);
+		const installs = theme.fg("muted", `${formatInstalls(result.installs)} installs`);
 		return `${rank}  ${name}  ${source}  ${installs}`;
 	});
 	return [heading, ...rows].join("\n");
@@ -467,7 +467,7 @@ export function formatSkillSummary(text: string, theme: ThemeLike): string {
 	const name = extractName(trimmed);
 	const desc = extractDescription(trimmed);
 	if (name) {
-		return `${theme.fg("accent", theme.bold(name))} ${theme.fg("muted", desc ?? "(no description)")}`;
+		return `${theme.fg("accent", theme.bold(name))} ${theme.fg("dim", desc ?? "(no description)")}`;
 	}
 
 	// List form: each skill is a single-token name followed by ": <desc>".
@@ -478,7 +478,7 @@ export function formatSkillSummary(text: string, theme: ThemeLike): string {
 		.map((line) => {
 			const match = line.match(/^(\S+):\s+(.+)$/);
 			if (!match) return theme.fg("muted", line);
-			return `${theme.fg("accent", theme.bold(match[1] ?? ""))} ${theme.fg("muted", match[2] ?? "")}`;
+			return `${theme.fg("accent", theme.bold(match[1] ?? ""))} ${theme.fg("dim", match[2] ?? "")}`;
 		})
 		.join("\n");
 }
@@ -695,7 +695,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 				return component;
 			const label = formatSkillCallLabel(args as SkillCallArgs);
 			component.setText(
-				`${theme.fg("toolTitle", theme.bold("read_skills"))} ${theme.fg("muted", label)}`,
+				`${theme.fg("toolTitle", theme.bold("read_skills"))} ${theme.fg("dim", label)}`,
 			);
 			return component;
 		},

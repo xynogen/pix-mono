@@ -108,23 +108,23 @@ function finishedLine(job: BtwWidgetJob, theme: WidgetTheme): string {
 	if (job.status === "completed") {
 		mark = theme.fg("success", "\u2713");
 	} else if (job.status === "stopped") {
-		mark = theme.fg("dim", "\u25a0");
-		suffix = theme.fg("dim", " stopped");
+		mark = theme.fg("muted", "\u25a0");
+		suffix = theme.fg("muted", " stopped");
 	} else {
 		mark = theme.fg("error", "\u2717");
 		suffix = theme.fg("error", job.error ? ` ${job.error.slice(0, 60)}` : " error");
 	}
 	const model = theme.fg("muted", `[${job.model}]`);
-	const stats = theme.fg("dim", statsFor(job, end));
-	return `${mark} ${theme.fg("dim", `#${job.id}`)} ${model} ${theme.fg("dim", "\u00b7")} ${stats}${suffix}`;
+	const stats = theme.fg("muted", statsFor(job, end));
+	return `${mark} ${theme.fg("dim", `#${job.id}`)} ${model} ${theme.fg("muted", "\u00b7")} ${stats}${suffix}`;
 }
 
 function runningLine(job: BtwWidgetJob, theme: WidgetTheme, frame: string, now: number): string {
 	const model = theme.fg("muted", `[${job.model}]`);
-	const stats = theme.fg("dim", statsFor(job, now));
+	const stats = theme.fg("muted", statsFor(job, now));
 	const activeMap = new Map<string, string>(job.activeTools.map((name, i) => [String(i), name]));
 	const activity = theme.fg("dim", describeActivity(activeMap, job.text));
-	const dot = theme.fg("dim", "\u00b7");
+	const dot = theme.fg("muted", "\u00b7");
 	return `${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(`#${job.id}`))} ${model} ${dot} ${stats} ${dot} ${activity}`;
 }
 
@@ -152,15 +152,15 @@ export function renderBtwWidget(
 	const spinner = SPINNER[frame % SPINNER.length] ?? "";
 
 	const runningLines = running.map((j) =>
-		truncate(`${theme.fg("dim", "\u251c\u2500")} ${runningLine(j, theme, spinner, now)}`),
+		truncate(`${theme.fg("muted", "\u251c\u2500")} ${runningLine(j, theme, spinner, now)}`),
 	);
 	const finishedLines = finished.map((j) =>
-		truncate(`${theme.fg("dim", "\u251c\u2500")} ${finishedLine(j, theme)}`),
+		truncate(`${theme.fg("muted", "\u251c\u2500")} ${finishedLine(j, theme)}`),
 	);
 
 	const lines: string[] = [
 		truncate(
-			`${theme.fg(headingColor, headingIcon)} ${theme.fg(headingColor, `BTW (${running.length})`)}`,
+			`${theme.fg(headingColor, headingIcon)} ${theme.fg(headingColor, "BTW")}${theme.fg("muted", ` (${running.length})`)}`,
 		),
 	];
 
@@ -173,7 +173,7 @@ export function renderBtwWidget(
 		const hidden = body.length - shown.length;
 		lines.push(...shown);
 		lines.push(
-			truncate(`${theme.fg("dim", "\u251c\u2500")} ${theme.fg("dim", `+${hidden} more`)}`),
+			truncate(`${theme.fg("muted", "\u251c\u2500")} ${theme.fg("muted", `+${hidden} more`)}`),
 		);
 	}
 

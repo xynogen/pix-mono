@@ -133,6 +133,7 @@ export function registerEditTool(
 			try {
 				result = (await origEdit.execute(
 					tid,
+					// SAFETY: EditParams preserves the built-in edit schema and only adds legacy aliases.
 					params as unknown as Parameters<typeof origEdit.execute>[1],
 					sig,
 					upd,
@@ -202,7 +203,7 @@ export function registerEditTool(
 				)
 			)
 				return text;
-			const hdr = `${theme.fg("toolTitle", theme.bold("edit"))} ${theme.fg("muted", sp(fp))}`;
+			const hdr = `${theme.fg("toolTitle", theme.bold("edit"))} ${theme.fg("dim", sp(fp))}`;
 
 			if (operations.length === 0) {
 				text.setText(fillToolBackground(hdr));
@@ -211,7 +212,7 @@ export function registerEditTool(
 
 			const { summary } = summarizeEditOperations(operations);
 			const coloredSummary = renderDiffSummary(summary, theme);
-			const paint = (s: string) => theme.fg("dim", s);
+			const paint = (s: string) => theme.fg("muted", s);
 			const suffix = dotJoin(
 				[
 					hdr,

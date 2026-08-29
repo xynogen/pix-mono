@@ -81,12 +81,12 @@ function dimBody(body: string, theme: Theme, expanded: boolean): string {
 	const out = shown.map((line) => `  ${theme.fg("dim", line)}`);
 	const remaining = lines.length - maxShow;
 	if (remaining > 0) {
-		out.push(`  ${theme.fg("dim", `… ${remaining} more lines`)}`);
+		out.push(`  ${theme.fg("muted", `… ${remaining} more lines`)}`);
 	}
 	return out.join("\n");
 }
 
-/** Build a `renderCall` that shows `<title> <accent arg>`. */
+/** Build a `renderCall` that shows `<title> <secondary arg>`. */
 export function makeRenderCall<TArgs>(title: string, pickArg: (args: TArgs) => string) {
 	return (args: TArgs, theme: Theme, ctx: RenderCtx): Component => {
 		const text = getText(ctx.lastComponent);
@@ -97,7 +97,7 @@ export function makeRenderCall<TArgs>(title: string, pickArg: (args: TArgs) => s
 		)
 			return text;
 		const arg = pickArg(args);
-		text.setText(`${theme.fg("toolTitle", theme.bold(title))} ${theme.fg("muted", arg)}`);
+		text.setText(`${theme.fg("toolTitle", theme.bold(title))} ${theme.fg("dim", arg)}`);
 		return text;
 	};
 }
@@ -118,7 +118,7 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 			return text;
 		}
 		if (!body.trim()) {
-			text.setText(`  ${theme.fg("dim", "(empty)")}`);
+			text.setText(`  ${theme.fg("muted", "(empty)")}`);
 			return text;
 		}
 

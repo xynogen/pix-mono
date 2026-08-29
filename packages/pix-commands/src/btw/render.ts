@@ -49,10 +49,10 @@ export function registerBtwRenderer(
 		// header text embedded inside Markdown can confuse wrapping and parsing.
 		const card = new Box(1, 1, (text) => theme.bg("selectedBg", text));
 		card.addChild(
-			new Text(`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("dim", `· ${meta}`)}`, 0, 0),
+			new Text(`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("muted", `· ${meta}`)}`, 0, 0),
 		);
 		card.addChild(
-			new Text(`${theme.fg("accent", "▐")} ${theme.fg("muted", details.question)}`, 0, 0),
+			new Text(`${theme.fg("accent", "▐")} ${theme.fg("dim", details.question)}`, 0, 0),
 		);
 		card.addChild(new Spacer(1));
 
@@ -69,7 +69,7 @@ export function registerBtwRenderer(
 				card.addChild(new Text(theme.fg("thinkingText", details.thinking), 0, 0));
 				card.addChild(new Spacer(1));
 			} else {
-				card.addChild(new Text(theme.fg("dim", "› reasoning hidden — expand to view"), 0, 0));
+				card.addChild(new Text(theme.fg("muted", "› reasoning hidden — expand to view"), 0, 0));
 				card.addChild(new Spacer(1));
 			}
 		}

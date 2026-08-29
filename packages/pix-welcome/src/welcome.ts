@@ -102,6 +102,7 @@ function exitCode(r: ExecResult): number {
 }
 
 function execOpts(cwd: string, timeout: number): { timeout?: number } {
+	// SAFETY: Pi's exec runtime accepts cwd although the published option type omits it.
 	return { cwd, timeout } as unknown as { timeout?: number };
 }
 
@@ -323,7 +324,7 @@ export const LABEL_WIDTH = 6; // visual chars for label column
 
 export function renderCheck(theme: Theme, c: CheckResult): string {
 	const icon = statusIcon(theme, c.status);
-	const labelColor = c.status === "error" ? "error" : c.status === "warn" ? "warning" : "muted";
+	const labelColor = c.status === "error" ? "error" : c.status === "warn" ? "warning" : "dim";
 	const label = theme.fg(labelColor, c.label.padEnd(LABEL_WIDTH));
 	const detail = c.detail ? theme.fg("text", c.detail) : "";
 	// padIcon normalizes 1-cell (✓/✗/○) vs 2-cell (⚠) markers to one column.
@@ -336,7 +337,7 @@ function buildLogoLines(theme: Theme, model: string, cwd: string): string[] {
 		const l = theme.fg("accent", logo);
 		switch (tag) {
 			case "heading":
-				return `${pad}${l}  ${theme.fg("muted", "PIx")}`;
+				return `${pad}${l}  ${theme.fg("dim", "PIx")}`;
 			case "model":
 				return `${pad}${l}  ${theme.fg("muted", icon("model"))}  ${theme.fg("text", model)}`;
 			case "cwd":
@@ -407,6 +408,7 @@ export default function (pi: ExtensionAPI) {
 
 				return {
 					render: () => {
+						// SAFETY: Host theme implements the smaller local foreground-only Theme contract.
 						const t = theme as unknown as Theme;
 						// Re-read modelId each render so /model changes show live
 						const logoLines = buildLogoLines(t, modelId, cwd);
@@ -439,6 +441,7 @@ export default function (pi: ExtensionAPI) {
 		// next tick so dynamically registered tools are counted.
 		// Skills: scan dirs immediately — no need to wait for before_agent_start.
 		setTimeout(() => {
+			// SAFETY: ExtensionAPI exposes getActiveTools at runtime before its published type does.
 			update(3, checkTools(pi as unknown as { getActiveTools?: () => ToolInfo[] }));
 			update(4, {
 				label: "Skills",

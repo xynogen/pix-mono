@@ -51,7 +51,7 @@ function createTheme(theme: McpAddPopupTheme): AddTheme {
 		border: (text) => theme.fg("accent", text),
 		title: (text) => theme.fg("accent", theme.bold?.(text) ?? text),
 		selected: (text) => theme.fg("accent", text),
-		hint: (text) => theme.fg("dim", text),
+		hint: (text) => theme.fg("muted", text),
 		success: (text) => theme.fg("success", text),
 		warning: (text) => theme.fg("warning", text),
 		muted: (text) => theme.fg("muted", text),

@@ -231,6 +231,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 	// ModelRegistry instance (verified in runner.js) with refresh() and an
 	// async-capable getAvailable(). Reach through the narrowed type.
 	type AvailableModels = ReturnType<typeof ctx.modelRegistry.getAvailable>;
+	// SAFETY: Runtime ModelRegistry includes refresh and async availability missing from public types.
 	const registry = ctx.modelRegistry as unknown as {
 		refresh?: () => void;
 		getAvailable(): AvailableModels | Promise<AvailableModels>;
@@ -313,8 +314,8 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			// Mute low-info parts (separators, padding, #, ☆) so the actual values pop.
 			const mute = (s: string) => theme.fg("muted", s);
 			const guide = (key: string, action: string) =>
-				theme.fg("text", key) + theme.fg("dim", ` ${action}`);
-			const guideSep = theme.fg("dim", " · ");
+				theme.fg("text", key) + theme.fg("muted", ` ${action}`);
+			const guideSep = theme.fg("muted", " · ");
 
 			// Track rank per item value so fuzzy results can prioritize ranked models.
 			const rankByValue = new Map<string, number>();
@@ -369,7 +370,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				const rawCost = fmtCost(dev);
 				let costSeg: string;
 				if (rawCost === "—") {
-					costSeg = theme.fg("dim", "—".padEnd(maxCostWidth));
+					costSeg = theme.fg("muted", "—".padEnd(maxCostWidth));
 				} else if (rawCost === "free") {
 					costSeg = mute("free".padEnd(maxCostWidth));
 				} else {
@@ -415,7 +416,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					selectedPrefix: (t) => theme.fg(accent, t),
 					selectedText: (t) => theme.fg(accent, t),
 					description: (t) => t, // raw — per-segment colors set in items.map
-					scrollInfo: (t) => theme.fg("dim", t),
+					scrollInfo: (t) => theme.fg("muted", t),
 					noMatch: (t) => theme.fg("warning", t),
 				},
 				{
@@ -430,6 +431,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			search.onEscape = () => done(null);
 
 			const applyFuzzy = (query: string) => {
+				// SAFETY: SelectList exposes these stable fields internally for in-place filtering.
 				const internal = list as unknown as {
 					items: SelectItem[];
 					filteredItems: SelectItem[];
@@ -464,11 +466,11 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					? theme.getThinkingBorderColor(resolved)(label)
 					: theme.fg("dim", label);
 				return (
-					theme.fg("muted", "Thinking: ") +
+					theme.fg("dim", "Thinking: ") +
 					coloredLabel +
-					theme.fg("dim", "  (") +
+					theme.fg("muted", "  (") +
 					guide("←/→", "adjust") +
-					theme.fg("dim", ")")
+					theme.fg("muted", ")")
 				);
 			};
 
@@ -489,6 +491,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						],
 						body: list.render(inner),
 						selectedBodyRange: (() => {
+							// SAFETY: SelectList tracks selectedIndex internally for pager synchronization.
 							const internal = list as unknown as { selectedIndex: number };
 							return pager.selectedRange({
 								start: internal.selectedIndex,

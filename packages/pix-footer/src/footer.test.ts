@@ -13,7 +13,7 @@ describe("renderThinkingLevel", () => {
 		expect(renderThinkingLevel(theme, "xhigh", "xhigh")).toBe("<xhigh>xhigh</xhigh>");
 	});
 
-	test("renders unknown levels with the neutral muted color", () => {
+	test("renders unknown levels as a secondary model value", () => {
 		const calls: string[] = [];
 		const recordingTheme = {
 			fg: (color: string, text: string) => {
@@ -23,7 +23,7 @@ describe("renderThinkingLevel", () => {
 			getThinkingBorderColor: theme.getThinkingBorderColor,
 		};
 		expect(renderThinkingLevel(recordingTheme, "future", "future")).toBe("future");
-		expect(calls).toEqual(["muted"]);
+		expect(calls).toEqual(["dim"]);
 	});
 });
 

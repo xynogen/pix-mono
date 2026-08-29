@@ -86,8 +86,8 @@ function createTheme(theme: McpPopupTheme): PanelTheme {
 		direct: (text) => theme.fg("success", text),
 		needsAuth: (text) => theme.fg("warning", text),
 		placeholder: (text) => theme.fg("muted", text),
-		description: (text) => theme.fg("muted", text),
-		hint: (text) => theme.fg("dim", text),
+		description: (text) => theme.fg("dim", text),
+		hint: (text) => theme.fg("muted", text),
 		confirm: (text) => theme.fg("success", text),
 		cancel: (text) => theme.fg("error", text),
 	};
@@ -963,7 +963,7 @@ class McpPanel {
 		const serverName = sanitizeDisplayText(server.name);
 		const needsAuth = server.connectionStatus === "needs-auth";
 		const name = needsAuth
-			? fg(t.hint, serverName)
+			? fg(t.description, serverName)
 			: isCursor
 				? bold(fg(t.selected, serverName))
 				: serverName;
@@ -997,7 +997,8 @@ class McpPanel {
 		const separator = fg(t.description, " · ");
 		// Auth progress is shown once in the bottom notice; keep the row clean.
 		if (this.authInFlight === server.name) return "";
-		if (server.connectionStatus === "needs-auth") return `${separator}${fg(t.hint, "needs auth")}`;
+		if (server.connectionStatus === "needs-auth")
+			return `${separator}${fg(t.description, "needs auth")}`;
 		if (server.connectionStatus === "connecting")
 			return `${separator}${fg(t.needsAuth, "connecting")}`;
 		if (server.connectionStatus === "failed") return `${separator}${fg(t.cancel, "failed")}`;

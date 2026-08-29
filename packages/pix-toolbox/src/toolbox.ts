@@ -345,8 +345,8 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 				const accent = "accent";
 				const mute = (s: string) => theme.fg("muted", s);
 				const guide = (key: string, action: string) =>
-					theme.fg("text", key) + theme.fg("dim", ` ${action}`);
-				const guideSep = theme.fg("dim", " · ");
+					theme.fg("text", key) + theme.fg("muted", ` ${action}`);
+				const guideSep = theme.fg("muted", " · ");
 
 				type RowState = "active" | "gated";
 				const stateOf = (name: string): RowState => (ops.isActive(name) ? "active" : "gated");
@@ -354,7 +354,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 				const labelFor = (r: ToolRow): string => {
 					const active = stateOf(r.name) === "active";
 					const marker = active ? " " : theme.fg("warning", "#");
-					const name = active ? theme.fg("success", r.name) : theme.fg("dim", r.name);
+					const name = active ? theme.fg("success", r.name) : theme.fg("muted", r.name);
 					const kind = mute(`[${r.mcp ? "MCP" : "tool"}]`);
 					return `${marker} ${name}  ${kind}`;
 				};
@@ -386,7 +386,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 						selectedPrefix: (t: string) => theme.fg(accent, t),
 						selectedText: (t: string) => theme.fg(accent, t),
 						description: (t: string) => t,
-						scrollInfo: (t: string) => theme.fg("dim", t),
+						scrollInfo: (t: string) => theme.fg("muted", t),
 						noMatch: (t: string) => theme.fg("warning", t),
 					},
 					{
@@ -395,6 +395,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 					},
 				);
 
+				// SAFETY: SelectList exposes these stable fields internally for label refreshes.
 				const internal = list as unknown as {
 					items: SelectItem[];
 					filteredItems: SelectItem[];
@@ -420,7 +421,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 					const sel = list.getSelectedItem();
 					if (!sel) return;
 					const msg = toggleTool(action, sel.value, rows, ops);
-					statusText = theme.fg("muted", msg);
+					statusText = theme.fg("dim", msg);
 					refreshLabels();
 				};
 
@@ -473,7 +474,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 							minHeight: MIN_MODAL_HEIGHT,
 							header: [
 								theme.fg(accent, theme.bold("🧰  Toolbox")),
-								theme.fg("muted", "Search:"),
+								theme.fg("dim", "Search:"),
 								...search.render(inner),
 								"",
 							],
@@ -565,6 +566,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 			}
 
 			if (typeof ctx.ui.custom === "function") {
+				// SAFETY: The runtime command context satisfies showPicker's narrowed UI contract.
 				await showPicker(ctx as unknown as Parameters<typeof showPicker>[0]);
 			} else {
 				ctx.ui.notify(renderList(getRows(), ops.isActive), "info");

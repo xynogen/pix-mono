@@ -95,7 +95,7 @@ function treePrefix(rows: QueryHitRow[], i: number, t: Theme): string {
 	let guides = "";
 	for (let a = 1; a < d; a++) guides += hasSiblingAfter(rows, i, a) ? "│  " : "   ";
 	const connector = isLastAtDepth(rows, i) ? "└─ " : "├─ ";
-	return t.fg("dim", guides + connector);
+	return t.fg("muted", guides + connector);
 }
 
 /** Render query hits as a colored dependency tree with box-drawing connectors. */
@@ -111,7 +111,7 @@ function renderQuery(q: NonNullable<GraphResultDetails["query"]>, t: Theme): str
 		const prefix = treePrefix(q.hits, i, t);
 		// Seeds (depth 0) pop in accent; traversed nodes in toolTitle.
 		const label = t.fg(h.depth === 0 ? "accent" : "toolTitle", h.label);
-		const via = h.via ? ` ${t.fg("dim", `(${h.via})`)}` : "";
+		const via = h.via ? ` ${t.fg("muted", `(${h.via})`)}` : "";
 		const where = h.where ? `  ${t.fg("muted", h.where)}` : "";
 		return `  ${prefix}${label}${via}${where}`;
 	});
@@ -190,8 +190,8 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
 					return new Text(`${title} ${t.fg("muted", `query · ${trav}`)} ${q}`, 0, 0);
 				}
-				const target = a.path ? t.fg("muted", a.path) : t.fg("muted", ".");
-				return new Text(`${title} ${t.fg("muted", "build")} ${target}`, 0, 0);
+				const target = a.path ? t.fg("dim", a.path) : t.fg("dim", ".");
+				return new Text(`${title} ${t.fg("dim", "build")} ${target}`, 0, 0);
 			},
 
 			renderResult(result, _options, theme, context) {

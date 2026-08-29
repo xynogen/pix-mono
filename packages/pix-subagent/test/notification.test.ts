@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
 import type { NotificationDetails } from "../src/types.ts";
-import { registerNotificationRenderer } from "../src/ui/notification.ts";
+import { formatNotificationLine, registerNotificationRenderer } from "../src/ui/notification.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
@@ -55,6 +55,19 @@ describe("terminal subagent notifications", () => {
 		expect(output.split("\n")).toHaveLength(1);
 		expect(output).toContain("Explore");
 		expect(output).toContain("55 t/s");
+	});
+
+	test("uses primary status, secondary description, and tertiary metadata", () => {
+		const taggedTheme = {
+			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
+			bold: (text: string) => text,
+		};
+		const output = formatNotificationLine(details("completed"), taggedTheme);
+		expect(output).toContain("<success>✓ </success>");
+		expect(output).toContain("<dim>Explore authentication</dim>");
+		expect(output).toContain("<muted>[haiku]</muted>");
+		expect(output).toContain("<muted>55 t/s</muted>");
+		expect(output).toContain("<success>completed</success>");
 	});
 
 	test("expanded notification shows the stored bounded preview", () => {

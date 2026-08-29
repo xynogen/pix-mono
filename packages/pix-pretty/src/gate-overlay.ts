@@ -177,9 +177,9 @@ function buildSections(opts: {
 	const header = [theme.fg(accent, theme.bold(config.title))];
 	const body = (config.body ?? []).map((line) => {
 		if (line.startsWith("Intent:")) return theme.fg("text", line.slice(7).trimStart());
-		if (line.startsWith("Command:")) return theme.fg("dim", line.slice(8).trimStart());
+		if (line.startsWith("Command:")) return theme.fg("text", line.slice(8).trimStart());
 		if (line.startsWith("Warning:")) return theme.fg("warning", line);
-		if (line.startsWith("(") && line.endsWith(")")) return theme.fg("dim", line);
+		if (line.startsWith("(") && line.endsWith(")")) return theme.fg("muted", line);
 
 		const separator = line.indexOf(":");
 		if (separator < 1) return theme.fg("text", line);
@@ -198,7 +198,7 @@ function buildSections(opts: {
 			? `${theme.fg("dim", label)} ${theme.fg(valueColor, value)}`
 			: theme.fg("text", line);
 	});
-	const footer = [theme.fg("dim", "─".repeat(inner))];
+	const footer = [theme.fg("muted", "─".repeat(inner))];
 
 	if (countdownLine !== undefined) footer.push(countdownLine);
 
@@ -206,14 +206,14 @@ function buildSections(opts: {
 	if (stage === "select") {
 		footer.push(...selectList.render(inner));
 		footer.push("");
-		footer.push(theme.fg("dim", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc deny"));
+		footer.push(theme.fg("muted", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc deny"));
 	} else {
 		const label = config.mode === "sudo" ? (config.passwordLabel ?? "Sudo password:") : "Password:";
-		footer.push(theme.fg("muted", label));
+		footer.push(theme.fg("dim", label));
 		if (passwordStatus) footer.push(theme.fg("error", passwordStatus));
 		footer.push(...maskedInput.render(inner));
 		footer.push("");
-		footer.push(theme.fg("dim", "←→/PgUp/PgDn inspect • enter confirm • esc cancel"));
+		footer.push(theme.fg("muted", "←→/PgUp/PgDn inspect • enter confirm • esc cancel"));
 	}
 
 	return { header, body, footer };
@@ -302,7 +302,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 				// Arm the dead-man's switch (only when a timeout was requested).
 				if (timeoutMs > 0) {
 					const urgencyColor = (s: number): string =>
-						s <= 5 ? "error" : s <= 15 ? "warning" : "dim";
+						s <= 5 ? "error" : s <= 15 ? "warning" : "muted";
 					const countdownText = (s: number): string => {
 						const color = urgencyColor(s);
 						const text = `auto-deny in ${s}s`;
@@ -389,7 +389,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 							bg: (s) => theme.bg("customMessageBg", s),
 							fg: (s) => theme.fg("text", s),
 							overflowLine: ({ page, totalPages }) =>
-								theme.fg("dim", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
+								theme.fg("muted", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
 						});
 						pager.sync(result);
 						return result.lines;

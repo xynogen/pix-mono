@@ -49,6 +49,26 @@ describe("BTW widget layout", () => {
 		expect(out).toContain("[GPT]");
 	});
 
+	test("uses primary identity, secondary activity, and tertiary metadata", () => {
+		const taggedTheme: WidgetTheme = {
+			fg: (color, text) => `<${color}>${text}</${color}>`,
+			bold: (text) => text,
+		};
+		const output = renderBtwWidget(
+			[job({ id: 7, model: "GPT", text: "Reading auth.ts", toolUses: 2 })],
+			taggedTheme,
+			0,
+			1_000,
+			500,
+		).join("\n");
+		expect(output).toContain("<accent>BTW</accent><muted> (1)</muted>");
+		expect(output).toContain("<toolTitle>#7</toolTitle>");
+		expect(output).toContain("<muted>[GPT]</muted>");
+		expect(output).toMatch(/<muted>[^<]*2 · 1\.0s<\/muted>/);
+		expect(output).toContain("<dim>Reading auth.ts</dim>");
+		expect(output).toContain("<muted>└─</muted>");
+	});
+
 	test("finished jobs linger with a check, then drop after the window", () => {
 		const done = job({ status: "completed", completedAt: 1_000, toolUses: 2, turnCount: 1 });
 		// Default base 10s × 3 = 30s ok-window.

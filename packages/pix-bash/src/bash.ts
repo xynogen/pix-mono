@@ -136,7 +136,7 @@ export function registerBashTool(
 			const prefix = `${label} `;
 			const reserve = Math.max(0, availableWidth - timeout.length);
 			const displayCmd = truncateToWidth(
-				theme.fg("muted", baseCmd),
+				theme.fg("dim", baseCmd),
 				Math.max(1, reserve - prefix.length),
 				"…",
 			);

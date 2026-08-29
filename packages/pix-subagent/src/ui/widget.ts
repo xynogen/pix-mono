@@ -201,7 +201,7 @@ export class AgentWidget {
 		const modelLabel = a.invocation?.modelName
 			? ` ${theme.fg("muted", `[${a.invocation.modelName}]`)}`
 			: "";
-		const modeTag = modeLabel ? ` ${theme.fg("dim", `(${modeLabel})`)}` : "";
+		const modeTag = modeLabel ? ` ${theme.fg("muted", `(${modeLabel})`)}` : "";
 
 		let icon: string;
 		let statusText: string;
@@ -212,10 +212,10 @@ export class AgentWidget {
 			statusText = "";
 		} else if (a.status === "steered") {
 			icon = theme.fg("success", padIcon("✓"));
-			statusText = theme.fg("dim", " (turn limit)");
+			statusText = theme.fg("muted", " (turn limit)");
 		} else if (a.status === "stopped") {
-			icon = theme.fg("dim", padIcon("■"));
-			statusText = theme.fg("dim", " stopped");
+			icon = theme.fg("muted", padIcon("■"));
+			statusText = theme.fg("muted", " stopped");
 		} else if (a.status === "error") {
 			icon = theme.fg("error", padIcon("✗"));
 			const errMsg = a.error ? `: ${a.error.slice(0, 60)}` : "";
@@ -241,8 +241,8 @@ export class AgentWidget {
 		if (speed) parts.push(speed);
 		parts.push(duration);
 
-		const dot = (s: string) => theme.fg("dim", s);
-		return `${dotJoin([`${icon} ${theme.fg("dim", name)}${modelLabel}${modeTag}`, theme.fg("dim", a.description), theme.fg("dim", dotJoin(parts))], dot)}${statusText}`;
+		const dot = (s: string) => theme.fg("muted", s);
+		return `${dotJoin([`${icon} ${theme.fg("dim", name)}${modelLabel}${modeTag}`, theme.fg("dim", a.description), theme.fg("muted", dotJoin(parts))], dot)}${statusText}`;
 	}
 
 	private renderWidget(
@@ -274,7 +274,9 @@ export class AgentWidget {
 
 		const finishedLines: string[] = [];
 		for (const a of finished) {
-			finishedLines.push(truncate(`${theme.fg("dim", "├─")} ${this.renderFinishedLine(a, theme)}`));
+			finishedLines.push(
+				truncate(`${theme.fg("muted", "├─")} ${this.renderFinishedLine(a, theme)}`),
+			);
 		}
 
 		const runningLines: string[] = [];
@@ -285,7 +287,7 @@ export class AgentWidget {
 			const modelLabel = a.invocation?.modelName
 				? ` ${theme.fg("muted", `[${a.invocation.modelName}]`)}`
 				: "";
-			const modeTag = modeLabel ? ` ${theme.fg("dim", `(${modeLabel})`)}` : "";
+			const modeTag = modeLabel ? ` ${theme.fg("muted", `(${modeLabel})`)}` : "";
 			const elapsed = formatMs(Date.now() - a.startedAt);
 
 			const bg = this.agentActivity.get(a.id);
@@ -307,11 +309,11 @@ export class AgentWidget {
 			// doesn't cause the static identity + stats to bounce around.
 			const activity = bg ? describeActivity(bg.activeTools, bg.responseText) : "thinking…";
 
-			const dot = (s: string) => theme.fg("dim", s);
+			const dot = (s: string) => theme.fg("muted", s);
 			runningLines.push(
 				truncate(
-					theme.fg("dim", "├─") +
-						` ${dotJoin([`${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(name))}${modelLabel}${modeTag}`, theme.fg("muted", a.description), theme.fg("dim", statsText), theme.fg("dim", activity)], dot)}`,
+					theme.fg("muted", "├─") +
+						` ${dotJoin([`${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(name))}${modelLabel}${modeTag}`, theme.fg("dim", a.description), theme.fg("muted", statsText), theme.fg("dim", activity)], dot)}`,
 				),
 			);
 		}
@@ -319,8 +321,8 @@ export class AgentWidget {
 		const queuedLine =
 			queued.length > 0
 				? truncate(
-						theme.fg("dim", "├─") +
-							` ${theme.fg("muted", "◦")} ${theme.fg("dim", `${queued.length} queued`)}`,
+						theme.fg("muted", "├─") +
+							` ${theme.fg("muted", "◦")} ${theme.fg("muted", `${queued.length} queued`)}`,
 					)
 				: undefined;
 
@@ -372,8 +374,8 @@ export class AgentWidget {
 			if (hiddenFinished > 0) overflowParts.push(`${hiddenFinished} finished`);
 			lines.push(
 				truncate(
-					theme.fg("dim", "└─") +
-						` ${theme.fg("dim", `+${hiddenRunning + hiddenFinished} more (${overflowParts.join(", ")})`)}`,
+					theme.fg("muted", "└─") +
+						` ${theme.fg("muted", `+${hiddenRunning + hiddenFinished} more (${overflowParts.join(", ")})`)}`,
 				),
 			);
 		}
@@ -449,7 +451,7 @@ export class AgentWidget {
 		if (hasActive) {
 			const r = runningCount > 0 ? `${runningCount}` : "";
 			const q = queuedCount > 0 ? `+${queuedCount}` : "";
-			newStatusText = `${icon("agent")} ${this.uiCtx.theme.fg("dim", `${r}${q}`)}`;
+			newStatusText = `${icon("agent")} ${this.uiCtx.theme.fg("muted", `${r}${q}`)}`;
 		}
 		if (newStatusText !== this.lastStatusText) {
 			this.uiCtx.setStatus("subagents", newStatusText);

@@ -4,7 +4,7 @@
  * caveman / rtk / ponytail each toggle independently, but they're all the same
  * class of thing (token-optimization tools), so they share ONE status cell.
  * Each tool reports its on/off state into a single registry; the cell renders
- * all three icons in a fixed order — accent-colored when enabled, dim when
+ * all three icons in a fixed order — accent-colored when enabled, muted when
  * disabled. The cell is never empty.
  */
 
@@ -62,7 +62,7 @@ const TOOL_ORDER: readonly OptimizerTool[] = ["caveman", "rtk", "ponytail"];
 /** Theme color for enabled icons. */
 const ENABLED_COLOR: ThemeColor = "accent";
 /** Theme color for disabled icons. */
-const DISABLED_COLOR: ThemeColor = "dim";
+const DISABLED_COLOR: ThemeColor = "muted";
 
 /** Colorizer: maps a (theme color, text) pair to a rendered string. */
 export type Colorize = (color: ThemeColor, text: string) => string;
@@ -70,7 +70,7 @@ export type Colorize = (color: ThemeColor, text: string) => string;
 /**
  * Build the colored status string for a set of tool states. ALL tool icons are
  * always shown in TOOL_ORDER; each is accent-colored when its tool is enabled
- * and dim when disabled. Glyphs resolve against the active global icon mode
+ * and muted when disabled. Glyphs resolve against the active global icon mode
  * (see /pix). `color` applies the theme color (e.g. theme.fg).
  *
  * Pure + exported for tests (pass a tagging colorizer to assert per-icon color).

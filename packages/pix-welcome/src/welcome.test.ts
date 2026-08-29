@@ -75,6 +75,23 @@ describe("renderCheck", () => {
 		expect(rendered).toContain("⚠");
 		expect(rendered).toContain("Auth");
 	});
+
+	it("uses status color, secondary label, and primary detail", () => {
+		const calls: Array<{ color: string; text: string }> = [];
+		const recordingTheme: Theme = {
+			fg: (color, text) => {
+				calls.push({ color, text });
+				return text;
+			},
+			bold: (text) => text,
+		};
+		renderCheck(recordingTheme, { label: "Auth", status: "ok", detail: "connected" });
+		expect(calls).toEqual([
+			{ color: "success", text: "✓" },
+			{ color: "dim", text: "Auth  " },
+			{ color: "text", text: "connected" },
+		]);
+	});
 });
 
 describe("LOGO_ROWS", () => {

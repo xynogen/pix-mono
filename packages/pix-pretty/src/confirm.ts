@@ -97,7 +97,7 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 					const updateCountdown = () => {
 						const remaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / SECOND_MS));
 						countdownLine =
-							theme.fg("dim", "Auto-cancel in ") +
+							theme.fg("muted", "Auto-cancel in ") +
 							theme.fg(remaining <= COUNTDOWN_WARN_S ? accent : "muted", `${remaining}s`);
 					};
 					updateCountdown();
@@ -121,12 +121,12 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 					render: (w: number) => {
 						const mw = modalWidth(w);
 						const inner = mw - 4;
-						const footer = [theme.fg("dim", "─".repeat(inner))];
+						const footer = [theme.fg("muted", "─".repeat(inner))];
 						if (countdownLine !== undefined) footer.push(countdownLine);
 						footer.push(...selectList.render(inner));
 						footer.push("");
 						footer.push(
-							theme.fg("dim", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc cancel"),
+							theme.fg("muted", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc cancel"),
 						);
 
 						const result = frameModal({
@@ -141,7 +141,7 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 							bg: (s) => theme.bg("customMessageBg", s),
 							fg: (s) => theme.fg("text", s),
 							overflowLine: ({ page, totalPages }) =>
-								theme.fg("dim", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
+								theme.fg("muted", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
 						});
 						pager.sync(result);
 						return result.lines;

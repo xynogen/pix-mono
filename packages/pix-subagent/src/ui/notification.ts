@@ -30,7 +30,7 @@ export function formatNotificationLine(d: NotificationDetails, theme: Notificati
 			statusText = "completed (steered)";
 			break;
 		case "stopped":
-			marker = theme.fg("dim", padIcon("■"));
+			marker = theme.fg("muted", padIcon("■"));
 			statusText = "stopped";
 			break;
 		case "aborted":
@@ -44,20 +44,24 @@ export function formatNotificationLine(d: NotificationDetails, theme: Notificati
 
 	const parts: string[] = [];
 	if (d.modelName) parts.push(theme.fg("muted", `[${d.modelName}]`));
-	if (d.turnCount > 0) parts.push(theme.fg("dim", formatTurns(d.turnCount, d.maxTurns)));
-	if (d.toolUses > 0) parts.push(theme.fg("dim", formatToolUses(d.toolUses)));
+	if (d.turnCount > 0) parts.push(theme.fg("muted", formatTurns(d.turnCount, d.maxTurns)));
+	if (d.toolUses > 0) parts.push(theme.fg("muted", formatToolUses(d.toolUses)));
 	const context = formatContext(d.contextUsage);
-	if (context) parts.push(theme.fg("dim", context));
+	if (context) parts.push(theme.fg("muted", context));
 	const speed = formatSpeed(d.outputTokens ?? 0, d.streamingMs ?? d.durationMs);
-	if (speed) parts.push(theme.fg("dim", speed));
-	if (d.durationMs > 0) parts.push(theme.fg("dim", formatMs(d.durationMs)));
+	if (speed) parts.push(theme.fg("muted", speed));
+	if (d.durationMs > 0) parts.push(theme.fg("muted", formatMs(d.durationMs)));
 
-	const dot = (s: string) => theme.fg("dim", s);
+	const dot = (s: string) => theme.fg("muted", s);
+	let statusColor: "error" | "muted" | "success" | "warning" = "success";
+	if (d.status === "error") statusColor = "error";
+	else if (d.status === "aborted") statusColor = "warning";
+	else if (d.status === "stopped") statusColor = "muted";
 	let line = dotJoin(
 		[
-			`${marker} ${theme.bold(d.description)}`,
+			`${marker} ${theme.fg("dim", d.description)}`,
 			parts.length > 0 && dotJoin(parts, dot),
-			theme.fg(d.status === "error" ? "error" : "dim", statusText),
+			theme.fg(statusColor, statusText),
 		],
 		dot,
 	);

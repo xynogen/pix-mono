@@ -156,7 +156,7 @@ describe("formatRemoteSkillSearch", () => {
 		expect(output).toContain("[accent]<b>skills.sh</b>[/]");
 		expect(output).toContain("installs descending");
 		expect(output).toContain("[dim] 1[/]  [accent]<b>frontend-design</b>[/]");
-		expect(output).toContain("[muted]anthropics/skills[/]  [dim]696.5K installs[/]");
+		expect(output).toContain("[dim]anthropics/skills[/]  [muted]696.5K installs[/]");
 		expect(output).not.toContain("Load with the selected source");
 	});
 });
@@ -414,14 +414,14 @@ describe("formatSkillSummary", () => {
 		expect(formatSkillSummary("", tagTheme)).toBe("[muted]No skills found.[/]");
 	});
 
-	it("renders single skill as bold-accent name + muted description", () => {
+	it("renders single skill as bold-accent name + dim description", () => {
 		const out = formatSkillSummary(FRONTMATTER, tagTheme);
-		expect(out).toBe("[accent]<b>commit</b>[/] [muted]Split, write, and maintain commits.[/]");
+		expect(out).toBe("[accent]<b>commit</b>[/] [dim]Split, write, and maintain commits.[/]");
 	});
 
 	it("falls back to (no description) when frontmatter has name only", () => {
 		const out = formatSkillSummary("---\nname: solo\n---\n", tagTheme);
-		expect(out).toBe("[accent]<b>solo</b>[/] [muted](no description)[/]");
+		expect(out).toBe("[accent]<b>solo</b>[/] [dim](no description)[/]");
 	});
 
 	it("renders a list of 'name: desc' lines, each colored", () => {
@@ -429,8 +429,8 @@ describe("formatSkillSummary", () => {
 		const out = formatSkillSummary(list, tagTheme);
 		const lines = out.split("\n");
 		expect(lines).toHaveLength(2);
-		expect(lines[0]).toBe("[accent]<b>commit</b>[/] [muted]write commits[/]");
-		expect(lines[1]).toBe("[accent]<b>debug</b>[/] [muted]root cause analysis[/]");
+		expect(lines[0]).toBe("[accent]<b>commit</b>[/] [dim]write commits[/]");
+		expect(lines[1]).toBe("[accent]<b>debug</b>[/] [dim]root cause analysis[/]");
 	});
 
 	it("passes non 'name: desc' lines through as muted", () => {

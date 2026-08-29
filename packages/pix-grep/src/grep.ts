@@ -184,7 +184,7 @@ export function registerGrepTool(
 				return text;
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("grep"))} ${theme.fg("muted", pattern)}${path}${glob}`,
+					`${theme.fg("toolTitle", theme.bold("grep"))} ${theme.fg("dim", pattern)}${path}${glob}`,
 				),
 			);
 			return text;

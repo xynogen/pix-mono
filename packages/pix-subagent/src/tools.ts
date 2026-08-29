@@ -149,9 +149,9 @@ export function formatAgentCall(
 	const modelStr = model ? ` ${theme.fg("muted", `[${model}]`)}` : "";
 	// Shared grammar: `<tool> <target> · <call metadata>` — tool is the registered
 	// name `agent`, target is the agent display name.
-	const head = `${theme.fg("toolTitle", theme.bold("agent"))} ${theme.fg("toolTitle", theme.bold(displayName))}${modelStr}`;
+	const head = `${theme.fg("toolTitle", theme.bold("agent"))} ${theme.fg("dim", displayName)}${modelStr}`;
 	const header = description
-		? dotJoin([head, theme.fg("muted", description)], (s) => theme.fg("dim", s))
+		? dotJoin([head, theme.fg("dim", description)], (s) => theme.fg("muted", s))
 		: head;
 
 	// renderCall replaces Pi's default argument renderer. Initially retain the
@@ -286,12 +286,12 @@ function shortModelLabel(model: { provider: string; id: string; name?: string })
 function buildStats(d: AgentDetails, theme: Theme): string {
 	const parts: string[] = [];
 	if (d.modelName) parts.push(theme.fg("muted", `[${d.modelName}]`));
-	if (d.tags) parts.push(...d.tags.map((t) => theme.fg("dim", t)));
+	if (d.tags) parts.push(...d.tags.map((t) => theme.fg("muted", t)));
 	if (d.turnCount != null && d.turnCount > 0)
-		parts.push(theme.fg("dim", formatTurns(d.turnCount, d.maxTurns)));
-	if (d.toolUses > 0) parts.push(theme.fg("dim", formatToolUses(d.toolUses)));
-	if (d.context) parts.push(theme.fg("dim", d.context));
-	return dotJoin(parts, (s) => theme.fg("dim", s));
+		parts.push(theme.fg("muted", formatTurns(d.turnCount, d.maxTurns)));
+	if (d.toolUses > 0) parts.push(theme.fg("muted", formatToolUses(d.toolUses)));
+	if (d.context) parts.push(theme.fg("muted", d.context));
+	return dotJoin(parts, (s) => theme.fg("muted", s));
 }
 
 /** Format every foreground terminal state with stable identity-first ordering. */
@@ -308,7 +308,7 @@ export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 			status = "steered (turn limit)";
 			break;
 		case "stopped":
-			marker = theme.fg("dim", padIcon("■"));
+			marker = theme.fg("muted", padIcon("■"));
 			status = "stopped";
 			break;
 		case "aborted":
@@ -324,18 +324,21 @@ export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 	}
 
 	const parts: string[] = [];
-	if (d.description) parts.push(theme.fg("muted", d.description));
+	if (d.description) parts.push(theme.fg("dim", d.description));
 	const stats = buildStats(d, theme);
 	if (stats) parts.push(stats);
 	const speed = formatSpeed(d.outputTokens ?? 0, d.streamingMs ?? d.durationMs);
-	if (speed) parts.push(theme.fg("dim", speed));
-	parts.push(theme.fg("dim", formatMs(d.durationMs)));
-	parts.push(theme.fg(d.status === "error" ? "error" : "dim", status));
+	if (speed) parts.push(theme.fg("muted", speed));
+	parts.push(theme.fg("muted", formatMs(d.durationMs)));
+	let statusColor: "error" | "muted" | "success" = "success";
+	if (d.status === "error") statusColor = "error";
+	else if (d.status === "stopped") statusColor = "muted";
+	parts.push(theme.fg(statusColor, status));
 
-	const dot = (s: string) => theme.fg("dim", s);
+	const dot = (s: string) => theme.fg("muted", s);
 	// Lead with the registered tool name `agent`, then the agent display name as
 	// the target — matching the call row and every other collapsed tool row.
-	const identity = `${marker} ${theme.fg("toolTitle", theme.bold("agent"))} ${theme.fg("toolTitle", theme.bold(d.displayName))}`;
+	const identity = `${marker} ${theme.fg("toolTitle", theme.bold("agent"))} ${theme.fg("dim", d.displayName)}`;
 	return dotJoin([identity, ...parts], dot);
 }
 
@@ -543,15 +546,15 @@ export function createAgentTool(
 				const liveSpeed = formatSpeed(details.outputTokens ?? 0, details.streamingMs ?? 0);
 				if (liveSpeed) parts.push(liveSpeed);
 				if (details.durationMs > 0) parts.push(formatMs(details.durationMs));
-				if (details.activity) parts.push(details.activity);
-				const dot = (s: string) => theme.fg("dim", s);
-				const statsText = parts.length > 0 ? dot(dotJoin(parts)) : "";
+				const dot = (s: string) => theme.fg("muted", s);
+				const statsText = parts.length > 0 ? theme.fg("muted", dotJoin(parts)) : "";
 
 				const line = dotJoin(
 					[
 						`  ${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(details.displayName))}${modelLabel}`,
-						theme.fg("muted", details.description),
+						theme.fg("dim", details.description),
 						statsText,
+						details.activity ? theme.fg("dim", details.activity) : "",
 					],
 					dot,
 				);

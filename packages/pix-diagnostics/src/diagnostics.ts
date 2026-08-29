@@ -71,7 +71,7 @@ function renderWidget(width: number, theme: Theme): string[] {
 	const w = Math.max(1, width || 80);
 
 	const cyan = (s: string) => theme.fg("accent", s);
-	const dim = (s: string) => theme.fg("muted", s);
+	const muted = (s: string) => theme.fg("muted", s);
 	const green = (s: string) => theme.fg("success", s);
 
 	const lines: string[] = [];
@@ -96,7 +96,7 @@ function renderWidget(width: number, theme: Theme): string[] {
 			? `${green("✓")} ${filesList}`
 			: `${green("✓")} ${filesList} +${filesCount - 3} more`;
 
-	const header = ` ${cyan("pix-lens")}  ${summary}  ${dim("(/lens-booboo for details)")}`;
+	const header = ` ${cyan("pix-lens")}  ${summary}  ${muted("(/lens-booboo for details)")}`;
 	lines.push(fitLine(header, w));
 
 	return lines;

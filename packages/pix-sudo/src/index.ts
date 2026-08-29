@@ -448,7 +448,7 @@ export default function (pi: ExtensionAPI): void {
 			const command = safeOneLine(args.command) || "(empty command)";
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("sudo"))} ${theme.fg("muted", command)}`,
+					`${theme.fg("toolTitle", theme.bold("sudo"))} ${theme.fg("dim", command)}`,
 				),
 			);
 			return text;
@@ -469,7 +469,7 @@ export default function (pi: ExtensionAPI): void {
 					text.setText(renderToolError(getTextContent(result) || "Error", theme));
 				} else {
 					text.setText(
-						fillToolBackground(`  ${theme.fg("dim", getTextContent(result) || "done")}`),
+						fillToolBackground(`  ${theme.fg("muted", getTextContent(result) || "done")}`),
 					);
 				}
 				return text;
@@ -504,7 +504,7 @@ export default function (pi: ExtensionAPI): void {
 
 			if (details.outcome === "awaiting-approval" || details.outcome === "running") {
 				text.setText(
-					fillToolBackground(`  ${theme.fg("dim", getTextContent(result) || "working")}`),
+					fillToolBackground(`  ${theme.fg("muted", getTextContent(result) || "working")}`),
 				);
 				return text;
 			}

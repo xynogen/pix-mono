@@ -198,9 +198,9 @@ describe("mcp-setup-panel custom keybindings", () => {
 		expect(lines.join("\n")).toContain("<fg:accent><b>");
 		expect(lines.join("\n")).toContain("MCP setup</b></fg>");
 		expect(lines.join("\n")).toContain("discover · import · configure external MCP servers");
-		expect(lines.join("\n")).toContain("<fg:text>↑↓</fg><fg:dim> navigate</fg>");
+		expect(lines.join("\n")).toContain("<fg:text>↑↓</fg><fg:muted> navigate</fg>");
 		expect(lines.join("\n")).toContain("<fg:text>enter</fg>");
-		expect(lines.join("\n")).toContain("<fg:text>esc</fg><fg:dim> back</fg>");
+		expect(lines.join("\n")).toContain("<fg:text>esc</fg><fg:muted> back</fg>");
 		panel.dispose();
 	});
 

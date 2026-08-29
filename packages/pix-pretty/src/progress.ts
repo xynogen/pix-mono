@@ -92,7 +92,7 @@ export function openProgress(ui: ProgressUI, title: string, accent = "accent"): 
 						maxHeight: terminalModalHeight(tui.terminal?.rows),
 						minHeight: MIN_MODAL_HEIGHT,
 						header: [theme.fg(accent, theme.bold(title))],
-						body: [`${theme.fg(accent, SPINNER[frame] ?? "")} ${theme.fg("muted", labelValue)}`],
+						body: [`${theme.fg(accent, SPINNER[frame] ?? "")} ${theme.fg("dim", labelValue)}`],
 						color: (s) => theme.fg(accent, s),
 						bg: (s) => theme.bg("customMessageBg", s),
 					}).lines;

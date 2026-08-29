@@ -204,6 +204,18 @@ icon("cwd")           // resolves glyph for active mode (nerd/unicode/ascii)
 
 ---
 
+## UI Visual Hierarchy
+
+Pix uses color intensity to show information priority without adding UI chrome:
+
+1. **Primary** — `toolTitle`, `accent`, status colors, and main values. Highest contrast.
+2. **Secondary** — `dim`. Targets, paths, commands, descriptions, and other supporting content.
+3. **Tertiary** — `muted`. Metadata, counts, timing, separators, hints, placeholders, and decorative structure. Lowest contrast.
+
+The required visual ramp is **primary → dim → muted**. `dim` must be brighter than `muted` in every theme. Do not choose these tokens by their conventional names; choose them by information priority. In a row such as `<tool> <target> · <metadata>`, render the tool with `toolTitle`, the target with `dim`, and the separator plus metadata with `muted`.
+
+---
+
 ## Shared Rendering & Widget Helpers
 
 **pix-pretty is the home for any rendering, layout, or display-formatting code shared by two or more packages.** It is a sanctioned shared layer, so extracting into it never breaks the Package Independence rule.

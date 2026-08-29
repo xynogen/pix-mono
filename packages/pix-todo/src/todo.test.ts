@@ -955,7 +955,7 @@ describe("todo card layout", () => {
 		expect(result.details).toBeDefined();
 		expect(lines).toHaveLength(1);
 		expect(lines[0]?.trimEnd()).toBe(
-			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [muted]#2 todo renderer[/] [dim]·[/] [dim]1/2 done[/]",
+			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [dim]#2 todo renderer[/] [muted]·[/] [muted]1/2 done[/]",
 		);
 	});
 });
@@ -986,14 +986,14 @@ describe("renderResult snapshot isolation", () => {
 describe("renderTodoSummaryLine (collapsed one-liner)", () => {
 	test("empty list renders a compact tool row", () => {
 		expect(renderTodoSummaryLine([], tagTheme)).toBe(
-			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [muted]empty[/]",
+			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [dim]empty[/]",
 		);
 	});
 
 	test("uses warning status when work is blocked", () => {
 		const items: TodoItem[] = [{ id: 1, text: "Need approval", status: "blocked" }];
 		expect(renderTodoSummaryLine(items, tagTheme)).toBe(
-			"[warning]⚠ [/] [toolTitle]<b>todo</b>[/] [muted]checklist[/] [dim]·[/] [dim]0/1 done · 1 blocked[/]",
+			"[warning]⚠ [/] [toolTitle]<b>todo</b>[/] [dim]checklist[/] [muted]·[/] [muted]0/1 done · 1 blocked[/]",
 		);
 	});
 
@@ -1003,7 +1003,7 @@ describe("renderTodoSummaryLine (collapsed one-liner)", () => {
 			{ id: 2, text: "b", status: "in_progress" },
 		];
 		expect(renderTodoSummaryLine(items, tagTheme)).toBe(
-			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [muted]#2 b[/] [dim]·[/] [dim]1/2 done[/]",
+			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [dim]#2 b[/] [muted]·[/] [muted]1/2 done[/]",
 		);
 	});
 });

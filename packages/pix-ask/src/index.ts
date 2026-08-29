@@ -57,6 +57,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					};
 				}
 
+				// SAFETY: ParamsSchema validates tool input before execute receives it.
 				const typed = params as unknown as Params;
 
 				if (!Array.isArray(typed.questions) || typed.questions.length === 0) {
@@ -113,9 +114,11 @@ export default function registerAsk(pi: ExtensionAPI): void {
 				const questions = Array.isArray(args.questions) ? args.questions : [];
 				const count = questions.length;
 				const firstQ = questions[0]?.question ?? "";
-				const head = `${theme.fg("toolTitle", theme.bold("ask_user"))} ${theme.fg("muted", firstQ)}`;
+				const head = `${theme.fg("toolTitle", theme.bold("ask_user"))} ${theme.fg("dim", firstQ)}`;
 				text.setText(
-					dotJoin([head, theme.fg("dim", pluralize(count, "question"))], (s) => theme.fg("dim", s)),
+					dotJoin([head, theme.fg("muted", pluralize(count, "question"))], (s) =>
+						theme.fg("muted", s),
+					),
 				);
 				return text;
 			},

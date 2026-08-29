@@ -486,7 +486,7 @@ export default function (pi: ExtensionAPI): void {
 				hostApproved(approvedHosts, key) &&
 				promptFor.length === 0;
 			if (alreadyApproved) {
-				ctx.ui.notify(`🔐 ssh_run auto-approved — ${host} allowed this session`, "warning");
+				ctx.ui.notify(`ssh_run: reused session approval for ${host}`, "info");
 			} else if (transferDecision === "allow") {
 				ctx.ui.notify(
 					`⚠ ssh_run file transfer auto-approved — ${mode.toUpperCase()} warning policy`,
@@ -745,7 +745,7 @@ export default function (pi: ExtensionAPI): void {
 					text.setText(renderToolError(getTextContent(result) || "Error", theme));
 				} else {
 					text.setText(
-						fillToolBackground(`  ${theme.fg("dim", getTextContent(result) || "done")}`),
+						fillToolBackground(`  ${theme.fg("muted", getTextContent(result) || "done")}`),
 					);
 				}
 				return text;
@@ -780,7 +780,7 @@ export default function (pi: ExtensionAPI): void {
 
 			if (details.outcome === "awaiting-approval" || details.outcome === "running") {
 				text.setText(
-					fillToolBackground(`  ${theme.fg("dim", getTextContent(result) || "working")}`),
+					fillToolBackground(`  ${theme.fg("muted", getTextContent(result) || "working")}`),
 				);
 				return text;
 			}

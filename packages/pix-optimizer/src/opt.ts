@@ -73,6 +73,7 @@ export function registerOptCommand(
 	pi.registerCommand("optimizer", {
 		description: "pix-optimizer: caveman / rtk / ponytail tools",
 		handler: async (_args, ctx) => {
+			// SAFETY: Runtime UI supports custom overlays beyond the published command context type.
 			const ui = ctx.ui as unknown as {
 				theme: {
 					fg(c: string, t: string): string;
@@ -114,8 +115,8 @@ export function registerOptCommand(
 					done: (v: null) => void,
 				) => {
 					const guide = (key: string, action: string) =>
-						theme.fg("text", key) + theme.fg("dim", ` ${action}`);
-					const guideSep = theme.fg("dim", " · ");
+						theme.fg("text", key) + theme.fg("muted", ` ${action}`);
+					const guideSep = theme.fg("muted", " · ");
 					let selected = 0;
 					const pager = new ModalPager();
 
@@ -138,14 +139,14 @@ export function registerOptCommand(
 								const on = handles[tool].current() !== "off";
 								const sel = i === selected;
 								const cursor = sel ? theme.fg("accent", "→") : " ";
-								const glyph = theme.fg(on ? "accent" : "dim", toolIcon(tool));
+								const glyph = theme.fg(on ? "accent" : "muted", toolIcon(tool));
 								const name = theme.fg(
 									sel ? "accent" : on ? "text" : "muted",
 									tool.padEnd(nameWidth),
 								);
 								const cur = handles[tool].current();
-								const value = theme.fg(on ? "success" : "dim", cur.padEnd(valueWidth));
-								const bar = theme.fg(on ? "accent" : "dim", levelBar(cur, handles[tool].values));
+								const value = theme.fg(on ? "success" : "muted", cur.padEnd(valueWidth));
+								const bar = theme.fg(on ? "accent" : "muted", levelBar(cur, handles[tool].values));
 								return `${cursor} ${glyph}  ${name}  ${value}  ${bar}`;
 							});
 							const result = frameModal({

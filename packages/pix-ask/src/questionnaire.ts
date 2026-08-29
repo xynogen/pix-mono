@@ -18,7 +18,6 @@ import {
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
 import { ChipEditor } from "./chip-editor.js";
-import { dim } from "./components.js";
 import { checkboxGlyphs, selectionGlyph } from "./glyphs.js";
 import { safeMarkdownTheme, sentinelsFor } from "./helpers.js";
 import type { OptionData, Params, QuestionData } from "./schema.js";
@@ -127,8 +126,8 @@ export class AskQuestionnaire extends Container {
 				selectList: {
 					selectedPrefix: (s: string) => this.theme.fg("accent", s),
 					selectedText: (s: string) => this.theme.fg("accent", s),
-					description: (s: string) => this.theme.fg("muted", s),
-					scrollInfo: (s: string) => this.theme.fg("dim", s),
+					description: (s: string) => this.theme.fg("dim", s),
+					scrollInfo: (s: string) => this.theme.fg("muted", s),
 					noMatch: (s: string) => this.theme.fg("warning", s),
 				},
 			},
@@ -470,19 +469,19 @@ export class AskQuestionnaire extends Container {
 						Math.max(10, inner - LABEL_COL),
 					);
 					for (const w of wrapped) {
-						lines.push(truncateToWidth(`${pad}${t.fg("muted", w)}`, inner, ""));
+						lines.push(truncateToWidth(`${pad}${t.fg("dim", w)}`, inner, ""));
 					}
 				}
 			} else if (item.kind === "other") {
 				const label = sel
 					? t.fg("accent", t.bold(SENTINEL_FREEFORM))
 					: t.fg("text", t.bold(SENTINEL_FREEFORM));
-				lines.push(truncateToWidth(`${ptr} ${t.fg("dim", "✎")} ${label}`, inner, ""));
+				lines.push(truncateToWidth(`${ptr} ${t.fg("muted", "✎")} ${label}`, inner, ""));
 			} else if (item.kind === "next") {
 				const label = sel
 					? t.fg("accent", t.bold(SENTINEL_NEXT))
 					: t.fg("text", t.bold(SENTINEL_NEXT));
-				lines.push(truncateToWidth(`${ptr} ${t.fg("dim", "→")} ${label}`, inner, ""));
+				lines.push(truncateToWidth(`${ptr} ${t.fg("muted", "→")} ${label}`, inner, ""));
 			}
 			if (sel)
 				this.selectedOptionRows = { start: itemStart, end: Math.max(itemStart + 1, lines.length) };
@@ -494,7 +493,7 @@ export class AskQuestionnaire extends Container {
 	private renderPreview(width: number): string[] {
 		const item = this.selectedItem;
 		if (item?.kind !== "option" || !item.option?.preview) {
-			return [this.theme.fg("dim", "No preview")];
+			return [this.theme.fg("muted", "No preview")];
 		}
 
 		const mdText = item.option.preview;
@@ -506,7 +505,7 @@ export class AskQuestionnaire extends Container {
 		}
 
 		const lines = wrapTextWithAnsi(mdText, mdWidth);
-		return lines.map((l) => truncateToWidth(this.theme.fg("muted", l), mdWidth, ""));
+		return lines.map((l) => truncateToWidth(this.theme.fg("dim", l), mdWidth, ""));
 	}
 
 	override render(termWidth: number): string[] {
@@ -528,8 +527,8 @@ export class AskQuestionnaire extends Container {
 		let footer: string[] = [];
 
 		const row = (content: string): string => truncateToWidth(content, width, "");
-		const guide = (key: string, action: string) => t.fg("text", key) + t.fg("dim", ` ${action}`);
-		const guideSep = t.fg("dim", " • ");
+		const guide = (key: string, action: string) => t.fg("muted", `${key} ${action}`);
+		const guideSep = t.fg("muted", " • ");
 
 		// Tab bar — rendered as the framed top edge (frameLines `top`).
 		let top: string | undefined;
@@ -540,14 +539,14 @@ export class AskQuestionnaire extends Container {
 				const tag = `${i + 1}.${this.params.questions[i]?.header}`;
 				tabParts.push(active ? t.fg("accent", t.bold(tag)) : t.fg("dim", tag));
 			}
-			top = truncateToWidth(tabParts.join(t.fg("dim", "  ")), width, "");
+			top = truncateToWidth(tabParts.join(t.fg("muted", "  ")), width, "");
 		}
 
 		// Header chip
 		const chip = t.fg("accent", t.bold(this.currentQ.header));
 		const prog =
 			this.params.questions.length > 1
-				? dim(t)(` ${this.currentIndex + 1}/${this.params.questions.length}`)
+				? t.fg("muted", ` ${this.currentIndex + 1}/${this.params.questions.length}`)
 				: "";
 		header.push(row(`${chip}${prog}`));
 
@@ -583,7 +582,7 @@ export class AskQuestionnaire extends Container {
 		if (!isMulti) {
 			const searchVal = this.searchQuery
 				? t.fg("text", this.searchQuery)
-				: t.fg("dim", "type to filter");
+				: t.fg("muted", "type to filter");
 			header.push(row(`${t.fg("accent", "Filter:")} ${searchVal}`));
 		}
 
@@ -593,7 +592,7 @@ export class AskQuestionnaire extends Container {
 		const maxOptLines = Math.max(optionLines.length, previewLines.length);
 
 		if (useSplit) {
-			const sep = t.fg("dim", SEPARATOR);
+			const sep = t.fg("muted", SEPARATOR);
 			for (let i = 0; i < maxOptLines; i++) {
 				const left = truncateToWidth(optionLines[i] ?? "", leftWidth, "", true);
 				const right = truncateToWidth(previewLines[i] ?? "", previewWidth, "");
@@ -643,7 +642,7 @@ export class AskQuestionnaire extends Container {
 			color: (s) => t.fg("accent", s),
 			bg: (s) => t.bg("customMessageBg", s),
 			overflowLine: ({ page, totalPages }) =>
-				t.fg("dim", `PgUp/PgDn inspect • ${page}/${totalPages}`),
+				t.fg("muted", `PgUp/PgDn inspect • ${page}/${totalPages}`),
 		});
 		this.pager.sync(result);
 		return result.lines;

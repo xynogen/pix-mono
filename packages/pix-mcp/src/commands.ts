@@ -45,7 +45,7 @@ type FgTheme = { fg: (key: string, text: string) => string };
 
 /**
  * Colorize a unified-diff string per line — additions success, deletions error,
- * everything else muted. Same scheme the add-server panel uses for its preview
+ * everything else dim. Same scheme the add-server panel uses for its preview
  * (mcp-add-panel.ts), so add and delete read identically.
  */
 function colorizeConfigDiff(diffText: string, th: FgTheme): string[] {
@@ -54,7 +54,7 @@ function colorizeConfigDiff(diffText: string, th: FgTheme): string[] {
 		if (line === "--- before" || line === "+++ after") continue; // drop diff headers
 		if (line.startsWith("+")) out.push(th.fg("success", line));
 		else if (line.startsWith("-")) out.push(th.fg("error", line));
-		else out.push(th.fg("muted", line));
+		else out.push(th.fg("dim", line));
 	}
 	return out;
 }
@@ -557,8 +557,7 @@ export async function openMcpPanel(
 		}
 		const preview = previewRemoveServerEntry(prov.path, wantsDelete);
 		const th = ctx.ui.theme;
-		// Theme.fg takes a narrow ThemeColor; the helper accepts a wider string
-		// key — same runtime fn, cast to bridge the variance.
+		// SAFETY: Theme.fg and FgTheme share the same runtime signature; only key variance differs.
 		const diffBody = colorizeConfigDiff(preview.diffText, th as unknown as FgTheme);
 		const result = await showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
 			mode: "confirm",

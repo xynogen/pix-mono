@@ -546,14 +546,14 @@ interface FgTheme {
 
 /**
  * Canonical SelectList theme for interactive overlays.
- * accent = active/selected, muted = descriptions, dim = scroll/hints, warning = no-match.
+ * accent = active/selected, dim = descriptions, muted = scroll/hints, warning = no-match.
  */
 export function selectListTheme(theme: FgTheme, accent = "accent"): SelectListThemeConfig {
 	return {
 		selectedPrefix: (t) => theme.fg(accent, t),
 		selectedText: (t) => theme.fg(accent, t),
-		description: (t) => theme.fg("muted", t),
-		scrollInfo: (t) => theme.fg("dim", t),
+		description: (t) => theme.fg("dim", t),
+		scrollInfo: (t) => theme.fg("muted", t),
 		noMatch: (t) => theme.fg("warning", t),
 	};
 }

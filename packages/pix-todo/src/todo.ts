@@ -271,7 +271,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				const t = theme as TodoTheme;
 				const action = (args as { action?: string })?.action ?? "";
 				const title = t.fg("toolTitle", t.bold("todo"));
-				return new Text(action ? `${title} ${t.fg("muted", action)}` : title, 0, 0);
+				return new Text(action ? `${title} ${t.fg("dim", action)}` : title, 0, 0);
 			},
 			renderResult(result, options, theme, context) {
 				const details = result.details as TodoResultDetails | undefined;

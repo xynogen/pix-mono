@@ -137,7 +137,8 @@ describe("registerBashTool", () => {
 		);
 
 		const theme: ThemeLike = {
-			fg: (key: string, value: string) => (key === "muted" ? `<muted>${value}</muted>` : value),
+			fg: (key: string, value: string) =>
+				key === "dim" || key === "muted" ? `<${key}>${value}</${key}>` : value,
 			bold: (value: string) => value,
 		};
 		const collapsedCtx = {
@@ -168,8 +169,8 @@ describe("registerBashTool", () => {
 		);
 
 		expect(call?.getText()).toBe("");
-		expect(result?.getText()).toContain("✓  bash <muted>bun test · +2 steps</muted>");
-		expect(result?.getText()).toContain("2 lines · 2.5s");
+		expect(result?.getText()).toContain("✓  bash <dim>bun test · +2 steps</dim>");
+		expect(result?.getText()).toContain("<muted>2 lines · 2.5s</muted>");
 		expect(result?.getText()).not.toContain("git diff --check");
 	});
 

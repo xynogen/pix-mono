@@ -316,7 +316,7 @@ function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRende
 		if (hl) return new Text([styledTitle, hl].join("\n"), 0, 0);
 	}
 
-	const styledRest = rest.map((line) => theme.fg("muted", line));
+	const styledRest = rest.map((line) => theme.fg("dim", line));
 	return new Text([styledTitle, ...styledRest].join("\n"), 0, 0);
 }
 

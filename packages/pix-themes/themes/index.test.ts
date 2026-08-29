@@ -17,8 +17,8 @@ const THEMES = [
 ] as const;
 
 const THINKING_COLOR_KEYS = [
-	["thinkingOff", "dim"],
-	["thinkingMinimal", "muted"],
+	["thinkingOff", "muted"],
+	["thinkingMinimal", "dim"],
 	["thinkingLow", "success"],
 	["thinkingMedium", "accent"],
 	["thinkingHigh", "warning"],
@@ -33,6 +33,9 @@ const EXPRESSIVE_SYNTAX_KEYS = [
 	"syntaxPunctuation",
 ] as const;
 
+const SECONDARY_COLOR_KEYS = ["thinkingText", "mdQuote", "toolDiffContext"] as const;
+const TERTIARY_COLOR_KEYS = ["mdLinkUrl", "mdQuoteBorder", "mdHr", "syntaxPunctuation"] as const;
+
 function readTheme(name: (typeof THEMES)[number]) {
 	const themeFile = resolve(__dirname, `../themes/${name}.json`);
 	try {
@@ -40,6 +43,18 @@ function readTheme(name: (typeof THEMES)[number]) {
 	} catch (error) {
 		throw new Error(`Invalid theme JSON: ${name}`, { cause: error });
 	}
+}
+
+function luminance(hex: string): number {
+	const channels =
+		hex.match(/[\da-f]{2}/gi)?.map((value) => Number.parseInt(value, 16) / 255) ?? [];
+	return channels.reduce(
+		(sum, value, index) =>
+			sum +
+			(value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) *
+				[0.2126, 0.7152, 0.0722][index]!,
+		0,
+	);
 }
 
 describe("pix-themes", () => {
@@ -73,6 +88,17 @@ describe("pix-themes", () => {
 				return theme.vars[value] ?? value;
 			});
 			expect(new Set(resolved).size).toBe(EXPRESSIVE_SYNTAX_KEYS.length);
+		});
+
+		it(`${name} maps secondary and tertiary content by information priority`, () => {
+			const theme = readTheme(name);
+			for (const key of SECONDARY_COLOR_KEYS) expect(theme.colors[key]).toBe("dim");
+			for (const key of TERTIARY_COLOR_KEYS) expect(theme.colors[key]).toBe("muted");
+		});
+
+		it(`${name} keeps dim brighter than muted`, () => {
+			const theme = readTheme(name);
+			expect(luminance(theme.vars.dim)).toBeGreaterThan(luminance(theme.vars.muted));
 		});
 
 		it(`${name} leaves tool surfaces on the terminal background`, () => {

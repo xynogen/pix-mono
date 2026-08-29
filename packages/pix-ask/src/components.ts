@@ -38,7 +38,7 @@ export class TabBar implements Component {
 			const tag = `${num}.${this.questions[i]?.header}`;
 			parts.push(active ? t.fg("accent", t.bold(tag)) : t.fg("dim", tag));
 		}
-		const line = parts.join(t.fg("dim", "  "));
+		const line = parts.join(t.fg("muted", "  "));
 		return [
 			truncateToWidth(
 				t.fg("accent", "╭─") +

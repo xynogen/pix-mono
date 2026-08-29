@@ -293,8 +293,8 @@ export function formatCollapsedToolRow(
 	const icon = padIcon(COLLAPSED_TOOL_GLYPH[status]);
 	const parts = [
 		`${theme.fg(status, icon)} ${theme.fg("toolTitle", theme.bold(tool))}`,
-		target ? theme.fg("muted", target) : "",
-		meta ? `${theme.fg("dim", "·")} ${theme.fg("dim", meta)}` : "",
+		target ? theme.fg("dim", target) : "",
+		meta ? `${theme.fg("muted", "·")} ${theme.fg("muted", meta)}` : "",
 	].filter(Boolean);
 	return parts.join(" ");
 }
@@ -406,7 +406,7 @@ export function renderDimPreview(
 	const header = opts.header ? `  ${theme.fg("dim", opts.header)}` : undefined;
 	const overflow =
 		lines.length > maxLines
-			? `  ${theme.fg("dim", `… ${pluralize(lines.length - maxLines, "more line")}`)}`
+			? `  ${theme.fg("muted", `… ${pluralize(lines.length - maxLines, "more line")}`)}`
 			: undefined;
 
 	if (opts.frame) {
