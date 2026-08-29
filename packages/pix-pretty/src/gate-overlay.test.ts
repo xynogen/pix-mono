@@ -158,6 +158,7 @@ describe("showOverlay — confirm mode", () => {
 				title: "SSH FILE TRANSFER",
 				body: [
 					"Intent: Copy a release artifact",
+					"Command: scp app.tar.gz host:/tmp",
 					"Host: deploy@example.com",
 					"Direction: Download",
 					"From: /srv/releases/app.tar.gz",
@@ -170,12 +171,52 @@ describe("showOverlay — confirm mode", () => {
 			},
 		);
 		const joined = captured.join("\n");
+		expect(joined).toContain("<dim>Intent:</dim> <text>Copy a release artifact</text>");
+		expect(joined).toContain("<dim>Command:</dim> <dim>scp app.tar.gz host:/tmp</dim>");
 		expect(joined).toContain("<dim>Host:</dim> <accent>deploy@example.com</accent>");
 		expect(joined).toContain("<dim>Direction:</dim> <warning>Download</warning>");
 		expect(joined).toContain("<dim>From:</dim> <text>/srv/releases/app.tar.gz</text>");
 		expect(joined).toContain("<dim>To:</dim> <accent>/tmp/app.tar.gz</accent>");
 		expect(joined).toContain("<warning>Warning: existing destination may be overwritten</warning>");
 		expect(joined).toContain("<dim>Auth:</dim> <success>SSH key (no password)</success>");
+	});
+
+	// Regression guard (readability fix, pix-pretty 1.18.4): Intent:/Command:
+	// lines must go through the label/value colour map — a <dim> label plus a
+	// semantic value — never a bare bright value with the label stripped off.
+	// Pre-1.18.4 they were sliced and dumped as bright <text> with no label,
+	// which was hard to read on the modal background. Command value must be <dim>.
+	test("Intent/Command body lines keep a dim label and never drop it", async () => {
+		const coloredTheme = {
+			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
+			bg: (_color: string, text: string) => text,
+			bold: (text: string) => text,
+		};
+		let captured: string[] = [];
+		await showOverlay(
+			makeUI(
+				(comp) => {
+					captured = comp.render(100);
+					comp.handleInput(ENTER);
+				},
+				undefined,
+				coloredTheme,
+			),
+			{
+				mode: "sudo",
+				title: "ROOT COMMAND REQUEST",
+				accent: "error",
+				body: ["Intent: install a package", "Command: apt install foo"],
+				timeoutMs: 0,
+			},
+		);
+		const joined = captured.join("\n");
+		// Command label + value both dim; intent value stays readable text but is
+		// always prefixed by a dim label (never a bare label-less value).
+		expect(joined).toContain("<dim>Command:</dim> <dim>apt install foo</dim>");
+		expect(joined).toContain("<dim>Intent:</dim> <text>install a package</text>");
+		// The pre-1.18.4 bug: label stripped, value dumped bright with no dim label.
+		expect(joined).not.toContain("<text>apt install foo</text>"); // command value is dim, not text
 	});
 
 	test("wraps a long body command instead of truncating it", async () => {
