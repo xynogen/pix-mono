@@ -9,6 +9,7 @@
  *   ROUTER_API_KEY   — bearer token (required for live model list)
  */
 
+import type { RefreshModelsContext } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { ModelsDevModel, RouterModel } from "./data.js";
 import { fetchModelsDevIndex, lookupInIndex, routerBaseUrl, routerModels } from "./data.js";
@@ -25,6 +26,33 @@ const ZERO_COST = {
 
 // Fallback pattern-based detection if models.dev lookup fails
 const IMAGE_CAPABLE_PATTERNS = [/claude/i, /gpt-5/i, /gpt-4/i, /kimi-k2/i, /hy3/i];
+
+interface RouterModelsResponse {
+	data?: RouterModel[];
+}
+
+const COMPAT = {
+	supportsDeveloperRole: false,
+	supportsUsageInStreaming: false,
+	maxTokensField: "max_tokens",
+} as const;
+
+function toModelConfig(devIndex: Map<string, ModelsDevModel>) {
+	return (model: RouterModel) => {
+		const id = model.id ?? "";
+		const devModel = lookupInIndex(id, devIndex);
+		return {
+			id,
+			name: getModelName(model, devModel),
+			reasoning: getReasoning(model, devModel),
+			input: getInputTypes(model, devModel),
+			cost: ZERO_COST,
+			contextWindow: getContextWindow(model, devModel),
+			maxTokens: getMaxTokens(model, devModel),
+			compat: COMPAT,
+		};
+	};
+}
 
 export function getInputTypes(model: RouterModel, devModel?: ModelsDevModel): ("text" | "image")[] {
 	if (devModel?.modalities?.input) {
@@ -82,39 +110,54 @@ export default async function registerProvider(pi: ExtensionAPI): Promise<void> 
 		return;
 	}
 
-	const [models, devIndex] = await Promise.all([
+	// Upstream moved OpenAI `compat` settings from the provider level to the
+	// per-model level (ProviderModelConfig.compat). Applied in toModelConfig.
+
+	// Register from disk cache only — startup must not block on network.
+	const cached = routerModels.getCached();
+	pi.registerProvider("9router", providerConfig(apiKey, cached, new Map()));
+
+	// Background refresh; re-registering after startup applies immediately.
+	void Promise.all([
 		routerModels.get(),
 		fetchModelsDevIndex().catch(() => new Map<string, ModelsDevModel>()),
-	]);
+	])
+		.then(([models, devIndex]) =>
+			pi.registerProvider("9router", providerConfig(apiKey, models, devIndex)),
+		)
+		.catch(() => {});
+}
 
-	// Upstream moved OpenAI `compat` settings from the provider level to the
-	// per-model level (ProviderModelConfig.compat). Apply the same shim to every
-	// registered model.
-	const COMPAT = {
-		supportsDeveloperRole: false,
-		supportsUsageInStreaming: false,
-		maxTokensField: "max_tokens",
-	} as const;
-
-	pi.registerProvider("9router", {
+function providerConfig(
+	apiKey: string,
+	models: RouterModel[],
+	devIndex: Map<string, ModelsDevModel>,
+) {
+	return {
 		name: "9Router",
 		baseUrl: routerBaseUrl(),
 		apiKey: "$ROUTER_API_KEY",
 		api: "openai-completions",
 		headers: { "User-Agent": "pi-coding-agent" },
-		models: models.map((model) => {
-			const id = model.id ?? "";
-			const devModel = lookupInIndex(id, devIndex);
-			return {
-				id,
-				name: getModelName(model, devModel),
-				reasoning: getReasoning(model, devModel),
-				input: getInputTypes(model, devModel),
-				cost: ZERO_COST,
-				contextWindow: getContextWindow(model, devModel),
-				maxTokens: getMaxTokens(model, devModel),
-				compat: COMPAT,
-			};
-		}),
-	});
+		models: models.map(toModelConfig(devIndex)),
+		// Live fetch on /model refresh — bypasses the disk cache.
+		// Pi calls refreshModels once per provider at every startup with
+		// allowNetwork:false (awaited, no timeout) — never touch the network
+		// there; serve the registered snapshot instead.
+		async refreshModels({ signal, allowNetwork }: RefreshModelsContext) {
+			if (!allowNetwork) return models.map(toModelConfig(devIndex));
+			const res = await fetch(`${routerBaseUrl()}/models`, {
+				signal: AbortSignal.any([AbortSignal.timeout(8_000), ...(signal ? [signal] : [])]),
+				headers: {
+					Authorization: `Bearer ${apiKey}`,
+					"User-Agent": "pi-coding-agent",
+				},
+			});
+			if (!res.ok) throw new Error(`9router /models: ${res.status}`);
+			const raw = (await res.json()) as RouterModelsResponse;
+			const list = (raw.data ?? []).filter((m) => Boolean(m.id));
+			const fresh = await fetchModelsDevIndex().catch(() => new Map<string, ModelsDevModel>());
+			return list.map(toModelConfig(fresh));
+		},
+	};
 }
