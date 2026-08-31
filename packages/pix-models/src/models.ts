@@ -29,6 +29,7 @@ import {
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
 import { dotJoin } from "@xynogen/pix-pretty/utils";
+import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { patchOutBuiltinModelCommand } from "./patch-builtin";
 
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
@@ -237,7 +238,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 		getAvailable(): AvailableModels | Promise<AvailableModels>;
 	};
 	registry.refresh?.();
-	const available = await registry.getAvailable();
+	let available = await registry.getAvailable();
 	if (available.length === 0) {
 		ctx.ui.notify("No models with configured auth.", "warning");
 		return;
@@ -255,197 +256,193 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 		// Sort tier: 0 scored, 1 benched-but-unscored, 2 off-catalog.
 		tier: 0 | 1 | 2;
 	};
-	const rows: Row[] = available.map((m) => {
-		const bench = lookupBenchmark(m.id);
-		const tier = !bench
-			? 2 // off-catalog → absolute bottom (no rank)
-			: bench.overallScore == null
-				? 1 // benched, unscored → middle
-				: 0; // scored → top
-		return {
-			m,
-			dev: lookupModelsDev(m.provider, m.id),
-			bench,
-			localRank: null,
-			tier,
-		};
-	});
+	const buildRows = (models: Awaited<AvailableModels>): Row[] => {
+		const rows: Row[] = models.map((m) => {
+			const bench = lookupBenchmark(m.id);
+			const tier = !bench
+				? 2 // off-catalog → absolute bottom (no rank)
+				: bench.overallScore == null
+					? 1 // benched, unscored → middle
+					: 0; // scored → top
+			return {
+				m,
+				dev: lookupModelsDev(m.provider, m.id),
+				bench,
+				localRank: null,
+				tier,
+			} satisfies Row;
+		});
 
-	// Mirror sortModels() — score-desc within tier 0, name-asc otherwise.
-	rows.sort((a, b) => {
-		const ta = a.tier;
-		const tb = b.tier;
-		if (ta !== tb) return ta - tb;
-		if (ta === 0) {
-			const sa = a.bench?.overallScore ?? -1;
-			const sb = b.bench?.overallScore ?? -1;
-			if (sa !== sb) return sb - sa;
-		}
-		return (a.m.name ?? a.m.id).localeCompare(b.m.name ?? b.m.id);
-	});
+		// Mirror sortModels() — score-desc within tier 0, name-asc otherwise.
+		rows.sort((a, b) => {
+			if (a.tier !== b.tier) return a.tier - b.tier;
+			if (a.tier === 0) {
+				const sa = a.bench?.overallScore ?? -1;
+				const sb = b.bench?.overallScore ?? -1;
+				if (sa !== sb) return sb - sa;
+			}
+			return (a.m.name ?? a.m.id).localeCompare(b.m.name ?? b.m.id);
+		});
 
-	// Local rank = position among scored available models (best pickable = #1).
-	let localRank = 0;
-	for (const r of rows) if (r.bench) r.localRank = ++localRank;
-
-	// Show all models (no deduplication)
-	const dedupedRows = rows;
+		// Local rank = position among scored available models (best pickable = #1).
+		let localRank = 0;
+		for (const row of rows) if (row.bench) row.localRank = ++localRank;
+		return rows;
+	};
 
 	// items built inside the custom() factory so we have theme access for colors
 
 	const result = await ctx.ui.custom<string | null>(
 		(tui, theme, _kb, done) => {
 			const accent = "accent";
-
-			// Find max rank width across all benchmarked rows for # padding
-			const maxRankWidth = Math.max(
-				...dedupedRows.map((r) => (r.localRank ? String(r.localRank).length : 0)),
-				1,
-			);
-
-			// Widest cost string so the cost column pads to a common width and the
-			// following ⚡score/stars stay column-aligned (e.g. "10.00/50.00" is 11
-			// chars — a fixed pad of 10 shifted those rows right by one).
-			const maxCostWidth = Math.max(
-				...dedupedRows.map((r) => fmtCost(r.dev).length),
-				"free".length,
-			);
-
-			// Mute low-info parts (separators, padding, #, ☆) so the actual values pop.
 			const mute = (s: string) => theme.fg("muted", s);
 			const guide = (key: string, action: string) =>
 				theme.fg("text", key) + theme.fg("muted", ` ${action}`);
 			const guideSep = theme.fg("muted", " · ");
 
-			// Track rank per item value so fuzzy results can prioritize ranked models.
-			const rankByValue = new Map<string, number>();
-			for (const { m, localRank } of dedupedRows) {
-				if (localRank) rankByValue.set(`${m.provider}/${m.id}`, localRank);
-			}
-
-			// Clean search haystacks — labels are ANSI-laden and carry the rank cell,
-			// so matching runs against raw id+name instead (see filterModelItems).
-			const searchTextByValue = new Map<string, string>();
-			const normalizedByValue = new Map<string, string>();
-			for (const { m } of dedupedRows) {
-				const value = `${m.provider}/${m.id}`;
-				const text = `${m.id} ${m.name ?? ""}`;
-				searchTextByValue.set(value, text);
-				normalizedByValue.set(value, normalizeModelText(text));
-			}
-
-			const items: SelectItem[] = dedupedRows.map(({ m, dev, bench, localRank }) => {
-				const isCurrent = current && m.provider === current.provider && m.id === current.id;
-
-				// Label: marker + rank cell + accent-colored model name.
-				// Ranked models show muted '#' + colored rank. Unranked (no
-				// modelgrep entry) show a muted em-dash sized to the rank
-				// column, so the model name aligns across rows.
-				const marker = isCurrent ? theme.fg(accent, "▶") : " ";
-				let rankPrefix: string;
-				if (localRank) {
-					const rankStr = String(localRank).padEnd(maxRankWidth);
-					// Color rank by the model's bench score (same scale as ⚡score),
-					// not by list position — keeps the two colors consistent.
-					const rankColor = benchScoreColor(bench?.overallScore);
-					rankPrefix = mute("#") + theme.fg(rankColor, rankStr);
-				} else {
-					// Width = "#" + maxRankWidth chars (e.g. "#   " or "#——" for 2-digit ranks).
-					const dash = "—".padEnd(maxRankWidth, " ");
-					rankPrefix = mute("#") + mute(dash);
-				}
-				// Display model id only; m.provider is routing provider, not part of id.
-				// Color the name by bench score so high-scoring models visually pop.
-				const nameColor = bench ? benchScoreColor(bench.overallScore) : accent;
-				const idColored = theme.fg(nameColor, m.id);
-				const label = `${marker} ${rankPrefix} ${idColored}`;
-
-				// Description: ctx · cost · score stars
-				// Colors: ctx muted · cost success (free muted) · score+stars warning
-				// Context: provider's `contextWindow` (source of truth) → fallback to modelgrep `dev.limit.context`.
-				const ctxRaw = fmtCtx(
-					resolveContextWindow(m as { contextWindow?: number }, dev?.limit?.context),
+			const buildPickerData = (sourceRows: Row[]) => {
+				const maxRankWidth = Math.max(
+					...sourceRows.map((row) => (row.localRank ? String(row.localRank).length : 0)),
+					1,
 				);
-				const ctxStr = mute(ctxRaw.padStart(4));
-				const rawCost = fmtCost(dev);
-				let costSeg: string;
-				if (rawCost === "—") {
-					costSeg = theme.fg("muted", "—".padEnd(maxCostWidth));
-				} else if (rawCost === "free") {
-					costSeg = mute("free".padEnd(maxCostWidth));
-				} else {
-					costSeg = theme.fg("success", rawCost.padEnd(maxCostWidth));
+				const maxCostWidth = Math.max(
+					...sourceRows.map((row) => fmtCost(row.dev).length),
+					"free".length,
+				);
+				const rankByValue = new Map<string, number>();
+				const searchTextByValue = new Map<string, string>();
+				const normalizedByValue = new Map<string, string>();
+				for (const { m, localRank } of sourceRows) {
+					const value = `${m.provider}/${m.id}`;
+					const text = `${m.id} ${m.name ?? ""}`;
+					if (localRank) rankByValue.set(value, localRank);
+					searchTextByValue.set(value, text);
+					normalizedByValue.set(value, normalizeModelText(text));
 				}
-				let benchSeg = "";
-				if (bench) {
-					const score = bench.overallScore ?? "?";
-					const s = bench.overallScore;
-					const scoreColor = benchScoreColor(s);
-					let filled = 1;
-					if (typeof s === "number") {
-						if (s >= 90) filled = 5;
-						else if (s >= 80) filled = 4;
-						else if (s >= 70) filled = 3;
-						else if (s >= 50) filled = 2;
+
+				const items: SelectItem[] = sourceRows.map(({ m, dev, bench, localRank }) => {
+					const isCurrent = current && m.provider === current.provider && m.id === current.id;
+					const marker = isCurrent ? theme.fg(accent, "▶") : " ";
+					const rankPrefix = localRank
+						? mute("#") +
+							theme.fg(benchScoreColor(bench?.overallScore), String(localRank).padEnd(maxRankWidth))
+						: mute("#") + mute("—".padEnd(maxRankWidth, " "));
+					const nameColor = bench ? benchScoreColor(bench.overallScore) : accent;
+					const label = `${marker} ${rankPrefix} ${theme.fg(nameColor, m.id)}`;
+					const ctxRaw = fmtCtx(
+						resolveContextWindow(m as { contextWindow?: number }, dev?.limit?.context),
+					);
+					const rawCost = fmtCost(dev);
+					const costSeg =
+						rawCost === "—"
+							? theme.fg("muted", "—".padEnd(maxCostWidth))
+							: rawCost === "free"
+								? mute("free".padEnd(maxCostWidth))
+								: theme.fg("success", rawCost.padEnd(maxCostWidth));
+					let benchSeg = "";
+					if (bench) {
+						const score = bench.overallScore ?? "?";
+						const scoreColor = benchScoreColor(bench.overallScore);
+						const { filled, empty } = benchStars(bench.overallScore);
+						const stars = theme.fg(scoreColor, "★".repeat(filled)) + mute("☆".repeat(empty));
+						benchSeg = `⚡${theme.fg(scoreColor, String(score))} ${stars}`;
 					}
-					const starBar = theme.fg(scoreColor, "★".repeat(filled)) + mute("☆".repeat(5 - filled));
-					benchSeg = `⚡${theme.fg(scoreColor, String(score))} ${starBar}`;
-				}
-				const desc = dotJoin([ctxStr, costSeg, benchSeg], mute);
-
+					return {
+						value: `${m.provider}/${m.id}`,
+						label,
+						description: dotJoin([mute(ctxRaw.padStart(4)), costSeg, benchSeg], mute),
+					};
+				});
 				return {
-					value: `${m.provider}/${m.id}`,
-					label,
-					description: desc,
+					items,
+					rankByValue,
+					searchTextByValue,
+					normalizedByValue,
+					widestLabel: items.reduce((width, item) => Math.max(width, visibleWidth(item.label)), 0),
 				};
-			});
+			};
 
+			let pickerData = buildPickerData(buildRows(available));
 			const currentIdx = current
-				? items.findIndex((it) => it.value === `${current.provider}/${current.id}`)
+				? pickerData.items.findIndex((item) => item.value === `${current.provider}/${current.id}`)
 				: 0;
-
-			// Widest label (visible width, ANSI-stripped) so the model name
-			// column never truncates to "…". Add gap headroom.
-			const widestLabel = items.reduce((w, it) => Math.max(w, visibleWidth(it.label)), 0);
-
 			const search = new Input();
 			const list = new SelectList(
-				items,
-				Math.max(1, items.length),
+				pickerData.items,
+				Math.max(1, pickerData.items.length),
 				{
-					selectedPrefix: (t) => theme.fg(accent, t),
-					selectedText: (t) => theme.fg(accent, t),
-					description: (t) => t, // raw — per-segment colors set in items.map
-					scrollInfo: (t) => theme.fg("muted", t),
-					noMatch: (t) => theme.fg("warning", t),
+					selectedPrefix: (text) => theme.fg(accent, text),
+					selectedText: (text) => theme.fg(accent, text),
+					description: (text) => text,
+					scrollInfo: (text) => theme.fg("muted", text),
+					noMatch: (text) => theme.fg("warning", text),
 				},
 				{
-					minPrimaryColumnWidth: widestLabel + 2,
-					maxPrimaryColumnWidth: widestLabel + 2,
+					minPrimaryColumnWidth: pickerData.widestLabel + 2,
+					maxPrimaryColumnWidth: pickerData.widestLabel + 2,
 				},
 			);
 			if (currentIdx >= 0) list.setSelectedIndex(currentIdx);
-
 			list.onSelect = (item) => done(item.value);
 			list.onCancel = () => done(null);
 			search.onEscape = () => done(null);
 
-			const applyFuzzy = (query: string) => {
-				// SAFETY: SelectList exposes these stable fields internally for in-place filtering.
-				const internal = list as unknown as {
-					items: SelectItem[];
-					filteredItems: SelectItem[];
-					selectedIndex: number;
-					invalidate(): void;
-				};
-				const next = filterModelItems(internal.items, query, {
-					rankByValue,
-					searchTextByValue,
-					normalizedByValue,
-				});
-				internal.filteredItems = next;
-				internal.selectedIndex = 0;
-				internal.invalidate();
+			type ListInternal = {
+				items: SelectItem[];
+				filteredItems: SelectItem[];
+				selectedIndex: number;
+				maxVisible: number;
+				layout: { minPrimaryColumnWidth: number; maxPrimaryColumnWidth: number };
+				invalidate(): void;
+			};
+			// SAFETY: SelectList has no public item-replacement API; runtime fields are stable and
+			// already used above for custom filtering. Keep this cast local to picker updates.
+			const listInternal = list as unknown as ListInternal;
+			const applyFuzzy = (query: string, selectedValue?: string) => {
+				listInternal.filteredItems = filterModelItems(listInternal.items, query, pickerData);
+				const selectedIndex = selectedValue
+					? listInternal.filteredItems.findIndex((item) => item.value === selectedValue)
+					: -1;
+				listInternal.selectedIndex = Math.max(0, selectedIndex);
+				listInternal.invalidate();
+			};
+
+			const pager = new ModalPager();
+			let reloading = false;
+			let spinnerFrame = 0;
+			const reload = async () => {
+				if (reloading) return;
+				reloading = true;
+				const spinnerTimer = setInterval(() => {
+					spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
+					tui.requestRender();
+				}, 120);
+				tui.requestRender();
+				try {
+					const selectedValue = list.getSelectedItem()?.value;
+					registry.refresh?.();
+					const refreshed = await registry.getAvailable();
+					if (refreshed.length === 0) {
+						ctx.ui.notify("No models with configured auth.", "warning");
+						return;
+					}
+					available = refreshed;
+					pickerData = buildPickerData(buildRows(available));
+					listInternal.items = pickerData.items;
+					listInternal.maxVisible = Math.max(1, pickerData.items.length);
+					listInternal.layout = {
+						minPrimaryColumnWidth: pickerData.widestLabel + 2,
+						maxPrimaryColumnWidth: pickerData.widestLabel + 2,
+					};
+					applyFuzzy(search.getValue?.() ?? "", selectedValue);
+					pager.followSelection();
+				} catch (error) {
+					ctx.ui.notify(`Failed to reload models: ${String(error)}`, "error");
+				} finally {
+					clearInterval(spinnerTimer);
+					reloading = false;
+					tui.requestRender();
+				}
 			};
 
 			// Live thinking-level readout. ←/→ mutates the session immediately via
@@ -457,7 +454,6 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			// We seed it from the getter, then advance it in lock-step with each
 			// setThinkingLevel() call and reconcile back to the getter when present.
 			let localLevel = pi.getThinkingLevel?.() ?? "";
-			const pager = new ModalPager();
 			const thinkLine = () => {
 				const live = pi.getThinkingLevel?.();
 				const resolved = live ?? localLevel;
@@ -484,7 +480,9 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						minHeight: MIN_MODAL_HEIGHT,
 						header: [
 							theme.fg(accent, theme.bold(`${icon("picker.model")}  Select model`)),
-							theme.fg("dim", "context · pricing · coding rank & score from modelgrep.com"),
+							reloading
+								? theme.fg("accent", `${SPINNER[spinnerFrame] ?? ""} Reloading models…`)
+								: theme.fg("dim", "context · pricing · coding rank & score from modelgrep.com"),
 							thinkLine(),
 							...search.render(inner),
 							"",
@@ -503,6 +501,8 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 							guide("↑↓", "navigate") +
 								guideSep +
 								guide("←/→", "thinking") +
+								guideSep +
+								guide("^r", "reload") +
 								guideSep +
 								guide("enter", "select") +
 								guideSep +
@@ -527,6 +527,12 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					const isNav = matchesKey(data, "up") || matchesKey(data, "down");
 					// ←/→ tunes the ACTIVE session model's thinking level. setThinkingLevel
 					// clamps to model capability, so unsupported rungs land on the nearest allowed.
+					// ctrl+r refreshes and replaces list data without disposing the overlay.
+					if (matchesKey(data, Key.ctrl("r"))) {
+						void reload();
+						return;
+					}
+					if (reloading) return;
 					let dir: -1 | 1 | 0 = 0;
 					if (matchesKey(data, Key.left)) dir = -1;
 					else if (matchesKey(data, Key.right)) dir = 1;
