@@ -43,8 +43,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 			description: `Ask the user up to ${MAX_QUESTIONS} structured questions (${MIN_OPTIONS}-${MAX_OPTIONS} options each) when requirements are ambiguous.`,
 			promptSnippet: `Ask the user up to ${MAX_QUESTIONS} structured questions (${MIN_OPTIONS}-${MAX_OPTIONS} options each) when requirements are ambiguous`,
 			promptGuidelines: [
-				`Use ask whenever the user's request is underspecified and you cannot proceed without concrete decisions — you can ask up to ${MAX_QUESTIONS} questions per invocation.`,
-				"Do not stack multiple ask calls back-to-back — group all clarifying questions into one invocation.",
+				"Do not stack multiple ask_user calls back-to-back — group all clarifying questions into one invocation.",
 			],
 			executionMode: "sequential",
 			parameters: ParamsSchema,

@@ -160,9 +160,7 @@ export default function (pi: ExtensionAPI): void {
 			"You MUST provide a clear `reason` explaining why root is needed.",
 		promptSnippet: "Execute a shell command as root after user sees intent + password prompt",
 		promptGuidelines: [
-			"Use sudo_run only when root privileges are strictly required — prefer plain bash for everything else. " +
-				"Always set `reason` to a short plain-English sentence explaining why root is needed " +
-				'(e.g. "Installing a system package to /usr/local/bin").',
+			"sudo_run: prefer plain bash; use only when root is strictly required. Set `reason` to a short why-root sentence.",
 		],
 
 		// Full-width framing (rules + bg fill) baked at termW(), like pix-bash.

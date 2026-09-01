@@ -232,8 +232,7 @@ export default function registerSearch(pi: ExtensionAPI): void {
 		promptSnippet:
 			"search(query, search_type, max_results?) — search_type: 'web' or 'news'. Defaults to 5 results, max 10.",
 		promptGuidelines: [
-			"Use search when you need up-to-date information or facts from the web.",
-			"Set search_type='web' for general web results, search_type='news' for recent news articles.",
+			"search: search_type='web' for general web results, 'news' for recent news articles.",
 		],
 		renderCall: makeRenderCall<unknown>("search", (args) =>
 			String((args as Partial<SearchParams>).query ?? ""),

@@ -310,14 +310,7 @@ export default function (pi: ExtensionAPI): void {
 			"`destination`, and optional `recursive`. Transfers may overwrite the destination. Always provide a clear `reason`.",
 		promptSnippet: "Run a remote command or transfer files over SSH",
 		promptGuidelines: [
-			"ssh_run sends commands or transfers files/directories over SSH. Basic cmd, PowerShell, or " +
-				"pwsh commands may work, but treat Windows shells as best-effort. Back away and tell the user " +
-				"when correctness depends on explicit shell selection, complex quoting, PowerShell error/stream/encoding " +
-				"semantics, interactive prompts, or Windows administrator/UAC elevation. `sudo` covers POSIX sudo " +
-				'only. Provide `host` as `[user@]host[:port]`. For file transfer, use `action: "file"`, ' +
-				'`direction: "upload" | "download"`, `source`, `destination`, and optional `recursive`. ' +
-				"Transfers may overwrite the destination and are warning-level: AFK/YOLO auto-approve when " +
-				"no login password is missing. Always explain the intent in `reason`.",
+			'ssh_run: `host` as `[user@]host[:port]`; `sudo` covers POSIX sudo only. For transfer use `action: "file"` with `direction: "upload"|"download"`, `source`, `destination`, optional `recursive` (may overwrite). Always set `reason`.',
 		],
 
 		renderShell: "self",

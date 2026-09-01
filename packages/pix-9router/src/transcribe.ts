@@ -340,14 +340,7 @@ export default function registerTranscribe(pi: ExtensionAPI): void {
 				isError: context.isError && options.expanded,
 			}),
 		promptGuidelines: [
-			"Use transcribe when you need to convert speech/audio to text.",
-			"The file parameter should be an absolute or relative path to an audio file on disk.",
-			"Supports common audio formats: mp3, wav, flac, ogg, m4a, webm, mp4.",
-			"Default model is dg/nova-3 (Deepgram Nova 3). Override with model parameter if needed.",
-			"Optionally specify language as ISO 639-1 code (e.g. 'en', 'es', 'fr') for better accuracy.",
-			"Pass output_file to write the full transcription to disk — useful when the result is long, when it will be re-read or piped to another tool, or to keep chat context small. Relative paths are resolved against the current working directory.",
-			"output_file is pre-flight checked: paths under /etc, /proc, /sys, /boot, ~/.ssh, ~/.aws, ~/.gnupg, and ~/.config/gh are rejected; the target must not be a symlink or existing directory; the parent must exist and be writable; symlinks anywhere in the parent chain are rejected. On rejection, the transcription text is still returned inline so it is not lost.",
-			"Without output_file the transcribed text is returned inline (truncated to 50,000 chars).",
+			"transcribe: `language` as ISO 639-1 (e.g. 'en', 'es') improves accuracy. Pass `output_file` for long results — writes full text to disk (sensitive paths/symlinks rejected; text still returned inline on rejection) and returns a path summary. Without it, text returns inline truncated to 50,000 chars.",
 		],
 		parameters: Type.Object({
 			file: Type.String({

@@ -206,9 +206,7 @@ export default function registerFetch(pi: ExtensionAPI): void {
 		promptSnippet:
 			"fetch(url, format, max_characters?) — format: 'markdown', 'text', or 'html'. Read page content via exa.",
 		promptGuidelines: [
-			"Use fetch when you need to read the full content of a specific URL.",
-			"Prefer format='markdown' for readable content, 'text' for plain text extraction, 'html' for raw source.",
-			"Set max_characters to cap response size (default 1000, 0 = unlimited). Use 5000-10000 for typical pages.",
+			"fetch: format='markdown' for readable content, 'text' for plain extraction, 'html' for raw source. max_characters caps size (default 1000, 0 = unlimited; 5000-10000 for typical pages).",
 		],
 		renderCall: makeRenderCall<unknown>("fetch", (args) =>
 			String((args as Partial<FetchParams>).url ?? ""),
