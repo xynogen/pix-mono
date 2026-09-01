@@ -11,6 +11,7 @@
 
 import type { RefreshModelsContext } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 import type { ModelsDevModel, RouterModel } from "./data.js";
 import { fetchModelsDevIndex, lookupInIndex, routerBaseUrl, routerModels } from "./data.js";
 
@@ -147,7 +148,7 @@ function providerConfig(
 		async refreshModels({ signal, allowNetwork }: RefreshModelsContext) {
 			if (!allowNetwork) return models.map(toModelConfig(devIndex));
 			const res = await fetch(`${routerBaseUrl()}/models`, {
-				signal: AbortSignal.any([AbortSignal.timeout(8_000), ...(signal ? [signal] : [])]),
+				signal: ioTimeoutSignal(signal),
 				headers: {
 					Authorization: `Bearer ${apiKey}`,
 					"User-Agent": "pi-coding-agent",
