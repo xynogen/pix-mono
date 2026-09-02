@@ -96,6 +96,7 @@ packages/
   pix-ssh/         # ssh_run — remote command over SSH (key/password auth + remote sudo)
   pix-toolbox/     # Gated tool toggle UI (/toolbox)
   pix-graph/       # Native-TS code knowledge graph — `graph` tool (build/query) + CLI + library, no Python
+  pix-hunk/        # Live Hunk diff-review bridge — external CLI + active session required
   pix-mcp/         # Token-efficient MCP gateway (external servers; explicit opt-in)
 scripts/
   dev-link.sh      # Symlink packages into Pi for dev

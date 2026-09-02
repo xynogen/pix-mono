@@ -9,17 +9,31 @@ type ExecuteFn = (
 	params: Record<string, unknown>,
 ) => Promise<{ content: Array<{ text: string }>; isError?: boolean; details?: unknown }>;
 
-/** Minimal ExtensionAPI mock that captures the registered tool's execute fn. */
-function capture(): ExecuteFn {
-	let execute: ExecuteFn | null = null;
+type ToolDef = {
+	execute: ExecuteFn;
+	renderResult: (
+		result: { content: Array<{ type: "text"; text: string }>; details?: unknown },
+		options: { expanded: boolean; isPartial: boolean },
+		theme: { fg: (role: string, text: string) => string; bold: (text: string) => string },
+		context: { isError: boolean },
+	) => { render: (width: number) => string[] };
+};
+
+/** Minimal ExtensionAPI mock that captures the registered tool. */
+function captureTool(): ToolDef {
+	let tool: ToolDef | null = null;
 	const pi = {
-		registerTool(def: { execute: ExecuteFn }) {
-			execute = def.execute;
+		registerTool(def: ToolDef) {
+			tool = def;
 		},
 	} as never;
 	registerGraph(pi);
-	if (!execute) throw new Error("graph tool not registered");
-	return execute;
+	if (!tool) throw new Error("graph tool not registered");
+	return tool;
+}
+
+function capture(): ExecuteFn {
+	return captureTool().execute;
 }
 
 const dirs: string[] = [];
@@ -57,6 +71,35 @@ async function run(params: Record<string, unknown>, cwd: string) {
 }
 
 describe("graph tool", () => {
+	test("frames terminal results by status but leaves running and partial results open", () => {
+		const renderResult = captureTool().renderResult;
+		const theme = {
+			fg: (role: string, text: string) => `[${role}]${text}[/${role}]`,
+			bold: (text: string) => text,
+		};
+		const render = (
+			outcome: "success" | "error" | "running" | undefined,
+			isPartial = false,
+		): string =>
+			renderResult(
+				{
+					content: [{ type: "text", text: "result" }],
+					...(outcome ? { details: { _type: "graphResult", action: "build", outcome } } : {}),
+				},
+				{ expanded: false, isPartial },
+				theme,
+				{ isError: outcome === "error" },
+			)
+				.render(20)
+				.join("\n");
+
+		expect(render("success")).toContain("[success]────────────────────[/success]");
+		expect(render("error")).toContain("[error]────────────────────[/error]");
+		expect(render("running")).not.toContain("────────────────────");
+		expect(render("success", true)).not.toContain("────────────────────");
+		expect(render(undefined)).not.toContain("────────────────────");
+	});
+
 	test("build mode writes the graph and reports counts", async () => {
 		const root = fixture();
 		const res = await run({ action: "build" }, root);

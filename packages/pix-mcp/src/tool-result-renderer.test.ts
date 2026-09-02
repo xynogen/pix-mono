@@ -3,11 +3,31 @@ import {
 	colorizeToon,
 	detectHighlightLang,
 	formatMcpToolResultLines,
+	renderMcpToolResult,
 } from "./tool-result-renderer.ts";
 
 // A theme that wraps each colored span in «key»… so assertions can see which
 // semantic color each token got without matching raw ANSI.
 const tagTheme = { fg: (k: string, t: string) => `«${k}»${t}` };
+
+test("terminal MCP results use status-colored rules", () => {
+	const result = { content: [{ type: "text" as const, text: "done" }], details: {} };
+	const success = renderMcpToolResult(result, { expanded: true, isPartial: false }, tagTheme, {
+		isError: false,
+		expanded: true,
+	}).render(8);
+	const failed = renderMcpToolResult(
+		{ ...result, details: { error: "failed" } },
+		{ expanded: true, isPartial: false },
+		tagTheme,
+		{ isError: true, expanded: true },
+	).render(8);
+
+	expect(success[0]).toBe("«success»────────");
+	expect(success.at(-1)).toBe("«success»────────");
+	expect(failed[0]).toBe("«error»────────");
+	expect(failed.at(-1)).toBe("«error»────────");
+});
 
 test("detectHighlightLang: JSON object/array → json", () => {
 	expect(detectHighlightLang('{"a":1}')).toBe("json");

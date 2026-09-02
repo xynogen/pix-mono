@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-ask",
-	"version": "0.2.25",
+	"version": "0.2.26",
 	"description": "Pi tool — structured questionnaire UI (ask_user)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -35,7 +35,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.11.2",
+		"@xynogen/pix-pretty": "^1.19.0",
 		"@xynogen/pix-runtime": "^0.8.0",
 		"typebox": "^1.1.38"
 	},

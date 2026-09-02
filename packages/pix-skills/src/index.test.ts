@@ -362,9 +362,38 @@ describe("skill renderer", () => {
 			.render(120)
 			.join("\n");
 
+		expect(rendered.split("\n")[0]).toBe(`[success]${"─".repeat(120)}[/]`);
 		expect(rendered).toContain("REFERENCE · docx");
 		expect(rendered).toContain("portable guidance");
 		expect(rendered).not.toContain("✓ skill");
+	});
+
+	it("frames expanded errors red and leaves partial output unframed", () => {
+		let registered: Record<string, unknown> = {};
+		registerSkills({
+			registerTool(tool: unknown) {
+				registered = tool as Record<string, unknown>;
+			},
+			on() {},
+		} as never);
+		const renderResult = registered.renderResult as (...args: unknown[]) => {
+			render: (width: number) => string[];
+		};
+		const error = renderResult(
+			{ content: [{ type: "text", text: "Skill not found" }], details: undefined },
+			{ isPartial: false },
+			tagTheme,
+			{ expanded: true, isError: true, state: {}, invalidate: () => {} },
+		).render(80);
+		expect(error[0]).toBe(`[error]${"─".repeat(80)}[/]`);
+
+		const partial = renderResult(
+			{ content: [{ type: "text", text: "loading" }], details: undefined },
+			{ isPartial: true },
+			tagTheme,
+			{ expanded: true, isError: false, state: {}, invalidate: () => {} },
+		).render(80);
+		expect(partial[0]).not.toContain("────");
 	});
 });
 

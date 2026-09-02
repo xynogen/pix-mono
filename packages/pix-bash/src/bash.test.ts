@@ -24,6 +24,12 @@ class MockTextComponent {
 	getText(): string {
 		return this.text;
 	}
+
+	render(_width?: number): string[] {
+		return this.text.split("\n");
+	}
+
+	invalidate(): void {}
 }
 
 describe("bash summaries", () => {
@@ -261,19 +267,31 @@ describe("registerBashTool", () => {
 				durationMs: 100,
 			},
 		};
-		const render = (state: Record<string, unknown>, expanded = false) =>
-			registered
-				.renderResult?.(result, { isPartial: false }, theme, {
-					expanded,
-					isError: true,
-					invalidate: () => {},
-					state,
-				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+		const render = (state: Record<string, unknown>, expanded = false) => {
+			const component = registered.renderResult?.(result, { isPartial: false }, theme, {
+				expanded,
+				isError: true,
+				invalidate: () => {},
+				state,
+			} as unknown as RenderContextLike);
+			return component?.render(120).join("\n") ?? "";
+		};
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
+		expect(render({ timer: 1 })).toContain("─");
 		expect(render({ collapsed: true })).toContain("✗  bash bun test · exit 1");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
+
+		const partial =
+			registered
+				.renderResult?.(result, { isPartial: true }, theme, {
+					expanded: false,
+					isError: true,
+					invalidate: () => {},
+					state: {},
+				} as unknown as RenderContextLike)
+				?.getText() ?? "";
+		expect(partial).not.toContain("─");
 	});
 
 	it("frames single-line output like multi-line (no inline row)", () => {
@@ -357,6 +375,54 @@ describe("registerBashTool", () => {
 		expect(multiOut).not.toContain("✓ exit 0");
 	});
 
+	it("frames completed generic results but leaves partial results open", () => {
+		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
+		const mockPi: PiPrettyApi = {
+			registerTool(tool: unknown) {
+				Object.assign(registered, tool);
+			},
+			registerCommand() {},
+			on() {},
+		};
+		registerBashTool(
+			mockPi,
+			() => ({ execute: async () => ({ content: [], details: undefined }) }),
+			{
+				cwd: process.cwd(),
+				sp: (p: string) => p,
+				TextComponent: MockTextComponent as unknown as TextComponentCtor,
+				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
+				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
+			},
+		);
+		const theme: ThemeLike = {
+			fg: (key: string, value: string) => `[${key}]${value}[/]`,
+			bold: (value: string) => value,
+		};
+		if (!registered.renderResult) throw new Error("renderResult not registered");
+		const renderResult = registered.renderResult;
+		const render = (isError: boolean, isPartial: boolean) =>
+			(
+				renderResult(
+					{ content: [{ type: "text", text: isError ? "failed" : "done" }], details: undefined },
+					{ isPartial },
+					theme,
+					{
+						expanded: true,
+						isError,
+						invalidate: () => {},
+						state: {},
+					} as unknown as RenderContextLike,
+				) as unknown as { render(width: number): string[] }
+			)
+				.render(20)
+				.join("\n");
+
+		expect(render(false, false)).toContain("[success]─");
+		expect(render(true, false)).toContain("[error]─");
+		expect(render(false, true)).not.toContain("[success]─");
+	});
+
 	it("tints the frame rules green on success and red on failure", () => {
 		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
 		const mockPi: PiPrettyApi = {
@@ -409,7 +475,7 @@ describe("registerBashTool", () => {
 				?.getText() ?? "";
 		expect(render(0)).toContain("[success]─"); // top+bottom rules painted success
 		expect(render(1)).toContain("[error]─"); // non-zero exit → red rules
-		expect(render(null)).toContain("[dim]─"); // unknown exit → neutral dim rules
+		expect(render(null)).toContain("[success]─"); // completed return without a failure is success
 	});
 
 	it("collapses a non-zero exit thrown by Pi's built-in bash tool", async () => {

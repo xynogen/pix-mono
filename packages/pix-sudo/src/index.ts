@@ -31,6 +31,7 @@ import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-
 import {
 	dotJoin,
 	fillToolBackground,
+	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	normalizeLineEndings,
@@ -39,6 +40,7 @@ import {
 	ruleFrame,
 	sectionRule,
 	termW,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -459,8 +461,10 @@ export default function (pi: ExtensionAPI): void {
 			renderCtx: RenderContextLike,
 		) => {
 			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new Text("", 0, 0);
+			const text = unframeToolResult(renderCtx.lastComponent ?? new Text("", 0, 0));
 			const details = result.details as SudoResultDetails | undefined;
+			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
+			const completed = (isError: boolean) => frameToolResult(text, theme, isError);
 
 			if (details?._type !== "sudoResult") {
 				if (renderCtx.isError) {
@@ -470,10 +474,11 @@ export default function (pi: ExtensionAPI): void {
 						fillToolBackground(`  ${theme.fg("muted", getTextContent(result) || "done")}`),
 					);
 				}
-				return text;
+				return isPartial ? text : completed(renderCtx.isError);
 			}
 
 			if (
+				!isPartial &&
 				isTerminal(details) &&
 				tickCollapse(
 					"sudo",
@@ -482,12 +487,7 @@ export default function (pi: ExtensionAPI): void {
 					renderCtx.expanded,
 				)
 			) {
-				const status =
-					details.outcome === "success"
-						? "success"
-						: details.outcome === "error"
-							? "error"
-							: "warning";
+				const status = details.outcome === "success" ? "success" : "error";
 				text.setText(
 					renderCollapsedToolRow(
 						theme,
@@ -514,7 +514,7 @@ export default function (pi: ExtensionAPI): void {
 						? renderToolError(diagnostic, theme)
 						: fillToolBackground(`  ${theme.fg("warning", diagnostic)}`),
 				);
-				return text;
+				return isPartial ? text : completed(true);
 			}
 
 			const code = typeof details.exitCode === "number" ? details.exitCode : null;
@@ -525,7 +525,7 @@ export default function (pi: ExtensionAPI): void {
 
 			if (!rendered) {
 				text.setText(fillToolBackground(`  ${summary}`));
-				return text;
+				return isPartial ? text : completed(details.outcome !== "success");
 			}
 
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
@@ -535,15 +535,11 @@ export default function (pi: ExtensionAPI): void {
 			// Every result (including single-line) is framed; the rules follow exit
 			// status: green ok, red failure, dim unknown. The `✓ exit N` header is
 			// dropped — the collapsed row already carries status.
-			const statusKey = code === null ? "dim" : code === 0 ? "success" : "error";
+			const statusKey = details.outcome === "success" ? "success" : "error";
 			const paint = (s: string) => theme.fg(statusKey, s);
 			const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
-			const out = ruleFrame(
-				show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`),
-				footer,
-				termW(),
-				paint,
-			);
+			const body = show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`);
+			const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
 			text.setText(fillToolBackground(out.join("\n")));
 			return text;
 		}) as never,

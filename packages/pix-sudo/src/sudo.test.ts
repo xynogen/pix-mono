@@ -298,6 +298,21 @@ function renderResult(
 	);
 }
 
+function renderOpenResult(
+	host: ReturnType<typeof makeHost>,
+	result: SudoToolResult,
+	isPartial = false,
+): string {
+	return rendered(
+		host.renderResult(result, { expanded: true, isPartial }, stubTheme, {
+			expanded: true,
+			isError: result.isError === true,
+			invalidate: () => {},
+			state: {},
+		}),
+	);
+}
+
 /**
  * overlayResult — what ctx.ui.custom() resolves to.
  *   action="approved" + non-blank password     => runs sudo
@@ -698,7 +713,7 @@ describe("sudo_run tool execute()", () => {
 		);
 		expect(denied.details).toMatchObject({ outcome: "denied", cancellationKind: "denied" });
 		expect(renderResult(deniedHost, denied, false)).toContain(
-			`${padIcon(COLLAPSED_TOOL_GLYPH.warning)} sudo systemctl restart foo · denied`,
+			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo systemctl restart foo · denied`,
 		);
 
 		const timeoutHost = makeHost();
@@ -711,7 +726,7 @@ describe("sudo_run tool execute()", () => {
 		);
 		expect(timedOut.details).toMatchObject({ outcome: "timed-out", cancellationKind: "timeout" });
 		expect(renderResult(timeoutHost, timedOut, false)).toContain(
-			`${padIcon(COLLAPSED_TOOL_GLYPH.warning)} sudo apt update · timed out`,
+			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo apt update · timed out`,
 		);
 
 		const failedHost = makeHost();
@@ -736,6 +751,37 @@ describe("sudo_run tool execute()", () => {
 		expect(renderResult(failedHost, failed, false)).toContain(
 			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo apt update · exit 1 · 12 lines`,
 		);
+	});
+
+	test("frames every open terminal outcome red except successful results", () => {
+		const host = makeHost();
+		const makeResult = (outcome: string, isError = false): SudoToolResult => ({
+			content: [{ type: "text", text: outcome }],
+			details: { _type: "sudoResult", command: "id", outcome },
+			isError,
+		});
+
+		expect(renderOpenResult(host, makeResult("success"))).toContain("─");
+		for (const outcome of ["error", "denied", "timed-out", "cancelled"]) {
+			expect(renderOpenResult(host, makeResult(outcome, outcome === "error"))).toContain("─");
+		}
+		expect(renderOpenResult(host, makeResult("running"), true)).not.toContain("─");
+	});
+
+	test("frames generic completed results by status", () => {
+		const host = makeHost();
+		const success: SudoToolResult = {
+			content: [{ type: "text", text: "done" }],
+			details: {},
+		};
+		const error: SudoToolResult = {
+			content: [{ type: "text", text: "failed" }],
+			details: {},
+			isError: true,
+		};
+
+		expect(renderOpenResult(host, success)).toContain("─");
+		expect(renderOpenResult(host, error)).toContain("─");
 	});
 
 	test("sanitizes multiline commands in compact rows", async () => {

@@ -1,53 +1,54 @@
 {
-	"name": "@xynogen/pix-skills",
-	"version": "0.8.3",
-	"description": "Pi extension — agent skill loader (skill tool + skills bundle)",
+	"name": "@xynogen/pix-hunk",
+	"version": "0.1.0",
+	"description": "Pi tool — drive live Hunk diff reviews with ordered bulk operations",
 	"type": "module",
 	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
 	"scripts": {
 		"test": "bun test"
 	},
 	"files": [
 		"src",
-		"skills",
 		"README.md",
 		"LICENSE"
 	],
 	"pi": {
 		"extensions": [
 			"src/index.ts"
-		],
-		"skills": [
-			"./skills"
 		]
 	},
 	"keywords": [
 		"pi",
 		"pi-package",
 		"pi-extension",
-		"pix"
+		"hunk",
+		"code-review",
+		"diff"
 	],
 	"author": "xynogen",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/xynogen/pix-mono.git",
-		"directory": "packages/pix-skills"
+		"directory": "packages/pix-hunk"
 	},
-	"homepage": "https://github.com/xynogen/pix-mono/tree/main/packages/pix-skills#readme",
+	"homepage": "https://github.com/xynogen/pix-mono/tree/main/packages/pix-hunk#readme",
 	"bugs": {
 		"url": "https://github.com/xynogen/pix-mono/issues"
 	},
 	"publishConfig": {
 		"access": "public"
 	},
+	"dependencies": {
+		"@xynogen/pix-pretty": "^1.19.0",
+		"@xynogen/pix-runtime": "^0.8.1",
+		"typebox": "^1.1.38"
+	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
 		"@earendil-works/pi-tui": "*"
-	},
-	"dependencies": {
-		"@xynogen/pix-gate": "^0.2.6",
-		"@xynogen/pix-pretty": "^1.19.0",
-		"@xynogen/pix-runtime": "^0.8.0"
 	}
 }

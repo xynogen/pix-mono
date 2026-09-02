@@ -81,6 +81,7 @@ npm:@xynogen/pix-ssh|ssh_run — remote command execution with optional root acc
 npm:@xynogen/pix-sudo|sudo_run — root execution via a PAM password overlay; a privileged capability you opt into explicitly (blocked in non-interactive mode).
 npm:@xynogen/pix-toolbox|/toolbox — fuzzy-search picker to enable/disable tools at runtime; a power-user utility, not needed for normal use.
 npm:@xynogen/pix-graph|Native-TS code knowledge graph (build/query via CLI); a standalone tool you invoke on demand, not part of the always-on distro.
+npm:@xynogen/pix-hunk|Live Hunk diff-review bridge — requires the external Hunk CLI and an active review session, so enable it explicitly.
 "
 
 # Opt-in community extensions — third-party packages, not part of the pix distro.

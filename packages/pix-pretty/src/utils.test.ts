@@ -7,6 +7,7 @@ import {
 	fillToolBackground,
 	formatCollapsedToolRow,
 	formatJson,
+	frameToolResult,
 	hideCollapsedToolCall,
 	padIcon,
 	pluralize,
@@ -16,11 +17,13 @@ import {
 	sectionRule,
 	setResultDetails,
 	termW,
+	unframeToolResult,
 	viewportText,
 } from "./utils.js";
 
 class MockTextComponent {
 	private text = "";
+	invalidations = 0;
 
 	setText(value: string): void {
 		this.text = value;
@@ -30,7 +33,9 @@ class MockTextComponent {
 		return this.text.split("\n");
 	}
 
-	invalidate(): void {}
+	invalidate(): void {
+		this.invalidations++;
+	}
 }
 
 // Counting variant: records how often the inner component is re-fitted, so a
@@ -187,6 +192,60 @@ describe("termW", () => {
 		} finally {
 			setCols(orig ?? 80);
 		}
+	});
+});
+
+describe("frameToolResult", () => {
+	it("wraps a component at render width and forwards invalidation", () => {
+		const child = new MockTextComponent();
+		child.setText("result");
+		const theme: FgTheme = { fg: (key, text) => `[${key}]${text}[/${key}]` };
+		const framed = frameToolResult(child, theme, false);
+
+		expect(framed.render(8)).toEqual([
+			"[success]────────[/success]",
+			"result",
+			"[success]────────[/success]",
+		]);
+		framed.setText("updated");
+		expect(framed.render(8)[1]).toBe("updated");
+		framed.invalidate();
+		expect(child.invalidations).toBe(1);
+	});
+
+	it("unwraps a framed component when a result collapses", () => {
+		const child = new MockTextComponent();
+		child.setText("expanded");
+		const theme: FgTheme = { fg: (key, text) => `[${key}]${text}[/${key}]` };
+		const framed = frameToolResult(child, theme, false);
+		framed.setText("collapsed");
+
+		expect(unframeToolResult(framed)).toBe(child);
+		expect(unframeToolResult(framed).render(20)).toEqual(["collapsed"]);
+	});
+
+	it("uses error rules for failed results", () => {
+		const child = new MockTextComponent();
+		child.setText("failed");
+		const theme: FgTheme = { fg: (key, text) => `[${key}]${text}[/${key}]` };
+
+		expect(frameToolResult(child, theme, true).render(4)).toEqual([
+			"[error]────[/error]",
+			"failed",
+			"[error]────[/error]",
+		]);
+	});
+
+	it("reuses an existing frame instead of nesting rules on rerender", () => {
+		const child = new MockTextComponent();
+		child.setText("result");
+		const theme: FgTheme = { fg: (key, text) => `[${key}]${text}[/${key}]` };
+		const first = frameToolResult(child, theme, false);
+		const nextTheme: FgTheme = { fg: (key, text) => `<${key}>${text}</${key}>` };
+		const rerendered = frameToolResult(first, nextTheme, true);
+
+		expect(rerendered).toBe(first);
+		expect(rerendered.render(4)).toEqual(["<error>────</error>", "result", "<error>────</error>"]);
 	});
 });
 

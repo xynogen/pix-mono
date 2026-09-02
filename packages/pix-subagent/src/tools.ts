@@ -28,6 +28,7 @@ import {
 	COLLAPSED_TOOL_GLYPH,
 	dotJoin,
 	formatCollapsedToolRow,
+	frameToolResult,
 	hideCollapsedToolCall,
 	padIcon,
 } from "@xynogen/pix-pretty/utils";
@@ -181,22 +182,62 @@ function resultText(result: { content: { type: string; text?: string }[] }): str
 function renderAgentUtilityResult(
 	result: { content: { type: string; text?: string }[]; details?: unknown },
 	expanded: boolean,
+	isPartial: boolean,
 	theme: Theme,
-	renderCtx: { state: Record<string, unknown>; invalidate: () => void },
-): Text {
+	renderCtx: {
+		state: Record<string, unknown>;
+		invalidate: () => void;
+		isError?: boolean;
+	},
+) {
 	const details = result.details as AgentUtilityResultDetails | undefined;
 	const text = resultText(result);
-	if (!details || expanded) return new Text(text, 0, 0);
+	const component = new Text(text, 0, 0);
+	if (isPartial) return component;
+	if (!details) {
+		if (expanded && renderCtx.isError === true) return frameToolResult(component, theme, true);
+		return component;
+	}
 	const collapseTool =
 		details._type === "agent-info"
 			? SUBAGENT_TOOL_NAMES.INFO
 			: details._type === "agent-result"
 				? SUBAGENT_TOOL_NAMES.GET_RESULT
 				: SUBAGENT_TOOL_NAMES.STEER;
-	if (
-		!tickCollapse(collapseTool, renderCtx.state as CollapseState, renderCtx.invalidate, expanded)
-	) {
-		return new Text(text, 0, 0);
+	const collapsed = tickCollapse(
+		collapseTool,
+		renderCtx.state as CollapseState,
+		renderCtx.invalidate,
+		expanded,
+	);
+
+	if (!collapsed) {
+		let isError: boolean | undefined;
+		if (details._type === "agent-info") {
+			isError = renderCtx.isError === true;
+		} else if (details._type === "agent-result") {
+			if (details.status === "completed" || details.status === "steered") isError = false;
+			else if (details.status === "error" || details.status === "not-found") isError = true;
+			else if (
+				(details.status === "aborted" || details.status === "stopped") &&
+				renderCtx.isError === true
+			)
+				isError = true;
+		} else if (details.outcome === "delivered") {
+			isError = false;
+		} else if (
+			details.outcome === "not-found" ||
+			details.outcome === "invalid" ||
+			details.outcome === "error"
+		) {
+			isError = true;
+		} else if (
+			(details.outcome === "stopped" || details.outcome === "already-finished") &&
+			renderCtx.isError === true
+		) {
+			isError = true;
+		}
+		return isError == null ? component : frameToolResult(component, theme, isError);
 	}
 
 	if (details._type === "agent-info") {
@@ -432,8 +473,8 @@ export function createAgentInfoTool(reloadCustomAgents: () => void) {
 			return text;
 		},
 
-		renderResult(result, { expanded }, theme, renderCtx) {
-			return renderAgentUtilityResult(result, expanded, theme, renderCtx);
+		renderResult(result, { expanded, isPartial }, theme, renderCtx) {
+			return renderAgentUtilityResult(result, expanded, isPartial, theme, renderCtx);
 		},
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -519,17 +560,20 @@ export function createAgentTool(
 			return new Text(formatAgentCall(args as Record<string, unknown>, theme, !collapsed), 0, 0);
 		},
 
-		renderResult(result, { expanded, isPartial }, theme) {
+		renderResult(result, { expanded, isPartial }, theme, renderCtx) {
 			const details = result.details as AgentDetails | undefined;
 			if (!details) {
 				const text = result.content[0]?.type === "text" ? result.content[0].text : "";
-				return new Text(text, 0, 0);
+				const component = new Text(text, 0, 0);
+				if (expanded && !isPartial && renderCtx.isError === true)
+					return frameToolResult(component, theme, true);
+				return component;
 			}
 
 			// Streaming / running — show a compact live status line so the model
 			// and activity are visible inline in the transcript (the ● Agents
 			// widget carries full detail above the editor).
-			if (isPartial || details.status === "running") {
+			if (isPartial || details.status === "running" || details.status === "queued") {
 				const frame =
 					details.spinnerFrame != null
 						? (SPINNER[details.spinnerFrame % SPINNER.length] ?? "⠋")
@@ -589,7 +633,17 @@ export function createAgentTool(
 					}
 				}
 			}
-			return new Text(line, 0, 0);
+			const component = new Text(line, 0, 0);
+			if (!expanded) return component;
+			if (details.status === "completed" || details.status === "steered")
+				return frameToolResult(component, theme, false);
+			if (
+				details.status === "error" ||
+				((details.status === "aborted" || details.status === "stopped") &&
+					renderCtx.isError === true)
+			)
+				return frameToolResult(component, theme, true);
+			return component;
 		},
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
@@ -963,8 +1017,8 @@ export function createAgentResultTool(
 			return text;
 		},
 
-		renderResult(result, { expanded }, theme, renderCtx) {
-			return renderAgentUtilityResult(result, expanded, theme, renderCtx);
+		renderResult(result, { expanded, isPartial }, theme, renderCtx) {
+			return renderAgentUtilityResult(result, expanded, isPartial, theme, renderCtx);
 		},
 
 		async execute(_toolCallId, params) {
@@ -1077,8 +1131,8 @@ export function createAgentSteerTool(manager: AgentManager) {
 			return text;
 		},
 
-		renderResult(result, { expanded }, theme, renderCtx) {
-			return renderAgentUtilityResult(result, expanded, theme, renderCtx);
+		renderResult(result, { expanded, isPartial }, theme, renderCtx) {
+			return renderAgentUtilityResult(result, expanded, isPartial, theme, renderCtx);
 		},
 
 		async execute(_toolCallId, params) {

@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-grep",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "Pi tool — pattern search in files",
 	"type": "module",
 	"main": "src/index.ts",
@@ -38,7 +38,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.11.2",
+		"@xynogen/pix-pretty": "^1.19.0",
 		"@xynogen/pix-runtime": "^0.8.0"
 	},
 	"peerDependencies": {

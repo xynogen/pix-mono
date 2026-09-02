@@ -12,7 +12,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { dotJoin, formatCollapsedToolRow, termW } from "@xynogen/pix-pretty/utils";
+import { dotJoin, formatCollapsedToolRow, frameToolResult, termW } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
@@ -279,8 +279,10 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					.filter((part) => part.type === "text")
 					.map((part) => part.text)
 					.join("\n");
+				const isPartial = options.isPartial === true;
 				if (context.isError || details?.outcome === "error" || !details) {
-					return new Text(resultText, 0, 0);
+					const component = new Text(resultText, 0, 0);
+					return isPartial ? component : frameToolResult(component, theme, true);
 				}
 
 				const collapsed = tickCollapse(
@@ -292,7 +294,8 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				// An open card claims focus, collapsing any earlier open board.
 				if (!collapsed) focusCard(context.state as CollapseState, context.invalidate);
 				const render = collapsed ? renderTodoSummaryLine : renderTodoLines;
-				return new Text(render(details.snapshot, theme as TodoTheme), 0, 0);
+				const component = new Text(render(details.snapshot, theme as TodoTheme), 0, 0);
+				return collapsed || isPartial ? component : frameToolResult(component, theme, false);
 			},
 
 			async execute(_id, params) {

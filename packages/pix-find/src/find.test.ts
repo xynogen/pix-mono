@@ -33,6 +33,10 @@ class MockTextComponent {
 	getText() {
 		return this.text;
 	}
+	render(_width?: number) {
+		return this.text.split("\n");
+	}
+	invalidate() {}
 }
 
 describe("applyFindDefaults", () => {
@@ -233,17 +237,18 @@ describe("registerFindTool", () => {
 				matchCount: 0,
 			},
 		};
-		const render = (state: Record<string, unknown>, expanded = false) =>
-			registered
-				.renderResult?.(result, { isPartial: false }, theme, {
-					expanded,
-					isError: true,
-					invalidate: () => {},
-					state,
-				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+		const render = (state: Record<string, unknown>, expanded = false) => {
+			const component = registered.renderResult?.(result, { isPartial: false }, theme, {
+				expanded,
+				isError: true,
+				invalidate: () => {},
+				state,
+			} as unknown as RenderContextLike);
+			return component?.render(120).join("\n") ?? "";
+		};
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
+		expect(render({ timer: 1 })).toContain("─");
 		expect(render({ collapsed: true })).toContain("✗  find [ in src · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});

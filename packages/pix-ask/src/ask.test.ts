@@ -295,6 +295,78 @@ describe("registerAsk", () => {
 			.join("\n")
 			.trimEnd();
 		expect(result).toBe("✓  ask_user REST · 1 answer");
+
+		state.collapsed = false;
+		const expanded = tool
+			.renderResult(
+				{
+					content: [{ type: "text", text: "answer" }],
+					details: {
+						answers: [
+							{ questionIndex: 0, question: qSingle.question, kind: "option", answer: "REST" },
+						],
+					},
+				},
+				{ expanded: true, isPartial: false },
+				theme,
+				{ expanded: true, state, invalidate: () => {}, isError: false },
+			)
+			.render(40);
+		expect(expanded[0]).toBe("─".repeat(40));
+		expect(expanded.at(-1)).toBe("─".repeat(40));
+
+		const partial = tool
+			.renderResult(
+				{ content: [{ type: "text", text: "" }], details: undefined },
+				{ expanded: true, isPartial: true },
+				theme,
+				{ expanded: true, state: {}, invalidate: () => {}, isError: false },
+			)
+			.render(40);
+		expect(partial).toHaveLength(1);
+		expect(partial[0]?.trimEnd()).toBe("Waiting for user input…");
+	});
+
+	test("frames expanded errors red but keeps cancellation compact", async () => {
+		let tool:
+			| { renderResult: (...args: any[]) => { render: (width: number) => string[] } }
+			| undefined;
+		const pi = {
+			registerTool(definition: typeof tool) {
+				tool = definition;
+			},
+		};
+		const { default: registerAsk } = await import("./index.ts");
+		registerAsk(pi as never);
+		if (!tool) throw new Error("ask_user not registered");
+		const theme = {
+			fg: (color: string, text: string) => `[${color}]${text}[/${color}]`,
+			bold: (text: string) => text,
+		};
+		const error = tool
+			.renderResult(
+				{ content: [{ type: "text", text: "At least one question is required." }] },
+				{ expanded: true, isPartial: false },
+				theme,
+				{ expanded: true, state: {}, invalidate: () => {}, isError: true },
+			)
+			.render(40);
+		expect(error[0]).toBe(`[error]${"─".repeat(40)}[/error]`);
+
+		const noColorTheme = {
+			fg: (_color: string, text: string) => text,
+			bold: (text: string) => text,
+		};
+		const cancelled = tool
+			.renderResult(
+				{ content: [{ type: "text", text: "Cancelled" }], details: { cancelled: true } },
+				{ expanded: true, isPartial: false },
+				noColorTheme,
+				{ expanded: true, state: {}, invalidate: () => {}, isError: false },
+			)
+			.render(40);
+		expect(cancelled).toHaveLength(1);
+		expect(cancelled[0]).toContain("cancelled");
 	});
 
 	test("fills its overlay width so background content cannot bleed through on the right", async () => {

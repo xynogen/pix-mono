@@ -4,6 +4,7 @@ import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
+	frameToolResult,
 	hideCollapsedToolCall,
 	pluralize,
 } from "@xynogen/pix-pretty/utils";
@@ -132,6 +133,14 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					text.setText(theme.fg("muted", "Waiting for user input…"));
 					return text;
 				}
+				if (renderCtx.isError) {
+					const error = result.content
+						.filter((part) => part.type === "text")
+						.map((part) => part.text)
+						.join("\n");
+					text.setText(error || "Error");
+					return frameToolResult(text, theme, true);
+				}
 				if (!details || details.cancelled || !details.answers?.length) {
 					// Cancellation is a warning outcome, not success — shared row keeps the
 					// tool identity and a text label (never color alone) for accessibility.
@@ -166,7 +175,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 				);
 				const header = `${theme.fg("success", "✓")} ${theme.fg("toolTitle", theme.bold("ask_user"))}`;
 				text.setText([header, ...lines].join("\n"));
-				return text;
+				return frameToolResult(text, theme, false);
 			},
 		});
 	});

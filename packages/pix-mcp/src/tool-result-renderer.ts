@@ -2,7 +2,7 @@ import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/p
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
-import { formatJson, renderCollapsedToolRow, ruleFrame } from "@xynogen/pix-pretty/utils";
+import { formatJson, frameToolResult, renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
@@ -376,16 +376,6 @@ class ClippedLines {
 	}
 }
 
-// Frame the body with a rule top AND bottom — the same top/bottom rule frame
-// bash/read/sudo use — so an MCP result closes its output block like every other
-// tool instead of trailing off with only a leading separator.
-function separated(content: Text | ClippedLines) {
-	return {
-		invalidate: () => content.invalidate(),
-		render: (width: number) => ruleFrame(content.render(width), [], Math.max(0, width)),
-	};
-}
-
 // Collapsed MCP results reuse MAX_PREVIEW_LINES — the same preview cap bash and
 // read use — instead of a bespoke MCP knob. Expanding always shows everything.
 export function formatMcpToolResultLines(
@@ -480,7 +470,11 @@ export function renderMcpToolResult(
 			const footerLine = footer ? `\n${theme.fg("muted", footer)}` : "";
 			const styled = `${hl}${footerLine}${hint}`;
 			// Preview clips each line to one row; expanded wraps to show everything.
-			return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled));
+			return frameToolResult(
+				options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled),
+				theme,
+				isError,
+			);
 		}
 	}
 
@@ -493,5 +487,9 @@ export function renderMcpToolResult(
 		.join("\n");
 
 	const styled = `${output}${hint}`;
-	return separated(options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled));
+	return frameToolResult(
+		options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled),
+		theme,
+		isError,
+	);
 }

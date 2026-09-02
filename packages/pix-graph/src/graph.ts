@@ -18,7 +18,7 @@ import { join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { dotJoin } from "@xynogen/pix-pretty/utils";
+import { dotJoin, frameToolResult } from "@xynogen/pix-pretty/utils";
 import { formatDuration, SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
@@ -194,7 +194,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				return new Text(`${title} ${t.fg("dim", "build")} ${target}`, 0, 0);
 			},
 
-			renderResult(result, _options, theme, context) {
+			renderResult(result, options, theme, context) {
 				const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
 				const details = result.details as GraphResultDetails | undefined;
 				const t = theme as Theme;
@@ -202,15 +202,23 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					return new Text(renderBuildProgress(details, t), 0, 0);
 				}
 				const isError = context.isError || details?.outcome === "error";
-				if (isError)
-					return new Text(`${t.fg("error", icon("status.error"))} ${t.fg("error", text)}`, 0, 0);
-				if (details?.query) {
-					return new Text(renderQuery(details.query, t), 0, 0);
+				let component: Text;
+				if (isError) {
+					component = new Text(
+						`${t.fg("error", icon("status.error"))} ${t.fg("error", text)}`,
+						0,
+						0,
+					);
+				} else if (details?.query) {
+					component = new Text(renderQuery(details.query, t), 0, 0);
+				} else if (details?.action === "build") {
+					component = new Text(`${t.fg("success", icon("status.done"))} ${text}`, 0, 0);
+				} else {
+					component = new Text(text, 0, 0);
 				}
-				if (details?.action === "build") {
-					return new Text(`${t.fg("success", icon("status.done"))} ${text}`, 0, 0);
-				}
-				return new Text(text, 0, 0);
+				return options.isPartial || !details
+					? component
+					: frameToolResult(component, theme, isError);
 			},
 
 			async execute(_id, params, signal, onUpdate) {

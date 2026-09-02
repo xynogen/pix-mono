@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-9router",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"description": "Pi extension — 9Router provider + fetch/search tools via router API",
 	"type": "module",
 	"main": "src/index.ts",
@@ -43,7 +43,7 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.11.2",
+		"@xynogen/pix-pretty": "^1.19.0",
 		"typebox": "^1.1.38",
 		"@xynogen/pix-runtime": "^0.8.0"
 	}

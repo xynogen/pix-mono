@@ -886,6 +886,7 @@ describe("todo card layout", () => {
 		expect(rendered).toContain("alpha");
 		expect(rendered).toContain("[text]○ alpha"); // pending card, no id number
 		expect(rendered).not.toContain("[success]✓ [/] [toolTitle]<b>todo</b>[/]");
+		expect(rendered.split("\n")[0]).toBe(`[success]${"─".repeat(80)}[/]`);
 	});
 
 	test("opening a new todo card collapses the previously open one", async () => {
@@ -931,7 +932,8 @@ describe("todo card layout", () => {
 			.join("\n")
 			.trimEnd();
 
-		expect(rendered).toBe("No todo with id 99.");
+		expect(rendered.split("\n")[0]).toBe(`[error]${"─".repeat(80)}[/]`);
+		expect(rendered).toContain("No todo with id 99.");
 	});
 
 	test("a collapsed result is exactly one shared-style line", async () => {
@@ -954,6 +956,7 @@ describe("todo card layout", () => {
 
 		expect(result.details).toBeDefined();
 		expect(lines).toHaveLength(1);
+		expect(lines[0]).not.toContain("────");
 		expect(lines[0]?.trimEnd()).toBe(
 			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [dim]#2 todo renderer[/] [muted]·[/] [muted]1/2 done[/]",
 		);

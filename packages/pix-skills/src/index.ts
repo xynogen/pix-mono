@@ -21,6 +21,7 @@ import { Text } from "@earendil-works/pi-tui";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
+	frameToolResult,
 	hideCollapsedToolCall,
 	humanSize,
 } from "@xynogen/pix-pretty/utils";
@@ -700,7 +701,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 			return component;
 		},
 
-		renderResult(result, _options, theme, renderCtx) {
+		renderResult(result, options, theme, renderCtx) {
 			const text = result.content
 				?.filter((content) => content.type === "text")
 				.map((content) => content.text || "")
@@ -719,15 +720,17 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 				}
 				if (details.mode === "search" && details.results) {
 					component.setText(formatRemoteSkillSearchSummary(details.query, details.results, theme));
-					return component;
+					return options.isPartial ? component : frameToolResult(component, theme, false);
 				}
 				component.setText(
 					formatSkillSummary(formatExpandedSkillResult(details, text ?? ""), theme),
 				);
-				return component;
+				return options.isPartial ? component : frameToolResult(component, theme, false);
 			}
 			component.setText(formatSkillSummary(text ?? "", theme));
-			return component;
+			return options.isPartial
+				? component
+				: frameToolResult(component, theme, renderCtx.isError === true);
 		},
 	});
 }

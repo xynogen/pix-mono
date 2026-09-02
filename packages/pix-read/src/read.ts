@@ -19,6 +19,7 @@ import type {
 import {
 	dotJoin,
 	fillToolBackground,
+	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	humanSize,
@@ -29,6 +30,7 @@ import {
 	renderToolError,
 	ruleFrame,
 	setResultDetails,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -143,15 +145,16 @@ export function registerReadTool(
 			renderCtx: RenderContextLike,
 		) {
 			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
+			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
 			const d = result.details as Record<string, unknown> | undefined;
 			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
+			const completed = () => frameToolResult(text, theme, renderCtx.isError);
 			const structuredError =
 				renderCtx.isError && (d?._type === "readFile" || d?._type === "readImage");
 
 			if (renderCtx.isError && (!structuredError || isPartial)) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			// Auto-collapse: show summary line after delay
@@ -188,7 +191,7 @@ export function registerReadTool(
 
 			if (renderCtx.isError) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return completed();
 			}
 
 			if (d?._type === "readImage") {
@@ -198,17 +201,20 @@ export function registerReadTool(
 						`  ${fileIcon(d.filePath as string, theme)}${theme.fg("dim", dotJoin([String(d.mimeType ?? "image"), humanSize(byteSize)]))}`,
 					),
 				);
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			if (d?._type === "readFile" && d.content) {
-				const key = `read:${d.filePath}:${d.offset}:${d.lineCount}:${process.stdout.columns ?? 80}:${renderCtx.expanded ? "full" : "preview"}`;
+				const key = `read:${d.filePath}:${d.offset}:${d.lineCount}:${process.stdout.columns ?? 80}:${renderCtx.expanded ? "full" : "preview"}:${isPartial ? "partial" : "complete"}`;
 				// One framed shape; rules follow status color. The line count lives in the
 				// collapsed row — no floating "N lines" header above the frame.
 				const paint = (s: string) => theme.fg("success", s);
 				if (renderCtx.state._rk !== key) {
 					renderCtx.state._rk = key;
-					renderCtx.state._rt = fillToolBackground(theme.fg("muted", "  reading…"));
+					const loading = theme.fg("muted", "  reading…");
+					renderCtx.state._rt = fillToolBackground(
+						(isPartial ? [loading] : ruleFrame([loading], [], undefined, paint)).join("\n"),
+					);
 
 					const maxShow = renderCtx.expanded ? (d.lineCount as number) : MAX_PREVIEW_LINES;
 					renderFileContent(
@@ -220,21 +226,30 @@ export function registerReadTool(
 					)
 						.then((rendered: string) => {
 							if (renderCtx.state._rk !== key) return;
+							const lines = rendered.split("\n");
 							renderCtx.state._rt = fillToolBackground(
-								ruleFrame(rendered.split("\n"), [], undefined, paint).join("\n"),
+								(isPartial ? lines : ruleFrame(lines, [], undefined, paint)).join("\n"),
 							);
 							renderCtx.invalidate();
 						})
 						.catch(() => {});
 				}
-				text.setText(renderCtx.state._rt ?? fillToolBackground(theme.fg("muted", "  reading…")));
+				text.setText(
+					renderCtx.state._rt ??
+						fillToolBackground(
+							(isPartial
+								? [theme.fg("muted", "  reading…")]
+								: ruleFrame([theme.fg("muted", "  reading…")], [], undefined, paint)
+							).join("\n"),
+						),
+				);
 				return text;
 			}
 
 			const fallback = result.content?.[0];
 			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "read";
 			text.setText(fillToolBackground(`  ${theme.fg("dim", String(fallbackText).slice(0, 120))}`));
-			return text;
+			return isPartial ? text : completed();
 		},
 	});
 }

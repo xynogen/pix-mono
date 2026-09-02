@@ -19,7 +19,9 @@ import type { Component } from "@earendil-works/pi-tui";
 import {
 	type CollapsedToolStatus,
 	formatCollapsedToolRow,
+	frameToolResult,
 	hideCollapsedToolCall,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -59,7 +61,8 @@ try {
 }
 
 function getText(lastComponent: Component | undefined): TextLike {
-	if (lastComponent && "setText" in lastComponent) return lastComponent as TextLike;
+	if (lastComponent && "setText" in lastComponent)
+		return unframeToolResult(lastComponent as TextLike);
 	// TextComponent is always present in the interactive TUI (pi-tui peer); the
 	// require() guard only matters for headless/test contexts where renderers
 	// are never invoked.
@@ -115,14 +118,15 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 
 		if (ctx.isError) {
 			text.setText(`  ${theme.fg("error", body || "Error")}`);
-			return text;
+			return opts.isPartial ? text : frameToolResult(text, theme, true);
 		}
 		if (!body.trim()) {
 			text.setText(`  ${theme.fg("muted", "(empty)")}`);
-			return text;
+			return opts.isPartial ? text : frameToolResult(text, theme, false);
 		}
 
 		const details = result.details as TDetails | undefined;
+		const isError = Boolean(details && config?.status?.(details) === "error");
 		if (
 			!opts.isPartial &&
 			config &&
@@ -142,6 +146,6 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 		}
 
 		text.setText(dimBody(body, theme, opts.expanded));
-		return text;
+		return opts.isPartial ? text : frameToolResult(text, theme, isError);
 	};
 }

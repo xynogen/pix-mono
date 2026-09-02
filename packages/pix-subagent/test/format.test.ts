@@ -325,9 +325,10 @@ test("expanded foreground terminal result keeps summary first and bounded detail
 		theme as never,
 		{} as never,
 	);
-	const rendered = component?.render(120).join("\n") ?? "";
-	expect(rendered.split("\n")[0]).toContain("Agent");
-	expect(rendered.split("\n")[0]).toContain("error");
+	const lines = component?.render(120) ?? [];
+	const rendered = lines.join("\n");
+	expect(lines[1]).toContain("Agent");
+	expect(lines[1]).toContain("error");
 	expect(rendered).toContain("Exact terminal detail");
 	expect(rendered).toContain("Second line");
 });

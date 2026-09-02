@@ -30,6 +30,7 @@ import type {
 import {
 	dotJoin,
 	fillToolBackground,
+	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
@@ -37,6 +38,7 @@ import {
 	renderToolError,
 	setResultDetails,
 	termW,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -232,14 +234,15 @@ export function registerEditTool(
 			renderCtx: RenderContextLike<EditRenderState>,
 		) {
 			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
+			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
 			const d = result.details as Record<string, unknown> | undefined;
 			const isPartial = _opt?.isPartial === true;
+			const completed = () => frameToolResult(text, theme, renderCtx.isError);
 			const structuredError =
 				renderCtx.isError && (d?._type === "editInfo" || d?._type === "multiEditInfo");
 			if (renderCtx.isError && (!structuredError || isPartial)) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			// Auto-collapse: show summary line after delay
@@ -271,7 +274,7 @@ export function registerEditTool(
 
 			if (renderCtx.isError) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return completed();
 			}
 
 			// Single edit — full split diff
@@ -302,7 +305,7 @@ export function registerEditTool(
 						});
 				}
 				text.setText(renderCtx.state._edt ?? `  ${d.summary}`);
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			// Multi-edit — stacked diffs
@@ -340,13 +343,13 @@ export function registerEditTool(
 						});
 				}
 				text.setText(renderCtx.state._edt ?? `  ${d.editCount} edits ${d.summary}`);
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			const fallback = result.content?.[0];
 			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "edited";
 			text.setText(fillToolBackground(`  ${theme.fg("dim", String(fallbackText).slice(0, 120))}`));
-			return text;
+			return isPartial ? text : completed();
 		},
 	});
 }

@@ -16,6 +16,10 @@ class MockTextComponent {
 	getText() {
 		return this.text;
 	}
+	render(_width: number) {
+		return this.text.split("\n");
+	}
+	invalidate() {}
 }
 
 describe("registerWriteTool", () => {
@@ -141,7 +145,7 @@ describe("registerWriteTool", () => {
 			() => {},
 		);
 		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
+			fg: (key: string, value: string) => `[${key}]${value}[/${key}]`,
 			bold: (value: string) => value,
 		};
 		const diagnostic = "EACCES: permission denied, open 'locked.ts'";
@@ -149,18 +153,25 @@ describe("registerWriteTool", () => {
 			content: [{ type: "text", text: diagnostic }],
 			details: { _type: "new", lines: 1, content: "value", filePath: "locked.ts" },
 		};
-		const render = (state: Record<string, unknown>, expanded = false) =>
+		const render = (state: Record<string, unknown>, expanded = false, isPartial = false) =>
 			registered
-				.renderResult?.(result, { isPartial: false }, theme, {
+				.renderResult?.(result, { isPartial }, theme, {
 					expanded,
 					isError: true,
 					invalidate: () => {},
 					state,
 				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+				?.render(80) ?? [];
 
-		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗  write locked.ts · failed");
-		expect(render({ collapsed: true }, true)).toContain(diagnostic);
+		expect(render({ timer: 1 })[0]).toBe(`[error]${"─".repeat(80)}[/error]`);
+		expect(render({ timer: 1 }).join("\n")).toContain(diagnostic);
+		const collapsed = render({ collapsed: true }).join("\n");
+		expect(collapsed).toContain("write");
+		expect(collapsed).toContain("locked.ts");
+		expect(collapsed).toContain("failed");
+		expect(render({ collapsed: true })[0]).not.toContain("────");
+		expect(render({ collapsed: true }, true).join("\n")).toContain(diagnostic);
+		expect(render({ collapsed: true }, true)[0]).toContain("[error]────");
+		expect(render({}, false, true)[0]).not.toContain("[error]────");
 	});
 });

@@ -214,6 +214,19 @@
         "@earendil-works/pi-tui": "*",
       },
     },
+    "packages/pix-hunk": {
+      "name": "@xynogen/pix-hunk",
+      "version": "0.1.0",
+      "dependencies": {
+        "@xynogen/pix-pretty": "^1.18.4",
+        "@xynogen/pix-runtime": "^0.8.1",
+        "typebox": "^1.1.38",
+      },
+      "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+      },
+    },
     "packages/pix-grep": {
       "name": "@xynogen/pix-grep",
       "version": "0.2.1",
@@ -688,6 +701,8 @@
     "@xynogen/pix-gate": ["@xynogen/pix-gate@workspace:packages/pix-gate"],
 
     "@xynogen/pix-graph": ["@xynogen/pix-graph@workspace:packages/pix-graph"],
+
+    "@xynogen/pix-hunk": ["@xynogen/pix-hunk@workspace:packages/pix-hunk"],
 
     "@xynogen/pix-grep": ["@xynogen/pix-grep@workspace:packages/pix-grep"],
 

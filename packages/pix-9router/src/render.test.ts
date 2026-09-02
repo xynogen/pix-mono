@@ -13,7 +13,7 @@ function stubComponent() {
 		setText: (s: string) => {
 			captured = s;
 		},
-		render: () => [],
+		render: (_width?: number) => captured.split("\n"),
 		invalidate: () => {},
 	};
 	return { component, get: () => captured };
@@ -89,13 +89,14 @@ test("partial updates keep detail visible and do not schedule collapse", () => {
 		context(stub, { state }),
 	);
 	expect(stub.get()).toContain("streaming body");
+	expect(stub.component.render(20)).toEqual(["  [dim]streaming body"]);
 	expect(state.timer).toBeUndefined();
 });
 
 test("expanded mode restores full joined text", () => {
 	const stub = stubComponent();
 	const rr = makeRenderResult(config);
-	rr(
+	const component = rr(
 		{
 			content: [
 				{ type: "text", text: "first" },
@@ -109,6 +110,54 @@ test("expanded mode restores full joined text", () => {
 		context(stub, { state: { collapsed: true }, expanded: true }),
 	);
 	expect(stub.get()).toBe("  [dim]first\n  [dim]second");
+	expect(component.render(20)).toEqual([
+		"[success]────────────────────",
+		"  [dim]first",
+		"  [dim]second",
+		"[success]────────────────────",
+	]);
+});
+
+test("structured errors get red open frames but collapsed summaries stay unframed", () => {
+	const rr = makeRenderResult({ ...config, status: () => "error" as const });
+	const open = stubComponent();
+	const openComponent = rr(
+		{
+			content: [{ type: "text", text: "failed body" }],
+			details: { _type: "fetchResult", chars: 11 },
+		} as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(open),
+	);
+	expect(openComponent.render(20)[0]).toBe("[error]────────────────────");
+
+	const collapsed = stubComponent();
+	const collapsedComponent = rr(
+		{
+			content: [{ type: "text", text: "failed body" }],
+			details: { _type: "fetchResult", chars: 11 },
+		} as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(collapsed, { state: { collapsed: true } }),
+	);
+	expect(collapsedComponent.render(20).join("\n")).not.toContain("────");
+});
+
+test("terminal error body gets an error frame", () => {
+	const stub = stubComponent();
+	const component = makeRenderResult(config)(
+		{ content: [{ type: "text", text: "boom" }] } as never,
+		{ expanded: true, isPartial: false },
+		theme,
+		context(stub, { isError: true, expanded: true }),
+	);
+	expect(component.render(20)).toEqual([
+		"[error]────────────────────",
+		"  [error]boom",
+		"[error]────────────────────",
+	]);
 });
 
 test("renderResult caps the normal preview", () => {

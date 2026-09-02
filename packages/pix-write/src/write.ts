@@ -28,6 +28,7 @@ import type {
 } from "@xynogen/pix-pretty/types";
 import {
 	fillToolBackground,
+	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
@@ -35,6 +36,7 @@ import {
 	renderToolError,
 	setResultDetails,
 	termW,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -169,14 +171,15 @@ export function registerWriteTool(
 			renderCtx: RenderContextLike<WriteRenderState>,
 		) {
 			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
+			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
 			const d = result.details as Record<string, unknown> | undefined;
 			const isPartial = _opt?.isPartial === true;
+			const completed = () => frameToolResult(text, theme, renderCtx.isError);
 			const structuredError =
 				renderCtx.isError && (d?._type === "diff" || d?._type === "new" || d?._type === "noChange");
 			if (renderCtx.isError && (!structuredError || isPartial)) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			// Auto-collapse: show summary line after delay
@@ -205,7 +208,7 @@ export function registerWriteTool(
 
 			if (renderCtx.isError) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return completed();
 			}
 
 			if (d?._type === "diff") {
@@ -231,12 +234,12 @@ export function registerWriteTool(
 						});
 				}
 				text.setText(renderCtx.state._wdt ?? `  ${d.summary}`);
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			if (d?._type === "noChange") {
 				text.setText(fillToolBackground(`  ${theme.fg("muted", "✓ no changes")}`));
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			if (d?._type === "new") {
@@ -266,13 +269,13 @@ export function registerWriteTool(
 					}
 				}
 				text.setText(renderCtx.state._nft ?? base);
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			const fallback = result.content?.[0];
 			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "written";
 			text.setText(fillToolBackground(`  ${theme.fg("dim", String(fallbackText).slice(0, 120))}`));
-			return text;
+			return isPartial ? text : completed();
 		},
 	});
 }

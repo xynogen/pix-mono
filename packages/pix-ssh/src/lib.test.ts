@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import registerSsh from "./index.ts";
 import {
 	baseScpArgs,
 	baseSshArgs,
@@ -249,5 +251,70 @@ describe("truncate", () => {
 		const out = truncate(many, 2000);
 		expect(out.truncated).toBe(true);
 		expect(out.text.split("\n").length).toBe(2000);
+	});
+});
+
+describe("ssh result renderer", () => {
+	const theme = {
+		fg: (key: string, text: string) => `[${key}]${text}[/]`,
+		bold: (text: string) => text,
+	};
+	const register = () => {
+		let renderer: ((...args: unknown[]) => { render(width: number): string[] }) | undefined;
+		registerSsh({
+			registerTool(tool: unknown) {
+				renderer = (tool as { renderResult: typeof renderer }).renderResult;
+			},
+		} as unknown as ExtensionAPI);
+		if (!renderer) throw new Error("renderResult not registered");
+		return renderer;
+	};
+	const render = (
+		renderer: (...args: unknown[]) => { render(width: number): string[] },
+		details: Record<string, unknown> | undefined,
+		isError = false,
+		isPartial = false,
+		state: Record<string, unknown> = {},
+		expanded = true,
+	) =>
+		renderer(
+			{ content: [{ type: "text", text: String(details?.outcome ?? "done") }], details },
+			{ isPartial },
+			theme,
+			{ expanded, isError, invalidate: () => {}, state },
+		)
+			.render(24)
+			.join("\n");
+
+	it("frames open terminal outcomes and generic results by status", () => {
+		const renderer = register();
+		expect(render(renderer, undefined)).toContain("[success]─");
+		expect(render(renderer, undefined, true)).toContain("[error]─");
+		for (const outcome of ["denied", "timed-out", "cancelled", "error"]) {
+			expect(
+				render(renderer, {
+					_type: "sshResult",
+					command: "id",
+					host: "host",
+					sudo: false,
+					outcome,
+				}),
+			).toContain("[error]─");
+		}
+	});
+
+	it("leaves partial, running, and collapsed rows unframed", () => {
+		const renderer = register();
+		const running = {
+			_type: "sshResult",
+			command: "id",
+			host: "host",
+			sudo: false,
+			outcome: "running",
+		};
+		expect(render(renderer, running, false, true)).not.toContain("[success]─");
+		expect(render(renderer, running)).not.toContain("[success]─");
+		const success = { ...running, outcome: "success", exitCode: 0, _render: "done" };
+		expect(render(renderer, success, false, false, { collapsed: true }, false)).not.toContain("─");
 	});
 });

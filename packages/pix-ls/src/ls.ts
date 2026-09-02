@@ -16,12 +16,14 @@ import type {
 } from "@xynogen/pix-pretty/types";
 import {
 	fillToolBackground,
+	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	renderCollapsedToolRow,
 	renderToolError,
 	ruleFrame,
 	setResultDetails,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -108,14 +110,15 @@ export function registerLsTool(
 			renderCtx: RenderContextLike,
 		) {
 			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
+			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
 			const d = result.details as Record<string, unknown> | undefined;
 			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
+			const completed = () => frameToolResult(text, theme, renderCtx.isError);
 			const structuredError = renderCtx.isError && d?._type === "lsResult";
 
 			if (renderCtx.isError && (!structuredError || isPartial)) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			// Auto-collapse: show summary line after delay
@@ -137,7 +140,7 @@ export function registerLsTool(
 
 			if (renderCtx.isError) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return completed();
 			}
 			if (d?._type === "lsResult" && d.text) {
 				// One shape regardless of entry count: a single framed box, no floating
@@ -146,14 +149,15 @@ export function registerLsTool(
 				// encode status but not the count, so the count stays in the collapsed row.
 				const tree = renderTree(d.text as string, d.path as string, theme);
 				const paint = (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s);
-				const out = ruleFrame(tree.split("\n"), [], undefined, paint);
+				const lines = tree.split("\n");
+				const out = isPartial ? lines : ruleFrame(lines, [], undefined, paint);
 				text.setText(fillToolBackground(out.join("\n")));
 				return text;
 			}
 
 			const output = getTextContent(result) || "listed";
 			text.setText(fillToolBackground(`  ${theme.fg("dim", output.slice(0, 120))}`));
-			return text;
+			return isPartial ? text : completed();
 		},
 	});
 }

@@ -16,6 +16,10 @@ class MockTextComponent {
 	getText() {
 		return this.text;
 	}
+	render(_width: number) {
+		return this.text.split("\n");
+	}
+	invalidate() {}
 }
 
 describe("registerEditTool", () => {
@@ -76,7 +80,7 @@ describe("registerEditTool", () => {
 			() => {},
 		);
 		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
+			fg: (key: string, value: string) => `[${key}]${value}[/${key}]`,
 			bold: (value: string) => value,
 		};
 		const result = registered.renderResult?.(
@@ -102,8 +106,10 @@ describe("registerEditTool", () => {
 			} as unknown as RenderContextLike,
 		);
 
-		expect(result?.getText()).toContain("rendering diff");
-		expect(result?.getText()).not.toContain("✓ edit");
+		const lines = result?.render(80) ?? [];
+		expect(lines[0]).toBe(`[success]${"─".repeat(80)}[/success]`);
+		expect(lines.join("\n")).toContain("rendering diff");
+		expect(lines.join("\n")).not.toContain("✓ edit");
 	});
 
 	it("renders single-step output inline as one compact line, framed when expanded", () => {
@@ -183,7 +189,7 @@ describe("registerEditTool", () => {
 			() => {},
 		);
 		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
+			fg: (key: string, value: string) => `[${key}]${value}[/${key}]`,
 			bold: (value: string) => value,
 		};
 		const diagnostic = "oldText was not found in sample.ts";
@@ -199,19 +205,26 @@ describe("registerEditTool", () => {
 				editLine: 0,
 			},
 		};
-		const render = (state: Record<string, unknown>, expanded = false) =>
+		const render = (state: Record<string, unknown>, expanded = false, isPartial = false) =>
 			registered
-				.renderResult?.(result, { isPartial: false }, theme, {
+				.renderResult?.(result, { isPartial }, theme, {
 					expanded,
 					isError: true,
 					invalidate: () => {},
 					state,
 				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+				?.render(80) ?? [];
 
-		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ collapsed: true })).toContain("✗  edit sample.ts · failed");
-		expect(render({ collapsed: true }, true)).toContain(diagnostic);
+		expect(render({ timer: 1 })[0]).toBe(`[error]${"─".repeat(80)}[/error]`);
+		expect(render({ timer: 1 }).join("\n")).toContain(diagnostic);
+		const collapsed = render({ collapsed: true }).join("\n");
+		expect(collapsed).toContain("edit");
+		expect(collapsed).toContain("sample.ts");
+		expect(collapsed).toContain("failed");
+		expect(render({ collapsed: true })[0]).not.toContain("────");
+		expect(render({ collapsed: true }, true).join("\n")).toContain(diagnostic);
+		expect(render({ collapsed: true }, true)[0]).toContain("[error]────");
+		expect(render({}, false, true)[0]).not.toContain("[error]────");
 	});
 });
 

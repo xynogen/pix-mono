@@ -17,6 +17,7 @@ import type {
 import {
 	appendNotices,
 	fillToolBackground,
+	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	makeTextResult,
@@ -25,6 +26,7 @@ import {
 	renderDimPreview,
 	renderToolError,
 	setResultDetails,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -170,14 +172,15 @@ export function registerFindTool(
 			renderCtx: RenderContextLike,
 		) {
 			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
+			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
 			const d = result.details;
 			const isPartial = _opt?.isPartial === true;
+			const completed = () => frameToolResult(text, theme, renderCtx.isError);
 			const structuredError = renderCtx.isError && d?._type === "findResult";
 
 			if (renderCtx.isError && (!structuredError || isPartial)) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			// Auto-collapse: show summary line after delay
@@ -203,14 +206,14 @@ export function registerFindTool(
 
 			if (renderCtx.isError) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return completed();
 			}
 
 			const output = getTextContent(result) || "found";
 			// One framed shape; rules follow status color. Count lives in the collapsed row.
 			text.setText(
 				renderDimPreview(output, theme, {
-					frame: true,
+					frame: !isPartial,
 					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
 					highlight: d?._type === "findResult" ? globHighlight(d.pattern) : undefined,
 				}),

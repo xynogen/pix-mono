@@ -73,6 +73,24 @@ type ViewportComponent = {
 	invalidate(): void;
 };
 
+type ResultComponent = ViewportComponent & {
+	handleInput?(data: string): void;
+	wantsKeyRelease?: boolean;
+};
+
+type FramableComponent = Partial<ResultComponent> & Partial<TextComponentLike>;
+type ResultFrameTheme = {
+	fg: (key: "success" | "error", text: string) => string;
+};
+
+const RESULT_FRAME = Symbol("pix.resultFrame");
+type FramedResultComponent = ResultComponent & {
+	[RESULT_FRAME]: {
+		component: FramableComponent;
+		update(theme: ResultFrameTheme, isError: boolean): void;
+	};
+};
+
 class ViewportText implements TextComponentLike, ViewportComponent {
 	private text = "";
 	// Pi re-renders every frame (spinner/streaming). Two-level cache:
@@ -524,6 +542,58 @@ export function sectionRule(line: string, theme: FgTheme, width: number): string
 	// full-width rule; wrap it snugly with 2 dashes each side (`── long text ──`).
 	const [lead, tail] = trail >= 2 ? [SECTION_RULE_LEAD, trail] : [2, 2];
 	return theme.fg("muted", `${"─".repeat(lead)}${label}${"─".repeat(tail)}`);
+}
+
+/** Decorate any tool result component with status-colored top/bottom rules. */
+export function frameToolResult<T extends FramableComponent & { setText(value: string): void }>(
+	component: T,
+	theme: ResultFrameTheme,
+	isError: boolean,
+): ResultComponent & { setText(value: string): void; getText?: () => string };
+export function frameToolResult(
+	component: FramableComponent,
+	theme: ResultFrameTheme,
+	isError: boolean,
+): ResultComponent;
+export function frameToolResult(
+	component: FramableComponent,
+	theme: ResultFrameTheme,
+	isError: boolean,
+): ResultComponent {
+	const existing = component as Partial<FramedResultComponent>;
+	if (existing[RESULT_FRAME]) {
+		existing[RESULT_FRAME].update(theme, isError);
+		return component as ResultComponent;
+	}
+	let frameTheme = theme;
+	let failed = isError;
+	const framed: FramedResultComponent & Partial<TextComponentLike> = {
+		[RESULT_FRAME]: {
+			component,
+			update(nextTheme, nextError) {
+				frameTheme = nextTheme;
+				failed = nextError;
+			},
+		},
+		wantsKeyRelease: component.wantsKeyRelease,
+		render(width) {
+			const paint = (line: string) => frameTheme.fg(failed ? "error" : "success", line);
+			return ruleFrame(component.render?.(width) ?? [], [], width, paint);
+		},
+		invalidate() {
+			component.invalidate?.();
+		},
+		handleInput: component.handleInput ? (data) => component.handleInput?.(data) : undefined,
+	};
+	if (component.setText) framed.setText = (value) => component.setText?.(value);
+	if (component.getText) framed.getText = () => component.getText?.() ?? "";
+	return framed;
+}
+
+/** Remove the result frame while preserving its underlying renderer component. */
+export function unframeToolResult<T extends FramableComponent>(component: T): T {
+	const framed = component as Partial<FramedResultComponent>;
+	return (framed[RESULT_FRAME]?.component ?? component) as T;
 }
 
 /**

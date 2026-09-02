@@ -20,6 +20,7 @@ import type {
 import {
 	dotJoin,
 	fillToolBackground,
+	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
@@ -30,6 +31,7 @@ import {
 	sectionRule,
 	setResultDetails,
 	termW,
+	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -153,14 +155,15 @@ export function registerBashTool(
 			renderCtx: RenderContextLike,
 		) {
 			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
+			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
 			const d = result.details as Record<string, unknown> | undefined;
 			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
+			const completed = () => frameToolResult(text, theme, renderCtx.isError);
 			const structuredError = renderCtx.isError && d?._type === "bashResult";
 
 			if (renderCtx.isError && (!structuredError || isPartial)) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return isPartial ? text : completed();
 			}
 
 			// Auto-collapse: show summary line after delay
@@ -196,7 +199,7 @@ export function registerBashTool(
 
 			if (renderCtx.isError) {
 				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return text;
+				return completed();
 			}
 
 			if (d?._type === "bashResult") {
@@ -210,7 +213,7 @@ export function registerBashTool(
 
 				if (!normalizedText) {
 					text.setText(fillToolBackground(header));
-					return text;
+					return isPartial ? text : completed();
 				}
 
 				const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
@@ -221,15 +224,11 @@ export function registerBashTool(
 				// status: green ok, red failure, dim unknown. The `✓ exit N` header is
 				// dropped — the collapsed row already carries status.
 				const exitCode = d.exitCode as number | null;
-				const statusKey = exitCode === null ? "dim" : exitCode === 0 ? "success" : "error";
+				const statusKey = exitCode === null || exitCode === 0 ? "success" : "error";
 				const paint = (s: string) => theme.fg(statusKey, s);
 				const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
-				const out = ruleFrame(
-					show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`),
-					footer,
-					termW(),
-					paint,
-				);
+				const body = show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`);
+				const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
 				text.setText(fillToolBackground(out.join("\n")));
 				return text;
 			}
@@ -237,7 +236,7 @@ export function registerBashTool(
 			const fallback = result.content?.[0];
 			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "done";
 			text.setText(fillToolBackground(`  ${theme.fg("dim", String(fallbackText).slice(0, 120))}`));
-			return text;
+			return isPartial ? text : completed();
 		},
 	});
 }
