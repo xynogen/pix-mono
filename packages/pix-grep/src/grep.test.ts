@@ -1,26 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import type { CursorStore, FffState } from "@xynogen/pix-pretty/fff";
-import type {
-	PiPrettyApi,
-	RenderContextLike,
-	TextComponentCtor,
-	ThemeLike,
-} from "@xynogen/pix-pretty/types";
+import {
+	capturePi,
+	makeRenderCtx,
+	makeTheme,
+	makeToolContext,
+} from "@xynogen/pix-pretty/test-utils";
 import { applyGrepDefaults, DEFAULT_GREP_LIMIT, grepHighlight, registerGrepTool } from "./grep";
 
-class MockTextComponent {
-	private text = "";
-	setText(v: string) {
-		this.text = v;
-	}
-	getText() {
-		return this.text;
-	}
-	render(_width?: number) {
-		return this.text.split("\n");
-	}
-	invalidate() {}
-}
+const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
 
 describe("applyGrepDefaults", () => {
 	it("applies a conservative default without overriding an explicit limit", () => {
@@ -73,80 +60,23 @@ describe("grepHighlight", () => {
 
 describe("registerGrepTool", () => {
 	it("registers a tool named 'grep'", () => {
-		const tools: string[] = [];
-		const mockPi: PiPrettyApi = {
-			registerTool(t: unknown) {
-				tools.push((t as { name: string }).name);
-			},
-			registerCommand() {},
-			on() {},
-		};
-
-		registerGrepTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: {
-					module: null,
-					finder: null,
-					partialIndex: false,
-					dbDir: null,
-				} satisfies FffState,
-				cursorStore: {
-					store: () => "",
-					get: () => undefined,
-				} as unknown as CursorStore,
-			},
-		);
-		expect(tools).toEqual(["grep"]);
+		const { pi, names } = capturePi();
+		registerGrepTool(pi, noopFactory, makeToolContext());
+		expect(names).toEqual(["grep"]);
 	});
 
 	it("restores matching lines when an elapsed card is expanded", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerGrepTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
+		const { pi, tool } = capturePi();
+		registerGrepTool(pi, noopFactory, makeToolContext());
 		const output = "src/a.ts:1:TODO one\nsrc/b.ts:2:TODO two";
-		const result = registered.renderResult?.(
+		const result = tool.renderResult?.(
 			{
 				content: [{ type: "text", text: output }],
-				details: {
-					_type: "grepResult",
-					text: output,
-					pattern: "TODO",
-					matchCount: 2,
-				},
+				details: { _type: "grepResult", text: output, pattern: "TODO", matchCount: 2 },
 			},
 			undefined,
-			theme,
-			{
-				expanded: true,
-				isError: false,
-				invalidate: () => {},
-				state: { collapsed: true },
-			} as unknown as RenderContextLike,
+			makeTheme(),
+			makeRenderCtx({ expanded: true, state: { collapsed: true } }),
 		);
 
 		const rendered = result?.getText() ?? "";
@@ -158,31 +88,9 @@ describe("registerGrepTool", () => {
 	});
 
 	it("frames single-match output like multi-match (no inline row)", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerGrepTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: {
-					module: null,
-					finder: null,
-					partialIndex: false,
-					dbDir: null,
-				} satisfies FffState,
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = { fg: (_k: string, v: string) => v, bold: (v: string) => v };
+		const { pi, tool } = capturePi();
+		registerGrepTool(pi, noopFactory, makeToolContext());
+		const theme = makeTheme();
 		const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "");
 		const result = {
 			content: [{ type: "text", text: "src/a.ts:1:foo" }],
@@ -194,14 +102,7 @@ describe("registerGrepTool", () => {
 			} as never,
 		};
 		const out =
-			registered
-				.renderResult?.(result, { isPartial: false }, theme, {
-					expanded: false,
-					isError: false,
-					invalidate: () => {},
-					state: {},
-				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+			tool.renderResult?.(result, { isPartial: false }, theme, makeRenderCtx())?.getText() ?? "";
 		// Single match is framed just like multi — one shape, no inline row.
 		expect(out).toContain("─");
 		expect(strip(out)).toContain("foo");
@@ -216,41 +117,14 @@ describe("registerGrepTool", () => {
 			} as never,
 		};
 		const multiOut =
-			registered
-				.renderResult?.(multi, { isPartial: false }, theme, {
-					expanded: false,
-					isError: false,
-					invalidate: () => {},
-					state: {},
-				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+			tool.renderResult?.(multi, { isPartial: false }, theme, makeRenderCtx())?.getText() ?? "";
 		expect(multiOut).toContain("─");
 	});
 
 	it("collapses structured errors and restores the exact diagnostic on expansion", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerGrepTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
+		const { pi, tool } = capturePi();
+		registerGrepTool(pi, noopFactory, makeToolContext());
+		const theme = makeTheme();
 		const diagnostic = "regex parse error: unclosed group";
 		const result = {
 			content: [{ type: "text", text: diagnostic }],
@@ -263,12 +137,12 @@ describe("registerGrepTool", () => {
 			},
 		};
 		const render = (state: Record<string, unknown>, expanded = false) => {
-			const component = registered.renderResult?.(result, { isPartial: false }, theme, {
-				expanded,
-				isError: true,
-				invalidate: () => {},
-				state,
-			} as unknown as RenderContextLike);
+			const component = tool.renderResult?.(
+				result,
+				{ isPartial: false },
+				theme,
+				makeRenderCtx({ isError: true, expanded, state }),
+			);
 			return component?.render(120).join("\n") ?? "";
 		};
 

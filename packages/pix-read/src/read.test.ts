@@ -1,26 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import type { CursorStore, FffState } from "@xynogen/pix-pretty/fff";
-import type {
-	PiPrettyApi,
-	RenderContextLike,
-	TextComponentCtor,
-	ThemeLike,
-} from "@xynogen/pix-pretty/types";
+import {
+	capturePi,
+	makeRenderCtx,
+	makeTheme,
+	makeToolContext,
+} from "@xynogen/pix-pretty/test-utils";
 import { applyReadDefaults, DEFAULT_READ_LIMIT, registerReadTool } from "./read";
 
-class MockTextComponent {
-	private text = "";
-	setText(v: string) {
-		this.text = v;
-	}
-	getText() {
-		return this.text;
-	}
-	render(_width?: number) {
-		return this.text.split("\n");
-	}
-	invalidate() {}
-}
+const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
 
 describe("applyReadDefaults", () => {
 	it("applies a conservative default without overriding an explicit limit", () => {
@@ -37,61 +24,14 @@ describe("applyReadDefaults", () => {
 
 describe("registerReadTool", () => {
 	it("registers a tool named 'read'", () => {
-		const tools: string[] = [];
-		const mockPi: PiPrettyApi = {
-			registerTool(t: unknown) {
-				tools.push((t as { name: string }).name);
-			},
-			registerCommand() {},
-			on() {},
-		};
-
-		registerReadTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: {
-					module: null,
-					finder: null,
-					partialIndex: false,
-					dbDir: null,
-				} satisfies FffState,
-				cursorStore: {
-					store: () => "",
-					get: () => undefined,
-				} as unknown as CursorStore,
-			},
-		);
-		expect(tools).toEqual(["read"]);
+		const { pi, names } = capturePi();
+		registerReadTool(pi, noopFactory, makeToolContext());
+		expect(names).toEqual(["read"]);
 	});
 
 	it("recomputes an async file preview when expanded mode changes", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerReadTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
+		const { pi, tool } = capturePi();
+		registerReadTool(pi, noopFactory, makeToolContext());
 		const state: Record<string, unknown> = { timer: 1 };
 		const result = {
 			content: [{ type: "text", text: "one\ntwo" }],
@@ -103,44 +43,20 @@ describe("registerReadTool", () => {
 				lineCount: 2,
 			},
 		};
-		const baseCtx = {
-			isError: false,
-			invalidate: () => {},
-			state,
-		} as unknown as RenderContextLike;
+		const ctx = makeRenderCtx({ state });
 
-		registered.renderResult?.(result, undefined, theme, { ...baseCtx, expanded: false });
+		tool.renderResult?.(result, undefined, makeTheme(), { ...ctx, expanded: false });
 		const collapsedKey = state._rk;
-		registered.renderResult?.(result, undefined, theme, { ...baseCtx, expanded: true });
+		tool.renderResult?.(result, undefined, makeTheme(), { ...ctx, expanded: true });
 
 		expect(collapsedKey).toBeDefined();
 		expect(state._rk).not.toBe(collapsedKey);
 	});
 
 	it("collapses structured errors and restores the exact diagnostic on expansion", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerReadTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
+		const { pi, tool } = capturePi();
+		registerReadTool(pi, noopFactory, makeToolContext());
+		const theme = makeTheme();
 		const diagnostic = "ENOENT: no such file or directory";
 		const result = {
 			content: [{ type: "text", text: diagnostic }],
@@ -153,12 +69,12 @@ describe("registerReadTool", () => {
 			},
 		};
 		const render = (state: Record<string, unknown>, expanded = false) => {
-			const component = registered.renderResult?.(result, { isPartial: false }, theme, {
-				expanded,
-				isError: true,
-				invalidate: () => {},
-				state,
-			} as unknown as RenderContextLike);
+			const component = tool.renderResult?.(
+				result,
+				{ isPartial: false },
+				theme,
+				makeRenderCtx({ isError: true, expanded, state }),
+			);
 			return component?.render(120).join("\n") ?? "";
 		};
 
@@ -169,40 +85,18 @@ describe("registerReadTool", () => {
 	});
 
 	it("frames completed image and fallback results, not partial fallback", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerReadTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
+		const { pi, tool } = capturePi();
+		registerReadTool(pi, noopFactory, makeToolContext());
+		const theme = makeTheme({ tag: false });
+		// This test asserts on the exact fg key, so use a key-tagging theme.
+		const keyedTheme = {
 			fg: (key: string, value: string) => `[${key}]${value}[/]`,
 			bold: (value: string) => value,
-		};
-		if (!registered.renderResult) throw new Error("renderResult not registered");
-		const renderResult = registered.renderResult;
+		} as typeof theme;
+		if (!tool.renderResult) throw new Error("renderResult not registered");
+		const renderResult = tool.renderResult;
 		const render = (result: unknown, isPartial: boolean) =>
-			(
-				renderResult(result, { isPartial }, theme, {
-					expanded: true,
-					isError: false,
-					invalidate: () => {},
-					state: {},
-				} as unknown as RenderContextLike) as unknown as { render(width: number): string[] }
-			)
+			renderResult(result, { isPartial }, keyedTheme, makeRenderCtx({ expanded: true }))
 				.render(24)
 				.join("\n");
 		const image = {

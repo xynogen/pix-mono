@@ -1,36 +1,23 @@
 import { describe, expect, it } from "bun:test";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import type { CursorStore, FffState } from "@xynogen/pix-pretty/fff";
-import type {
-	PiPrettyApi,
-	RenderContextLike,
-	TextComponentCtor,
-	ThemeLike,
-	ToolResultLike,
-} from "@xynogen/pix-pretty/types";
+import {
+	capturePi,
+	makeRenderCtx,
+	makeTheme,
+	makeToolContext,
+} from "@xynogen/pix-pretty/test-utils";
+import type { ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import { formatBashDuration, registerBashTool, summarizeBashCommand } from "./bash";
 
-class MockTextComponent {
-	private text: string;
-
-	constructor(text = "") {
-		this.text = text;
-	}
-
-	setText(value: string): void {
-		this.text = value;
-	}
-
-	getText(): string {
-		return this.text;
-	}
-
-	render(_width?: number): string[] {
-		return this.text.split("\n");
-	}
-
-	invalidate(): void {}
-}
+const okFactory = () => ({
+	execute: async () => ({ content: [{ type: "text" as const, text: "ok" }], details: undefined }),
+});
+const emptyFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
+// Tag each fg() call so the rule's status color / hierarchy role is observable.
+const keyedTheme: ThemeLike = {
+	fg: (key: string, value: string) => `[${key}]${value}[/]`,
+	bold: (value: string) => value,
+};
 
 describe("bash summaries", () => {
 	it("summarizes command chains instead of repeating the full command", () => {
@@ -51,61 +38,16 @@ describe("bash summaries", () => {
 
 describe("registerBashTool", () => {
 	it("clamps renderCall to small terminal widths", () => {
-		const registered: {
-			renderCall?: (...args: unknown[]) => MockTextComponent;
-		} = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
+		const { pi, tool } = capturePi();
+		registerBashTool(pi, okFactory, makeToolContext({ terminalWidth: () => 24 }));
 
-		registerBashTool(
-			mockPi,
-			() => ({
-				execute: async () => ({
-					content: [{ type: "text", text: "ok" }],
-					details: undefined,
-				}),
-			}),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: {
-					module: null,
-					finder: null,
-					partialIndex: false,
-					dbDir: null,
-				} satisfies FffState,
-				cursorStore: {
-					store: () => "",
-					get: () => undefined,
-				} as unknown as CursorStore,
-				terminalWidth: () => 24,
-			},
-		);
-
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
-		const ctx: RenderContextLike = {
-			expanded: false,
-			isError: false,
-			invalidate: () => {},
-			state: {},
-		};
-
-		const text = registered.renderCall?.(
+		const text = tool.renderCall?.(
 			{
 				command: 'printf "very very very long line"\necho second\necho third',
 				timeout: 30,
 			},
-			theme,
-			ctx,
+			makeTheme(),
+			makeRenderCtx(),
 		);
 
 		expect(text).toBeDefined();
@@ -116,49 +58,17 @@ describe("registerBashTool", () => {
 	});
 
 	it("combines a collapsed command and result into one compact row", () => {
-		const registered: {
-			renderCall?: (...args: unknown[]) => MockTextComponent;
-			renderResult?: (...args: unknown[]) => MockTextComponent;
-		} = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-
-		registerBashTool(
-			mockPi,
-			() => ({
-				execute: async () => ({ content: [{ type: "text", text: "ok" }], details: undefined }),
-			}),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-
-		const theme: ThemeLike = {
-			fg: (key: string, value: string) =>
-				key === "dim" || key === "muted" ? `<${key}>${value}</${key}>` : value,
-			bold: (value: string) => value,
-		};
-		const collapsedCtx = {
-			expanded: false,
-			isError: false,
-			invalidate: () => {},
-			state: { collapsed: true },
-		} as unknown as RenderContextLike;
-		const call = registered.renderCall?.(
+		const { pi, tool } = capturePi();
+		// Pin a wide width so the compact row isn't truncated by another test's termW mutation.
+		registerBashTool(pi, okFactory, makeToolContext({ terminalWidth: () => 120 }));
+		const theme = makeTheme({ tag: true });
+		const collapsedCtx = makeRenderCtx({ state: { collapsed: true } });
+		const call = tool.renderCall?.(
 			{ command: "bun test && bun run lint && git diff --check", timeout: 30 },
 			theme,
 			collapsedCtx,
 		);
-		const result = registered.renderResult?.(
+		const result = tool.renderResult?.(
 			{
 				content: [{ type: "text", text: "one\ntwo" }],
 				details: {
@@ -181,32 +91,9 @@ describe("registerBashTool", () => {
 	});
 
 	it("restores full output when an elapsed card is expanded", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerBashTool(
-			mockPi,
-			() => ({
-				execute: async () => ({ content: [{ type: "text", text: "ok" }], details: undefined }),
-			}),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
-		const result = registered.renderResult?.(
+		const { pi, tool } = capturePi();
+		registerBashTool(pi, okFactory, makeToolContext());
+		const result = tool.renderResult?.(
 			{
 				content: [{ type: "text", text: "one\ntwo" }],
 				details: {
@@ -218,13 +105,8 @@ describe("registerBashTool", () => {
 				},
 			},
 			undefined,
-			theme,
-			{
-				expanded: true,
-				isError: false,
-				invalidate: () => {},
-				state: { collapsed: true },
-			} as unknown as RenderContextLike,
+			makeTheme(),
+			makeRenderCtx({ expanded: true, state: { collapsed: true } }),
 		);
 
 		expect(result?.getText()).toContain("one");
@@ -233,29 +115,9 @@ describe("registerBashTool", () => {
 	});
 
 	it("collapses structured errors and restores the exact diagnostic on expansion", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerBashTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
+		const { pi, tool } = capturePi();
+		registerBashTool(pi, emptyFactory, makeToolContext());
+		const theme = makeTheme();
 		const diagnostic = "AssertionError: expected 1 to equal 2";
 		const result = {
 			content: [{ type: "text", text: diagnostic }],
@@ -268,12 +130,12 @@ describe("registerBashTool", () => {
 			},
 		};
 		const render = (state: Record<string, unknown>, expanded = false) => {
-			const component = registered.renderResult?.(result, { isPartial: false }, theme, {
-				expanded,
-				isError: true,
-				invalidate: () => {},
-				state,
-			} as unknown as RenderContextLike);
+			const component = tool.renderResult?.(
+				result,
+				{ isPartial: false },
+				theme,
+				makeRenderCtx({ isError: true, expanded, state }),
+			);
 			return component?.render(120).join("\n") ?? "";
 		};
 
@@ -283,38 +145,16 @@ describe("registerBashTool", () => {
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 
 		const partial =
-			registered
-				.renderResult?.(result, { isPartial: true }, theme, {
-					expanded: false,
-					isError: true,
-					invalidate: () => {},
-					state: {},
-				} as unknown as RenderContextLike)
+			tool
+				.renderResult?.(result, { isPartial: true }, theme, makeRenderCtx({ isError: true }))
 				?.getText() ?? "";
 		expect(partial).not.toContain("─");
 	});
 
 	it("frames single-line output like multi-line (no inline row)", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerBashTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = { fg: (_k: string, v: string) => v, bold: (v: string) => v };
+		const { pi, tool } = capturePi();
+		registerBashTool(pi, emptyFactory, makeToolContext());
+		const theme = makeTheme();
 		const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "");
 		const single = {
 			content: [{ type: "text", text: "Checked 382 files" }],
@@ -327,27 +167,15 @@ describe("registerBashTool", () => {
 			},
 		};
 		const collapsed =
-			registered
-				.renderResult?.(single, { isPartial: false }, theme, {
-					expanded: false,
-					isError: false,
-					invalidate: () => {},
-					state: {},
-				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+			tool.renderResult?.(single, { isPartial: false }, theme, makeRenderCtx())?.getText() ?? "";
 		// Single-line output is now framed just like multi-line — no inline row,
 		// no "✓ exit 0" header; the rules carry status by color.
 		expect(collapsed).toContain("─");
 		expect(collapsed).toContain("Checked 382 files");
 		expect(strip(collapsed)).not.toContain("✓ exit 0");
 		const expanded =
-			registered
-				.renderResult?.(single, { isPartial: false }, theme, {
-					expanded: true,
-					isError: false,
-					invalidate: () => {},
-					state: {},
-				} as unknown as RenderContextLike)
+			tool
+				.renderResult?.(single, { isPartial: false }, theme, makeRenderCtx({ expanded: true }))
 				?.getText() ?? "";
 		// expanded single-line should still be framed
 		expect(expanded).toContain("─");
@@ -362,58 +190,23 @@ describe("registerBashTool", () => {
 			},
 		};
 		const multiOut =
-			registered
-				.renderResult?.(multi, { isPartial: false }, theme, {
-					expanded: false,
-					isError: false,
-					invalidate: () => {},
-					state: {},
-				} as unknown as RenderContextLike)
-				?.getText() ?? "";
+			tool.renderResult?.(multi, { isPartial: false }, theme, makeRenderCtx())?.getText() ?? "";
 		expect(multiOut).toContain("─");
 		// Framed view drops the `✓ exit 0` header — the collapsed row already carries it.
 		expect(multiOut).not.toContain("✓ exit 0");
 	});
 
 	it("frames completed generic results but leaves partial results open", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerBashTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		const theme: ThemeLike = {
-			fg: (key: string, value: string) => `[${key}]${value}[/]`,
-			bold: (value: string) => value,
-		};
-		if (!registered.renderResult) throw new Error("renderResult not registered");
-		const renderResult = registered.renderResult;
+		const { pi, tool } = capturePi();
+		registerBashTool(pi, emptyFactory, makeToolContext());
+		if (!tool.renderResult) throw new Error("renderResult not registered");
+		const renderResult = tool.renderResult;
 		const render = (isError: boolean, isPartial: boolean) =>
-			(
-				renderResult(
-					{ content: [{ type: "text", text: isError ? "failed" : "done" }], details: undefined },
-					{ isPartial },
-					theme,
-					{
-						expanded: true,
-						isError,
-						invalidate: () => {},
-						state: {},
-					} as unknown as RenderContextLike,
-				) as unknown as { render(width: number): string[] }
+			renderResult(
+				{ content: [{ type: "text", text: isError ? "failed" : "done" }], details: undefined },
+				{ isPartial },
+				keyedTheme,
+				makeRenderCtx({ expanded: true, isError }),
 			)
 				.render(20)
 				.join("\n");
@@ -424,34 +217,12 @@ describe("registerBashTool", () => {
 	});
 
 	it("tints the frame rules green on success and red on failure", () => {
-		const registered: { renderResult?: (...args: unknown[]) => MockTextComponent } = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
-		registerBashTool(
-			mockPi,
-			() => ({ execute: async () => ({ content: [], details: undefined }) }),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
-		);
-		// Tag each fg() call so the rule's status color is observable in the output.
-		const theme: ThemeLike = {
-			fg: (k: string, v: string) => `[${k}]${v}[/]`,
-			bold: (v: string) => v,
-		};
+		const { pi, tool } = capturePi();
+		registerBashTool(pi, emptyFactory, makeToolContext());
 		// exitCode drives the rule tint; isError:false keeps the framed (non-error) branch
 		// so a non-zero exit still renders framed output with red rules.
 		const render = (exitCode: number | null) =>
-			registered
+			tool
 				.renderResult?.(
 					{
 						content: [{ type: "text", text: "a\nb\nc" }],
@@ -464,13 +235,8 @@ describe("registerBashTool", () => {
 						},
 					},
 					{ isPartial: false },
-					theme,
-					{
-						expanded: false,
-						isError: false,
-						invalidate: () => {},
-						state: {},
-					} as unknown as RenderContextLike,
+					keyedTheme,
+					makeRenderCtx(),
 				)
 				?.getText() ?? "";
 		expect(render(0)).toContain("[success]─"); // top+bottom rules painted success
@@ -479,53 +245,30 @@ describe("registerBashTool", () => {
 	});
 
 	it("collapses a non-zero exit thrown by Pi's built-in bash tool", async () => {
-		const registered: {
-			execute?: (...args: unknown[]) => Promise<ToolResultLike & { isError?: boolean }>;
-			renderResult?: (...args: unknown[]) => MockTextComponent;
-		} = {};
-		const mockPi: PiPrettyApi = {
-			registerTool(tool: unknown) {
-				Object.assign(registered, tool);
-			},
-			registerCommand() {},
-			on() {},
-		};
+		const { pi, tool } = capturePi();
 		registerBashTool(
-			mockPi,
+			pi,
 			() => ({
 				execute: async () => {
 					throw new Error("test failed\n\nCommand exited with code 1");
 				},
 			}),
-			{
-				cwd: process.cwd(),
-				sp: (p: string) => p,
-				TextComponent: MockTextComponent as unknown as TextComponentCtor,
-				fffState: { module: null, finder: null, partialIndex: false, dbDir: null },
-				cursorStore: { store: () => "", get: () => undefined } as unknown as CursorStore,
-			},
+			makeToolContext(),
 		);
 
-		const result = await registered.execute!(
-			"call-1",
-			{ command: "bun test" },
-			undefined,
-			undefined,
-			{},
-		);
+		const execute = tool.execute as (
+			...args: unknown[]
+		) => Promise<ToolResultLike & { isError?: boolean }>;
+		const result = await execute("call-1", { command: "bun test" }, undefined, undefined, {});
 		expect(result.isError).toBe(true);
 		expect(result.details).toMatchObject({ _type: "bashResult", exitCode: 1 });
 
-		const theme: ThemeLike = {
-			fg: (_key: string, value: string) => value,
-			bold: (value: string) => value,
-		};
-		const rendered = registered.renderResult?.(result, { isPartial: false }, theme, {
-			expanded: false,
-			isError: true,
-			invalidate: () => {},
-			state: { collapsed: true },
-		} as unknown as RenderContextLike);
+		const rendered = tool.renderResult?.(
+			result,
+			{ isPartial: false },
+			makeTheme(),
+			makeRenderCtx({ isError: true, state: { collapsed: true } }),
+		);
 		expect(rendered?.getText()).toContain("✗  bash bun test · exit 1");
 	});
 });
