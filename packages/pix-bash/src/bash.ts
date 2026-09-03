@@ -189,6 +189,7 @@ export function registerBashTool(
 							summarizeBashCommand(String(d.command ?? "")),
 							meta,
 							status,
+							terminalWidth?.(),
 						),
 					);
 				} else {

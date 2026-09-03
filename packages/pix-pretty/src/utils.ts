@@ -24,7 +24,7 @@ import type {
 } from "./types.js";
 
 export function renderToolError(error: string, theme: FgTheme): string {
-	return fillToolBackground(`\n${theme.fg("error", error)}`, BG_ERROR);
+	return fillToolBackground(theme.fg("error", error), BG_ERROR);
 }
 
 export function normalizeLineEndings(text: string): string {
@@ -324,8 +324,13 @@ export function renderCollapsedToolRow(
 	target: string,
 	meta = "",
 	status: CollapsedToolStatus = "success",
+	width?: number,
 ): string {
-	return fillToolBackground(formatCollapsedToolRow(theme, tool, target, meta, status));
+	return fillToolBackground(
+		formatCollapsedToolRow(theme, tool, target, meta, status),
+		BG_BASE,
+		width,
+	);
 }
 
 /** Hide renderCall after its paired result has auto-collapsed. */
