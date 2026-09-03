@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-graph",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Pi extension — native TS code knowledge graph (extract, cluster, analyze, query)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -17,6 +17,7 @@
 	},
 	"files": [
 		"src",
+		"!src/**/*.test.*",
 		"skills",
 		"README.md",
 		"LICENSE"

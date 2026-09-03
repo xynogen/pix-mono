@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-commands",
-	"version": "0.6.2",
+	"version": "0.6.3",
 	"description": "Pi extension — slash commands for cache clearing and isolated side questions",
 	"type": "module",
 	"main": "src/index.ts",
@@ -13,6 +13,7 @@
 	},
 	"files": [
 		"src",
+		"!src/**/*.test.*",
 		"README.md",
 		"LICENSE"
 	],

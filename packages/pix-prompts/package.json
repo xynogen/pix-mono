@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-prompts",
-	"version": "0.4.4",
+	"version": "0.4.5",
 	"description": "Pi extension — system-prompt injection (SOP.md + repo directives)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -13,6 +13,7 @@
 	},
 	"files": [
 		"src",
+		"!src/**/*.test.*",
 		"SOP.md",
 		"README.md",
 		"LICENSE"

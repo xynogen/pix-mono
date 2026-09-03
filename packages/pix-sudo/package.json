@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-sudo",
-	"version": "0.3.24",
+	"version": "0.3.25",
 	"description": "Pi tool — sudo_run with interactive PAM password prompt (PAM via sudo -S)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -9,6 +9,7 @@
 	},
 	"files": [
 		"src",
+		"!src/**/*.test.*",
 		"README.md",
 		"LICENSE"
 	],

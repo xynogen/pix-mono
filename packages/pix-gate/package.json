@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-gate",
-	"version": "0.2.11",
+	"version": "0.2.12",
 	"description": "Pi extension — permission gate for dangerous bash commands (confirm/block with TUI dialog)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -15,6 +15,7 @@
 	},
 	"files": [
 		"src",
+		"!src/**/*.test.*",
 		"README.md",
 		"LICENSE"
 	],

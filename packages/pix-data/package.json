@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-data",
-	"version": "0.4.6",
+	"version": "0.4.7",
 	"description": "Pi extension — shared model data layer (models.dev + BenchLM), cached at ~/.cache/pi",
 	"type": "module",
 	"main": "src/index.ts",
@@ -13,7 +13,7 @@
 	},
 	"files": [
 		"src",
-		"!src/**/*.test.ts",
+		"!src/**/*.test.*",
 		"README.md",
 		"LICENSE"
 	],

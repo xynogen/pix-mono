@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-skills",
-	"version": "0.8.3",
+	"version": "0.8.4",
 	"description": "Pi extension — agent skill loader (skill tool + skills bundle)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -9,6 +9,7 @@
 	},
 	"files": [
 		"src",
+		"!src/**/*.test.*",
 		"skills",
 		"README.md",
 		"LICENSE"
