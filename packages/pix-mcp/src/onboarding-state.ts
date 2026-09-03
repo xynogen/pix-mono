@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { getAgentPath } from "./agent-dir.ts";
 
 export interface McpOnboardingState {
@@ -38,19 +38,11 @@ export function loadOnboardingState(): McpOnboardingState {
 	}
 }
 
-export function saveOnboardingState(state: McpOnboardingState): void {
-	const path = getOnboardingStatePath();
-	mkdirSync(dirname(path), { recursive: true });
-	const tmpPath = `${path}.${process.pid}.tmp`;
-	writeFileSync(tmpPath, `${JSON.stringify(state, null, 2)}\n`, "utf-8");
-	renameSync(tmpPath, path);
-}
-
 export function updateOnboardingState(
 	updater: (state: McpOnboardingState) => McpOnboardingState,
 ): McpOnboardingState {
 	const next = updater(loadOnboardingState());
-	saveOnboardingState(next);
+	writeFileAtomicSync(getOnboardingStatePath(), `${JSON.stringify(next, null, 2)}\n`);
 	return next;
 }
 

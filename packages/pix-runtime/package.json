@@ -21,6 +21,7 @@
 	},
 	"exports": {
 		".": "./src/index.ts",
+		"./atomic-write": "./src/atomic-write.ts",
 		"./config": "./src/runtime.ts",
 		"./sections": "./src/sections/index.ts",
 		"./collapse": "./src/collapse.ts",

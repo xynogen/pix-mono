@@ -1,3 +1,4 @@
+export { writeFileAtomicSync } from "./atomic-write.ts";
 export { collapseDelayMs, shouldCollapse } from "./collapse.ts";
 export type {
 	ConfigChange,

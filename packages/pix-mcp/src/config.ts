@@ -1,7 +1,9 @@
 // config.ts - Config loading with import support
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { getAgentPath } from "./agent-dir.ts";
 import type { ImportKind, McpConfig, McpSettings, ServerEntry, ServerProvenance } from "./types.ts";
 
@@ -470,12 +472,8 @@ function readRawConfigObject(filePath: string): Record<string, unknown> {
 	}
 }
 
-function writeRawConfigObject(filePath: string, raw: Record<string, unknown>): void {
-	mkdirSync(dirname(filePath), { recursive: true });
-	const tmpPath = `${filePath}.${process.pid}.tmp`;
-	writeFileSync(tmpPath, `${JSON.stringify(raw, null, 2)}\n`, "utf-8");
-	renameSync(tmpPath, filePath);
-}
+const writeRawConfigObject = (filePath: string, raw: Record<string, unknown>): void =>
+	writeFileAtomicSync(filePath, `${JSON.stringify(raw, null, 2)}\n`);
 
 function getServersObject(raw: Record<string, unknown>): Record<string, ServerEntry> {
 	const existing = raw.mcpServers ?? raw["mcp-servers"] ?? {};
