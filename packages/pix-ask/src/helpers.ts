@@ -56,7 +56,15 @@ export function buildResponseText(answers: QuestionAnswer[], questions: Question
 		if (a.preview) s += `. selected preview: ${a.preview}`;
 		segs.push(s);
 	}
-	return segs.length ? `User answered: ${segs.join(". ")}.` : "User declined to answer questions.";
+	if (!segs.length) return "User declined to answer questions.";
+	// Partial close: name the questions left unanswered so the model doesn't
+	// assume silence means agreement.
+	const answered = new Set(answers.map((a) => a.questionIndex));
+	const unanswered = questions
+		.map((q, i) => (answered.has(i) ? null : `"${q.question}"`))
+		.filter((s): s is string => s !== null);
+	const tail = unanswered.length ? ` Unanswered: ${unanswered.join(", ")}.` : "";
+	return `User answered: ${segs.join(". ")}.${tail}`;
 }
 
 // ── Scroll indicator ───────────────────────────────────────────────────

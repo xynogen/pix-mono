@@ -236,6 +236,22 @@ describe("buildResponseText", () => {
 		const text = buildResponseText([], [qSingle]);
 		expect(text).toContain("declined");
 	});
+
+	test("names unanswered questions on partial close", () => {
+		const qs = [qSingle, qMulti];
+		const answers = [
+			{
+				questionIndex: 0,
+				question: "Which approach?",
+				kind: "option" as const,
+				answer: "GraphQL",
+			},
+		];
+		const text = buildResponseText(answers, qs);
+		expect(text).toContain("GraphQL");
+		expect(text).toContain("Unanswered");
+		expect(text).toContain(qMulti.question);
+	});
 });
 
 // ── Tool registration shape ─────────────────────────────────────────

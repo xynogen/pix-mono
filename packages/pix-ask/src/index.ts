@@ -90,7 +90,10 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					),
 				);
 
-				if (!result || result.cancelled) {
+				// Preserve any answers filled before the user closed the modal. cancel()
+				// in the questionnaire already passes the partial set; only a truly empty
+				// result counts as a full decline.
+				if (!result || (result.cancelled && !result.answers.length)) {
 					return {
 						content: [{ type: "text", text: "User cancelled the questionnaire" }],
 						details: result ?? { answers: [], cancelled: true },
@@ -141,7 +144,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					text.setText(error || "Error");
 					return frameToolResult(text, theme, true);
 				}
-				if (!details || details.cancelled || !details.answers?.length) {
+				if (!details?.answers?.length) {
 					// Cancellation is a warning outcome, not success — shared row keeps the
 					// tool identity and a text label (never color alone) for accessibility.
 					text.setText(formatCollapsedToolRow(theme, "ask_user", "", "cancelled", "warning"));
