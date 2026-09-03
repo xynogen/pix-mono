@@ -1,12 +1,10 @@
 /**
  * tools.ts — The 4 LLM-callable tool definitions:
  *   agent          — spawn a sub-agent (fg or bg)
- *   agent_info     — discover available types or models on demand
- *   agent_result   — fetch latest output / full result by id
- *   agent_steer    — steer or force-stop a running bg agent
+ *   agent_control  — discover, inspect, steer, or stop agents
  *
  * Design notes:
- * - volatile model/type catalogs live behind agent_info, not the agent schema.
+ * - volatile model/type catalogs live behind agent_control, not the agent schema.
  * - allowed_tools[] intersects the resolved tool set (never widens).
  * - modelName is ALWAYS populated (the pix twist — shown even when same as parent).
  * - renderCall/renderResult ported from tintinweb/pi-subagents (MIT).
@@ -21,7 +19,7 @@
  */
 
 import { defineTool, getAgentDir } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { lookupBenchmark } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
@@ -198,12 +196,7 @@ function renderAgentUtilityResult(
 		if (expanded && renderCtx.isError === true) return frameToolResult(component, theme, true);
 		return component;
 	}
-	const collapseTool =
-		details._type === "agent-info"
-			? SUBAGENT_TOOL_NAMES.INFO
-			: details._type === "agent-result"
-				? SUBAGENT_TOOL_NAMES.GET_RESULT
-				: SUBAGENT_TOOL_NAMES.STEER;
+	const collapseTool = SUBAGENT_TOOL_NAMES.CONTROL;
 	const collapsed = tickCollapse(
 		collapseTool,
 		renderCtx.state as CollapseState,
@@ -244,8 +237,8 @@ function renderAgentUtilityResult(
 		return new Text(
 			formatCollapsedToolRow(
 				theme,
-				SUBAGENT_TOOL_NAMES.INFO,
-				details.query ? `${details.kind} “${details.query}”` : details.kind,
+				SUBAGENT_TOOL_NAMES.CONTROL,
+				details.query ? `info ${details.kind} “${details.query}”` : `info ${details.kind}`,
 				`${details.count} available`,
 			),
 			0,
@@ -273,8 +266,8 @@ function renderAgentUtilityResult(
 					: "error";
 		const row = formatCollapsedToolRow(
 			theme,
-			SUBAGENT_TOOL_NAMES.GET_RESULT,
-			details.agentId,
+			SUBAGENT_TOOL_NAMES.CONTROL,
+			`result ${details.agentId}`,
 			meta,
 			status,
 		);
@@ -290,7 +283,8 @@ function renderAgentUtilityResult(
 		);
 	}
 
-	const tool = details.action === "stop" ? "agent_stop" : SUBAGENT_TOOL_NAMES.STEER;
+	const tool = SUBAGENT_TOOL_NAMES.CONTROL;
+	const target = `${details.action} ${details.agentId}`;
 	const meta =
 		details.outcome === "stopped" && text.includes("Partial output saved")
 			? "partial output saved"
@@ -300,7 +294,7 @@ function renderAgentUtilityResult(
 					? "not found"
 					: details.outcome;
 	if (details.outcome === "stopped") {
-		const row = formatCollapsedToolRow(theme, tool, details.agentId, meta);
+		const row = formatCollapsedToolRow(theme, tool, target, meta);
 		return new Text(
 			row.replace(theme.fg("success", padIcon("✓")), theme.fg("dim", padIcon("■"))),
 			0,
@@ -313,7 +307,7 @@ function renderAgentUtilityResult(
 			: details.outcome === "queued" || details.outcome === "already-finished"
 				? "warning"
 				: "error";
-	return new Text(formatCollapsedToolRow(theme, tool, details.agentId, meta, status), 0, 0);
+	return new Text(formatCollapsedToolRow(theme, tool, target, meta, status), 0, 0);
 }
 
 /** Strip provider prefix + date suffix for a compact model label. e.g. "anthropic/claude-haiku-4-5-20251001" → "haiku-4-5" */
@@ -335,7 +329,30 @@ function buildStats(d: AgentDetails, theme: Theme): string {
 	return dotJoin(parts, (s) => theme.fg("muted", s));
 }
 
-/** Format every foreground terminal state with stable identity-first ordering. */
+/** Format a live agent row with stable identity-first ordering. */
+export function formatAgentRunningLine(d: AgentDetails, theme: Theme): string {
+	const frame = d.spinnerFrame != null ? (SPINNER[d.spinnerFrame % SPINNER.length] ?? "⠋") : "⠋";
+	const modelLabel = d.modelName ? ` ${theme.fg("muted", `[${d.modelName}]`)}` : "";
+	const parts: string[] = [];
+	if (d.turnCount != null && d.turnCount > 0) parts.push(formatTurns(d.turnCount, d.maxTurns));
+	if (d.toolUses > 0) parts.push(formatToolUses(d.toolUses));
+	if (d.context) parts.push(d.context);
+	const speed = formatSpeed(d.outputTokens ?? 0, d.streamingMs ?? 0);
+	if (speed) parts.push(speed);
+	if (d.durationMs > 0) parts.push(formatMs(d.durationMs));
+	const dot = (s: string) => theme.fg("muted", s);
+	return dotJoin(
+		[
+			`  ${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(d.displayName))}${modelLabel}`,
+			theme.fg("dim", d.description),
+			parts.length > 0 ? theme.fg("muted", dotJoin(parts)) : "",
+			d.activity ? theme.fg("dim", d.activity) : "",
+		],
+		dot,
+	);
+}
+
+/** Format every terminal state with stable identity-first ordering. */
 export function formatAgentFinishedLine(d: AgentDetails, theme: Theme): string {
 	let marker: string;
 	let status: string;
@@ -391,7 +408,7 @@ export function formatAgentCompletedLine(d: AgentDetails, theme: Theme): string 
 // ── compact tool description + on-demand discovery ──────────────────────────
 
 export function buildAgentToolDescription(): string {
-	return "Launch a sub-agent only for delegated work; use direct tools for known tasks. Call agent_info to discover types or models. Keep prompts self-contained and never fork/inherit parent context. Use thinking medium or high; anything above high requires prior user approval after a concrete benefit and cost/latency justification. Omit model to inherit the parent model.";
+	return "Launch a sub-agent only for delegated work; use direct tools for known tasks. Call agent_control(action:'info') to discover types, models, or active IDs. Keep prompts self-contained and never fork/inherit parent context. Use thinking medium or high; anything above high requires prior user approval after a concrete benefit and cost/latency justification. Omit model to inherit the parent model.";
 }
 
 export function agentTypeGuidance(): string {
@@ -439,16 +456,17 @@ export function describeParentModel(registry: ModelRegistry, model?: ModelEntry)
 	return listAvailable(registry).find((line) => line === id || line.startsWith(`${id}  —`)) ?? id;
 }
 
-export function createAgentInfoTool(reloadCustomAgents: () => void) {
+export function createAgentInfoTool(reloadCustomAgents: () => void, manager?: AgentManager) {
 	return defineTool({
-		name: SUBAGENT_TOOL_NAMES.INFO,
+		name: "agent_info",
 		label: "Agent Info",
 		renderShell: "self",
-		description: "List runtime agent types or available models.",
+		description: "List runtime agent types, available models, or active agent IDs.",
 		parameters: Type.Object({
-			kind: Type.Enum(["types", "models"] as const, {
+			kind: Type.Enum(["types", "models", "active"] as const, {
 				type: "string",
-				description: 'Catalog: "types" = roles/tools; "models" = available models.',
+				description:
+					'Catalog: "types" = roles/tools; "models" = available models; "active" = running agent IDs.',
 			}),
 			query: Type.Optional(Type.String({ description: "Optional text filter." })),
 			limit: Type.Optional(
@@ -481,19 +499,33 @@ export function createAgentInfoTool(reloadCustomAgents: () => void) {
 			const query = params.query as string | undefined;
 			const limit = boundedLimit(params.limit);
 			if (params.kind === "types") reloadCustomAgents();
-			const lines =
-				params.kind === "models"
-					? listAgentModels(ctx.modelRegistry, query, limit)
-					: listAgentTypes(query, limit);
-			const heading = params.kind === "models" ? "Available models" : "Available agent types";
-			const guidance =
-				params.kind === "models"
-					? "Pass provider/id or a fuzzy name to agent.model; omit model to inherit the parent."
-					: agentTypeGuidance();
-			const parent =
-				params.kind === "models"
-					? `Current parent: ${describeParentModel(ctx.modelRegistry, ctx.model)}\n\n`
-					: "";
+			let lines: string[];
+			let heading: string;
+			let guidance: string;
+			let parent = "";
+			if (params.kind === "models") {
+				lines = listAgentModels(ctx.modelRegistry, query, limit);
+				heading = "Available models";
+				guidance =
+					"Pass provider/id or a fuzzy name to agent.model; omit model to inherit the parent.";
+				parent = `Current parent: ${describeParentModel(ctx.modelRegistry, ctx.model)}\n\n`;
+			} else if (params.kind === "active") {
+				const needle = normalizeQuery(query);
+				lines = (manager?.listAgents() ?? [])
+					.filter((record) => record.status === "running" || record.status === "queued")
+					.map((record) => {
+						const model = record.invocation?.modelName ? ` [${record.invocation.modelName}]` : "";
+						return `${record.id}  — ${record.status} · ${record.type}${model} · ${record.description}`;
+					})
+					.filter((line) => !needle || line.toLocaleLowerCase().includes(needle))
+					.slice(0, limit);
+				heading = "Active agents";
+				guidance = "Pass an ID to agent_control with action steer/stop/result.";
+			} else {
+				lines = listAgentTypes(query, limit);
+				heading = "Available agent types";
+				guidance = agentTypeGuidance();
+			}
 			return textResult(
 				`${parent}${heading}${query ? ` matching “${query}”` : ""}:\n${lines.join("\n") || "(none)"}\n\n${guidance}`,
 				{
@@ -502,6 +534,100 @@ export function createAgentInfoTool(reloadCustomAgents: () => void) {
 					query,
 					count: lines.length,
 				},
+			);
+		},
+	});
+}
+
+// ── agent_control tool ───────────────────────────────────────────────────────
+
+export function createAgentControlTool(
+	manager: AgentManager,
+	agentActivity: Map<string, AgentActivity>,
+	reloadCustomAgents: () => void,
+) {
+	const info = createAgentInfoTool(reloadCustomAgents, manager);
+	const result = createAgentResultTool(manager, agentActivity);
+	const steer = createAgentSteerTool(manager);
+	return defineTool({
+		name: SUBAGENT_TOOL_NAMES.CONTROL,
+		label: "Agent Control",
+		renderShell: "self",
+		description:
+			"Inspect agent types/models/active IDs, retrieve output, redirect a running agent, or stop it.",
+		parameters: Type.Object({
+			action: Type.Enum(["info", "result", "steer", "stop"] as const, {
+				type: "string",
+				description: "Operation to perform.",
+			}),
+			kind: Type.Optional(
+				Type.Enum(["types", "models", "active"] as const, {
+					type: "string",
+					description: "For info: catalog to list. Defaults to active.",
+				}),
+			),
+			agent_id: Type.Optional(Type.String({ description: "For result/steer/stop: agent ID." })),
+			message: Type.Optional(Type.String({ description: "For steer: instruction to inject." })),
+			query: Type.Optional(Type.String({ description: "For info: optional text filter." })),
+			limit: Type.Optional(
+				Type.Number({ description: "For info: max results (default 20, max 50).", minimum: 1 }),
+			),
+			verbose: Type.Optional(
+				Type.Boolean({ description: "For result: return full conversation history." }),
+			),
+			turns: Type.Optional(
+				Type.Number({ description: "For result: return only last N turns.", minimum: 1 }),
+			),
+		}),
+		renderCall(args, theme, renderCtx) {
+			const text = new Text("", 0, 0);
+			if (
+				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
+					text.setText(value),
+				)
+			)
+				return text;
+			const action = String(args.action ?? "info");
+			const target =
+				action === "info" ? String(args.kind ?? "active") : String(args.agent_id ?? "");
+			text.setText(
+				`${theme.fg("toolTitle", theme.bold("agent_control"))} ${theme.fg("dim", action)}${target ? ` ${theme.fg("accent", target)}` : ""}`,
+			);
+			return text;
+		},
+		renderResult(result, { expanded, isPartial }, theme, renderCtx) {
+			return renderAgentUtilityResult(result, expanded, isPartial, theme, renderCtx);
+		},
+		async execute(toolCallId, params, signal, onUpdate, ctx) {
+			if (params.action === "info") {
+				return info.execute(
+					toolCallId,
+					{ kind: params.kind ?? "active", query: params.query, limit: params.limit },
+					signal,
+					onUpdate,
+					ctx,
+				);
+			}
+			if (!params.agent_id) return textResult(`Missing required 'agent_id' for ${params.action}.`);
+			if (params.action === "result") {
+				return result.execute(
+					toolCallId,
+					{
+						agent_id: params.agent_id,
+						verbose: params.verbose,
+						turns: params.turns,
+					},
+					signal,
+					onUpdate,
+					ctx,
+				);
+			}
+			return steer.execute(
+				toolCallId,
+				{ agent_id: params.agent_id, action: params.action, message: params.message },
+				signal,
+				onUpdate,
+				ctx,
 			);
 		},
 	});
@@ -527,7 +653,9 @@ export function createAgentTool(
 				description: "Compact, self-contained instructions; never rely on forked parent context.",
 			}),
 			description: Type.String({ description: "Short 3-5 word UI label." }),
-			type: Type.String({ description: "Agent type; see agent_info(kind:'types')." }),
+			type: Type.String({
+				description: "Agent type; see agent_control(action:'info', kind:'types').",
+			}),
 			model: Type.Optional(
 				Type.String({ description: "Optional model override; omit to inherit." }),
 			),
@@ -574,45 +702,51 @@ export function createAgentTool(
 			// and activity are visible inline in the transcript (the ● Agents
 			// widget carries full detail above the editor).
 			if (isPartial || details.status === "running" || details.status === "queued") {
-				const frame =
-					details.spinnerFrame != null
-						? (SPINNER[details.spinnerFrame % SPINNER.length] ?? "⠋")
-						: "⠋";
-				const modelLabel = details.modelName
-					? ` ${theme.fg("muted", `[${details.modelName}]`)}`
-					: "";
-
-				const parts: string[] = [];
-				if (details.turnCount != null && details.turnCount > 0)
-					parts.push(formatTurns(details.turnCount, details.maxTurns));
-				if (details.toolUses > 0) parts.push(formatToolUses(details.toolUses));
-				if (details.context) parts.push(details.context);
-				const liveSpeed = formatSpeed(details.outputTokens ?? 0, details.streamingMs ?? 0);
-				if (liveSpeed) parts.push(liveSpeed);
-				if (details.durationMs > 0) parts.push(formatMs(details.durationMs));
-				const dot = (s: string) => theme.fg("muted", s);
-				const statsText = parts.length > 0 ? theme.fg("muted", dotJoin(parts)) : "";
-
-				const line = dotJoin(
-					[
-						`  ${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(details.displayName))}${modelLabel}`,
-						theme.fg("dim", details.description),
-						statsText,
-						details.activity ? theme.fg("dim", details.activity) : "",
-					],
-					dot,
-				);
-				return new Text(line, 0, 0);
+				return new Text(formatAgentRunningLine(details, theme), 0, 0);
 			}
 
-			// Background launched
-			if (details.status === "background") {
-				const modelTag = details.modelName ? ` ${theme.fg("muted", `[${details.modelName}]`)}` : "";
-				return new Text(
-					theme.fg("dim", `  ⎿  Launched${modelTag} — result auto-delivered on completion`),
-					0,
-					0,
+			// Background launches return before the child completes, so this transcript
+			// component follows the manager record instead of freezing as “Launched”.
+			if (details.status === "background" && details.agentId) {
+				let terminalLine: string | undefined;
+				const launchedLine = theme.fg(
+					"dim",
+					`  ⎿  Launched${details.modelName ? ` ${theme.fg("muted", `[${details.modelName}]`)}` : ""} — result auto-delivered on completion`,
 				);
+				return {
+					render: (width: number) => {
+						if (terminalLine) return [truncateToWidth(terminalLine, width)];
+						const record = manager.getRecord(details.agentId as string);
+						if (!record) return [truncateToWidth(launchedLine, width)];
+						const activity = agentActivity.get(record.id);
+						const liveDetails = buildDetails(
+							{
+								displayName: details.displayName,
+								description: details.description,
+								subagentType: details.subagentType,
+								modelName: details.modelName,
+								tags: details.tags,
+							},
+							record,
+							activity,
+						);
+						if (record.status === "running" || record.status === "queued") {
+							liveDetails.activity = activity
+								? describeActivity(activity.activeTools, activity.responseText)
+								: record.status === "queued"
+									? "queued"
+									: "thinking…";
+							liveDetails.spinnerFrame = Math.floor((Date.now() - record.startedAt) / 80);
+						}
+						const isRunning = record.status === "running" || record.status === "queued";
+						const line = isRunning
+							? formatAgentRunningLine(liveDetails, theme)
+							: formatAgentFinishedLine(liveDetails, theme);
+						if (!isRunning) terminalLine = line;
+						return [truncateToWidth(line, width)];
+					},
+					invalidate() {},
+				};
 			}
 
 			// Every terminal branch uses the same one-line identity and stats order.
@@ -629,7 +763,7 @@ export function createAgentTool(
 						line += `\n${theme.fg("dim", `  ${resultLine}`)}`;
 					}
 					if (resultLines.length > 50) {
-						line += `\n${theme.fg("muted", "  … (use agent_result with verbose for full output)")}`;
+						line += `\n${theme.fg("muted", "  … (use agent_control action=result with verbose for full output)")}`;
 					}
 				}
 			}
@@ -978,7 +1112,7 @@ export function createAgentResultTool(
 	agentActivity: Map<string, AgentActivity>,
 ) {
 	return defineTool({
-		name: SUBAGENT_TOOL_NAMES.GET_RESULT,
+		name: "agent_result",
 		label: "Agent Result",
 		renderShell: "self",
 		description:
@@ -1037,7 +1171,7 @@ export function createAgentResultTool(
 				);
 			}
 
-			// Suppress the pending completion nudge (agent_result consumed it)
+			// Suppress the pending completion nudge (result was consumed)
 			record.resultConsumed = true;
 
 			const turns =
@@ -1091,7 +1225,7 @@ export function createAgentResultTool(
 
 export function createAgentSteerTool(manager: AgentManager) {
 	return defineTool({
-		name: SUBAGENT_TOOL_NAMES.STEER,
+		name: "agent_steer",
 		label: "Steer Agent",
 		renderShell: "self",
 		description:
@@ -1167,7 +1301,7 @@ export function createAgentSteerTool(manager: AgentManager) {
 				const lines = [
 					`Agent "${id}" stopped.`,
 					partial
-						? `Partial output saved. Use agent_result("${id}") to retrieve it.`
+						? `Partial output saved. Use agent_control(action: "result", agent_id: "${id}") to retrieve it.`
 						: "No output was captured before the agent was stopped.",
 				];
 				return textResult(lines.join("\n"), details("stopped"));
@@ -1291,20 +1425,23 @@ function buildDetails(
 		error?: string;
 		id?: string;
 		lifetimeUsage: { input: number; output: number; cacheWrite: number };
+		turnCount?: number;
+		maxTurns?: number;
+		streamingMs?: number;
+		session?: unknown;
 	},
 	activity?: AgentActivity & { durationMs?: number },
 ): AgentDetails {
-	const contextUsage = activity?.session
-		? getSessionContextUsage(activity.session as SessionLike)
-		: null;
+	const session = activity?.session ?? record.session;
+	const contextUsage = session ? getSessionContextUsage(session as SessionLike) : null;
 	return {
 		...base,
 		toolUses: record.toolUses,
 		context: formatContext(contextUsage),
 		outputTokens: record.lifetimeUsage.output,
-		streamingMs: activity?.streamingMs,
-		turnCount: activity?.turnCount,
-		maxTurns: activity?.maxTurns,
+		streamingMs: activity?.streamingMs ?? record.streamingMs,
+		turnCount: activity?.turnCount ?? record.turnCount,
+		maxTurns: activity?.maxTurns ?? record.maxTurns,
 		durationMs: activity?.durationMs ?? (record.completedAt ?? Date.now()) - record.startedAt,
 		status: record.status as AgentDetails["status"],
 		agentId: record.id,

@@ -6,7 +6,7 @@ import registerTodo from "@xynogen/pix-todo";
 // Mirror of the per-instance guard. pix-core does not own once.ts (each member
 // duplicates it to stay cross-dep-free), so we re-declare the contract here and
 // assert the dedupe semantics that the aggregator relies on.
-function once(pi: object, key: string, fn: () => void): void {
+function once(pi: Record<string, unknown>, key: string, fn: () => void): void {
 	const g = globalThis as { __pixOnce?: WeakMap<object, Set<string>> };
 	if (!g.__pixOnce) g.__pixOnce = new WeakMap<object, Set<string>>();
 	const registry = g.__pixOnce;
@@ -199,7 +199,7 @@ describe("member factory dedupe (pix-subagent)", () => {
 		const { pi, toolNames } = makeHost();
 		registerSubagent(pi);
 		registerSubagent(pi);
-		expect(toolNames).toEqual(["agent_info", "agent", "agent_result", "agent_steer"]);
+		expect(toolNames).toEqual(["agent", "agent_control"]);
 	});
 
 	it("registers agent tools again for a fresh pi instance (/new rehydration)", () => {
@@ -207,7 +207,7 @@ describe("member factory dedupe (pix-subagent)", () => {
 		const { pi: pi2, toolNames: tools2 } = makeHost();
 		registerSubagent(pi1);
 		registerSubagent(pi2);
-		expect(tools1).toEqual(["agent_info", "agent", "agent_result", "agent_steer"]);
-		expect(tools2).toEqual(["agent_info", "agent", "agent_result", "agent_steer"]);
+		expect(tools1).toEqual(["agent", "agent_control"]);
+		expect(tools2).toEqual(["agent", "agent_control"]);
 	});
 });

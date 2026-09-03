@@ -83,7 +83,7 @@ export function registerNotificationRenderer(pi: ExtensionAPI): void {
 					output += `\n${theme.fg("dim", `  ${line}`)}`;
 				}
 				if (details.resultTruncated) {
-					output += `\n${theme.fg("muted", "  … preview truncated; use agent_result for full output")}`;
+					output += `\n${theme.fg("muted", "  … preview truncated; use agent_control action=result for full output")}`;
 				}
 				if (details.error) output += `\n${theme.fg("error", `  ${details.error}`)}`;
 			}

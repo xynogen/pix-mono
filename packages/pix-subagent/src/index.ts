@@ -1,7 +1,7 @@
 /**
  * index.ts — pix-subagent extension entry point.
  *
- * Registers 4 LLM-callable tools (agent, agent_info, agent_result, agent_steer),
+ * Registers 2 LLM-callable tools (agent, agent_control),
  * a live above-editor widget (model shown inline), and a themed
  * subagent-notification renderer.
  *
@@ -15,13 +15,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { AgentManager } from "./agent-manager.ts";
 import { registerAgents } from "./agent-types.ts";
 import { loadCustomAgents } from "./custom-agents.ts";
-import {
-	type AgentActivity,
-	createAgentInfoTool,
-	createAgentResultTool,
-	createAgentSteerTool,
-	createAgentTool,
-} from "./tools.ts";
+import { type AgentActivity, createAgentControlTool, createAgentTool } from "./tools.ts";
 import type { NotificationDetails } from "./types.ts";
 import { registerNotificationRenderer } from "./ui/notification.ts";
 import { AgentWidget } from "./ui/widget.ts";
@@ -54,7 +48,7 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 	// ── State ──────────────────────────────────────────────────────────────────
 	const agentActivity = new Map<string, AgentActivity>();
 
-	// Debounce: brief hold so agent_result can cancel a notification it just consumed
+	// Debounce: brief hold so agent_control can cancel a notification it just consumed
 	const pendingNudges = new Map<string, ReturnType<typeof setTimeout>>();
 	const NUDGE_HOLD_MS = 200;
 
@@ -169,9 +163,7 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 	registerNotificationRenderer(pi);
 
 	// ── Register tools ─────────────────────────────────────────────────────────
-	// Volatile type/model catalogs stay behind agent_info rather than bloating
-	// every prompt. Invalid explicit models still return the live catalog.
-	pi.registerTool(createAgentInfoTool(reloadCustomAgents));
+	// One action-based gateway keeps control/discovery schemas out of the baseline.
 	pi.registerTool(
 		createAgentTool(
 			pi as Parameters<typeof manager.spawn>[0],
@@ -180,8 +172,7 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 			reloadCustomAgents,
 		),
 	);
-	pi.registerTool(createAgentResultTool(manager, agentActivity));
-	pi.registerTool(createAgentSteerTool(manager));
+	pi.registerTool(createAgentControlTool(manager, agentActivity, reloadCustomAgents));
 
 	// ── Lifecycle ──────────────────────────────────────────────────────────────
 	pi.on("session_start", (_event, ctx) => {

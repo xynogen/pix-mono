@@ -37,13 +37,11 @@ import type { SubagentType, ThinkingLevel } from "./types.ts";
  */
 export const SUBAGENT_TOOL_NAMES = {
 	AGENT: "agent",
-	INFO: "agent_info",
-	GET_RESULT: "agent_result",
-	STEER: "agent_steer",
+	CONTROL: "agent_control",
 } as const;
 
 /** Names of tools registered by this extension that subagents must NOT inherit. */
-const EXCLUDED_TOOL_NAMES: string[] = Object.values(SUBAGENT_TOOL_NAMES);
+const EXCLUDED_TOOL_NAMES = ["agent", "agent_control", "agent_info", "agent_result", "agent_steer"];
 
 /**
  * Canonical name of an extension for `extensions: [...]` allowlist matching.

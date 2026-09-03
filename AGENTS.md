@@ -85,7 +85,7 @@ packages/
   # ── Behaviour (bundled by pix-core) ────────────────────────────────
   pix-optimizer/   # Caveman + RTK + TOON + ponytail (/optimizer)
   pix-gate/        # Permission gate for dangerous commands
-  pix-subagent/    # Sub-agent spawning (agent / agent_result / agent_steer)
+  pix-subagent/    # Sub-agent spawning (agent / agent_control)
   # ── Tool suite (bundled by pix-core — Pi built-in replacements) ───
   pix-bash/  pix-read/  pix-write/  pix-edit/
   pix-find/  pix-grep/  pix-ls/    pix-ask/

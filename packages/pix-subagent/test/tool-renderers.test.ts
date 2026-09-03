@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/utils";
 import {
+	createAgentControlTool,
 	createAgentInfoTool,
 	createAgentResultTool,
 	createAgentSteerTool,
@@ -252,12 +253,36 @@ describe("subagent utility compact renderers", () => {
 		}
 	});
 
-	test("agent_info summarizes the authoritative count and expands exact content", async () => {
-		const tool = createAgentInfoTool(() => {});
-		const result = await execute(tool, { kind: "models", limit: 5 }, ctx);
-		expect(render(tool, result)).toContain(`${OK} agent_info models · 5 available`);
+	test("agent_control summarizes info and expands exact content", async () => {
+		const tool = createAgentControlTool({} as never, new Map(), () => {});
+		const result = await execute(tool, { action: "info", kind: "models", limit: 5 }, ctx);
+		expect(render(tool, result)).toContain(`${OK} agent_control info models · 5 available`);
 		const text = (result as { content: { text: string }[] }).content[0]?.text ?? "";
 		expect(render(tool, result, true)).toContain(text);
+	});
+
+	test("agent_control routes result, steer, and stop through one public tool", async () => {
+		const record = {
+			status: "running",
+			result: "partial",
+			resultConsumed: false,
+			session: { steer: async () => {} },
+		};
+		const manager = { getRecord: () => record, abort: () => true };
+		const tool = createAgentControlTool(manager as never, new Map(), () => {});
+
+		let result = await execute(tool, { action: "result", agent_id: "abc123" });
+		expect(render(tool, result)).toContain(`${WARN} agent_control result abc123 · still running`);
+		result = await execute(tool, {
+			action: "steer",
+			agent_id: "abc123",
+			message: "focus",
+		});
+		expect(render(tool, result)).toContain(`${OK} agent_control steer abc123 · delivered`);
+		result = await execute(tool, { action: "stop", agent_id: "abc123" });
+		expect(render(tool, result)).toContain(
+			`${STOP} agent_control stop abc123 · partial output saved`,
+		);
 	});
 
 	test("agent_result covers completed, running, queued, error, and not-found", async () => {
@@ -282,7 +307,7 @@ describe("subagent utility compact renderers", () => {
 			const tool = createAgentResultTool(manager as never, activity as never);
 			const result = await execute(tool, { agent_id: "abc123", verbose: false });
 			const output = render(tool, result);
-			expect(output).toContain(`${marker} agent_result abc123 · ${label}`);
+			expect(output).toContain(`${marker} agent_control result abc123 · ${label}`);
 			const exact = (result as { content: { text: string }[] }).content[0]?.text ?? "";
 			expect(render(tool, result, true)).toContain(exact);
 			expect(record.resultConsumed).toBe(true);
@@ -290,7 +315,7 @@ describe("subagent utility compact renderers", () => {
 
 		const tool = createAgentResultTool({ getRecord: () => undefined } as never, new Map());
 		const result = await execute(tool, { agent_id: "missing", verbose: false });
-		expect(render(tool, result)).toContain(`${ERR} agent_result missing · not found`);
+		expect(render(tool, result)).toContain(`${ERR} agent_control result missing · not found`);
 	});
 
 	test("agent_result preserves verbose conversation semantics", async () => {
@@ -314,17 +339,19 @@ describe("subagent utility compact renderers", () => {
 		const steerRecord = { status: "running", session: { steer: async () => {} } };
 		let tool = createAgentSteerTool({ getRecord: () => steerRecord } as never);
 		let result = await execute(tool, { agent_id: "abc123", action: "steer", message: "focus" });
-		expect(render(tool, result)).toContain(`${OK} agent_steer abc123 · delivered`);
+		expect(render(tool, result)).toContain(`${OK} agent_control steer abc123 · delivered`);
 
 		const queuedRecord: { status: string; pendingSteers?: string[] } = { status: "queued" };
 		tool = createAgentSteerTool({ getRecord: () => queuedRecord } as never);
 		result = await execute(tool, { agent_id: "abc123", action: "steer", message: "focus" });
-		expect(render(tool, result)).toContain(`${WARN} agent_steer abc123 · queued`);
+		expect(render(tool, result)).toContain(`${WARN} agent_control steer abc123 · queued`);
 
 		const stoppedRecord = { status: "running", result: "partial" };
 		tool = createAgentSteerTool({ getRecord: () => stoppedRecord, abort: () => true } as never);
 		result = await execute(tool, { agent_id: "abc123", action: "stop" });
-		expect(render(tool, result)).toContain(`${STOP} agent_stop abc123 · partial output saved`);
+		expect(render(tool, result)).toContain(
+			`${STOP} agent_control stop abc123 · partial output saved`,
+		);
 		expect(render(tool, result, true)).toContain(
 			(result as { content: { text: string }[] }).content[0]?.text ?? "",
 		);
@@ -333,18 +360,18 @@ describe("subagent utility compact renderers", () => {
 	test("agent steer covers not-found, invalid, already-finished, and execution errors", async () => {
 		let tool = createAgentSteerTool({ getRecord: () => undefined } as never);
 		let result = await execute(tool, { agent_id: "missing", action: "steer", message: "focus" });
-		expect(render(tool, result)).toContain(`${ERR} agent_steer missing · not found`);
+		expect(render(tool, result)).toContain(`${ERR} agent_control steer missing · not found`);
 
 		tool = createAgentSteerTool({ getRecord: () => ({ status: "running" }) } as never);
 		result = await execute(tool, { agent_id: "abc123", action: "steer" });
-		expect(render(tool, result)).toContain(`${ERR} agent_steer abc123 · invalid`);
+		expect(render(tool, result)).toContain(`${ERR} agent_control steer abc123 · invalid`);
 
 		tool = createAgentSteerTool({
 			getRecord: () => ({ status: "completed", result: "done" }),
 			abort: () => false,
 		} as never);
 		result = await execute(tool, { agent_id: "abc123", action: "stop" });
-		expect(render(tool, result)).toContain(`${WARN} agent_stop abc123 · already finished`);
+		expect(render(tool, result)).toContain(`${WARN} agent_control stop abc123 · already finished`);
 
 		tool = createAgentSteerTool({
 			getRecord: () => ({
@@ -353,6 +380,6 @@ describe("subagent utility compact renderers", () => {
 			}),
 		} as never);
 		result = await execute(tool, { agent_id: "abc123", action: "steer", message: "focus" });
-		expect(render(tool, result)).toContain(`${ERR} agent_steer abc123 · error`);
+		expect(render(tool, result)).toContain(`${ERR} agent_control steer abc123 · error`);
 	});
 });

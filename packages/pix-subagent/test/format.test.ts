@@ -5,6 +5,7 @@ import type { ModelRegistry } from "../src/model-resolver.ts";
 import {
 	agentTypeGuidance,
 	buildAgentToolDescription,
+	createAgentControlTool,
 	createAgentInfoTool,
 	createAgentSteerTool,
 	createAgentTool,
@@ -26,7 +27,7 @@ import { describeActivity, formatSpeed } from "../src/ui/widget.ts";
 test("agent description includes compact delegation safety guidance", () => {
 	const description = buildAgentToolDescription();
 
-	expect(description).toContain("agent_info");
+	expect(description).toContain("agent_control");
 	expect(description).toContain("never fork/inherit parent context");
 	expect(description).toContain("thinking medium or high");
 	expect(description).toContain("prior user approval");
@@ -34,6 +35,18 @@ test("agent description includes compact delegation safety guidance", () => {
 	expect(description).not.toContain("Custom agents:");
 	expect(description).not.toContain("Types:");
 	expect(description.length).toBeLessThan(400);
+});
+
+test("agent_control exposes consolidated action enum", () => {
+	const tool = createAgentControlTool({} as never, new Map(), () => {});
+	const parameters = tool.parameters as {
+		properties: { action: { type?: string; enum?: string[]; description?: string } };
+	};
+	const action = parameters.properties.action;
+
+	expect(tool.name).toBe("agent_control");
+	expect(action.type).toBe("string");
+	expect(action.enum).toEqual(["info", "result", "steer", "stop"]);
 });
 
 test("agent_info exposes kind as a string enum with actionable guidance", () => {
@@ -44,8 +57,46 @@ test("agent_info exposes kind as a string enum with actionable guidance", () => 
 	const kind = parameters.properties.kind;
 
 	expect(kind.type).toBe("string");
-	expect(kind.enum).toEqual(["types", "models"]);
-	expect(kind.description).toBe('Catalog: "types" = roles/tools; "models" = available models.');
+	expect(kind.enum).toEqual(["types", "models", "active"]);
+	expect(kind.description).toBe(
+		'Catalog: "types" = roles/tools; "models" = available models; "active" = running agent IDs.',
+	);
+});
+
+test("agent info lists active IDs usable by agent_control", async () => {
+	const manager = {
+		listAgents: () => [
+			{
+				id: "agent-active-123",
+				type: "general",
+				description: "Inspect renderers",
+				status: "running",
+				startedAt: Date.now(),
+				invocation: { modelName: "luna" },
+			},
+			{
+				id: "agent-done-456",
+				type: "general",
+				description: "Old task",
+				status: "completed",
+				startedAt: Date.now() - 1_000,
+			},
+		],
+	};
+	const tool = createAgentControlTool(manager as never, new Map(), () => {});
+	const result = (await tool.execute(
+		"call",
+		{ action: "info", kind: "active", query: "render", limit: 20 },
+		new AbortController().signal,
+		undefined,
+		{} as never,
+	)) as { content: Array<{ type: string; text: string }> };
+	const text = result.content[0]?.text ?? "";
+
+	expect(text).toContain("agent-active-123");
+	expect(text).toContain("Inspect renderers");
+	expect(text).toContain("agent_control");
+	expect(text).not.toContain("agent-done-456");
 });
 
 test("agent exposes thinking as a guided string enum", () => {
@@ -256,6 +307,64 @@ test("foreground live row separates description from every stat like completed r
 	expect(component?.render(200).join("\n").trimEnd()).toBe(
 		`  ⠋ Explore [openai: gpt-5.6 sol] · Retest subagent call · ${formatTurns(2, 3)} · ${formatToolUses(1)} · ${context} · 6.1s`,
 	);
+});
+
+test("background launch row follows the running agent through completion", () => {
+	const record = {
+		id: "bg-1",
+		type: "general",
+		description: "Inspect renderers",
+		status: "running",
+		toolUses: 0,
+		startedAt: Date.now() - 1_000,
+		lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
+		compactionCount: 0,
+		turnCount: 0,
+		streamingMs: 0,
+		isBackground: true,
+	};
+	const manager: { getRecord(): typeof record | undefined } = { getRecord: () => record };
+	const activity = new Map([
+		[
+			"bg-1",
+			{
+				activeTools: new Map(),
+				toolUses: 0,
+				responseText: "",
+				turnCount: 0,
+				lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
+				streamingMs: 0,
+			},
+		],
+	]);
+	const tool = createAgentTool({} as never, manager as never, activity, () => {});
+	const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text };
+	const component = tool.renderResult?.(
+		{
+			content: [{ type: "text", text: "Agent launched" }],
+			details: {
+				displayName: "Agent",
+				description: "Inspect renderers",
+				subagentType: "general",
+				toolUses: 0,
+				context: "",
+				durationMs: 0,
+				status: "background",
+				agentId: "bg-1",
+				modelName: "luna",
+			},
+		},
+		{ expanded: false, isPartial: false },
+		theme as never,
+		{} as never,
+	);
+
+	expect(component?.render(160).join("\n")).toContain("Agent [luna] · Inspect renderers");
+	record.status = "completed";
+	(record as typeof record & { completedAt: number }).completedAt = Date.now();
+	expect(component?.render(160).join("\n")).toContain("completed");
+	manager.getRecord = () => undefined;
+	expect(component?.render(160).join("\n")).toContain("completed");
 });
 
 test("foreground terminal rows begin directly with their status mark", () => {

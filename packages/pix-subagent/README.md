@@ -1,6 +1,6 @@
 # @xynogen/pix-subagent
 
-Pi extension — planner-driven sub-agents with 4 tools, live widget (model always visible), and explicit work-splitting.
+Pi extension — planner-driven sub-agents with 2 tools, live widget (model always visible), and explicit work-splitting.
 
 ## Install
 
@@ -16,14 +16,12 @@ pi install npm:@xynogen/pix-subagent
 
 ## What it does
 
-Gives the parent agent (planner) four tools to delegate work to isolated child sessions:
+Gives the parent agent (planner) two tools to delegate and control child sessions:
 
 | Tool | Purpose |
 |---|---|
-| `agent` | Spawn a background sub-agent |
-| `agent_info` | Discover current agent types or available models |
-| `agent_result` | Fetch latest output / full conversation by ID |
-| `agent_steer` | Inject a message into a running background agent |
+| `agent` | Spawn a sub-agent |
+| `agent_control` | Discover types/models/active IDs, fetch output, steer, or stop |
 
 ### The pix twist
 
@@ -45,7 +43,7 @@ A running background agent also opens an **agent-state** activity lease (`beginA
 ```
 prompt           string    Self-contained task description
 description      string    3-5 words, shown in widget
-type             string    Agent type (discover with agent_info)
+type             string    Agent type (discover with agent_control)
 model?           string    "provider/id" or fuzzy ("haiku"); omit to inherit
 allowed_tools?   string[]  Restrict child's tools (intersected, never widens)
 thinking?        string    off|minimal|low|medium|high|xhigh (default: medium)
@@ -72,37 +70,33 @@ them even when they do not load the separate subagent skill.
 
 **`allowed_tools[]`** is the work-splitting hook. Pass `["read","grep","find"]` to scope an Explore agent to read-only ops. The list is intersected with the agent type's default set — it can only narrow, never widen.
 
-**`model`** accepts `"provider/id"` or fuzzy strings like `"haiku"`, `"sonnet"`. The recurring tool description does not embed the live model catalog; use `agent_info(kind: "models")` to inspect it on demand. An unknown explicit model also returns the currently available models. Omit `model` to inherit the parent model.
+**`model`** accepts `"provider/id"` or fuzzy strings like `"haiku"`, `"sonnet"`. The recurring tool description does not embed the live model catalog; use `agent_control({ action: "info", kind: "models" })` to inspect it on demand. An unknown explicit model also returns currently available models. Omit `model` to inherit parent model.
 
-### `agent_info` — discover types or models
+### `agent_control` — inspect and control agents
 
 ```text
-kind      "types" | "models"
-query?    string   Optional text filter
-limit?    number   Default 20, maximum 50
+action      "info" | "result" | "steer" | "stop"
+kind?       "types" | "models" | "active"   For info; defaults to active
+agent_id?   string                            For result/steer/stop
+message?    string                            For steer
+query?      string                            For info filtering
+limit?      number                            For info; default 20
+verbose?    boolean                           Full result conversation
+turns?      number                            Last N result turns
 ```
 
-`kind: "types"` reads the live built-in and custom-agent registry, including each type's description and tool belt. `kind: "models"` combines the authenticated runtime model registry with pix-data benchmark, context, price, and tier metadata. This keeps volatile catalogs out of every prompt while retaining informed model selection.
+Examples:
 
-### `agent_result` — fetch result
-
-```
-agent_id   string   ID returned by a background agent
-verbose?   bool     true = full conversation; false (default) = latest text
-```
-
-Calling this suppresses the completion notification (result already consumed).
-
-Terminal foreground rows and background notifications are one line by default, with identity, model, work statistics, duration, and outcome. Expanding restores the stored bounded preview or error detail. Utility results also use compact rows, for example `✓ agent_info types · 5 available`, `✓ agent_result abc123 · completed`, and `⚡ agent_result abc123 · still running`; expansion always shows the exact text returned by the tool.
-
-### `agent_steer` — redirect running agent
-
-```
-agent_id   string   Running background agent ID
-message    string   Steering message to inject
+```ts
+agent_control({ action: "info", kind: "active" })
+agent_control({ action: "steer", agent_id: "abc123", message: "Focus on runtime" })
+agent_control({ action: "result", agent_id: "abc123", turns: 3 })
+agent_control({ action: "stop", agent_id: "abc123" })
 ```
 
-Delivered after the agent's current tool execution. If the session isn't ready yet, the message is queued and delivered on session start. Steering and stopping outcomes use the same one-line result style, including `✓ agent_steer abc123 · delivered` and `■ agent_stop abc123 · partial output saved`; expansion restores the exact returned diagnostic.
+Active discovery returns running/queued IDs, preventing lost IDs from blocking steering. `info/types` reads live built-in and custom-agent registry. `info/models` combines authenticated runtime registry with pix-data metadata. Calling `result` suppresses completion notification because result was consumed.
+
+Terminal foreground rows and background notifications remain one line by default. Control results use compact rows such as `✓ agent_control info types · 5 available`, `✓ agent_control result abc123 · completed`, and `✓ agent_control steer abc123 · delivered`; expansion shows exact returned text.
 
 ## Default agent types
 

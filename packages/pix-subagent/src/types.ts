@@ -66,7 +66,7 @@ export interface AgentRecord {
 	session?: AgentSession;
 	abortController?: AbortController;
 	promise?: Promise<string>;
-	/** Set when result was already consumed via agent_result — suppresses completion notification. */
+	/** Set when result was already consumed via agent_control — suppresses completion notification. */
 	resultConsumed?: boolean;
 	/** Steering messages queued before the session was ready. */
 	pendingSteers?: string[];
@@ -106,7 +106,7 @@ export type TerminalAgentStatus = "completed" | "steered" | "aborted" | "stopped
 /** Details attached to terminal custom notification messages for visual rendering. */
 export interface AgentInfoResultDetails {
 	_type: "agent-info";
-	kind: "types" | "models";
+	kind: "types" | "models" | "active";
 	query?: string;
 	count: number;
 }
