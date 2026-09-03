@@ -18,8 +18,13 @@ approval, resolves the reference to the real value in place before the tool runs
   tool_call (any tool) ────────┘  find $KEY refs → approval popup → resolve in place
 ```
 
-- **bash** — values are shell-quoted (`'…'`) so the command string stays safe.
-- **all other tools** (read, grep, find, write, custom) — raw value substituted.
+- **bash** — an `export KEY='value'` prelude (shell-quoted) is prepended and the
+  references are left intact, so bash performs every expansion form natively:
+  `$KEY`, `${KEY}`, and parameter-expansion modifiers (`${KEY%/}`, `${KEY:-x}`,
+  `${KEY#p}`, `${KEY/a/b}`, …).
+- **all other tools** (read, grep, find, write, custom) — the raw value is
+  substituted for plain `$KEY`/`${KEY}`. There is no shell to expand modifiers,
+  so a `${KEY%/}` in a non-bash tool is blocked with a nudge to use plain `$KEY`.
 - **No UI / unattended** — injection is blocked, not silently leaked.
 
 ## Which tools does it work on?
@@ -90,6 +95,9 @@ Other known limits:
 
 - **String fields only** — a `$KEY` embedded in a non-string argument (number,
   boolean) is not resolved.
+- **Modifiers are bash-only** — parameter-expansion forms (`${KEY%/}` etc.) work
+  in the bash tool via the export prelude, but are blocked in every other tool
+  since those have no shell to expand them.
 - **cwd-scoped load** — files are read from the session's working directory at
   start; secrets defined elsewhere are not seen.
 - **No re-load** — editing `.env` mid-session does not refresh the registry;
@@ -97,6 +105,20 @@ Other known limits:
 - **Read gating is separate** — pix-gate blocks the model from *reading* real
   `.env` files (`.env.example` and friends are allowed). pix-env only governs
   *injecting* their values into tool calls.
+- **Unknown keys pass through literally** — resolution only fires for keys that
+  are in the registry (`reg.has(key)`). A `$KEY` whose name is *not* loaded from
+  the configured env files produces no ref, so no popup and no block: the literal
+  string `$KEY` reaches the child process unchanged. In bash it may then be
+  expanded (or not) by the shell's own environment. Symptom seen in the wild:
+  passing `$RFID_API_HOST` when `RFID_API_HOST` was never loaded into pix-env
+  left the literal `$RFID_API_HOST/api/v1/...` in the command, and Python's
+  urllib raised `unknown url type: '$RFID_API_HOST/...'`. Fix: make sure the key
+  is actually in `.env`/`.env.local` under the session cwd (or `PIX_ENV_FILES`)
+  so it enters the registry — check the startup "Secret env vars available" list.
+- **No-UI blocks, does not leak** — for keys that *are* in the registry, an
+  unattended/no-UI context auto-denies injection (the tool call is blocked with
+  a reason), rather than resolving silently. Run from an interactive Pi session
+  and approve the popup, or use YOLO mode to auto-inject.
 
 ## License
 

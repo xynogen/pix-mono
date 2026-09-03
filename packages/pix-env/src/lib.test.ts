@@ -1,5 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { collectRefs, parseEnv, refsIn, resolveInput, resolveString, shellQuote } from "./lib.ts";
+import {
+	allRefsIn,
+	collectRefs,
+	collectUnsupported,
+	parseEnv,
+	refsIn,
+	resolveInput,
+	resolveString,
+	shellPrelude,
+	shellQuote,
+	unsupportedRefs,
+} from "./lib.ts";
 
 // Literal dotenv braced ref syntax, assembled from char codes so no `${...}`
 // placeholder appears in source (it is intentional test data, not a mistake).
@@ -61,6 +72,46 @@ describe("resolveString", () => {
 	});
 	test("leaves unknown refs untouched", () => {
 		expect(resolveString("$OTHER", reg, false)).toBe("$OTHER");
+	});
+});
+
+describe("unsupportedRefs / collectUnsupported", () => {
+	const reg = new Map([["HOST", "https://x"]]);
+	// braced-with-modifier forms, assembled so no plain ${...} appears in source
+	const mod = (body: string) => L + body + R;
+	test("detects each bash parameter-expansion modifier for known keys", () => {
+		for (const form of ["HOST:-def", "HOST%/", "HOST#p", "HOST/a/b", "HOST^^", "HOST:0:5"]) {
+			expect(unsupportedRefs(`curl ${mod(form)}/x`, reg)).toEqual(["HOST"]);
+		}
+	});
+	test("does not flag plain bare or braced refs", () => {
+		expect(unsupportedRefs(`$HOST and ${braced("HOST")}`, reg)).toEqual([]);
+	});
+	test("ignores modifier forms for unknown keys", () => {
+		expect(unsupportedRefs(`${mod("OTHER:-x")}`, reg)).toEqual([]);
+	});
+	test("walks nested input", () => {
+		expect(collectUnsupported({ command: `curl ${mod("HOST%/")}/api` }, reg)).toEqual(["HOST"]);
+	});
+});
+
+describe("allRefsIn / shellPrelude", () => {
+	const reg = new Map([
+		["HOST", "https://x/"],
+		["TOKEN", "t-2"],
+	]);
+	const mod = (b: string) => L + b + R;
+	test("allRefsIn unions plain, braced and modifier forms", () => {
+		expect(allRefsIn(`$HOST ${braced("TOKEN")} ${mod("HOST%/")}`, reg).sort()).toEqual([
+			"HOST",
+			"TOKEN",
+		]);
+	});
+	test("shellPrelude exports quoted values for known keys only", () => {
+		expect(shellPrelude(["HOST", "UNKNOWN"], reg)).toBe(`export HOST='https://x/'\n`);
+	});
+	test("empty keys yields empty prelude", () => {
+		expect(shellPrelude([], reg)).toBe("");
 	});
 });
 

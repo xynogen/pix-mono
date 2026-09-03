@@ -87,6 +87,46 @@ export function refsIn(text: string, reg: Map<string, string>): string[] {
 	return [...found];
 }
 
+/**
+ * Match a braced ref carrying a bash parameter-expansion MODIFIER, e.g.
+ * `${KEY:-def}`, `${KEY%/}`, `${KEY#p}`, `${KEY/a/b}`, `${KEY^^}`, `${KEY:0:5}`.
+ * In bash these are handled natively via an export prelude (see shellPrelude).
+ * In non-shell tools there is no interpreter to expand them, so the caller must
+ * still block and nudge the model to plain $KEY/${KEY}. The char class is the
+ * set of operator chars that can follow the name.
+ */
+const MOD_RE = /\$\{([A-Za-z_][A-Za-z0-9_]*)[:%#/^,@!*=+?-][^}]*\}/g;
+
+/** Registry keys referenced via a braced modifier form (bare match, no dedup by caller). */
+export function unsupportedRefs(text: string, reg: Map<string, string>): string[] {
+	const found = new Set<string>();
+	for (const m of text.matchAll(MOD_RE)) {
+		const key = m[1] as string;
+		if (reg.has(key)) found.add(key);
+	}
+	return [...found];
+}
+
+/** Union of every registry key referenced in a string in ANY form (bare, braced, modifier). */
+export function allRefsIn(text: string, reg: Map<string, string>): string[] {
+	return [...new Set([...refsIn(text, reg), ...unsupportedRefs(text, reg)])];
+}
+
+/**
+ * Build a bash prelude that exports the given keys with their real values,
+ * shell-quoted. Prepending this lets bash expand every reference form natively
+ * ($KEY, ${KEY}, ${KEY%/}, ${KEY:-x}, …) instead of us re-implementing shell
+ * parameter expansion. Keys not in the registry are skipped.
+ */
+export function shellPrelude(keys: readonly string[], reg: Map<string, string>): string {
+	const lines: string[] = [];
+	for (const k of keys) {
+		const v = reg.get(k);
+		if (v !== undefined) lines.push(`export ${k}=${shellQuote(v)}`);
+	}
+	return lines.length ? `${lines.join("\n")}\n` : "";
+}
+
 /** Single-quote a value for safe embedding in a POSIX shell command. */
 export function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, `'\\''`)}'`;
@@ -106,15 +146,12 @@ export function resolveString(text: string, reg: Map<string, string>, shell: boo
 	});
 }
 
-/**
- * Deep-walk a tool input object, returning the set of referenced keys across
- * all string fields (arrays + nested objects included).
- */
-export function collectRefs(input: unknown, reg: Map<string, string>): string[] {
+/** Deep-walk helper: run `scan` over every string field (arrays/objects too). */
+function walkStrings(input: unknown, scan: (s: string) => Iterable<string>): string[] {
 	const keys = new Set<string>();
 	const visit = (v: unknown): void => {
 		if (typeof v === "string") {
-			for (const k of refsIn(v, reg)) keys.add(k);
+			for (const k of scan(v)) keys.add(k);
 		} else if (Array.isArray(v)) {
 			for (const item of v) visit(item);
 		} else if (v && typeof v === "object") {
@@ -126,12 +163,27 @@ export function collectRefs(input: unknown, reg: Map<string, string>): string[] 
 }
 
 /**
+ * Deep-walk a tool input object, returning the set of referenced keys across
+ * all string fields (arrays + nested objects included).
+ */
+export function collectRefs(input: unknown, reg: Map<string, string>): string[] {
+	return walkStrings(input, (s) => refsIn(s, reg));
+}
+
+/** Deep-walk variant collecting keys referenced via unsupported modifier forms. */
+export function collectUnsupported(input: unknown, reg: Map<string, string>): string[] {
+	return walkStrings(input, (s) => unsupportedRefs(s, reg));
+}
+
+/**
  * Mutate a tool input object in place, resolving every string field's
  * references. `shell=true` quotes values (bash command). Returns the same
  * object reference for convenience.
  */
 export function resolveInput<T>(input: T, reg: Map<string, string>, shell: boolean): T {
-	if (typeof input === "string") return resolveString(input, reg, shell) as unknown as T;
+	if (typeof input === "string")
+		// SAFETY: typeof guard narrows T to string; resolveString returns string === T here.
+		return resolveString(input, reg, shell) as unknown as T;
 	if (Array.isArray(input)) {
 		for (let i = 0; i < input.length; i++) input[i] = resolveInput(input[i], reg, shell);
 		return input;

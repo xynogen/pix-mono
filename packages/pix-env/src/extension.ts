@@ -20,32 +20,76 @@ import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { once } from "@xynogen/pix-runtime/once";
-import { collectRefs, loadRegistry, resolveInput } from "./lib.ts";
+import {
+	allRefsIn,
+	collectRefs,
+	collectUnsupported,
+	loadRegistry,
+	resolveInput,
+	shellPrelude,
+} from "./lib.ts";
 
 const REF_TAG = "pix-env-secrets";
 
 export default function pixEnvExtension(pi: ExtensionAPI): void {
 	once(pi, "pix-env", () => {
-		const reg = loadRegistry(process.cwd());
-		if (reg.size === 0) return; // nothing to broker
+		// Load the registry per-event against the current cwd (cached per dir), not
+		// once at start. A session that begins outside the project — or a `.env`
+		// created mid-session — then still gets brokered without a restart.
+		const cache = new Map<string, Map<string, string>>();
+		const getReg = (): Map<string, string> => {
+			const cwd = process.cwd();
+			let reg = cache.get(cwd);
+			if (!reg) {
+				reg = loadRegistry(cwd);
+				cache.set(cwd, reg);
+			}
+			return reg;
+		};
 
 		// ── Advertise key NAMES only (values stay in the registry) ──────────
 		pi.on("before_agent_start", (event) => {
+			const reg = getReg();
+			if (reg.size === 0) return; // nothing to advertise from this cwd
 			const existing = event.systemPrompt ?? "";
 			if (existing.includes(`<${REF_TAG}>`)) return; // idempotent on retry
 			const names = [...reg.keys()].sort((a, b) => a.localeCompare(b)).join(", ");
 			const body =
 				`Secret env vars available (VALUES HIDDEN). Reference them as $KEY or ` +
 				`\${KEY} in any tool argument — the value is injected at run time after ` +
-				`user approval, never shown to you: ${names}`;
+				`user approval, never shown to you. In bash you may use any form including ` +
+				`parameter-expansion modifiers (\${KEY%/}, \${KEY:-x}, \${KEY#p}); the value is ` +
+				`exported into the shell first. In non-bash tools use plain $KEY / \${KEY} only: ${names}`;
 			const block = `<${REF_TAG}>\n${body}\n</${REF_TAG}>`;
 			return { systemPrompt: existing ? `${existing}\n\n${block}` : block };
 		});
 
 		// ── Resolve references on every tool call, gated by approval ────────
 		pi.on("tool_call", async (event, ctx) => {
+			const reg = getReg();
+			if (reg.size === 0) return undefined; // no secrets loaded from this cwd
 			const shell = event.toolName === "bash";
-			const keys = collectRefs(event.input, reg);
+
+			// Non-bash tools have no shell to expand parameter-expansion modifiers, so a
+			// ${KEY%/} there would reach the tool as a literal. Block + nudge. In bash
+			// these are handled natively via the export prelude below, so allow them.
+			if (!shell) {
+				const bad = collectUnsupported(event.input, reg);
+				if (bad.length > 0) {
+					const blist = bad.sort((a, b) => a.localeCompare(b)).join(", ");
+					return {
+						block: true,
+						reason:
+							`[pix-env] parameter-expansion modifiers (\${KEY%/}, \${KEY:-x}, \${KEY#p}) ` +
+							`are only supported in bash. For "${event.toolName}" use plain $KEY or \${KEY}: ${blist}.`,
+					};
+				}
+			}
+
+			// bash considers every ref form (modifiers included); others only plain refs.
+			const keys = shell
+				? allRefsIn(JSON.stringify(event.input), reg)
+				: collectRefs(event.input, reg);
 			if (keys.length === 0) return undefined;
 
 			const mode = getUnattendedMode(pi.events);
@@ -59,7 +103,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			// YOLO: auto-inject without the popup.
 			if (mode === "yolo") {
 				ctx.ui?.notify?.(`🔑 YOLO — secret auto-injected: ${list}`, "warning");
-				resolveInput(event.input, reg, shell);
+				inject(event, reg, shell, keys);
 				return undefined;
 			}
 
@@ -95,8 +139,30 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			}
 
 			// Approved — mutate input in place. Later handlers see resolved values.
-			resolveInput(event.input, reg, shell);
+			inject(event, reg, shell, keys);
 			return undefined;
 		});
 	});
+}
+
+/**
+ * Apply secret resolution to a tool call's input in place.
+ * - bash: prepend an `export KEY='value'` prelude and leave references intact,
+ *   so bash performs every expansion form natively (incl. modifiers).
+ * - other tools: substitute the raw value directly into the string fields.
+ */
+function inject(
+	event: { toolName: string; input: unknown },
+	reg: Map<string, string>,
+	shell: boolean,
+	keys: readonly string[],
+): void {
+	if (shell) {
+		const input = event.input as { command?: unknown };
+		if (typeof input.command === "string") {
+			input.command = shellPrelude(keys, reg) + input.command;
+			return;
+		}
+	}
+	resolveInput(event.input, reg, shell);
 }
