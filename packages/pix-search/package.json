@@ -1,0 +1,50 @@
+{
+	"name": "@xynogen/pix-search",
+	"version": "0.1.0",
+	"description": "Pi extension — smarter @ file search with fuzzy + git recency ranking",
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./extension": "./src/extension.ts"
+	},
+	"scripts": {
+		"test": "bun test"
+	},
+	"files": [
+		"src",
+		"!src/**/*.test.*",
+		"README.md",
+		"LICENSE"
+	],
+	"pi": {
+		"extensions": [
+			"src/extension.ts"
+		]
+	},
+	"keywords": [
+		"pi",
+		"pi-package",
+		"pi-extension",
+		"search",
+		"autocomplete"
+	],
+	"author": "xynogen",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/xynogen/pix-mono.git",
+		"directory": "packages/pix-search"
+	},
+	"homepage": "https://github.com/xynogen/pix-mono/tree/main/packages/pix-search#readme",
+	"bugs": {
+		"url": "https://github.com/xynogen/pix-mono/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	}
+}
