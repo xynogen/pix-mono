@@ -17,7 +17,7 @@
     },
     "packages/pix-9router": {
       "name": "@xynogen/pix-9router",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.19.0",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -31,7 +31,7 @@
     },
     "packages/pix-ask": {
       "name": "@xynogen/pix-ask",
-      "version": "0.2.26",
+      "version": "0.2.28",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.19.0",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -56,7 +56,7 @@
     },
     "packages/pix-commands": {
       "name": "@xynogen/pix-commands",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "dependencies": {
         "@xynogen/pix-data": "^0.4.0",
         "@xynogen/pix-pretty": "^1.13.0",
@@ -70,7 +70,7 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.5.34",
+      "version": "0.5.35",
       "dependencies": {
         "@xynogen/pix-ask": "^0.2.26",
         "@xynogen/pix-bash": "^0.2.4",
@@ -106,7 +106,7 @@
     },
     "packages/pix-data": {
       "name": "@xynogen/pix-data",
-      "version": "0.4.6",
+      "version": "0.4.7",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.8.0",
       },
@@ -117,7 +117,7 @@
     },
     "packages/pix-diagnostics": {
       "name": "@xynogen/pix-diagnostics",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.8.0",
       },
@@ -128,7 +128,7 @@
     },
     "packages/pix-display": {
       "name": "@xynogen/pix-display",
-      "version": "0.1.16",
+      "version": "0.1.17",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
       },
@@ -151,7 +151,7 @@
     },
     "packages/pix-env": {
       "name": "@xynogen/pix-env",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.16.0",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -174,7 +174,7 @@
     },
     "packages/pix-footer": {
       "name": "@xynogen/pix-footer",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "dependencies": {
         "@xynogen/pix-data": "^0.4.3",
         "@xynogen/pix-pretty": "^1.11.2",
@@ -187,7 +187,7 @@
     },
     "packages/pix-gate": {
       "name": "@xynogen/pix-gate",
-      "version": "0.2.11",
+      "version": "0.2.12",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -199,7 +199,7 @@
     },
     "packages/pix-graph": {
       "name": "@xynogen/pix-graph",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "bin": {
         "pix-graph": "src/cli.ts",
       },
@@ -231,7 +231,7 @@
     },
     "packages/pix-hunk": {
       "name": "@xynogen/pix-hunk",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.19.0",
         "@xynogen/pix-runtime": "^0.8.1",
@@ -285,7 +285,7 @@
     },
     "packages/pix-models": {
       "name": "@xynogen/pix-models",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@xynogen/pix-data": "^0.4.3",
         "@xynogen/pix-pretty": "^1.11.2",
@@ -298,7 +298,7 @@
     },
     "packages/pix-nudge": {
       "name": "@xynogen/pix-nudge",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.8.0",
       },
@@ -308,7 +308,7 @@
     },
     "packages/pix-optimizer": {
       "name": "@xynogen/pix-optimizer",
-      "version": "1.1.28",
+      "version": "1.1.29",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
       },
@@ -334,7 +334,7 @@
     },
     "packages/pix-prompts": {
       "name": "@xynogen/pix-prompts",
-      "version": "0.4.4",
+      "version": "0.4.5",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.8.0",
       },
@@ -362,6 +362,14 @@
         "@earendil-works/pi-tui": "*",
       },
     },
+    "packages/pix-search": {
+      "name": "@xynogen/pix-search",
+      "version": "0.1.0",
+      "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+      },
+    },
     "packages/pix-skills": {
       "name": "@xynogen/pix-skills",
       "version": "0.8.4",
@@ -377,7 +385,7 @@
     },
     "packages/pix-ssh": {
       "name": "@xynogen/pix-ssh",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.19.0",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -405,7 +413,7 @@
     },
     "packages/pix-sudo": {
       "name": "@xynogen/pix-sudo",
-      "version": "0.3.24",
+      "version": "0.3.25",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.19.0",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -422,7 +430,7 @@
     },
     "packages/pix-todo": {
       "name": "@xynogen/pix-todo",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.19.0",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -435,7 +443,7 @@
     },
     "packages/pix-toolbox": {
       "name": "@xynogen/pix-toolbox",
-      "version": "0.1.15",
+      "version": "0.1.16",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
       },
@@ -446,7 +454,7 @@
     },
     "packages/pix-update": {
       "name": "@xynogen/pix-update",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -458,7 +466,7 @@
     },
     "packages/pix-welcome": {
       "name": "@xynogen/pix-welcome",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.11.2",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -723,6 +731,8 @@
     "@xynogen/pix-read": ["@xynogen/pix-read@workspace:packages/pix-read"],
 
     "@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
+
+    "@xynogen/pix-search": ["@xynogen/pix-search@workspace:packages/pix-search"],
 
     "@xynogen/pix-skills": ["@xynogen/pix-skills@workspace:packages/pix-skills"],
 
