@@ -49,6 +49,13 @@ export interface OverlayChoice {
 interface BaseConfig {
 	/** Accent colour token (e.g. "error", "warning", "accent"). Default "accent". */
 	accent?: string;
+	/**
+	 * Optional leading glyph for the title row, e.g. `icon("lock")`. Kept
+	 * separate from `title` so call sites pass a resolved icon and plain text
+	 * rather than splicing them together; the overlay renders "<icon> <title>"
+	 * in the accent color.
+	 */
+	icon?: string;
 	/** Title shown bold at the top. */
 	title: string;
 	/** Optional body lines under the title. */
@@ -174,7 +181,8 @@ function buildSections(opts: {
 		width,
 	} = opts;
 	const inner = width - 4; // CHROME = 2 border + 2 padding
-	const header = [theme.fg(accent, theme.bold(config.title))];
+	const titleText = config.icon ? `${config.icon} ${config.title}` : config.title;
+	const header = [theme.fg(accent, theme.bold(titleText))];
 	const body = (config.body ?? []).map((line) => {
 		if (line.startsWith("Warning:")) return theme.fg("warning", line);
 		if (line.startsWith("(") && line.endsWith(")")) return theme.fg("muted", line);
@@ -228,7 +236,8 @@ function buildSections(opts: {
  * ```ts
  * const result = await showOverlay(ui, {
  *   mode: "confirm",
- *   title: "⚠️  Dangerous",
+ *   icon: icon("warn"),
+ *   title: "Dangerous",
  *   body: ["rm -rf /tmp/work"],
  *   accent: "warning",
  *   timeoutMs: 30_000,
@@ -243,7 +252,8 @@ function buildSections(opts: {
  * ```ts
  * const result = await showOverlay(ui, {
  *   mode: "sudo",
- *   title: "🔐 Root Command Request",
+ *   icon: icon("lock"),
+ *   title: "Root Command Request",
  *   body: ["Intent: install package", "Command: apt install foo"],
  *   accent: "error",
  * });

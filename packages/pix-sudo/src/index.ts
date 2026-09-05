@@ -26,6 +26,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { FG_DIM, RST, resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
@@ -244,7 +245,8 @@ export default function (pi: ExtensionAPI): void {
 					if (cached) {
 						return showOverlay(ctx.ui, {
 							mode: "confirm",
-							title: "🔐 Root Command Request",
+							icon: icon("lock"),
+							title: "Root Command Request",
 							body: [...body, "(sudo session active — no password needed)"],
 							accent: "error",
 							timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
@@ -256,7 +258,8 @@ export default function (pi: ExtensionAPI): void {
 					}
 					return showOverlay(ctx.ui, {
 						mode: "sudo",
-						title: "🔐 Root Command Request",
+						icon: icon("lock"),
+						title: "Root Command Request",
 						body,
 						accent: "error",
 						timeoutMs: ROOT_PROMPT_TIMEOUT_MS,

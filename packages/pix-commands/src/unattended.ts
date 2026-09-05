@@ -68,7 +68,8 @@ export async function confirmYoloConsent(events: EventBus, ctx: ModelCtx): Promi
 	const result = await showOverlay(ui, {
 		mode: "confirm",
 		accent: "error",
-		title: "⚠ YOLO Mode — No Human Confirms Anything",
+		icon: icon("warn"),
+		title: "YOLO Mode — No Human Confirms Anything",
 		body: [
 			"Every gate auto-approves, including RED and root. Destructive,",
 			"irreversible actions (data loss, wiped disks, force-push) can run",

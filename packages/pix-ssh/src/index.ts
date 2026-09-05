@@ -30,6 +30,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { FG_DIM, RST, resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
@@ -598,10 +599,11 @@ export default function (pi: ExtensionAPI): void {
 					if (promptFor.length === 0) {
 						return showOverlay(ctx.ui, {
 							mode: "confirm",
+							icon: action === "file" ? icon("warn") : icon("lock"),
 							title:
 								action === "file"
-									? `⚠ SSH ${direction === "download" ? "Download" : "Upload"}`
-									: "🔐 SSH Command Request",
+									? `SSH ${direction === "download" ? "Download" : "Upload"}`
+									: "SSH Command Request",
 							body,
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
@@ -626,10 +628,11 @@ export default function (pi: ExtensionAPI): void {
 						const label = stage === "login" ? "SSH login password" : "Remote sudo password";
 						last = await showOverlay(ctx.ui, {
 							mode: "sudo",
+							icon: action === "file" ? icon("warn") : icon("lock"),
 							title:
 								action === "file"
-									? `⚠ SSH ${direction === "download" ? "Download" : "Upload"}`
-									: "🔐 SSH Command Request",
+									? `SSH ${direction === "download" ? "Download" : "Upload"}`
+									: "SSH Command Request",
 							body: [...body, `Enter: ${label}`],
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,

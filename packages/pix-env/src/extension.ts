@@ -118,7 +118,8 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			const result = await withAgentBlock(pi.events, "pix-env", "secret approval", () =>
 				showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
 					mode: "confirm",
-					title: `🔑 Inject Secret${keys.length > 1 ? "s" : ""} — ${list}`,
+					icon: icon("secret"),
+					title: `Inject Secret${keys.length > 1 ? "s" : ""} — ${list}`,
 					body: [
 						`Tool "${event.toolName}" will receive the real value of: ${list}`,
 						"Value is not shown here and stays out of your transcript unless the tool echoes it.",

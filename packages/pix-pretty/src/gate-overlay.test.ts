@@ -137,6 +137,20 @@ describe("showOverlay — confirm mode", () => {
 		expect(joined).toContain("body-line-x");
 	});
 
+	test("prepends the icon to the title when provided", async () => {
+		let captured: string[] = [];
+		await showOverlay(
+			makeUI((comp) => {
+				captured = comp.render(80);
+				comp.handleInput(ENTER);
+			}),
+			{ mode: "confirm", icon: "LOCKGLYPH", title: "Root Command Request", timeoutMs: 0 },
+		);
+		const joined = captured.join("\n");
+		// icon and title render together on the title row as "<icon> <title>".
+		expect(joined).toContain("LOCKGLYPH Root Command Request");
+	});
+
 	test("uses semantic colors for transfer details", async () => {
 		const coloredTheme = {
 			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,

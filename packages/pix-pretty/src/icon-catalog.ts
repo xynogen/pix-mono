@@ -59,6 +59,13 @@ const CATALOG = {
 	warn: { nerd: "\u26A0", unicode: "\u26A0", ascii: "!" },
 	error: { nerd: "\u2717", unicode: "\u2717", ascii: "x" },
 
+	// ── permission / security modal titles ────────────────────────────────
+	// Semantic keys for the danger prompts (🔐 root, 🔑 secret). nerd = Nerd
+	// Font glyph, unicode = a widely-shipped BMP symbol forced to text
+	// presentation, ascii = tofu-free token.
+	lock: { nerd: "\u{F0341}", unicode: `\u{1F512}${VS}`, ascii: "[!]" },
+	secret: { nerd: "\u{F0306}", unicode: `\u{1F511}${VS}`, ascii: "[key]" },
+
 	// ── shared status glyphs (checklists, panels, markers) ────────────────
 	// nerd/unicode keep the historical literal so mixed-glyph rows stay
 	// aligned; ascii mode swaps in tofu-free tokens. `⚡` (energetic

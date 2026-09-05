@@ -110,7 +110,8 @@ export async function promptPathDecision(
 
 	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
 		mode: "confirm",
-		title: `${icon} ${label} — ${hit.reason}`,
+		icon,
+		title: `${label} — ${hit.reason}`,
 		body: [`${op.toUpperCase()} ${path}`],
 		accent,
 		timeoutMs: PATH_TIMEOUT_MS[hit.severity],
@@ -265,7 +266,8 @@ export async function promptGateDecision(
 
 	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
 		mode: "confirm",
-		title: `${icon} ${label} — ${hit.reason}`,
+		icon,
+		title: `${label} — ${hit.reason}`,
 		body: [command],
 		accent,
 		timeoutMs: TIMEOUT_MS[hit.severity],
