@@ -122,23 +122,19 @@ export interface SshResultDetails {
 	_render?: string;
 }
 
-type SshParams =
-	| {
-			action?: "command";
-			host: string;
-			command: string;
-			sudo?: boolean;
-			reason?: string;
-	  }
-	| {
-			action: "file";
-			host: string;
-			direction: TransferDirection;
-			source: string;
-			destination: string;
-			recursive?: boolean;
-			reason?: string;
-	  };
+// Flat shape mirroring the single Type.Object schema. Conditional fields are
+// optional here and validated at runtime by normalizeOperation.
+type SshParams = {
+	action?: "command" | "file";
+	host: string;
+	command?: string;
+	sudo?: boolean;
+	direction?: TransferDirection;
+	source?: string;
+	destination?: string;
+	recursive?: boolean;
+	reason?: string;
+};
 
 interface SshOperation {
 	action: "command" | "file";
@@ -153,11 +149,11 @@ interface SshOperation {
 
 function normalizeOperation(params: SshParams): SshOperation {
 	if (params.action === "file") {
-		const source = params.source.trim();
-		const destination = params.destination.trim();
+		const source = (params.source ?? "").trim();
+		const destination = (params.destination ?? "").trim();
 		return {
 			action: "file",
-			command: `${params.direction} ${source || "(empty source)"} → ${destination || "(empty destination)"}`,
+			command: `${params.direction ?? ""} ${source || "(empty source)"} → ${destination || "(empty destination)"}`,
 			sudo: false,
 			reason: params.reason,
 			direction: params.direction,
@@ -168,7 +164,7 @@ function normalizeOperation(params: SshParams): SshOperation {
 	}
 	return {
 		action: "command",
-		command: params.command,
+		command: params.command ?? "",
 		sudo: params.sudo === true,
 		reason: params.reason,
 		source: "",
@@ -300,65 +296,73 @@ export default function (pi: ExtensionAPI): void {
 		name: "ssh_run",
 		label: "Run over SSH",
 		description:
-			"Run a command or transfer files/directories through SSH. Commands may optionally use POSIX sudo. " +
-			"Basic cmd/PowerShell/pwsh commands may work, but Windows shells are best-effort: shell selection, " +
-			"quoting, PowerShell error/stream/encoding semantics, interactive prompts, and Windows " +
-			"administrator/UAC elevation are not supported. Back away and tell the user when correctness " +
-			"depends on one of those limits. Handles connection and password entry through a permission dialog. " +
-			"A configured approval window or YOLO mode may auto-approve non-privileged commands when no password is missing. " +
-			"SSH auth tries key/agent first, then prompts for a login password if needed. " +
-			"Set `sudo: true` to run the command as root on the remote machine (prompts for the " +
-			'remote sudo password). For transfer, set `action: "file"`, `direction`, `source`, ' +
-			"`destination`, and optional `recursive`. Transfers may overwrite the destination. Always provide a clear `reason`.",
+			"Run a command or transfer files/directories on a REMOTE host over SSH. " +
+			"For the LOCAL machine use `bash` (or `sudo_run` for local root) instead — do not use ssh_run for local work. " +
+			"Requires a `host`. Windows/PowerShell shells are best-effort (elevation and PowerShell stream/encoding semantics unsupported). " +
+			"Set `sudo: true` to run the command as root on the remote machine. " +
+			'For transfer, set `action: "file"`, `direction`, `source`, `destination`, and optional `recursive` — ' +
+			"transfers may overwrite the destination. Always provide a clear `reason`.",
 		promptSnippet: "Run a remote command or transfer files over SSH",
 		promptGuidelines: [
-			'ssh_run: `host` as `[user@]host[:port]`; `sudo` covers POSIX sudo only. For transfer use `action: "file"` with `direction: "upload"|"download"`, `source`, `destination`, optional `recursive` (may overwrite). Always set `reason`.',
+			'ssh_run: REMOTE host only — use `bash`/`sudo_run` for the local machine. `host` as `[user@]host[:port]`; `sudo` covers remote POSIX sudo only. For transfer use `action: "file"` with `direction: "upload"|"download"`, `source`, `destination`, optional `recursive` (may overwrite). Always set `reason`.',
 		],
 
 		renderShell: "self",
 
-		parameters: Type.Union([
-			Type.Object({
-				action: Type.Optional(Type.Literal("command")),
-				host: Type.String({
-					description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
+		// Single Type.Object (root `type: "object"`) rather than Type.Union — a union
+		// serializes to `anyOf` with no root type, which strict OpenAI-compatible
+		// providers (e.g. DeepSeek) reject with `type: null`. Conditional fields are
+		// optional and normalized/validated at runtime via normalizeOperation.
+		parameters: Type.Object({
+			action: Type.Optional(
+				Type.Union([Type.Literal("command"), Type.Literal("file")], {
+					description:
+						'"command" (default) runs a remote command; "file" transfers a file/directory.',
 				}),
-				command: Type.String({
-					description: "Command sent to the remote host's configured SSH shell.",
-				}),
-				sudo: Type.Optional(
-					Type.Boolean({
-						description: "Run the command as root on the remote host via sudo. Default false.",
-					}),
-				),
-				reason: Type.Optional(
-					Type.String({
-						description: "Short plain-English explanation of intent, shown to the user.",
-					}),
-				),
+			),
+			host: Type.String({
+				description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
 			}),
-			Type.Object({
-				action: Type.Literal("file"),
-				host: Type.String({
-					description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
+			command: Type.Optional(
+				Type.String({
+					description:
+						'Command sent to the remote host\'s configured SSH shell. Required when action is "command".',
 				}),
-				direction: Type.Union([Type.Literal("upload"), Type.Literal("download")]),
-				source: Type.String({
-					description: "Source path. Local for upload; remote for download.",
+			),
+			sudo: Type.Optional(
+				Type.Boolean({
+					description:
+						"Run the command as root on the remote host via sudo. Default false. Command action only.",
 				}),
-				destination: Type.String({
-					description: "Destination path. Remote for upload; local for download.",
+			),
+			direction: Type.Optional(
+				Type.Union([Type.Literal("upload"), Type.Literal("download")], {
+					description: 'Transfer direction. Required when action is "file".',
 				}),
-				recursive: Type.Optional(
-					Type.Boolean({ description: "Copy a directory recursively. Default false." }),
-				),
-				reason: Type.Optional(
-					Type.String({
-						description: "Short plain-English explanation of intent, shown to the user.",
-					}),
-				),
-			}),
-		]),
+			),
+			source: Type.Optional(
+				Type.String({
+					description:
+						'Source path (local for upload, remote for download). Required when action is "file".',
+				}),
+			),
+			destination: Type.Optional(
+				Type.String({
+					description:
+						'Destination path (remote for upload, local for download). Required when action is "file".',
+				}),
+			),
+			recursive: Type.Optional(
+				Type.Boolean({
+					description: "Copy a directory recursively. Default false. File action only.",
+				}),
+			),
+			reason: Type.Optional(
+				Type.String({
+					description: "Short plain-English explanation of intent, shown to the user.",
+				}),
+			),
+		}),
 
 		async execute(_toolCallId, params, sig, onUpdate, ctx) {
 			const operation = normalizeOperation(params);
@@ -369,6 +373,17 @@ export default function (pi: ExtensionAPI): void {
 				return {
 					content: [{ type: "text", text: "ssh_run failed: source and destination are required" }],
 					details: makeDetails(command, params.host, false, reason, {
+						outcome: "error",
+						errorKind: "execution",
+					}),
+					isError: true,
+				};
+			}
+
+			if (action === "command" && !command.trim()) {
+				return {
+					content: [{ type: "text", text: "ssh_run failed: command is required" }],
+					details: makeDetails(command, params.host, sudo, reason, {
 						outcome: "error",
 						errorKind: "execution",
 					}),
