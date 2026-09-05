@@ -9,6 +9,17 @@
 import { spawn } from "node:child_process";
 import { basename } from "node:path";
 
+// Bundled ripgrep: @vscode/ripgrep pulls a prebuilt rg per-platform on install
+// and exposes its absolute path, so users no longer need rg on PATH. Fall back
+// to a bare "rg" (PATH lookup) if the postinstall binary download was skipped
+// (e.g. npm_config_ignore_scripts).
+let RG_BIN = "rg";
+try {
+	RG_BIN = (require("@vscode/ripgrep") as { rgPath: string }).rgPath;
+} catch {
+	/* bundled binary unavailable — fall back to PATH `rg` */
+}
+
 export interface RgEntry {
 	/** Relative path from basePath */
 	path: string;
@@ -25,7 +36,7 @@ function spawnRg(args: string[], cwd: string, signal: AbortSignal): Promise<stri
 			return;
 		}
 
-		const child = spawn("rg", args, {
+		const child = spawn(RG_BIN, args, {
 			cwd,
 			stdio: ["ignore", "pipe", "ignore"],
 			// ponytail: no env filtering — inherits .gitignore respect from rg defaults

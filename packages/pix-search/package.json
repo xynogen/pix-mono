@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-search",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Pi extension — smarter @ file search with fuzzy + git recency ranking",
 	"type": "module",
 	"main": "src/index.ts",
@@ -46,5 +46,8 @@
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
 		"@earendil-works/pi-tui": "*"
+	},
+	"dependencies": {
+		"@vscode/ripgrep": "^1.18.0"
 	}
 }
