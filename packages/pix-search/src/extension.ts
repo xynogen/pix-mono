@@ -1,13 +1,15 @@
 /**
  * pix-search — replaces the input editor with one that opens a file-picker
  * overlay when you type `@` at a token boundary. The picker owns its own query
- * input, so spaces in the query work natively (no `@"…"` quoting) and the
- * search is filename-only, ranked by fuzzy score + git recency.
+ * input, so spaces in the query work natively (no `@"…"` quoting). It lists
+ * both files and their containing folders (so you can @-mention a directory),
+ * ranked by fuzzy score + git recency, with a live preview of the selection.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { AtEditor } from "./editor.ts";
 import { FilePicker } from "./picker.ts";
+import { withDirectories } from "./rank.ts";
 import { loadRecency, type RecencyMap } from "./recency.ts";
 import { rgFiles } from "./rg.ts";
 
@@ -32,9 +34,12 @@ export default function (pi: ExtensionAPI): void {
 						files: [],
 						recency,
 						theme: theme as never,
+						cwd,
 						done,
 					});
-					void rgFiles(cwd, controller.signal).then((files) => picker.setFiles(files));
+					void rgFiles(cwd, controller.signal).then((files) =>
+						picker.setFiles(withDirectories(files)),
+					);
 					return {
 						render: (width: number) => picker.render(width),
 						handleInput: (data: string) => picker.handleInput(data),

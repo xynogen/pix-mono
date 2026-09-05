@@ -10,18 +10,28 @@
  * null on cancel) through the `done` callback.
  */
 
-import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
+import { readFileSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
+import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import { rankFiles } from "./rank.ts";
 import type { RecencyMap } from "./recency.ts";
 
 const MAX_VISIBLE = 10;
+/** Show the preview pane only when the modal is at least this wide. */
+const PREVIEW_MIN_WIDTH = 72;
+/** How many lines of the selected file to preview. */
+const PREVIEW_LINES = 14;
+/** Cap the bytes we read for a preview — enough for PREVIEW_LINES of code. */
+const PREVIEW_MAX_BYTES = 8 * 1024;
 
 export interface FilePickerOptions {
 	files: string[];
 	recency: RecencyMap;
 	theme: ThemeLike;
+	/** Root for resolving relative result paths when reading previews. */
+	cwd: string;
 	/** Called with the chosen path, or null on cancel. */
 	done: (path: string | null) => void;
 	/** Seed query (e.g. characters typed after @ before the picker opened). */
@@ -49,6 +59,33 @@ export class FilePicker {
 
 	private results() {
 		return rankFiles(this.files, this.query, this.opts.recency, 50);
+	}
+
+	/** Preview lines for the selected result: a folder shows its immediate
+	 *  file/dir list; a file shows its first lines. Returns [] on any error
+	 *  (unreadable, binary, missing) so the pane just stays empty. */
+	private preview(path: string): string[] {
+		const isDir = path.endsWith("/");
+		if (isDir) {
+			const children = new Set<string>();
+			for (const f of this.files) {
+				if (!f.startsWith(path)) continue;
+				const rest = f.slice(path.length).split("/");
+				children.add(rest.length > 1 ? `${rest[0]}/` : (rest[0] ?? ""));
+			}
+			return [...children]
+				.filter(Boolean)
+				.sort((a, b) => a.localeCompare(b))
+				.slice(0, PREVIEW_LINES);
+		}
+		try {
+			const abs = isAbsolute(path) ? path : join(this.opts.cwd, path);
+			const buf = readFileSync(abs).subarray(0, PREVIEW_MAX_BYTES).toString("utf8");
+			if (buf.includes("\u0000")) return []; // binary
+			return buf.split("\n").slice(0, PREVIEW_LINES);
+		} catch {
+			return [];
+		}
 	}
 
 	handleInput(data: string): void {
@@ -104,9 +141,17 @@ export class FilePicker {
 			this.query ? theme.fg("text", this.query) : theme.fg("muted", "type to filter files…")
 		}`;
 
-		const rows: string[] = [queryLine, ""];
+		// Two-pane layout when the modal is wide: results on the left, a preview
+		// of the selected entry on the right. Narrow terminals fall back to a
+		// single result column.
+		const showPreview = inner >= PREVIEW_MIN_WIDTH && results.length > 0;
+		const listW = showPreview ? Math.floor(inner * 0.45) : inner;
+		const gap = 2;
+		const previewW = inner - listW - gap;
+
+		const listRows: string[] = [];
 		if (results.length === 0) {
-			rows.push(theme.fg("muted", "  no matching files"));
+			listRows.push(theme.fg("muted", "no matching files"));
 		} else {
 			for (const [i, entry] of visible.entries()) {
 				const isSel = start + i === this.selected;
@@ -114,8 +159,33 @@ export class FilePicker {
 				const name = isSel ? theme.fg("text", entry.label) : theme.fg("dim", entry.label);
 				const dir = entry.path.slice(0, entry.path.length - entry.label.length);
 				const dirText = dir ? theme.fg("muted", dir) : "";
-				rows.push(truncateToWidth(`${marker} ${name} ${dirText}`, inner));
+				listRows.push(truncateToWidth(`${marker} ${name} ${dirText}`, listW));
 			}
+		}
+
+		const rows: string[] = [queryLine, ""];
+		if (showPreview) {
+			const sel = results[this.selected];
+			const previewRows = sel ? this.preview(sel.path) : [];
+			const head = sel
+				? theme.fg(
+						"muted",
+						truncateToWidth(sel.path.endsWith("/") ? `${sel.path} (files)` : sel.path, previewW),
+					)
+				: "";
+			const previewLines = [
+				head,
+				...previewRows.map((l) => theme.fg("dim", truncateToWidth(l, previewW))),
+			];
+			const height = Math.max(listRows.length, previewLines.length);
+			for (let i = 0; i < height; i++) {
+				const left = truncateToWidth(listRows[i] ?? "", listW);
+				const leftPad = left + " ".repeat(Math.max(0, listW - visibleWidth(left)));
+				const right = previewLines[i] ?? "";
+				rows.push(`${leftPad}${" ".repeat(gap)}${right}`);
+			}
+		} else {
+			rows.push(...listRows);
 		}
 
 		const hint = theme.fg("muted", "↑↓ move · ⏎ insert · esc cancel");

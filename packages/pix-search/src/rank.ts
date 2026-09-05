@@ -54,3 +54,22 @@ export function rankFiles(
 export function atToken(path: string): string {
 	return path.includes(" ") ? `@"${path}"` : `@${path}`;
 }
+
+/**
+ * Expand a flat file list into files + the directories that contain them, so
+ * the picker can offer folders as selectable targets. Directories keep a
+ * trailing "/" (rankFiles already treats that as a dir label). Order is
+ * files-as-given with derived dirs appended; rankFiles re-sorts by score.
+ */
+export function withDirectories(files: string[]): string[] {
+	const dirs = new Set<string>();
+	for (const path of files) {
+		const parts = path.split("/");
+		for (let i = 1; i < parts.length; i++) {
+			dirs.add(`${parts.slice(0, i).join("/")}/`);
+		}
+	}
+	// Drop any dir that already appears verbatim in files (rare) to avoid dupes.
+	const seen = new Set(files);
+	return [...files, ...[...dirs].filter((d) => !seen.has(d))];
+}

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { atToken, rankFiles } from "./rank.ts";
+import { atToken, rankFiles, withDirectories } from "./rank.ts";
 
 const files = ["src/index.ts", "src/rank.ts", "docs/index.md", "README.md", "a b/note.txt"];
 
@@ -42,4 +42,25 @@ test("limit caps the result count", () => {
 test("atToken quotes only paths with spaces", () => {
 	expect(atToken("src/index.ts")).toBe("@src/index.ts");
 	expect(atToken("a b/note.txt")).toBe('@"a b/note.txt"');
+});
+
+test("withDirectories appends every ancestor folder with a trailing slash", () => {
+	const out = withDirectories(["src/a/b.ts", "README.md"]);
+	expect(out).toContain("src/");
+	expect(out).toContain("src/a/");
+	// files preserved, root file has no dir to add
+	expect(out).toContain("src/a/b.ts");
+	expect(out).toContain("README.md");
+});
+
+test("withDirectories dedupes and does not duplicate an existing entry", () => {
+	const out = withDirectories(["src/", "src/a.ts"]);
+	expect(out.filter((p) => p === "src/").length).toBe(1);
+});
+
+test("folders are pickable: rankFiles keeps a dir label with slash", () => {
+	const ranked = rankFiles(withDirectories(["src/a/b.ts"]), "src", new Map());
+	const paths = ranked.map((r) => r.path);
+	expect(paths).toContain("src/");
+	expect(paths).toContain("src/a/");
 });
