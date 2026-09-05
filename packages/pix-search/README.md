@@ -7,7 +7,7 @@ Wraps the built-in autocomplete provider to improve file ranking when you type `
 - **Fuzzy scoring** — proper character-order matching with gap penalties and word-boundary bonuses (uses pi-tui's `fuzzyMatch`)
 - **Git recency** — recently modified files (from `git log`) rank higher
 - **Depth penalty** — shallower files win ties
-- **Content matches** — for queries ≥2 chars, files whose *contents* match also surface (marked `(content match)`)
+- **Filename-only** — matches file *names/paths*, not file contents
 - **Spaces in the query** — type `@foo bar` directly; the whole run after `@` is the query, so multi-word matches work without manually quoting (`@"foo bar"`). Picking a result inserts the properly-quoted path; press `Esc` to leave `@`-mode.
 
 ## Install

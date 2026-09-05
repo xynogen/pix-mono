@@ -1,6 +1,6 @@
 /**
  * Autocomplete provider wrapper — intercepts @ suggestions and re-ranks
- * using rg file discovery, fuzzy scoring, and git recency.
+ * files by filename fuzzy score and git recency.
  *
  * Non-@ completions (slash commands, path completions) pass through to the
  * built-in provider unchanged.
@@ -13,23 +13,19 @@ import type {
 	AutocompleteSuggestions,
 } from "@earendil-works/pi-tui";
 import type { RecencyMap } from "./recency.ts";
-import { rgContent, rgFiles, scoreFilename } from "./rg.ts";
+import { rgFiles, scoreFilename } from "./rg.ts";
 
 const MAX_SUGGESTIONS = 20;
-/** Minimum query length before we also search file contents */
-const CONTENT_SEARCH_MIN = 2;
 
 /** Weight factors for the combined score */
 const W_FILENAME = 1.0;
 const W_RECENCY = 30;
-const W_CONTENT = 25;
 const W_DEPTH = -0.5; // penalty per path depth level
 
 interface ScoredEntry {
 	path: string;
 	filenameScore: number;
 	recencyScore: number;
-	contentMatch: boolean;
 	depth: number;
 }
 
@@ -38,12 +34,7 @@ function depthOf(path: string): number {
 }
 
 function combinedScore(entry: ScoredEntry): number {
-	return (
-		entry.filenameScore * W_FILENAME +
-		entry.recencyScore * W_RECENCY +
-		(entry.contentMatch ? W_CONTENT : 0) +
-		entry.depth * W_DEPTH
-	);
+	return entry.filenameScore * W_FILENAME + entry.recencyScore * W_RECENCY + entry.depth * W_DEPTH;
 }
 
 /**
@@ -113,42 +104,21 @@ export function createSearchProvider(
 
 			if (signal.aborted) return null;
 
-			// Run rg in parallel: file listing + content search
-			const [allFiles, contentFiles] = await Promise.all([
-				rgFiles(cwd, signal),
-				query.length >= CONTENT_SEARCH_MIN ? rgContent(query, cwd, signal) : Promise.resolve([]),
-			]);
+			const allFiles = await rgFiles(cwd, signal);
 
 			if (signal.aborted) return null;
 
-			const contentSet = new Set(contentFiles);
 			const recency = getRecency();
 
-			// Score every file
+			// Score every file by filename fuzzy match only.
 			const scored: ScoredEntry[] = [];
 			for (const path of allFiles) {
 				const fnScore = scoreFilename(path, query);
-				const isContent = contentSet.has(path);
-				// Skip if neither filename nor content match
-				if (fnScore === 0 && !isContent) continue;
-
+				if (fnScore === 0) continue;
 				scored.push({
 					path,
 					filenameScore: fnScore,
 					recencyScore: recency.get(path) ?? 0,
-					contentMatch: isContent,
-					depth: depthOf(path),
-				});
-			}
-
-			// Add content-only matches not in allFiles
-			for (const path of contentFiles) {
-				if (scored.some((e) => e.path === path)) continue;
-				scored.push({
-					path,
-					filenameScore: 0,
-					recencyScore: recency.get(path) ?? 0,
-					contentMatch: true,
 					depth: depthOf(path),
 				});
 			}
@@ -160,14 +130,10 @@ export function createSearchProvider(
 				const isDir = entry.path.endsWith("/");
 				const cleanPath = isDir ? entry.path.slice(0, -1) : entry.path;
 				const label = basename(cleanPath) + (isDir ? "/" : "");
-				const desc =
-					entry.contentMatch && entry.filenameScore === 0
-						? `${entry.path} (content match)`
-						: entry.path;
 				return {
 					value: buildValue(cleanPath, isDir, isQuoted),
 					label,
-					description: desc,
+					description: entry.path,
 				};
 			});
 

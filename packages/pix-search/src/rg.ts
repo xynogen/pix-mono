@@ -1,9 +1,8 @@
 /**
  * Ripgrep-based file discovery.
- * - `rgFiles(query)` — filename matches via `rg --files` piped through fuzzy
- * - `rgContent(query)` — files containing query text via `rg -l`
+ * - `rgFiles()` — enumerate files via `rg --files`, scored by filename fuzzy
  *
- * Both respect .gitignore, hidden-file exclusions, and abort signals.
+ * Respects .gitignore, hidden-file exclusions, and abort signals.
  */
 
 import { spawn } from "node:child_process";
@@ -18,13 +17,6 @@ try {
 	RG_BIN = (require("@vscode/ripgrep") as { rgPath: string }).rgPath;
 } catch {
 	/* bundled binary unavailable — fall back to PATH `rg` */
-}
-
-export interface RgEntry {
-	/** Relative path from basePath */
-	path: string;
-	/** Whether this matched by content (true) or filename (false) */
-	contentMatch: boolean;
 }
 
 const TIMEOUT_MS = 3_000;
@@ -83,71 +75,6 @@ function spawnRg(args: string[], cwd: string, signal: AbortSignal): Promise<stri
  */
 export async function rgFiles(cwd: string, signal: AbortSignal): Promise<string[]> {
 	return spawnRg(["--files", "--hidden", "--glob", "!.git"], cwd, signal);
-}
-
-/**
- * Search file contents for `query`, return matching file paths.
- * Uses fixed-string search (no regex) for speed + safety.
- */
-export async function rgContent(
-	query: string,
-	cwd: string,
-	signal: AbortSignal,
-): Promise<string[]> {
-	if (!query || query.length < 2) return [];
-	return spawnRg(
-		[
-			"--files-with-matches",
-			"--fixed-strings",
-			"--ignore-case",
-			"--hidden",
-			"--glob",
-			"!.git",
-			"--max-count",
-			"1", // stop after first match per file
-			"--",
-			query,
-		],
-		cwd,
-		signal,
-	);
-}
-
-/**
- * Combined file search: filename fuzzy + content grep.
- * Returns deduplicated entries, filename matches first.
- */
-export async function rgSearch(
-	query: string,
-	cwd: string,
-	signal: AbortSignal,
-): Promise<RgEntry[]> {
-	// Run both in parallel
-	const [allFiles, contentFiles] = await Promise.all([
-		rgFiles(cwd, signal),
-		rgContent(query, cwd, signal),
-	]);
-
-	if (signal.aborted) return [];
-
-	const seen = new Set<string>();
-	const results: RgEntry[] = [];
-
-	// Filename matches (all files, will be fuzzy-scored by caller)
-	for (const path of allFiles) {
-		if (seen.has(path)) continue;
-		seen.add(path);
-		results.push({ path, contentMatch: false });
-	}
-
-	// Content-only matches (files not already in filename results)
-	for (const path of contentFiles) {
-		if (seen.has(path)) continue;
-		seen.add(path);
-		results.push({ path, contentMatch: true });
-	}
-
-	return results;
 }
 
 /**
