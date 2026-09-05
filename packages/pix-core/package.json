@@ -53,8 +53,8 @@
 		"@xynogen/pix-prompts": "^0.4.5",
 		"@xynogen/pix-skills": "^0.8.4",
 		"@xynogen/pix-models": "^0.2.5",
-		"@xynogen/pix-update": "^0.2.1",
-		"@xynogen/pix-commands": "^0.6.3",
+		"@xynogen/pix-update": "^0.2.2",
+		"@xynogen/pix-commands": "^0.6.4",
 		"@xynogen/pix-nudge": "^0.2.4",
 		"@xynogen/pix-read": "^0.2.4",
 		"@xynogen/pix-write": "^0.2.4",
@@ -66,7 +66,7 @@
 		"@xynogen/pix-todo": "^0.3.3",
 		"@xynogen/pix-ask": "^0.2.29",
 		"@xynogen/pix-optimizer": "^1.1.29",
-		"@xynogen/pix-gate": "^0.2.12",
+		"@xynogen/pix-gate": "^0.2.13",
 		"@xynogen/pix-subagent": "^0.8.0"
 	},
 	"peerDependencies": {
