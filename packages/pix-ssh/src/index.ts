@@ -56,6 +56,8 @@ import {
 	controlPathFor,
 	detectSshFailure,
 	detectSudoFailure,
+	type HostAlias,
+	type HostInfo,
 	type HostSpec,
 	hostApproved,
 	hostTarget,
@@ -63,6 +65,8 @@ import {
 	MAX_OUTPUT_LINES,
 	parseHost,
 	probeKeyAuth,
+	readSshConfigAliases,
+	resolveHostInfo,
 	resolveSshHost,
 	runSsh,
 	runTransfer,
@@ -125,8 +129,8 @@ export interface SshResultDetails {
 // Flat shape mirroring the single Type.Object schema. Conditional fields are
 // optional here and validated at runtime by normalizeOperation.
 type SshParams = {
-	action?: "command" | "file";
-	host: string;
+	action?: "command" | "file" | "info";
+	host?: string;
 	command?: string;
 	sudo?: boolean;
 	direction?: TransferDirection;
@@ -289,6 +293,67 @@ function cancelResult(
 	};
 }
 
+function formatHostInfo(host: string, info: HostInfo): string {
+	const rows = [
+		["HostName", info.hostname],
+		["User", info.user],
+		["Port", info.port],
+		["ProxyJump", info.proxyJump && info.proxyJump !== "none" ? info.proxyJump : undefined],
+		["IdentityFile", info.identityFile],
+	].filter((r): r is [string, string] => Boolean(r[1]));
+	if (rows.length === 0) return `No SSH config found for ${host}.`;
+	return [`Effective SSH config for ${host}:`, ...rows.map(([k, v]) => `  ${k} ${v}`)].join("\n");
+}
+
+function formatAliasList(aliases: HostAlias[]): string {
+	if (aliases.length === 0) {
+		return "No SSH host aliases found in ~/.ssh/config.";
+	}
+	// De-dupe by alias, first block wins (OpenSSH semantics).
+	const seen = new Set<string>();
+	const lines: string[] = [];
+	for (const a of aliases) {
+		if (seen.has(a.alias)) continue;
+		seen.add(a.alias);
+		let target = "";
+		if (a.hostname) {
+			const userPart = a.user ? `${a.user}@` : "";
+			const portPart = a.port ? `:${a.port}` : "";
+			target = `${userPart}${a.hostname}${portPart}`;
+		}
+		const via = a.proxyJump && a.proxyJump !== "none" ? ` via ${a.proxyJump}` : "";
+		lines.push(`  ${a.alias}${target ? ` → ${target}` : ""}${via}`);
+	}
+	return [`SSH host aliases (${lines.length}):`, ...lines].join("\n");
+}
+
+/** Build the info-action result: per-host effective config when `host` is
+ * given, otherwise the alias inventory from ~/.ssh/config. Read-only.
+ * Details carry `_type: "sshInfo"` so renderResult falls to its generic
+ * plain-text branch (no collapse, no exit-code framing). */
+async function infoResult(host: string | undefined, sig?: AbortSignal) {
+	const details = { _type: "sshInfo" as const };
+	if (host?.trim()) {
+		let spec: HostSpec;
+		try {
+			spec = parseHost(host);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			return {
+				content: [{ type: "text" as const, text: `ssh_run failed: ${msg}` }],
+				details,
+				isError: true,
+			};
+		}
+		const text = formatHostInfo(hostTarget(spec), await resolveHostInfo(spec, sig));
+		return { content: [{ type: "text" as const, text }], details };
+	}
+	return {
+		content: [{ type: "text" as const, text: formatAliasList(readSshConfigAliases()) }],
+		details,
+	};
+}
+
 // ── Extension entry point ─────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI): void {
@@ -301,10 +366,12 @@ export default function (pi: ExtensionAPI): void {
 			"Requires a `host`. Windows/PowerShell shells are best-effort (elevation and PowerShell stream/encoding semantics unsupported). " +
 			"Set `sudo: true` to run the command as root on the remote machine. " +
 			'For transfer, set `action: "file"`, `direction`, `source`, `destination`, and optional `recursive` — ' +
-			"transfers may overwrite the destination. Always provide a clear `reason`.",
-		promptSnippet: "Run a remote command or transfer files over SSH",
+			"transfers may overwrite the destination. " +
+			'To discover hosts without reading `~/.ssh/config`, use `action: "info"` — omit `host` to list configured aliases, or pass a `host` to get its effective config (no connection). ' +
+			"Always provide a clear `reason`.",
+		promptSnippet: "Run a remote command, transfer files, or read SSH config over SSH",
 		promptGuidelines: [
-			'ssh_run: REMOTE host only — use `bash`/`sudo_run` for the local machine. `host` as `[user@]host[:port]`; `sudo` covers remote POSIX sudo only. For transfer use `action: "file"` with `direction: "upload"|"download"`, `source`, `destination`, optional `recursive` (may overwrite). Always set `reason`.',
+			'ssh_run: REMOTE host only — use `bash`/`sudo_run` for the local machine. `host` as `[user@]host[:port]`; `sudo` covers remote POSIX sudo only. For transfer use `action: "file"` with `direction: "upload"|"download"`, `source`, `destination`, optional `recursive` (may overwrite). Use `action: "info"` (no `host` = list aliases, with `host` = its effective config) instead of reading `~/.ssh/config` yourself. Always set `reason`.',
 		],
 
 		renderShell: "self",
@@ -315,14 +382,17 @@ export default function (pi: ExtensionAPI): void {
 		// optional and normalized/validated at runtime via normalizeOperation.
 		parameters: Type.Object({
 			action: Type.Optional(
-				Type.Union([Type.Literal("command"), Type.Literal("file")], {
+				Type.Union([Type.Literal("command"), Type.Literal("file"), Type.Literal("info")], {
 					description:
-						'"command" (default) runs a remote command; "file" transfers a file/directory.',
+						'"command" (default) runs a remote command; "file" transfers a file/directory; "info" reports SSH config (no connection) — list configured host aliases, or resolve one host\'s effective config when `host` is given.',
 				}),
 			),
-			host: Type.String({
-				description: "Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`).",
-			}),
+			host: Type.Optional(
+				Type.String({
+					description:
+						"Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`). Required for command/file; for info, omit to list all aliases or set it to resolve one host.",
+				}),
+			),
 			command: Type.Optional(
 				Type.String({
 					description:
@@ -365,6 +435,21 @@ export default function (pi: ExtensionAPI): void {
 		}),
 
 		async execute(_toolCallId, params, sig, onUpdate, ctx) {
+			// info: read-only SSH config report (no connection, no approval).
+			if (params.action === "info") {
+				return infoResult(params.host, sig);
+			}
+
+			if (!params.host?.trim()) {
+				return {
+					content: [{ type: "text", text: "ssh_run failed: host is required" }],
+					details: makeDetails("", "", false, params.reason, {
+						outcome: "error",
+						errorKind: "execution",
+					}),
+					isError: true,
+				};
+			}
 			const operation = normalizeOperation(params);
 			const { action, command, destination, direction, reason, recursive, source, sudo } =
 				operation;
@@ -728,9 +813,17 @@ export default function (pi: ExtensionAPI): void {
 			)
 				return text;
 
+			const host = safeOneLine(args.host ?? "");
+			if (args.action === "info") {
+				text.setText(
+					fillToolBackground(
+						`${theme.fg("toolTitle", theme.bold("ssh info"))} ${theme.fg("dim", host || "list aliases")}`,
+					),
+				);
+				return text;
+			}
 			const operation = normalizeOperation(args);
 			const command = safeOneLine(operation.command) || "(empty command)";
-			const host = safeOneLine(args.host);
 			const prefix = operation.sudo ? "sudo " : "";
 			text.setText(
 				fillToolBackground(

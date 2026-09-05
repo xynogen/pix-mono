@@ -14,7 +14,14 @@ Registers the `ssh_run` tool — run a command through the configured SSH shell 
 
 Output is truncated to 50 KB / 2000 lines. Non-interactive (RPC/JSON) mode blocks the tool immediately.
 
-**Parameters:** `host` as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`), `command`, optional `sudo` (run through POSIX `sudo` as root), optional `reason`.
+**Parameters:** `action` (`"command"` default · `"file"` · `"info"`), `host` as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`), `command`, optional `sudo` (run through POSIX `sudo` as root), optional `reason`.
+
+### `action: "info"` — SSH config, no connection
+
+Lets the agent discover hosts without reading `~/.ssh/config` itself. Read-only: no connection, no approval dialog, no password.
+
+- **No `host`** → lists configured host aliases from `~/.ssh/config` and every file it pulls in via `Include` (glob + relative paths resolved OpenSSH-style, cycle-guarded). Wildcard-only patterns (`Host *`) are skipped. Each row shows `alias → user@hostname:port` plus `via <ProxyJump>` when set.
+- **With `host`** → runs `ssh -G <host>` and reports the effective `HostName`/`User`/`Port`/`ProxyJump`/`IdentityFile` for that target (alias resolution, `Match`, and `Include` all handled by OpenSSH). No packets are sent to the remote.
 
 ### Authentication
 

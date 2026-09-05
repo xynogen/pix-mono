@@ -13,6 +13,8 @@ import {
 	hostTarget,
 	isUnreachable,
 	parseHost,
+	parseHostAliases,
+	parseHostInfo,
 	parseSshConfig,
 	remoteCommand,
 	remoteTransferPath,
@@ -64,6 +66,57 @@ describe("parseSshConfig", () => {
 
 	it("rejects incomplete ssh -G output", () => {
 		expect(parseSshConfig("hostname 10.10.21.251\n")).toBeUndefined();
+	});
+});
+
+describe("parseHostAliases", () => {
+	it("extracts aliases with hostname/user/port/proxyjump", () => {
+		const cfg = [
+			"Host web",
+			"  HostName 10.0.0.5",
+			"  User deploy",
+			"  Port 2222",
+			"  ProxyJump bastion",
+			"",
+			"Host db",
+			"  HostName db.internal",
+		].join("\n");
+		expect(parseHostAliases(cfg)).toEqual([
+			{ alias: "web", hostname: "10.0.0.5", user: "deploy", port: "2222", proxyJump: "bastion" },
+			{ alias: "db", hostname: "db.internal" },
+		]);
+	});
+	it("splits a multi-alias Host line and skips wildcard patterns", () => {
+		const cfg = ["Host a b *.example", "  User root", "", "Host *", "  User nobody"].join("\n");
+		expect(parseHostAliases(cfg)).toEqual([
+			{ alias: "a", user: "root" },
+			{ alias: "b", user: "root" },
+		]);
+	});
+	it("ignores comments and keeps first value per key", () => {
+		const cfg = ["# comment", "Host x", "  User first", "  User second"].join("\n");
+		expect(parseHostAliases(cfg)).toEqual([{ alias: "x", user: "first" }]);
+	});
+});
+
+describe("parseHostInfo", () => {
+	it("reads effective fields from ssh -G output, first value wins", () => {
+		const out = [
+			"host web",
+			"hostname 10.0.0.5",
+			"user deploy",
+			"port 2222",
+			"identityfile ~/.ssh/id_ed25519",
+			"proxyjump bastion",
+			"user ignored",
+		].join("\n");
+		expect(parseHostInfo(out)).toEqual({
+			hostname: "10.0.0.5",
+			user: "deploy",
+			port: "2222",
+			identityFile: "~/.ssh/id_ed25519",
+			proxyJump: "bastion",
+		});
 	});
 });
 

@@ -15,8 +15,9 @@
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { globSync, readFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { isAbsolute, join, resolve as resolvePath } from "node:path";
 
 export const MAX_OUTPUT_BYTES = 50 * 1024;
 export const MAX_OUTPUT_LINES = 2000;
@@ -149,6 +150,142 @@ export function resolveSshHost(spec: HostSpec, signal?: AbortSignal): Promise<Ho
 		});
 		proc.on("error", () => resolve(spec));
 		proc.on("close", (code) => resolve(code === 0 ? (parseSshConfig(stdout) ?? spec) : spec));
+		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
+	});
+}
+
+// ── Host inventory (info action) ─────────────────────────────────────────────
+
+export interface HostAlias {
+	alias: string;
+	hostname?: string;
+	user?: string;
+	port?: string;
+	proxyJump?: string;
+	identityFile?: string;
+}
+
+export interface HostInfo {
+	hostname?: string;
+	user?: string;
+	port?: string;
+	proxyJump?: string;
+	identityFile?: string;
+}
+
+/** Fields we surface from an ssh config Host block or `ssh -G` output. */
+const INFO_KEYS: Record<string, keyof HostInfo> = {
+	hostname: "hostname",
+	user: "user",
+	port: "port",
+	proxyjump: "proxyJump",
+	identityfile: "identityFile",
+};
+
+/**
+ * Parse `Host` blocks out of an ssh_config text. Returns one entry per alias
+ * token (a single `Host a b` line yields two aliases). Wildcard-only patterns
+ * (`*`, `?`, `!`) are skipped since they aren't connectable targets. Keys are
+ * matched case-insensitively; the first value for a key within a block wins
+ * (OpenSSH "first obtained value" semantics).
+ */
+export function parseHostAliases(text: string): HostAlias[] {
+	const out: HostAlias[] = [];
+	let current: HostAlias[] = [];
+	for (const raw of text.split("\n")) {
+		const line = raw.replace(/#.*$/, "").trim();
+		if (!line) continue;
+		const [keyRaw, ...rest] = line.split(/\s+/);
+		const key = (keyRaw ?? "").toLowerCase();
+		const value = rest.join(" ");
+		if (key === "host") {
+			current = rest.filter((p) => !/[*?!]/.test(p)).map((alias) => ({ alias }));
+			out.push(...current);
+		} else if (current.length > 0) {
+			const field = INFO_KEYS[key];
+			if (field && value) {
+				for (const entry of current) {
+					if (entry[field] === undefined) entry[field] = value;
+				}
+			}
+		}
+	}
+	return out;
+}
+
+/** Expand a Path with a leading `~` and resolve relative Includes against
+ * the containing config's directory (OpenSSH semantics). */
+function expandConfigPath(pattern: string, baseDir: string): string {
+	let p = pattern;
+	if (p.startsWith("~/")) p = join(homedir(), p.slice(2));
+	else if (p === "~") p = homedir();
+	return isAbsolute(p) ? p : resolvePath(baseDir, p);
+}
+
+/**
+ * Read an ssh_config file and every file it pulls in via `Include`, returning
+ * the concatenated Host aliases. Missing files and glob misses are ignored
+ * (OpenSSH tolerates them). `seen` guards against Include cycles.
+ */
+export function readSshConfigAliases(
+	path = join(homedir(), ".ssh", "config"),
+	seen = new Set<string>(),
+): HostAlias[] {
+	if (seen.has(path)) return [];
+	seen.add(path);
+	let text: string;
+	try {
+		text = readFileSync(path, "utf8");
+	} catch {
+		return [];
+	}
+	const baseDir = join(homedir(), ".ssh");
+	const out: HostAlias[] = [];
+	for (const raw of text.split("\n")) {
+		const line = raw.replace(/#.*$/, "").trim();
+		const [keyRaw, ...rest] = line.split(/\s+/);
+		if ((keyRaw ?? "").toLowerCase() === "include") {
+			for (const pattern of rest) {
+				const expanded = expandConfigPath(pattern, baseDir);
+				let matches: string[] = [];
+				try {
+					matches = globSync(expanded);
+				} catch {
+					matches = [];
+				}
+				for (const file of matches.sort()) out.push(...readSshConfigAliases(file, seen));
+			}
+		}
+	}
+	out.push(...parseHostAliases(text));
+	return out;
+}
+
+/** Full effective config for one host via `ssh -G` (no connection made). */
+export function parseHostInfo(output: string): HostInfo {
+	const info: HostInfo = {};
+	for (const line of output.split("\n")) {
+		const [keyRaw, ...rest] = line.trim().split(/\s+/);
+		const field = INFO_KEYS[(keyRaw ?? "").toLowerCase()];
+		const value = rest.join(" ");
+		if (field && value && info[field] === undefined) info[field] = value;
+	}
+	return info;
+}
+
+/** Run `ssh -G <host>` and return its effective config. Never connects. */
+export function resolveHostInfo(spec: HostSpec, signal?: AbortSignal): Promise<HostInfo> {
+	const args = ["-G"];
+	if (spec.port !== undefined) args.push("-p", String(spec.port));
+	args.push(hostTarget(spec));
+	return new Promise((resolve) => {
+		let stdout = "";
+		const proc = spawn("ssh", args, { stdio: ["ignore", "pipe", "ignore"] });
+		proc.stdout.on("data", (c: Buffer) => {
+			stdout += c.toString();
+		});
+		proc.on("error", () => resolve({}));
+		proc.on("close", (code) => resolve(code === 0 ? parseHostInfo(stdout) : {}));
 		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
 	});
 }
