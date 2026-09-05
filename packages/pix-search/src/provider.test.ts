@@ -27,11 +27,39 @@ test("non-@ prefix passes through to inner", async () => {
 	expect(result?.items[0]?.value).toBe("/clear");
 });
 
-test("null inner result passes through", async () => {
+test("@ token is detected regardless of inner (own search)", async () => {
+	// Inner returns null, but an @-token means WE search — never delegate.
+	const inner = fakeInner(null);
+	const provider = createSearchProvider(inner, process.cwd(), () => new Map());
+	const result = await provider.getSuggestions(["@foo"], 0, 4, opts);
+	expect(result?.prefix).toBe("@foo");
+});
+
+test("non-@ text with null inner returns null", async () => {
 	const inner = fakeInner(null);
 	const provider = createSearchProvider(inner, "/tmp", () => new Map());
-	const result = await provider.getSuggestions(["@foo"], 0, 4, opts);
+	const result = await provider.getSuggestions(["hello"], 0, 5, opts);
 	expect(result).toBeNull();
+});
+
+test("space in @ query keeps the token open (unquoted space search)", async () => {
+	// The whole run after @ — spaces included — is the query, and the returned
+	// prefix spans the space so the host keeps the dropdown open.
+	const inner = fakeInner(null);
+	const provider = createSearchProvider(inner, process.cwd(), () => new Map());
+	const line = "@pack json";
+	const result = await provider.getSuggestions([line], 0, line.length, opts);
+	expect(result).not.toBeNull();
+	expect(result?.prefix).toBe("@pack json");
+});
+
+test("@ only affects the token before the cursor, not earlier text", async () => {
+	const inner = fakeInner(null);
+	const provider = createSearchProvider(inner, process.cwd(), () => new Map());
+	// email address earlier on the line must not be treated as an @-token
+	const line = "mail me@x.com then @pack";
+	const result = await provider.getSuggestions([line], 0, line.length, opts);
+	expect(result?.prefix).toBe("@pack");
 });
 
 test("@ prefix triggers rg-based search", async () => {

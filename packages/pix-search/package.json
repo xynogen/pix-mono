@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-search",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Pi extension — smarter @ file search with fuzzy + git recency ranking",
 	"type": "module",
 	"main": "src/index.ts",

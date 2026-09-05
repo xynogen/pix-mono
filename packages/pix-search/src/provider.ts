@@ -46,16 +46,36 @@ function combinedScore(entry: ScoredEntry): number {
 	);
 }
 
-function isAtPrefix(prefix: string): boolean {
-	return prefix.startsWith("@") || prefix.startsWith('@"');
-}
-
-function extractRawQuery(prefix: string): string {
-	let raw = prefix;
-	if (raw.startsWith('@"')) raw = raw.slice(2);
-	else if (raw.startsWith("@")) raw = raw.slice(1);
-	if (raw.endsWith('"')) raw = raw.slice(0, -1);
-	return raw;
+/**
+ * Find the active `@`-token in the text before the cursor, allowing spaces in
+ * the query. A token starts at an `@` that is at line start or preceded by
+ * whitespace and runs to the cursor. Returns the raw prefix (`@…`, including
+ * any spaces/open-quote) plus the extracted query and quoted flag.
+ *
+ * The host editor stops re-triggering autocomplete once a space is typed
+ * (its trigger regex is `/(?:^|\s)@[^\s]*$/`), but it keeps calling the
+ * provider on every keystroke while the dropdown stays open — so detecting the
+ * token ourselves (spaces included) is what makes unquoted space-search work.
+ * ponytail: everything from `@` to the cursor is treated as the query, so a
+ * space cannot end the token inline — pick a result (inserts a quoted path +
+ * space) or press Esc to leave `@`-mode. Ceiling: no "@file then prose on the
+ * same run of text"; upgrade path is a dedicated overlay picker.
+ */
+function findAtToken(before: string): { prefix: string; query: string; quoted: boolean } | null {
+	let start = -1;
+	for (let i = 0; i < before.length; i++) {
+		if (before[i] === "@" && (i === 0 || /\s/.test(before[i - 1] ?? ""))) start = i;
+	}
+	if (start === -1) return null;
+	const prefix = before.slice(start);
+	let query = prefix.slice(1);
+	let quoted = false;
+	if (query.startsWith('"')) {
+		quoted = true;
+		query = query.slice(1);
+		if (query.endsWith('"')) query = query.slice(0, -1);
+	}
+	return { prefix, query, quoted };
 }
 
 function buildValue(path: string, isDir: boolean, quoted: boolean): string {
@@ -79,17 +99,19 @@ export function createSearchProvider(
 			cursorCol,
 			options,
 		): Promise<AutocompleteSuggestions | null> {
-			// Let inner figure out if this is an @ prefix
-			const result = await inner.getSuggestions(lines, cursorLine, cursorCol, options);
+			// Detect the @-token ourselves (spaces allowed) rather than relying on
+			// the host's inner provider, whose @-detection stops at a space.
+			const before = (lines[cursorLine] ?? "").slice(0, cursorCol);
+			const token = findAtToken(before);
+			if (!token) {
+				// Not in @-mode — defer entirely to the built-in provider.
+				return inner.getSuggestions(lines, cursorLine, cursorCol, options);
+			}
 
-			// Not an @ prefix, or inner returned nothing — pass through
-			if (!result || !isAtPrefix(result.prefix)) return result;
-
-			const query = extractRawQuery(result.prefix);
-			const isQuoted = result.prefix.includes('"');
+			const { prefix, query, quoted: isQuoted } = token;
 			const { signal } = options;
 
-			if (signal.aborted) return result;
+			if (signal.aborted) return null;
 
 			// Run rg in parallel: file listing + content search
 			const [allFiles, contentFiles] = await Promise.all([
@@ -97,7 +119,7 @@ export function createSearchProvider(
 				query.length >= CONTENT_SEARCH_MIN ? rgContent(query, cwd, signal) : Promise.resolve([]),
 			]);
 
-			if (signal.aborted) return result;
+			if (signal.aborted) return null;
 
 			const contentSet = new Set(contentFiles);
 			const recency = getRecency();
@@ -149,9 +171,14 @@ export function createSearchProvider(
 				};
 			});
 
-			if (items.length === 0) return result; // fall back to built-in
+			// Keep the dropdown open with a placeholder even on zero matches, so a
+			// typed space doesn't let the host tear down @-mode (which our
+			// space-in-query support depends on). Esc still exits @-mode.
+			if (items.length === 0) {
+				return { items: [{ value: prefix, label: "no matches", description: query }], prefix };
+			}
 
-			return { items, prefix: result.prefix };
+			return { items, prefix };
 		},
 
 		applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
