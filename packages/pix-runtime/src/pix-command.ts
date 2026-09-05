@@ -15,6 +15,7 @@ import {
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
+import { icon } from "./icon-catalog.ts";
 import type { PixRuntime } from "./runtime.ts";
 import type { DeepPartial, SectionHandle } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
@@ -299,7 +300,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 									tui.terminal?.rows,
 									runtime.get(prettySection).maxRenderHeight,
 								),
-								title: "Pix Settings",
+								title: `${icon("settings")} Pix Settings`,
 								titleColor: (s: string) => theme.fg("accent", theme.bold(s)),
 								header: [""],
 								body,

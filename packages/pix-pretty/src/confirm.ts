@@ -43,6 +43,9 @@ export interface ConfirmUI {
 }
 
 export interface ConfirmOptions {
+	/** Optional leading glyph for the title row, e.g. `icon("update")`. Rendered
+	 *  as "<icon> <title>" so callers pass a resolved icon + plain text. */
+	icon?: string;
 	/** Title shown bold at the top (e.g. "Update Pi & extensions?"). */
 	title: string;
 	/** Optional body lines rendered under the title. */
@@ -133,7 +136,9 @@ export function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promise<boo
 							width: mw,
 							maxHeight: terminalModalHeight(tui.terminal?.rows),
 							minHeight: MIN_PERMISSION_MODAL_HEIGHT,
-							header: [theme.fg(accent, theme.bold(opts.title))],
+							header: [
+								theme.fg(accent, theme.bold(opts.icon ? `${opts.icon} ${opts.title}` : opts.title)),
+							],
 							body: (opts.body ?? []).map((line) => theme.fg("text", line)),
 							footer,
 							bodyOffset: pager.bodyOffset,

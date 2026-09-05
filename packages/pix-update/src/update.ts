@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { openProgress, type ProgressHandle, type ProgressUI } from "@xynogen/pix-pretty/progress";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
@@ -256,6 +257,7 @@ async function updateAll(pi: ExtensionAPI, ctx: ExtensionCommandContext) {
 		// SAFETY: ctx.ui structurally provides the ConfirmUI surface (custom/theme);
 		// the host's UI type is wider, so we narrow to the subset confirmOverlay uses.
 		const ok = await confirmOverlay(ctx.ui as unknown as ConfirmUI, {
+			icon: icon("update"),
 			title: "Update Pi & Extensions?",
 			body: ["Pi will close when the update finishes — relaunch to apply."],
 		});

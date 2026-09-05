@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-runtime",
-	"version": "0.8.3",
+	"version": "0.8.4",
 	"description": "Pix shared runtime — versioned pix.json config, atomic persistence, typed change events",
 	"type": "module",
 	"main": "src/index.ts",
@@ -25,6 +25,7 @@
 		"./config": "./src/runtime.ts",
 		"./sections": "./src/sections/index.ts",
 		"./collapse": "./src/collapse.ts",
+		"./icon-catalog": "./src/icon-catalog.ts",
 		"./io": "./src/io.ts",
 		"./once": "./src/once.ts",
 		"./testing": "./src/testing.ts"
