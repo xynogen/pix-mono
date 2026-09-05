@@ -311,11 +311,12 @@ describe("/pix compaction floor", () => {
 });
 
 describe("/pix overlay frame", () => {
-	it("renders a rounded border around every settings row", async () => {
+	it("renders a titled rounded border around every settings row", async () => {
 		const d = await openOverlay();
 		const lines = d.lines();
 
-		expect(lines[0]).toMatch(/^╭─+╮$/);
+		// Title is embedded in the top border: ╭─ pix settings ──────╮
+		expect(lines[0]).toMatch(/^╭─ .*pix settings.* ─+╮$/);
 		expect(lines.at(-1)).toMatch(/^╰─+╯$/);
 		expect(lines.length).toBeGreaterThan(2);
 		for (const line of lines.slice(1, -1)) expect(line).toMatch(/^│ .* │$/);

@@ -299,7 +299,9 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 									tui.terminal?.rows,
 									runtime.get(prettySection).maxRenderHeight,
 								),
-								header: [theme.fg("accent", theme.bold("  pix settings")), ""],
+								title: "pix settings",
+								titleColor: (s: string) => theme.fg("accent", theme.bold(s)),
+								header: [""],
 								body,
 								footer: [
 									"",
@@ -378,6 +380,10 @@ interface RuntimeModalOptions {
 	selectedBodyLine?: number;
 	color: (s: string) => string;
 	bg?: (s: string) => string;
+	/** Plain title embedded in the top border (`╭─ title ──╮`). */
+	title?: string;
+	/** Color for the embedded title. Defaults to `color`. */
+	titleColor?: (s: string) => string;
 }
 
 interface RuntimeModalResult {
@@ -451,11 +457,22 @@ function frameModal(opts: RuntimeModalOptions): RuntimeModalResult {
 function frameRows(
 	width: number,
 	lines: string[],
-	opts: Pick<RuntimeModalOptions, "color" | "bg">,
+	opts: Pick<RuntimeModalOptions, "color" | "bg" | "title" | "titleColor">,
 ): string[] {
 	const bg = opts.bg ?? ((s: string) => s);
 	const inner = Math.max(1, width - 4);
 	const dashes = "─".repeat(width - 2);
+	// Top border: bare, or `╭─ title ──╮` when a title is given. Chrome around
+	// the label is 5 cols (2 corners, 1 lead dash, 2 pad spaces); tail fills the
+	// rest so the row stays exactly `width` visible cells.
+	const topBorder = ((): string => {
+		const span = width - 5;
+		if (!opts.title || span < 3) return opts.color(`╭${dashes}╮`);
+		const paint = opts.titleColor ?? opts.color;
+		const label = truncateToWidth(opts.title, span - 1, "…");
+		const tail = "─".repeat(Math.max(1, span - visibleWidth(label)));
+		return `${opts.color("╭─ ")}${paint(label)}${opts.color(` ${tail}╮`)}`;
+	})();
 	const SENTINEL = "\x00";
 	const bgOpen = bg(SENTINEL).split(SENTINEL)[0] ?? "";
 	const reassert = (s: string): string => {
@@ -470,5 +487,5 @@ function frameRows(
 		const padded = fitted + " ".repeat(Math.max(0, inner - visibleWidth(fitted)));
 		return bg(`${opts.color("│")} ${reassert(padded)} ${opts.color("│")}`);
 	};
-	return [bg(opts.color(`╭${dashes}╮`)), ...lines.map(row), bg(opts.color(`╰${dashes}╯`))];
+	return [bg(topBorder), ...lines.map(row), bg(opts.color(`╰${dashes}╯`))];
 }
