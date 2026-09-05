@@ -154,15 +154,16 @@ export default function (pi: ExtensionAPI): void {
 		name: "sudo_run",
 		label: "Run as root",
 		description:
-			"Execute a shell command with root (sudo) privileges. " +
-			"Always shows the user a confirmation dialog before running — " +
-			"the command is NEVER executed without explicit approval and password. " +
+			"Execute a shell command as root on the LOCAL machine (sudo). " +
+			"For a non-root local command use `bash`; for anything on a REMOTE host use `ssh_run` " +
+			"(with `sudo: true` for remote root) — do not use sudo_run for remote work. " +
+			"Never runs without the user's explicit approval and password. " +
 			"Use only when the task genuinely requires elevated permissions " +
 			"(e.g. writing to /etc, managing system services, installing packages system-wide). " +
 			"You MUST provide a clear `reason` explaining why root is needed.",
-		promptSnippet: "Execute a shell command as root after user sees intent + password prompt",
+		promptSnippet: "Execute a shell command as root on the local machine",
 		promptGuidelines: [
-			"sudo_run: prefer plain bash; use only when root is strictly required. Set `reason` to a short why-root sentence.",
+			"sudo_run: LOCAL root only — use `bash` for non-root local, `ssh_run` (`sudo: true`) for remote. Prefer plain bash; use only when root is strictly required. Set `reason` to a short why-root sentence.",
 		],
 
 		// Full-width framing (rules + bg fill) baked at termW(), like pix-bash.
