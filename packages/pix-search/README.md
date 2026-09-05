@@ -1,14 +1,23 @@
 # pix-search
 
-Smarter `@` file search for [Pi Coding Agent](https://github.com/earendil-works/pi).
+`@` file picker overlay for [Pi Coding Agent](https://github.com/earendil-works/pi).
 
-Wraps the built-in autocomplete provider to improve file ranking when you type `@` in the prompt:
+Typing `@` at a token boundary (line start or after whitespace) opens a modal
+file picker with its own query input:
 
-- **Fuzzy scoring** — proper character-order matching with gap penalties and word-boundary bonuses (uses pi-tui's `fuzzyMatch`)
-- **Git recency** — recently modified files (from `git log`) rank higher
-- **Depth penalty** — shallower files win ties
-- **Filename-only** — matches file *names/paths*, not file contents
-- **Spaces in the query** — type `@foo bar` directly; the whole run after `@` is the query, so multi-word matches work without manually quoting (`@"foo bar"`). Picking a result inserts the properly-quoted path; press `Esc` to leave `@`-mode.
+- **Spaces in the query** — the picker owns keyboard focus, so `@` then `my file`
+  filters on the full phrase with no `@"…"` quoting.
+- **Filename-only** — matches file *names/paths*, not file contents.
+- **Fuzzy scoring** — character-order matching with word-boundary bonuses.
+- **Git recency** — recently modified files (from `git log`) rank higher.
+- **Depth penalty** — shallower files win ties.
+
+Picking a result inserts the path into the prompt (quoted automatically when it
+contains a space). Keys: `↑`/`↓` move, `⏎` insert, `Esc` cancel (a cancelled
+pick inserts a literal `@`, so the keystroke is never swallowed).
+
+`@` mid-token (e.g. an email `user@host`) is left as a literal `@` — only a
+boundary `@` opens the picker.
 
 ## Install
 
@@ -16,4 +25,6 @@ Wraps the built-in autocomplete provider to improve file ranking when you type `
 pi install npm:@xynogen/pix-search
 ```
 
-Standalone — **not** bundled by `@xynogen/pix-core`.
+Standalone — **not** bundled by `@xynogen/pix-core`. It replaces the input
+editor component (via `setEditorComponent`), so run it alone if another
+extension also customizes the editor.

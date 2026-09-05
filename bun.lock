@@ -70,7 +70,7 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.5.35",
+      "version": "0.5.36",
       "dependencies": {
         "@xynogen/pix-ask": "^0.2.26",
         "@xynogen/pix-bash": "^0.2.4",
@@ -319,7 +319,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "1.20.0",
+      "version": "1.20.1",
       "dependencies": {
         "@ff-labs/fff-node": "^0.10.6",
         "@xynogen/pix-runtime": "^0.8.0",
@@ -364,9 +364,10 @@
     },
     "packages/pix-search": {
       "name": "@xynogen/pix-search",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@vscode/ripgrep": "^1.18.0",
+        "@xynogen/pix-pretty": "^1.20.1",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -388,7 +389,7 @@
     },
     "packages/pix-ssh": {
       "name": "@xynogen/pix-ssh",
-      "version": "0.3.5",
+      "version": "0.4.0",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.19.0",
         "@xynogen/pix-runtime": "^0.8.0",
