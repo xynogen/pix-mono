@@ -253,8 +253,10 @@ async function updatePackages(
 
 async function updateAll(pi: ExtensionAPI, ctx: ExtensionCommandContext) {
 	if (ctx.hasUI) {
+		// SAFETY: ctx.ui structurally provides the ConfirmUI surface (custom/theme);
+		// the host's UI type is wider, so we narrow to the subset confirmOverlay uses.
 		const ok = await confirmOverlay(ctx.ui as unknown as ConfirmUI, {
-			title: "Update Pi & extensions?",
+			title: "Update Pi & Extensions?",
 			body: ["Pi will close when the update finishes — relaunch to apply."],
 		});
 		if (!ok) {
@@ -265,6 +267,8 @@ async function updateAll(pi: ExtensionAPI, ctx: ExtensionCommandContext) {
 	// A focused progress overlay owns input for the whole update, so keystrokes
 	// are swallowed instead of echoing out of order while the heavy install
 	// subprocesses compete with the TUI. Steps run serially + `nice`-d.
+	// SAFETY: ctx.ui structurally provides the ProgressUI surface; the host UI
+	// type is wider, so we narrow to the subset openProgress uses.
 	const progress = ctx.hasUI
 		? openProgress(ctx.ui as unknown as ProgressUI, "Updating Pi & extensions")
 		: undefined;

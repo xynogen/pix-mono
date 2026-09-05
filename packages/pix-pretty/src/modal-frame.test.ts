@@ -37,8 +37,8 @@ test("modalHeight resolves configured percentages and rows without exceeding the
 });
 
 test("frameLines embeds a title in the top border at exact width", () => {
-	const out = frameLines({ width: 40, title: "pix settings", lines: ["body"], color: plain });
-	expect(out[0]).toContain("╭─ pix settings ");
+	const out = frameLines({ width: 40, title: "Pix Settings", lines: ["body"], color: plain });
+	expect(out[0]).toContain("╭─ Pix Settings ");
 	expect(out[0]!.endsWith("╮")).toBe(true);
 	// Every row (title border included) is exactly `width` visible cells.
 	for (const line of out) expect(visibleWidth(line)).toBe(40);

@@ -561,7 +561,7 @@ export async function openMcpPanel(
 		const diffBody = colorizeConfigDiff(preview.diffText, th as unknown as FgTheme);
 		const result = await showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
 			mode: "confirm",
-			title: `${icon("mcp")}  Delete MCP server "${wantsDelete}"?`,
+			title: `${icon("mcp")}  Delete MCP Server "${wantsDelete}"?`,
 			body: [
 				th.fg("text", `Removes it from ${prov.path} — edits the file on disk.`),
 				"",

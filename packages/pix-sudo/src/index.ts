@@ -244,7 +244,7 @@ export default function (pi: ExtensionAPI): void {
 					if (cached) {
 						return showOverlay(ctx.ui, {
 							mode: "confirm",
-							title: "🔐 ROOT COMMAND REQUEST",
+							title: "🔐 Root Command Request",
 							body: [...body, "(sudo session active — no password needed)"],
 							accent: "error",
 							timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
@@ -256,7 +256,7 @@ export default function (pi: ExtensionAPI): void {
 					}
 					return showOverlay(ctx.ui, {
 						mode: "sudo",
-						title: "🔐 ROOT COMMAND REQUEST",
+						title: "🔐 Root Command Request",
 						body,
 						accent: "error",
 						timeoutMs: ROOT_PROMPT_TIMEOUT_MS,

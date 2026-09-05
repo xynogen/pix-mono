@@ -228,7 +228,7 @@ function buildSections(opts: {
  * ```ts
  * const result = await showOverlay(ui, {
  *   mode: "confirm",
- *   title: "⚠️  DANGEROUS",
+ *   title: "⚠️  Dangerous",
  *   body: ["rm -rf /tmp/work"],
  *   accent: "warning",
  *   timeoutMs: 30_000,
@@ -243,7 +243,7 @@ function buildSections(opts: {
  * ```ts
  * const result = await showOverlay(ui, {
  *   mode: "sudo",
- *   title: "🔐 ROOT COMMAND REQUEST",
+ *   title: "🔐 Root Command Request",
  *   body: ["Intent: install package", "Command: apt install foo"],
  *   accent: "error",
  * });

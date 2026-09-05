@@ -26,6 +26,11 @@ export interface Concern {
 
 export type GatePromptUI = ExtensionContext["ui"];
 
+/** Title Case a severity tier for dialog titles: "critical" → "Critical". */
+function titleCase(word: string): string {
+	return word ? word[0]!.toUpperCase() + word.slice(1).toLowerCase() : word;
+}
+
 const TIMEOUT_MS: Record<Rule["severity"], number> = {
 	critical: 15_000,
 	dangerous: 30_000,
@@ -73,7 +78,7 @@ export async function promptPathDecision(
 	path: string,
 ): Promise<GateDecision> {
 	const icon = PATH_SEVERITY_ICON[hit.severity];
-	const label = hit.severity.toUpperCase();
+	const label = titleCase(hit.severity);
 	const accent = PATH_SEVERITY_COLOR[hit.severity];
 
 	const choices =
@@ -231,7 +236,7 @@ export async function promptGateDecision(
 	command: string,
 ): Promise<GateDecision> {
 	const icon = SEVERITY_ICON[hit.severity];
-	const label = hit.severity.toUpperCase();
+	const label = titleCase(hit.severity);
 	const accent = SEVERITY_COLOR[hit.severity];
 
 	// critical: deny listed first so it's the default selected item

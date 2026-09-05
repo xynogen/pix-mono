@@ -184,7 +184,7 @@ const SETTINGS: SettingRow<unknown>[] = [
 ];
 
 function buildSummary(runtime: PixRuntime): string {
-	const lines = [`pix settings (${runtime.path})`, ""];
+	const lines = [`Pix Settings (${runtime.path})`, ""];
 	let lastSection = "";
 	for (const row of SETTINGS) {
 		if (row.section !== lastSection) {
@@ -299,7 +299,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 									tui.terminal?.rows,
 									runtime.get(prettySection).maxRenderHeight,
 								),
-								title: "pix settings",
+								title: "Pix Settings",
 								titleColor: (s: string) => theme.fg("accent", theme.bold(s)),
 								header: [""],
 								body,

@@ -600,8 +600,8 @@ export default function (pi: ExtensionAPI): void {
 							mode: "confirm",
 							title:
 								action === "file"
-									? `⚠ SSH ${direction === "download" ? "DOWNLOAD" : "UPLOAD"}`
-									: "🔐 SSH COMMAND REQUEST",
+									? `⚠ SSH ${direction === "download" ? "Download" : "Upload"}`
+									: "🔐 SSH Command Request",
 							body,
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
@@ -628,8 +628,8 @@ export default function (pi: ExtensionAPI): void {
 							mode: "sudo",
 							title:
 								action === "file"
-									? `⚠ SSH ${direction === "download" ? "DOWNLOAD" : "UPLOAD"}`
-									: "🔐 SSH COMMAND REQUEST",
+									? `⚠ SSH ${direction === "download" ? "Download" : "Upload"}`
+									: "🔐 SSH Command Request",
 							body: [...body, `Enter: ${label}`],
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
