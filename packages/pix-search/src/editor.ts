@@ -52,5 +52,9 @@ export class AtEditor extends CustomEditor {
 	private async runPicker(): Promise<void> {
 		const path = await this.openPicker();
 		this.insertTextAtCursor(path ? `${atToken(path)} ` : "@");
+		// The insert resolves outside the TUI input loop (after the overlay
+		// promise), so nothing schedules a frame — request one or the inserted
+		// text stays invisible until the next keystroke.
+		this.tui.requestRender();
 	}
 }
