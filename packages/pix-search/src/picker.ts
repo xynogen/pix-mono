@@ -13,6 +13,9 @@
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { hlBlock } from "@xynogen/pix-pretty/highlight";
+import { dirIcon, fileColor, fileIcon } from "@xynogen/pix-pretty/icons";
+import { lang } from "@xynogen/pix-pretty/lang";
 import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import { rankFiles } from "./rank.ts";
@@ -34,6 +37,8 @@ export interface FilePickerOptions {
 	cwd: string;
 	/** Called with the chosen path, or null on cancel. */
 	done: (path: string | null) => void;
+	/** Ask the host to re-render (e.g. after an async syntax-highlight lands). */
+	onChange?: () => void;
 	/** Seed query (e.g. characters typed after @ before the picker opened). */
 	initialQuery?: string;
 }
@@ -45,6 +50,9 @@ export class FilePicker {
 	private cachedLines?: string[];
 
 	private files: string[];
+	/** Syntax-highlighted preview lines, keyed by file path. Filled async by
+	 *  hlBlock; a miss shows plain text until the highlight lands. */
+	private hlCache = new Map<string, string[]>();
 
 	constructor(private readonly opts: FilePickerOptions) {
 		this.query = opts.initialQuery ?? "";
@@ -61,12 +69,21 @@ export class FilePicker {
 		return rankFiles(this.files, this.query, this.opts.recency, 50);
 	}
 
+	/** Color a result label: dirs use accent/dim, files use their type hue when
+	 *  selected and dim otherwise (so the selection pops without noise). */
+	private styleName(path: string, label: string, isDir: boolean, isSel: boolean): string {
+		const theme = this.opts.theme;
+		if (isDir) return theme.fg(isSel ? "accent" : "dim", label);
+		return isSel ? fileColor(path, label, theme) : theme.fg("dim", label);
+	}
+
 	/** Preview lines for the selected result: a folder shows its immediate
-	 *  file/dir list; a file shows its first lines. Returns [] on any error
-	 *  (unreadable, binary, missing) so the pane just stays empty. */
+	 *  file/dir list (icon-prefixed); a file shows its first lines, syntax-
+	 *  highlighted once hlBlock resolves. Returns [] on any error (unreadable,
+	 *  binary, missing) so the pane just stays empty. */
 	private preview(path: string): string[] {
-		const isDir = path.endsWith("/");
-		if (isDir) {
+		const theme = this.opts.theme;
+		if (path.endsWith("/")) {
 			const children = new Set<string>();
 			for (const f of this.files) {
 				if (!f.startsWith(path)) continue;
@@ -76,13 +93,28 @@ export class FilePicker {
 			return [...children]
 				.filter(Boolean)
 				.sort((a, b) => a.localeCompare(b))
-				.slice(0, PREVIEW_LINES);
+				.slice(0, PREVIEW_LINES)
+				.map((child) => {
+					const isDir = child.endsWith("/");
+					const icon = isDir ? dirIcon(theme) : fileIcon(child, theme);
+					const name = isDir ? theme.fg("accent", child) : fileColor(child, child, theme);
+					return `${icon}${name}`;
+				});
 		}
+		const cached = this.hlCache.get(path);
+		if (cached) return cached;
 		try {
 			const abs = isAbsolute(path) ? path : join(this.opts.cwd, path);
 			const buf = readFileSync(abs).subarray(0, PREVIEW_MAX_BYTES).toString("utf8");
 			if (buf.includes("\u0000")) return []; // binary
-			return buf.split("\n").slice(0, PREVIEW_LINES);
+			const plain = buf.split("\n").slice(0, PREVIEW_LINES);
+			// Kick off async highlight; cache + re-render when it lands.
+			void hlBlock(plain.join("\n"), lang(path), theme).then((hl) => {
+				this.hlCache.set(path, hl);
+				this.invalidate();
+				this.opts.onChange?.();
+			});
+			return plain; // plain until the highlight resolves
 		} catch {
 			return [];
 		}
@@ -137,8 +169,14 @@ export class FilePicker {
 		);
 		const visible = results.slice(start, start + MAX_VISIBLE);
 
-		const queryLine = `${theme.fg("accent", "@")} ${
-			this.query ? theme.fg("text", this.query) : theme.fg("muted", "type to filter files…")
+		// Header: bold title + live result count, then the query line.
+		const count = theme.fg(
+			"muted",
+			`${results.length} ${results.length === 1 ? "match" : "matches"}`,
+		);
+		const title = `${theme.bold(theme.fg("accent", "  Find files & folders"))}  ${count}`;
+		const queryLine = `${theme.fg("accent", "❯")} ${
+			this.query ? theme.fg("text", this.query) : theme.fg("muted", "type to filter…")
 		}`;
 
 		// Two-pane layout when the modal is wide: results on the left, a preview
@@ -151,31 +189,34 @@ export class FilePicker {
 
 		const listRows: string[] = [];
 		if (results.length === 0) {
-			listRows.push(theme.fg("muted", "no matching files"));
+			listRows.push(theme.fg("muted", "  no matching files"));
 		} else {
 			for (const [i, entry] of visible.entries()) {
 				const isSel = start + i === this.selected;
+				const isDir = entry.path.endsWith("/");
 				const marker = isSel ? theme.fg("accent", "›") : " ";
-				const name = isSel ? theme.fg("text", entry.label) : theme.fg("dim", entry.label);
+				const icon = isDir ? dirIcon(theme) : fileIcon(entry.path, theme);
+				const name = this.styleName(entry.path, entry.label, isDir, isSel);
 				const dir = entry.path.slice(0, entry.path.length - entry.label.length);
 				const dirText = dir ? theme.fg("muted", dir) : "";
-				listRows.push(truncateToWidth(`${marker} ${name} ${dirText}`, listW));
+				listRows.push(truncateToWidth(`${marker} ${icon}${name} ${dirText}`, listW));
 			}
 		}
 
-		const rows: string[] = [queryLine, ""];
+		const rows: string[] = [title, "", queryLine, ""];
 		if (showPreview) {
 			const sel = results[this.selected];
 			const previewRows = sel ? this.preview(sel.path) : [];
 			const head = sel
 				? theme.fg(
 						"muted",
-						truncateToWidth(sel.path.endsWith("/") ? `${sel.path} (files)` : sel.path, previewW),
+						truncateToWidth(sel.path.endsWith("/") ? `${sel.path} · contents` : sel.path, previewW),
 					)
 				: "";
 			const previewLines = [
 				head,
-				...previewRows.map((l) => theme.fg("dim", truncateToWidth(l, previewW))),
+				theme.fg("border", "─".repeat(previewW)),
+				...previewRows.map((l) => truncateToWidth(l, previewW)),
 			];
 			const height = Math.max(listRows.length, previewLines.length);
 			for (let i = 0; i < height; i++) {

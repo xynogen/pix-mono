@@ -8,7 +8,9 @@ file picker with its own query input:
 - **Files and folders** — pick a file to point the model at it, or a folder to
   scope work to a whole directory. Folders appear with a trailing `/`.
 - **Live preview** — on wide terminals a side pane shows the selection: a file's
-  first lines, or a folder's immediate file list.
+  first lines with syntax highlighting, or a folder's immediate file list.
+- **File-type icons & colors** — results show Nerd Font file/folder icons and
+  type-colored names (respects `PRETTY_ICONS`).
 - **Spaces in the query** — the picker owns keyboard focus, so `@` then `my file`
   filters on the full phrase with no `@"…"` quoting.
 - **Name-based** — matches file/folder *names and paths*, not file contents.

@@ -27,7 +27,7 @@ export default function (pi: ExtensionAPI): void {
 		// Open the picker overlay and resolve with the chosen path (or null).
 		const openPicker = () =>
 			ctx.ui.custom<string | null>(
-				(_tui, theme, _kb, done) => {
+				(tui, theme, _kb, done) => {
 					// List files fresh each open so new/removed files are reflected.
 					const controller = new AbortController();
 					const picker = new FilePicker({
@@ -36,6 +36,7 @@ export default function (pi: ExtensionAPI): void {
 						theme: theme as never,
 						cwd,
 						done,
+						onChange: () => tui.requestRender(),
 					});
 					void rgFiles(cwd, controller.signal).then((files) =>
 						picker.setFiles(withDirectories(files)),
