@@ -78,6 +78,15 @@ export interface FrameOptions {
 	/** Optional pre-styled string rendered as the first content row (tab bar etc.) */
 	top?: string;
 	/**
+	 * Plain title text embedded into the top border, e.g. `╭─ pix settings ─────╮`.
+	 * Styled with `titleColor` (falls back to `color`). Kept as plain text so the
+	 * frame owns the spacing/dashes; pass an already-short string (it's truncated
+	 * to fit). Distinct from `top`, which is a full pinned content row.
+	 */
+	title?: string;
+	/** Color function for the embedded `title` text. Defaults to `color`. */
+	titleColor?: (s: string) => string;
+	/**
 	 * Wrap over-wide content instead of cutting its tail. Default true.
 	 *
 	 * Truncation is never safe for text a user acts on: a clipped command reads
@@ -140,6 +149,44 @@ export function fitModalLines(lines: string[], inner: number, wrap = true): FitR
 	return { rows, truncated };
 }
 
+// ── Column layout ───────────────────────────────────────────────────────────
+
+export interface JoinColumnsOptions {
+	/** Left column width in cells. Rows are truncated/padded to exactly this. */
+	leftWidth: number;
+	/** Right column width in cells. Rows are truncated to this (no right-pad). */
+	rightWidth: number;
+	/** Spaces between the columns when no `sep` is given. Default 2. */
+	gap?: number;
+	/**
+	 * Pre-styled separator string placed between the columns (e.g. a themed
+	 * `" │ "`). Its own visible width is used as-is — pass `gap` OR `sep`, not
+	 * both. When omitted the columns are separated by `gap` spaces.
+	 */
+	sep?: string;
+}
+
+/**
+ * Stitch two column bodies into side-by-side rows (a list + preview pane, say).
+ * Left cells are truncated then space-padded to `leftWidth` by *visible* width
+ * (ANSI-aware), so styled text aligns; right cells are only truncated. The
+ * result has `max(left.length, right.length)` rows — the shorter column is
+ * padded with blanks. Pure: no wrapping, no color; callers style the cells and
+ * the optional `sep`.
+ */
+export function joinColumns(left: string[], right: string[], opts: JoinColumnsOptions): string[] {
+	const divider = opts.sep ?? " ".repeat(Math.max(0, opts.gap ?? 2));
+	const height = Math.max(left.length, right.length);
+	const rows: string[] = [];
+	for (let i = 0; i < height; i++) {
+		const l = truncateToWidth(left[i] ?? "", opts.leftWidth);
+		const lPad = l + " ".repeat(Math.max(0, opts.leftWidth - visibleWidth(l)));
+		const r = truncateToWidth(right[i] ?? "", opts.rightWidth);
+		rows.push(`${lPad}${divider}${r}`);
+	}
+	return rows;
+}
+
 /**
  * Render a rounded modal box.
  *
@@ -165,6 +212,20 @@ export function frameLines(opts: FrameOptions): string[] {
 	const inner = width - CHROME;
 	const dashes = "─".repeat(width - 2);
 	const wrap = opts.wrap ?? true;
+
+	// Top border: bare `╭───╮`, or a titled `╭─ Title ──╮` when `title` is set.
+	// The title sits after one lead dash with a padding space on each side; the
+	// remaining run fills with dashes so the border stays exactly `width` wide.
+	const topBorder = ((): string => {
+		// Full width = ╭ + lead dash + " " + label + " " + tail dashes + ╮.
+		// Fixed chrome around the label is 5 cols (2 corners, 1 lead dash, 2 pads).
+		const span = width - 5;
+		if (!opts.title || span < 3) return color(`╭${dashes}╮`);
+		const paint = opts.titleColor ?? color;
+		const label = truncateToWidth(opts.title, span - 1, ELLIPSIS); // keep ≥1 tail dash
+		const tail = "─".repeat(Math.max(1, span - visibleWidth(label)));
+		return `${color("╭─ ")}${paint(label)}${color(` ${tail}╮`)}`;
+	})();
 	// Expand before framing so a long command wraps instead of losing its tail.
 	const { rows: lines } = fitModalLines(opts.lines, inner, wrap);
 
@@ -196,7 +257,7 @@ export function frameLines(opts: FrameOptions): string[] {
 		return bg(`${color("│")} ${body} ${color("│")}`);
 	};
 
-	const out: string[] = [bg(color(`╭${dashes}╮`))];
+	const out: string[] = [bg(topBorder)];
 	if (top !== undefined) out.push(row(top));
 	for (const line of lines) out.push(row(line));
 	out.push(bg(color(`╰${dashes}╯`)));
@@ -475,7 +536,16 @@ export function frameModal(opts: ModalFrameOptions): ModalFrameResult {
 			wrap,
 		).rows.slice(0, Math.max(1, cap - 2));
 		return {
-			lines: frameLines({ width, lines: diag, color, bg, fg, wrap: false }),
+			lines: frameLines({
+				width,
+				lines: diag,
+				color,
+				bg,
+				fg,
+				title: opts.title,
+				titleColor: opts.titleColor,
+				wrap: false,
+			}),
 			bodyOffset: 0,
 			maxBodyOffset: 0,
 			visibleBodyLines: 0,
@@ -520,7 +590,17 @@ export function frameModal(opts: ModalFrameOptions): ModalFrameResult {
 
 	return {
 		// Already fitted above — pass wrap:false so rows are not re-expanded.
-		lines: frameLines({ width, lines, color, bg, fg, top, wrap: false }),
+		lines: frameLines({
+			width,
+			lines,
+			color,
+			bg,
+			fg,
+			top,
+			title: opts.title,
+			titleColor: opts.titleColor,
+			wrap: false,
+		}),
 		bodyOffset: offset,
 		maxBodyOffset,
 		visibleBodyLines,

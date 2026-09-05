@@ -13,6 +13,7 @@ import {
 } from "@earendil-works/pi-tui";
 import {
 	frameModal,
+	joinColumns,
 	MIN_MODAL_HEIGHT,
 	ModalPager,
 	terminalModalHeight,
@@ -589,15 +590,15 @@ export class AskQuestionnaire extends Container {
 		// Options (with optional split-pane preview)
 		const optionLines = this.renderOptions(useSplit ? leftWidth : width);
 		const previewLines = useSplit ? this.renderPreview(previewWidth) : [];
-		const maxOptLines = Math.max(optionLines.length, previewLines.length);
 
 		if (useSplit) {
 			const sep = t.fg("muted", SEPARATOR);
-			for (let i = 0; i < maxOptLines; i++) {
-				const left = truncateToWidth(optionLines[i] ?? "", leftWidth, "", true);
-				const right = truncateToWidth(previewLines[i] ?? "", previewWidth, "");
-				const splitRow = `${left || " ".repeat(leftWidth)}${sep}${right || " ".repeat(previewWidth)}`;
-				body.push(truncateToWidth(splitRow, width, ""));
+			for (const joined of joinColumns(optionLines, previewLines, {
+				leftWidth,
+				rightWidth: previewWidth,
+				sep,
+			})) {
+				body.push(truncateToWidth(joined, width, ""));
 			}
 		} else {
 			for (const line of optionLines) body.push(row(line));

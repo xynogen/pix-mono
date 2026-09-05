@@ -5,6 +5,7 @@ import {
 	fitModalLine,
 	frameLines,
 	frameModal,
+	joinColumns,
 	MIN_PERMISSION_MODAL_HEIGHT,
 	type ModalFrameResult,
 	ModalPager,
@@ -33,6 +34,63 @@ test("modalHeight resolves configured percentages and rows without exceeding the
 	expect(modalHeight(40, 12)).toBe(12);
 	expect(modalHeight(10)).toBe(8);
 	expect(modalHeight(1)).toBe(1);
+});
+
+test("frameLines embeds a title in the top border at exact width", () => {
+	const out = frameLines({ width: 40, title: "pix settings", lines: ["body"], color: plain });
+	expect(out[0]).toContain("╭─ pix settings ");
+	expect(out[0]!.endsWith("╮")).toBe(true);
+	// Every row (title border included) is exactly `width` visible cells.
+	for (const line of out) expect(visibleWidth(line)).toBe(40);
+});
+
+test("frameLines truncates an over-long title but keeps the border width", () => {
+	const out = frameLines({
+		width: 30,
+		title: "a very long title that will not fit",
+		lines: ["x"],
+		color: plain,
+	});
+	expect(visibleWidth(out[0]!)).toBe(30);
+	expect(out[0]).toContain("…");
+});
+
+test("frameLines falls back to a plain border when too narrow for a title", () => {
+	const out = frameLines({ width: 6, title: "hello", lines: ["x"], color: plain });
+	// No room for "─ h… ─" chrome — plain border, still exact width.
+	expect(out[0]).not.toContain("hello");
+	expect(visibleWidth(out[0]!)).toBe(6);
+});
+
+test("frameLines without a title is unchanged (bare top border)", () => {
+	const out = frameLines({ width: 20, lines: ["x"], color: plain });
+	expect(out[0]).toBe("╭──────────────────╮");
+});
+
+test("joinColumns aligns left cells to leftWidth by visible width, ignoring ANSI", () => {
+	const left = ["\x1b[31mab\x1b[0m", "longer"];
+	const right = ["X", "Y"];
+	const rows = joinColumns(left, right, { leftWidth: 6, rightWidth: 4, gap: 2 });
+	// Row 0: styled "ab" (visible width 2) padded to 6 + 2-space gap + "X".
+	expect(visibleWidth(rows[0]!)).toBe(6 + 2 + 1);
+	expect(rows[0]).toContain("\x1b[31mab\x1b[0m");
+});
+
+test("joinColumns pads the shorter column with blank rows", () => {
+	const rows = joinColumns(["a", "b", "c"], ["x"], { leftWidth: 3, rightWidth: 3 });
+	expect(rows.length).toBe(3);
+	// Later rows still render the left cell + gap, right side empty.
+	expect(rows[2]!.startsWith("c")).toBe(true);
+});
+
+test("joinColumns uses a styled separator when given, over gap spaces", () => {
+	const rows = joinColumns(["a"], ["b"], { leftWidth: 2, rightWidth: 2, sep: " | " });
+	expect(rows[0]).toContain(" | ");
+});
+
+test("joinColumns truncates over-wide cells to their column width", () => {
+	const rows = joinColumns(["abcdef"], ["uvwxyz"], { leftWidth: 3, rightWidth: 3, gap: 1 });
+	expect(visibleWidth(rows[0]!)).toBe(3 + 1 + 3);
 });
 
 test("modalHeight is defensive about junk row counts", () => {

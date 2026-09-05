@@ -12,11 +12,11 @@
 
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { dirIcon, fileColor, fileIcon } from "@xynogen/pix-pretty/icons";
 import { lang } from "@xynogen/pix-pretty/lang";
-import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import { frameLines, joinColumns, modalWidth } from "@xynogen/pix-pretty/modal-frame";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import { rankFiles } from "./rank.ts";
 import type { RecencyMap } from "./recency.ts";
@@ -218,13 +218,9 @@ export class FilePicker {
 				theme.fg("border", "─".repeat(previewW)),
 				...previewRows.map((l) => truncateToWidth(l, previewW)),
 			];
-			const height = Math.max(listRows.length, previewLines.length);
-			for (let i = 0; i < height; i++) {
-				const left = truncateToWidth(listRows[i] ?? "", listW);
-				const leftPad = left + " ".repeat(Math.max(0, listW - visibleWidth(left)));
-				const right = previewLines[i] ?? "";
-				rows.push(`${leftPad}${" ".repeat(gap)}${right}`);
-			}
+			rows.push(
+				...joinColumns(listRows, previewLines, { leftWidth: listW, rightWidth: previewW, gap }),
+			);
 		} else {
 			rows.push(...listRows);
 		}
