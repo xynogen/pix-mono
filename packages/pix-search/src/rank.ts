@@ -50,11 +50,6 @@ export function rankFiles(
 	return ranked.slice(0, limit);
 }
 
-/** Quote a path for insertion into the prompt only when it contains a space. */
-export function atToken(path: string): string {
-	return path.includes(" ") ? `@"${path}"` : `@${path}`;
-}
-
 /**
  * Expand a flat file list into files + the directories that contain them, so
  * the picker can offer folders as selectable targets. Directories keep a

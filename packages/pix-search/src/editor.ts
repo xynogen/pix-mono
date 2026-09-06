@@ -1,60 +1,51 @@
-/**
- * Custom editor that opens the file picker when `@` is typed at a token
- * boundary (line start or after whitespace), instead of inserting a literal
- * `@` and relying on the inline autocomplete dropdown.
- *
- * The editor stays dumb about UI plumbing: it calls the injected `openPicker`
- * callback (wired to `ctx.ui.custom` in the extension) and inserts whatever
- * token comes back. A cancelled pick inserts a literal `@` so the keystroke is
- * never silently swallowed.
- */
+/** Add the @ picker to an editor without replacing its paste state or rendering. */
+import type { CustomEditor } from "@earendil-works/pi-coding-agent";
+import type { TUI } from "@earendil-works/pi-tui";
 
-import { CustomEditor } from "@earendil-works/pi-coding-agent";
-import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
-import { atToken } from "./rank.ts";
-
-// The CustomEditor constructor wants pi-coding-agent's KeybindingsManager,
-// which is a structural superset of pi-tui's. The factory hands us a value the
-// host already typed correctly, so we take it as the constructor's own param
-// type rather than re-importing a non-exported type.
-type KbManager = ConstructorParameters<typeof CustomEditor>[2];
+/** Picked paths are marked as `<path>…</path>`; pix-display renders the span as a chip. */
+export function pathToken(path: string): string {
+	return `<path>${path}</path> `;
+}
 
 export type OpenPicker = () => Promise<string | null>;
 
-/** True when a literal `@` at the cursor should start an @-mention: the cursor
- *  is at line start or the preceding character is whitespace. */
+/** A mention starts at the beginning of a line or after whitespace. */
 export function atStartsMention(before: string): boolean {
 	return before === "" || /\s$/.test(before);
 }
 
-export class AtEditor extends CustomEditor {
-	constructor(
-		tui: TUI,
-		theme: EditorTheme,
-		keybindings: KbManager,
-		private readonly openPicker: OpenPicker,
-	) {
-		super(tui, theme, keybindings);
-	}
-
-	handleInput(data: string): void {
-		if (data === "@") {
-			const cursor = this.getCursor();
-			const line = this.getLines()[cursor.line] ?? "";
+export function attachPicker(
+	editor: CustomEditor,
+	tui: TUI,
+	openPicker: OpenPicker,
+	onError: (message: string) => void,
+): void {
+	const handleInput = editor.handleInput.bind(editor);
+	let inPaste = false;
+	const runPicker = async () => {
+		try {
+			const path = await openPicker();
+			editor.insertTextAtCursor(path ? pathToken(path) : "@");
+		} catch (error) {
+			editor.insertTextAtCursor("@");
+			onError(`File picker failed: ${error instanceof Error ? error.message : String(error)}`);
+		} finally {
+			tui.requestRender();
+		}
+	};
+	editor.handleInput = (data: string) => {
+		// Bracketed paste can arrive in separate chunks; a pasted @ is not a shortcut.
+		for (const marker of data.matchAll(/\x1b\[(200|201)~/g)) {
+			inPaste = marker[1] === "200";
+		}
+		if (!inPaste && data === "@") {
+			const cursor = editor.getCursor();
+			const line = editor.getLines()[cursor.line] ?? "";
 			if (atStartsMention(line.slice(0, cursor.col))) {
-				void this.runPicker();
+				void runPicker();
 				return;
 			}
 		}
-		super.handleInput(data);
-	}
-
-	private async runPicker(): Promise<void> {
-		const path = await this.openPicker();
-		this.insertTextAtCursor(path ? `${atToken(path)} ` : "@");
-		// The insert resolves outside the TUI input loop (after the overlay
-		// promise), so nothing schedules a frame — request one or the inserted
-		// text stays invisible until the next keystroke.
-		this.tui.requestRender();
-	}
+		handleInput(data);
+	};
 }

@@ -131,7 +131,7 @@ async function resolveSamplingModel(
 ): Promise<{
 	model: Model<Api>;
 	apiKey?: string;
-	headers?: Record<string, string>;
+	headers?: Record<string, string | null>;
 }> {
 	const candidates: Model<Api>[] = [];
 	const availableModels = options.modelRegistry.getAvailable();

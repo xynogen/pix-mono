@@ -1,13 +1,13 @@
 /**
- * pix-search — replaces the input editor with one that opens a file-picker
+ * pix-search — adds input handling that opens a file-picker
  * overlay when you type `@` at a token boundary. The picker owns its own query
  * input, so spaces in the query work natively (no `@"…"` quoting). It lists
  * both files and their containing folders (so you can @-mention a directory),
  * ranked by fuzzy score + git recency, with a live preview of the selection.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { AtEditor } from "./editor.ts";
+import { CustomEditor, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { attachPicker } from "./editor.ts";
 import { FilePicker } from "./picker.ts";
 import { withDirectories } from "./rank.ts";
 import { loadRecency, type RecencyMap } from "./recency.ts";
@@ -15,6 +15,7 @@ import { rgFiles } from "./rg.ts";
 
 export default function (pi: ExtensionAPI): void {
 	pi.on("session_start", async (_event, ctx) => {
+		if (ctx.mode !== "tui") return;
 		const cwd = ctx.cwd;
 
 		// Warm the git-recency cache in the background; picker reads whatever is
@@ -51,6 +52,20 @@ export default function (pi: ExtensionAPI): void {
 				{ overlay: true, overlayOptions: { anchor: "center", width: "60%", maxHeight: "60%" } },
 			);
 
-		ctx.ui.setEditorComponent((tui, theme, kb) => new AtEditor(tui, theme, kb, openPicker));
+		const previous = ctx.ui.getEditorComponent();
+		ctx.ui.setEditorComponent((tui, theme, kb) => {
+			const editor = previous?.(tui, theme, kb) ?? new CustomEditor(tui, theme, kb);
+			// ponytail: cursor access requires CustomEditor. Keep other editors intact;
+			// add a public cursor adapter if a non-CustomEditor integration is needed.
+			if (editor instanceof CustomEditor) {
+				attachPicker(editor, tui, openPicker, (message) => ctx.ui.notify(message, "error"));
+			} else {
+				ctx.ui.notify(
+					"pix-search: @ picker requires a CustomEditor; existing editor kept.",
+					"warning",
+				);
+			}
+			return editor;
+		});
 	});
 }

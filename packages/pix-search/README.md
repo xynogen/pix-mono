@@ -18,8 +18,9 @@ file picker with its own query input:
 - **Git recency** — recently modified files (from `git log`) rank higher.
 - **Depth penalty** — shallower entries win ties.
 
-Picking a result inserts the path into the prompt (quoted automatically when it
-contains a space). Keys: `↑`/`↓` move, `⏎` insert, `Esc` cancel (a cancelled
+Picking a result inserts `<path>…</path>` into the prompt; the model receives
+that span verbatim, and `@xynogen/pix-display` renders it as an `@name` chip
+when installed. Keys: `↑`/`↓` move, `⏎` insert, `Esc` cancel (a cancelled
 pick inserts a literal `@`, so the keystroke is never swallowed).
 
 `@` mid-token (e.g. an email `user@host`) is left as a literal `@` — only a
@@ -31,6 +32,6 @@ boundary `@` opens the picker.
 pi install npm:@xynogen/pix-search
 ```
 
-Standalone — **not** bundled by `@xynogen/pix-core`. It replaces the input
-editor component (via `setEditorComponent`), so run it alone if another
-extension also customizes the editor.
+Standalone — **not** bundled by `@xynogen/pix-core`. It wraps whatever editor
+is already installed (via `getEditorComponent`/`setEditorComponent`), so it
+composes with `pix-display` in either load order.

@@ -2,13 +2,13 @@
 
 # pix-display
 
-Pi core extension — paste chips, thinking blocks, and polished code snippets.
+Pi core extension — inline chips, thinking blocks, and polished code snippets.
 
 ## What it does
 
 Three features, always on when installed:
 
-**Paste chips.** Replaces Pi's paste markers (`[paste #1 2232 chars]`) with styled icon chips: `image #1` for image pastes (blue), `text +N lines` / `text Nk chars` for text pastes (green). Collapses pasted image paths into markers in the buffer while showing human-readable labels on screen. The display rewrite is purely visual — the buffer keeps the real path for the model. Expansion wraps each paste in `<paste>…</paste>` so adjacent pastes don't merge into one wall in the model-facing text.
+**Inline chips.** Renders `<path>…</path>` spans (written by e.g. `pix-search`) as `@name` chips, and replaces Pi's paste markers (`[paste #1 2232 chars]`) with styled icon chips: `image #1` for image pastes (blue), `text +N lines` / `text Nk chars` for text pastes (green). Collapses pasted image paths into markers in the buffer while showing human-readable labels on screen. The display rewrite is purely visual — the buffer keeps the real path for the model. Expansion wraps each paste in `<paste>…</paste>` so adjacent pastes don't merge into one wall in the model-facing text. Sent user messages get the same treatment in the transcript (display-only, via Pi's Markdown transformer hook, Pi ≥ 0.85): `<paste>`/`<path>` spans collapse to inline chips, text pastes keep a head…tail glimpse.
 
 **Thinking blocks.** Converts leaked reasoning tags (`<think>`/`<thinking>`) from some providers into native Pi `thinking` content blocks, which render dim + italic via the `thinkingText` theme token. No ANSI injection, no markdown blockquote shim. Applies during streaming (`message_update`) and finalization (`message_end`).
 

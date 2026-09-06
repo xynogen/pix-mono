@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-search",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Pi extension — @ file picker overlay with fuzzy + git recency ranking",
 	"type": "module",
 	"main": "src/index.ts",

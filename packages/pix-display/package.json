@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-display",
-	"version": "0.1.17",
-	"description": "Pi core extension — paste chips, thinking blocks, and framed code rendering",
+	"version": "0.2.0",
+	"description": "Pi core extension — inline chips, thinking blocks, and framed code rendering",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
@@ -22,7 +22,7 @@
 		"pi",
 		"pi-package",
 		"pi-extension",
-		"paste-chips",
+		"inline-chips",
 		"thinking",
 		"code-rendering",
 		"syntax-highlighting",
@@ -39,7 +39,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.11.2"
+		"@xynogen/pix-pretty": "^1.21.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

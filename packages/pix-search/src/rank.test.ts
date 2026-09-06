@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { atToken, rankFiles, withDirectories } from "./rank.ts";
+import { rankFiles, withDirectories } from "./rank.ts";
 
 const files = ["src/index.ts", "src/rank.ts", "docs/index.md", "README.md", "a b/note.txt"];
 
@@ -37,11 +37,6 @@ test("label is the basename, dirs keep trailing slash", () => {
 test("limit caps the result count", () => {
 	const many = Array.from({ length: 50 }, (_, i) => `f${i}.ts`);
 	expect(rankFiles(many, "", new Map(), 5).length).toBe(5);
-});
-
-test("atToken quotes only paths with spaces", () => {
-	expect(atToken("src/index.ts")).toBe("@src/index.ts");
-	expect(atToken("a b/note.txt")).toBe('@"a b/note.txt"');
 });
 
 test("withDirectories appends every ancestor folder with a trailing slash", () => {

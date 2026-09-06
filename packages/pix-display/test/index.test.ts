@@ -5,9 +5,9 @@
 import { describe, expect, it } from "bun:test";
 
 describe("pix-display", () => {
-	describe("paste-chips extension", () => {
+	describe("inline-chips extension", () => {
 		it("exports a function", async () => {
-			const mod = await import("../src/paste-chips.js");
+			const mod = await import("../src/inline-chips.js");
 			expect(mod.default).toBeFunction();
 		});
 	});
