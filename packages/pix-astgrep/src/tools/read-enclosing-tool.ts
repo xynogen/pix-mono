@@ -67,6 +67,7 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 
 	pi.registerTool({
 		name: "read_enclosing",
+		...({ exposure: "deferred" } as const),
 		label: "Read enclosing",
 		description:
 			"Return the smallest named declaration that encloses a line (the reverse of read_symbol). " +

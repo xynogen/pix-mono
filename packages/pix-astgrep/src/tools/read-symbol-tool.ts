@@ -67,6 +67,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 
 	pi.registerTool({
 		name: "read_symbol",
+		...({ exposure: "deferred" } as const),
 		label: "Read symbol",
 		description:
 			"Return the exact source of one named symbol (function, class, interface, type, enum, " +

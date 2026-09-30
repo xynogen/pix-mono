@@ -111,6 +111,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 
 	pi.registerTool({
 		name: "ast_grep_replace",
+		...({ exposure: "deferred" } as const),
 		label: "AST replace",
 		description:
 			"AST-aware structural rewrite. Give a `pattern` and a `rewrite`, both with metavariables " +

@@ -55,6 +55,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 
 		pi.registerTool({
 			name: "read_env",
+			...({ exposure: "deferred" } as const),
 			label: "Read Environment",
 			description:
 				'Read loaded .env data with minimal disclosure. action="info" returns variable names and inferred shapes only, without approval. action="read" returns only requested names after explicit user approval. Never request unrelated variables.',

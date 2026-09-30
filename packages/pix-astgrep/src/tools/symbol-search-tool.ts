@@ -94,6 +94,7 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 
 	pi.registerTool({
 		name: "symbol_search",
+		...({ exposure: "deferred" } as const),
 		label: "Symbol search",
 		description:
 			"Find files by identifier. Ranks code files by how often they contain the query terms. " +

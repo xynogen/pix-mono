@@ -77,6 +77,7 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 
 	pi.registerTool({
 		name: "ast_grep_search",
+		...({ exposure: "deferred" } as const),
 		label: "AST search",
 		description:
 			"AST-aware structural code search. Give an ast-grep `pattern` (metavariables like " +

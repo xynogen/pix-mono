@@ -107,6 +107,7 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 
 	pi.registerTool({
 		name: "ast_grep_outline",
+		...({ exposure: "deferred" } as const),
 		label: "AST outline",
 		description:
 			"Syntax-only structure of a file or directory: top-level declarations, imports, and " +
