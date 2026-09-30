@@ -81,24 +81,24 @@ function isMcpTool(info: ToolInfo): boolean {
 	return /mcp/i.test(info.sourceInfo?.source ?? "");
 }
 
-export function buildRows(tools: ToolInfo[]): ToolRow[] {
-	return (
-		tools
-			.filter((t) => !CORE_TOOLS.has(t.name))
-			.map((t) => ({
-				name: t.name,
-				description: firstSentence(t.description ?? ""),
-				mcp: isMcpTool(t),
-				source: t.sourceInfo?.source,
-				exposure: (t as ToolInfo & { exposure?: string }).exposure ?? "direct",
-			}))
-			// Normal tools first, MCP tools last. Inside a group: direct before deferred, then by name.
-			.sort(
-				(a, b) =>
-					Number(a.mcp) - Number(b.mcp) ||
-					Number(a.exposure === "deferred") - Number(b.exposure === "deferred") ||
-					a.name.localeCompare(b.name),
-			)
+/**
+ * Normal tools first, MCP tools last. Inside a group: enabled, deferred, disabled,
+ * then by name. Without `stateOf`, the registered exposure stands in for the state.
+ */
+export function buildRows(tools: ToolInfo[], stateOf?: (name: string) => ToolState): ToolRow[] {
+	const rows = tools
+		.filter((t) => !CORE_TOOLS.has(t.name))
+		.map((t) => ({
+			name: t.name,
+			description: firstSentence(t.description ?? ""),
+			mcp: isMcpTool(t),
+			source: t.sourceInfo?.source,
+			exposure: (t as ToolInfo & { exposure?: string }).exposure ?? "direct",
+		}));
+	const rank = (r: ToolRow): number =>
+		TOOL_STATES.indexOf(stateOf?.(r.name) ?? (r.exposure === "deferred" ? "deferred" : "enabled"));
+	return rows.sort(
+		(a, b) => Number(a.mcp) - Number(b.mcp) || rank(a) - rank(b) || a.name.localeCompare(b.name),
 	);
 }
 
@@ -394,7 +394,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 
 	function getRows(): ToolRow[] {
 		try {
-			return buildRows(pi.getAllTools() ?? []);
+			return buildRows(pi.getAllTools() ?? [], state.stateOf);
 		} catch {
 			return [];
 		}

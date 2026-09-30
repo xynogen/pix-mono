@@ -67,6 +67,36 @@ describe("buildRows", () => {
 		expect(rows.map((r) => r.name)).toEqual(["z_tool", "b_deferred", "a_mcp", "c_mcp"]);
 	});
 
+	test("sorts by live state (enabled, deferred, disabled), then by name", () => {
+		const state: Record<string, ToolState> = {
+			b_on: "enabled",
+			a_off: "disabled",
+			c_defer: "deferred",
+			a_defer: "deferred",
+			a_on: "enabled",
+			m_on: "enabled",
+		};
+		const rows = buildRows(
+			[
+				toolInfo("a_off"),
+				toolInfo("c_defer", "extension", "deferred"),
+				mcpToolInfo("m_on"),
+				toolInfo("b_on", "extension", "deferred"),
+				toolInfo("a_defer", "extension", "deferred"),
+				toolInfo("a_on"),
+			],
+			(name) => state[name] ?? "enabled",
+		);
+		expect(rows.map((r) => r.name)).toEqual([
+			"a_on",
+			"b_on",
+			"a_defer",
+			"c_defer",
+			"a_off",
+			"m_on",
+		]);
+	});
+
 	test("empty input returns empty", () => {
 		expect(buildRows([])).toEqual([]);
 	});
