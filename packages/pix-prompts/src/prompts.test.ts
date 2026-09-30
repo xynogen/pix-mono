@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { tempDir } from "@xynogen/pix-runtime/paths";
-import registerPrompts from "./prompts.ts";
+import registerPrompts, { resolveOwnSopMd } from "./prompts.ts";
 
 type Handler = (event: { systemPrompt?: string }) => Promise<{ systemPrompt?: string } | undefined>;
 
@@ -37,6 +37,15 @@ describe("pix-prompts host-aware injection", () => {
 	afterEach(() => {
 		process.chdir(prevCwd);
 		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("resolves the bundled SOP.md to a real file and injects it", async () => {
+		// Regression: URL.pathname made "C:\\C:\\..." on Windows and SOP was silently skipped.
+		expect(existsSync(resolveOwnSopMd())).toBe(true);
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+		expect(result?.systemPrompt).toMatch(/<pix-agent-sop>\n# Agent Operating Specification/);
 	});
 
 	it("injects a repo directive file the host has NOT already injected", async () => {

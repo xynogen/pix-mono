@@ -10,7 +10,8 @@
  */
 
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * User home. For the live process this is exactly `os.homedir()` (what Pi's
@@ -67,6 +68,16 @@ export function tempDir(
 	if (env === process.env) return tmpdir();
 	const fromEnv = os === "win32" ? env.TEMP || env.TMP : env.TMPDIR;
 	return fromEnv || tmpdir();
+}
+
+/**
+ * Absolute path to a file shipped next to a module: `moduleFile(import.meta.url, "..", "SOP.md")`.
+ * Use it for package assets (SOP.md, skills/). It does not use `URL.pathname`, which gives
+ * `/C:/...` on Windows. It does not use `require.resolve("<pkg>/package.json")`, which Node
+ * rejects when `exports` omits it.
+ */
+export function moduleFile(moduleUrl: string, ...segments: string[]): string {
+	return resolve(dirname(fileURLToPath(moduleUrl)), ...segments);
 }
 
 /** Pi cache root: `$XDG_CACHE_HOME/pi` or `~/.cache/pi`. */

@@ -16,9 +16,9 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { moduleFile } from "@xynogen/pix-runtime/paths";
 
 /**
  * Repo-root filenames scanned for per-project directives.
@@ -43,16 +43,9 @@ interface PromptSource {
 	maxBytes?: number;
 }
 
-/** Resolve the absolute path to SOP.md bundled inside this package. */
-function resolveOwnSopMd(): string | null {
-	try {
-		const require = createRequire(import.meta.url);
-		const pkgJson = require.resolve("@xynogen/pix-prompts/package.json");
-		return resolve(pkgJson, "..", "SOP.md");
-	} catch {
-		// Fallback: resolve relative to this file's location at runtime.
-		return resolve(new URL(".", import.meta.url).pathname, "..", "SOP.md");
-	}
+/** Absolute path to SOP.md bundled inside this package (src/../SOP.md). */
+export function resolveOwnSopMd(): string {
+	return moduleFile(import.meta.url, "..", "SOP.md");
 }
 
 /** Read a file, returning null on any error. Optionally cap size. */
@@ -84,9 +77,7 @@ export default function registerPrompts(pi: ExtensionAPI): void {
 		const sources: PromptSource[] = [];
 
 		// 1. Own SOP.md
-		if (ownSopMdPath) {
-			sources.push({ tag: "pix-agent-sop", path: ownSopMdPath });
-		}
+		sources.push({ tag: "pix-agent-sop", path: ownSopMdPath });
 
 		// 2. Repo directive files (root only)
 		for (const filename of REPO_DIRECTIVE_FILES) {

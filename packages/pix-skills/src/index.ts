@@ -14,7 +14,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { copyFile, mkdir, readFile, realpath, rename, rm, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, win32 } from "node:path";
-import { fileURLToPath } from "node:url";
 import { type ExtensionAPI, stripFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import {
@@ -28,7 +27,7 @@ import {
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { once } from "@xynogen/pix-runtime/once";
-import { agentDir } from "@xynogen/pix-runtime/paths";
+import { agentDir, moduleFile } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
 import {
 	directiveBlockReason,
@@ -56,8 +55,7 @@ export {
 
 /** Absolute path to this package's bundled skills/ directory. */
 function skillsRoot(): string {
-	const here = fileURLToPath(new URL(".", import.meta.url));
-	return resolve(here, "..", "skills");
+	return moduleFile(import.meta.url, "..", "skills");
 }
 
 /** Absolute path to the user-level skills directory (~/.pi/agent/skills). */

@@ -1,7 +1,17 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
-import { agentDir, binDir, cacheDir, expandHome, homeDir, projectDir, tempDir } from "./paths.ts";
+import { isAbsolute, join } from "node:path";
+import {
+	agentDir,
+	binDir,
+	cacheDir,
+	expandHome,
+	homeDir,
+	moduleFile,
+	projectDir,
+	tempDir,
+} from "./paths.ts";
 
 const HOME_KEY = process.platform === "win32" ? "USERPROFILE" : "HOME";
 const home = join("/", "home", "me");
@@ -46,5 +56,13 @@ describe("paths", () => {
 	test("expandHome leaves non-tilde paths alone", () => {
 		expect(expandHome("rel/x", { [HOME_KEY]: home })).toBe("rel/x");
 		expect(expandHome("~", { [HOME_KEY]: home })).toBe(home);
+	});
+});
+
+describe("moduleFile", () => {
+	test("resolves a sibling asset to an absolute path that exists", () => {
+		const p = moduleFile(import.meta.url, "paths.ts");
+		expect(isAbsolute(p)).toBe(true);
+		expect(existsSync(p)).toBe(true);
 	});
 });
