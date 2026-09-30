@@ -81,16 +81,35 @@ describe("viewportText", () => {
 		expect(CountingTextComponent.setCalls).toBe(1);
 	});
 
-	it("re-fits when width changes, and again when it returns", () => {
+	it("re-fits when width changes, but a return to a recent width hits the cache", () => {
 		CountingTextComponent.setCalls = 0;
+		CountingTextComponent.renderCalls = 0;
 		const text = viewportText(CountingTextComponent);
 		text.setText("abcdefghij");
 
 		text.render(20);
-		text.render(5); // width changed → re-fit
+		text.render(5); // new width → fit
 		text.render(5); // same → cached
-		text.render(20); // changed back → re-fit
-		expect(CountingTextComponent.setCalls).toBe(3);
+		text.render(20); // back to a recent width → cached, no re-fit
+		text.render(5); // back again → cached
+		expect(CountingTextComponent.setCalls).toBe(2);
+		expect(CountingTextComponent.renderCalls).toBe(2);
+		expect(text.render(20).map(plain)).toEqual(["abcdefghij"]);
+		expect(text.render(5).map(plain)).toEqual(["abcde"]);
+	});
+
+	it("keeps at most 4 widths, then fits again", () => {
+		CountingTextComponent.renderCalls = 0;
+		const text = viewportText(CountingTextComponent);
+		// Longer than every width, so each width has a different fit.
+		text.setText("abcdefghijklmnopqrstuvwxyz");
+		for (const w of [10, 11, 12, 13, 14]) text.render(w); // 5 widths → 10 is evicted
+		expect(CountingTextComponent.renderCalls).toBe(5);
+		text.render(14); // newest → cached
+		expect(CountingTextComponent.renderCalls).toBe(5);
+		text.render(10); // evicted → fit again
+		expect(CountingTextComponent.renderCalls).toBe(6);
+		expect(text.render(10).map(plain)).toEqual(["abcdefghij"]);
 	});
 
 	it("re-fits after setText changes the content", () => {

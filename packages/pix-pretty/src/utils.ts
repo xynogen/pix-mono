@@ -91,35 +91,37 @@ type FramedResultComponent = ResultComponent & {
 	};
 };
 
+// ponytail: 4 widths cover drag/split/fullscreen toggles. The ceiling is memory
+// (4 × card size). Raise MAX_WIDTHS if the profile `resize` column shows misses.
+const MAX_WIDTHS = 4;
+
+type ViewportEntry = {
+	/** Raw line → line fitted to this width. */
+	lines: Map<string, string>;
+	/** Inner render output for the current text at this width. */
+	rendered: string[] | undefined;
+};
+
 class ViewportText implements TextComponentLike, ViewportComponent {
 	private text = "";
-	// Pi re-renders every frame (spinner/streaming). Two-level cache:
-	//  1. per-line: `truncateToWidth` result keyed by raw line + width. Streaming
-	//     only appends to the tail, so already-fitted lines hit the cache and
-	//     only the new/changed lines pay the pi-tui width cost (was O(total
-	//     lines) per chunk, now O(new lines)).
-	//  2. per-blob: skip re-joining + re-setText'ing the inner component when
-	//     neither text nor width changed (idle frames, spinner ticks).
-	private fittedWidth = -1;
-	private fittedText = "";
-	private lineCache = new Map<string, string>();
-	private lineCacheWidth = -1;
-	// Render-output memo. The inner component's render is a pure function of
-	// (fittedText, width), so on an unchanged frame (spinner tick, idle) we skip
-	// calling into pi-tui AND skip the fallback split — otherwise both fired
-	// every single frame even when nothing changed. The returned array is shared
-	// by reference; pi-tui's render contract is read-only (the host joins/prints
-	// the lines, never mutates), so we don't defensively copy per frame.
-	private rendered: string[] = [];
-	private renderedWidth = -1;
+	// Pi re-renders every frame (spinner, streaming, resize). One entry per recent
+	// width holds that width's line cache and the inner render output.
+	//  - Idle frame (same text + width): return the cached lines. No pi-tui call.
+	//  - Streaming (text grows, same width): the line cache fits only new or changed lines.
+	//  - Resize back to a recent width: return that width's cached lines.
+	// The returned array is shared by reference. pi-tui treats render output as read-only.
+	private widths = new Map<number, ViewportEntry>();
+	// The inner component holds one text. Track it, so a fit that gives the same
+	// text does not force pi-tui to wrap again.
+	private innerText: string | undefined;
 
 	constructor(private readonly component: TextComponentLike) {}
 
 	setText(value: string): void {
 		if (value === this.text) return;
 		this.text = value;
-		this.fittedWidth = -1; // invalidate blob memo (line cache stays valid)
-		this.renderedWidth = -1; // invalidate render-output memo
+		// Render output is stale. Line caches stay valid, because they key on the raw line.
+		for (const entry of this.widths.values()) entry.rendered = undefined;
 	}
 
 	getText(): string {
@@ -127,46 +129,48 @@ class ViewportText implements TextComponentLike, ViewportComponent {
 	}
 
 	render(width: number): string[] {
-		if (width !== this.fittedWidth) {
-			if (width !== this.lineCacheWidth) {
-				this.lineCache.clear(); // width changed → every line must re-fit
-				this.lineCacheWidth = width;
+		let entry = this.widths.get(width);
+		if (entry) {
+			// Refresh recency: Map keeps insertion order, so re-insert moves it to the end.
+			this.widths.delete(width);
+			this.widths.set(width, entry);
+		} else {
+			entry = { lines: new Map(), rendered: undefined };
+			this.widths.set(width, entry);
+			if (this.widths.size > MAX_WIDTHS) {
+				const oldest = this.widths.keys().next().value;
+				if (oldest !== undefined) this.widths.delete(oldest);
 			}
-			const cache = this.lineCache;
-			const lines = this.text.split("\n");
-			// Bound the cache so a long streaming log can't grow it without limit.
-			// The working set is the visible line count; a generous multiple keeps
-			// steady-state hits while capping worst-case memory. Reset when exceeded
-			// rather than LRU-evicting — simpler, and a width-stable frame refills it.
-			if (cache.size > 4 * lines.length + 256) cache.clear();
-			this.fittedText = lines
-				.map((line) => {
-					let fitted = cache.get(line);
-					if (fitted === undefined) {
-						fitted = truncateToWidth(line, width, "");
-						cache.set(line, fitted);
-					}
-					return fitted;
-				})
-				.join("\n");
-			this.fittedWidth = width;
-			this.renderedWidth = -1; // fitted text rebuilt → render output is stale
-			this.component.setText(this.fittedText);
 		}
-		if (width !== this.renderedWidth) {
-			this.rendered = this.component.render?.(width) ?? this.fittedText.split("\n");
-			this.renderedWidth = width;
+		if (entry.rendered) return entry.rendered;
+
+		const cache = entry.lines;
+		const lines = this.text.split("\n");
+		// Bound the cache so a long streaming log cannot grow it without limit.
+		if (cache.size > 4 * lines.length + 256) cache.clear();
+		const fittedText = lines
+			.map((line) => {
+				let fitted = cache.get(line);
+				if (fitted === undefined) {
+					fitted = truncateToWidth(line, width, "");
+					cache.set(line, fitted);
+				}
+				return fitted;
+			})
+			.join("\n");
+		if (fittedText !== this.innerText) {
+			this.component.setText(fittedText);
+			this.innerText = fittedText;
 		}
-		return this.rendered;
+		entry.rendered = this.component.render?.(width) ?? fittedText.split("\n");
+		return entry.rendered;
 	}
 
 	invalidate(): void {
-		// invalidate = "output stale for reasons other than (text,width)" — theme /
-		// style change. Fitting is pure on (text,width) so fittedText/lineCache stay
-		// valid, but the RENDER output (colors) may differ, so drop the render memo;
-		// otherwise a same-width frame after invalidate would serve pre-invalidate
-		// output forever.
-		this.renderedWidth = -1;
+		// invalidate = output stale for reasons other than (text, width): a theme or
+		// style change. Fitting is pure on (text, width), so line caches stay valid.
+		// The render output (colors) may differ, so drop every width's render memo.
+		for (const entry of this.widths.values()) entry.rendered = undefined;
 		this.component.invalidate?.();
 	}
 }
