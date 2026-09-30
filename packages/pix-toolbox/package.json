@@ -35,7 +35,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.11.2"
+		"@xynogen/pix-pretty": "^1.29.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

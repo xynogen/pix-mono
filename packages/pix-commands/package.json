@@ -51,7 +51,7 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-data": "^0.5.0",
-		"@xynogen/pix-pretty": "^1.13.0",
+		"@xynogen/pix-pretty": "^1.29.0",
 		"@xynogen/pix-runtime": "^0.12.2"
 	}
 }

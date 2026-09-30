@@ -53,7 +53,7 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.28.0",
+		"@xynogen/pix-pretty": "^1.29.0",
 		"@xynogen/pix-runtime": "^0.12.2"
 	}
 }
