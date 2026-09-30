@@ -14,7 +14,8 @@
  *   async   extra time until the last async repaint (highlight, diff), 0 if none
  *   build   invalidate(): Pi reruns renderCall + renderResult (new args/result, expand, theme)
  *   frame   render(width) with no change (every TUI frame, up to 60/s)
- *   resize  render at a new width (terminal resize)
+ *   resize  render at a new width (terminal resize, 80 <-> 120, so a width cache hits)
+ *   new-w   render at a width the card never saw (first frame after a resize)
  * Budget: a 60 fps frame has 16.7 ms for the whole screen, not one card.
  * ponytail: CPU time only. Pi's line diff and the terminal write are not timed.
  */
@@ -136,9 +137,9 @@ for (const [label, s] of Object.entries(scenarios)) {
 		console.error(`${label}: execute failed: ${(error as Error).message}`);
 	}
 }
-process.chdir(origCwd);
 
-// Tool cards.
+// Tool cards. renderCall resolves relative paths against process.cwd(), as in a real session.
+// Keep cwd in the temp project until the cards are done.
 const rows: string[][] = [];
 for (const [label, s] of Object.entries(scenarios)) {
 	const def = tools.get(s.tool);
@@ -189,6 +190,15 @@ for (const [label, s] of Object.entries(scenarios)) {
 			},
 			Math.max(20, ITER / 5),
 		);
+		// A width the card never saw: the real cost of the first frame after a resize.
+		let fresh = 40;
+		const newWidth = time(
+			() => {
+				fresh = fresh >= 159 ? 40 : fresh + 1;
+				c.render(fresh);
+			},
+			Math.max(20, ITER / 5),
+		);
 		rows.push([
 			`${label}${expanded ? " +exp" : ""} [${type}]`,
 			(syncs[3] ?? 0).toFixed(2),
@@ -196,10 +206,13 @@ for (const [label, s] of Object.entries(scenarios)) {
 			build.toFixed(3),
 			frame.toFixed(3),
 			resize.toFixed(3),
+			newWidth.toFixed(3),
 			String(c.render(WIDTH).length),
 		]);
 	}
 }
+
+process.chdir(origCwd);
 
 // Prompt editor with and without chips.
 const editorTheme = { borderColor: (t: string) => t, selectList: {} };
@@ -238,7 +251,7 @@ const other: [string, number][] = [
 // Report.
 console.log(`Tool cards (ms per call, ${ITER} iterations, width ${WIDTH})`);
 console.log(
-	`${"scenario".padEnd(40)} ${"sync".padStart(8)} ${"async".padStart(8)} ${"build".padStart(8)} ${"frame".padStart(8)} ${"resize".padStart(8)} ${"lines".padStart(6)}`,
+	`${"scenario".padEnd(40)} ${"sync".padStart(8)} ${"async".padStart(8)} ${"build".padStart(8)} ${"frame".padStart(8)} ${"resize".padStart(8)} ${"new-w".padStart(8)} ${"lines".padStart(6)}`,
 );
 for (const r of rows) {
 	console.log(
