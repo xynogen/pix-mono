@@ -80,7 +80,7 @@ Write in Simplified Technical English. Use short common words, the active voice,
 const INTENSITY: Record<Exclude<Level, "off" | "micro">, string> = {
 	lite: `\
 STE-flavored words. Keep the sentence, tense, active-voice, and no-phrasal-verb discipline. \
-Relax the strict dictionary. Apply Layer 2 lightly: lead with the answer, no preamble or closer.
+Relax the strict dictionary. Apply the reply shape lightly: lead with the answer, no preamble or closer.
 Example: "The component re-renders because you create a new object reference each render. Wrap it in \`useMemo\`."`,
 
 	full: `\
@@ -109,6 +109,9 @@ Boundaries: this governs prose, not code. "stop caveman" or "normal mode" revert
 export function buildPrompt(level: Level): string {
 	if (level === "off") return "";
 	if (level === "micro") return MICRO_PROMPT;
+	// ponytail: lite relaxes most of BASE, so it ships the short MICRO rules + its intensity (~800 tokens less).
+	if (level === "lite")
+		return [MICRO_PROMPT, "", `Intensity: ${INTENSITY.lite}`, "", SAFETY].join("\n");
 	return [BASE, "", `Intensity: ${INTENSITY[level]}`, "", SAFETY].join("\n");
 }
 

@@ -119,6 +119,8 @@ export function registerEditTool(
 	pi.registerTool({
 		...origEdit,
 		name: "edit",
+		// The edit description and schema already carry these rules. Drop the <rules> copy (~110 tokens/turn).
+		promptGuidelines: [],
 		renderShell: "self",
 
 		async execute(

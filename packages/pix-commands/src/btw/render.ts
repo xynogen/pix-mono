@@ -57,7 +57,7 @@ export function registerBtwRenderer(
 		}
 
 		// Reasoning is preserved but collapsed by default: shown only when the host
-		// requests the expanded view, never discarded (see AGENTS.md §3).
+		// requests the expanded view, never discarded (see AGENTS.md §1.3).
 		if (details.thinking) {
 			if (options.expanded) {
 				card.addChild(new Text(theme.fg("dim", theme.bold("Reasoning")), 0, 0));

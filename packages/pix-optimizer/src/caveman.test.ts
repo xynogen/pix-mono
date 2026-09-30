@@ -186,8 +186,8 @@ describe("buildPrompt", () => {
 		}
 	});
 
-	it("includes both STE layers for all standard levels", () => {
-		const standard = ["lite", "full", "ultra"] as Level[];
+	it("includes both STE layers for full and ultra", () => {
+		const standard = ["full", "ultra"] as Level[];
 		for (const l of standard) {
 			expect(buildPrompt(l)).toContain("LAYER 1");
 			expect(buildPrompt(l)).toContain("LAYER 2");
@@ -199,6 +199,12 @@ describe("buildPrompt", () => {
 		for (const l of standard) {
 			expect(buildPrompt(l)).toContain("When to break Layer 2");
 		}
+	});
+
+	it("lite ships the short rule set, not the full BASE", () => {
+		const lite = buildPrompt("lite");
+		expect(lite).toContain("STE output");
+		expect(lite.length).toBeLessThan(buildPrompt("full").length / 2);
 	});
 
 	it("keeps articles (STE 4.5) instead of dropping them", () => {

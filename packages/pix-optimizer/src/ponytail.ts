@@ -94,8 +94,7 @@ error handling that prevents data loss, security, accessibility, or anything the
 The hardware is never the spec ideal. Leave the calibration knob.
 Lazy code without its check is unfinished. Non-trivial logic leaves ONE runnable check behind \
 (an assert-based self-check or one small test file, no frameworks). A trivial one-liner needs no test.
-Output: write the code first, then at most three short lines — what you skipped, and when to add it. \
-Write these lines in Simplified Technical English: short common words, the active voice, and simple tenses.
+Output: write the code first, then at most three short lines — what you skipped, and when to add it.
 Boundaries: ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode" reverts.`;
 
 /**
