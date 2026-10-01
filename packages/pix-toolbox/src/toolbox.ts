@@ -12,6 +12,7 @@
  *   /toolbox list [query]     — text search (no picker)
  */
 
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type {
@@ -93,7 +94,7 @@ export function buildRows(tools: ToolInfo[], stateOf?: (name: string) => ToolSta
 			description: firstSentence(t.description ?? ""),
 			mcp: isMcpTool(t),
 			source: t.sourceInfo?.source,
-			exposure: (t as ToolInfo & { exposure?: string }).exposure ?? "direct",
+			exposure: t.exposure ?? "direct",
 		}));
 	const rank = (r: ToolRow): number =>
 		TOOL_STATES.indexOf(stateOf?.(r.name) ?? (r.exposure === "deferred" ? "deferred" : "enabled"));
@@ -203,13 +204,37 @@ const isStringArray = (v: unknown): v is string[] =>
 	Array.isArray(v) && v.every((x) => typeof x === "string");
 
 /**
+ * MCP codemode tools are named as JS identifiers now (`mcp__my-srv__a-b` → `mcp__my_srv__a_b`).
+ * Map saved names to that form so a disabled tool stays disabled. When `known` lacks that form,
+ * the tool collided or passed 64 chars and carries a hash suffix. Rebuild it from the old name.
+ * Keep in sync with pix-mcp `codemodeToolName` (packages cannot import each other).
+ */
+export function migrateToolName(name: string, known?: ReadonlySet<string>): string {
+	if (!name.startsWith("mcp__")) return name;
+	const plain = name.replace(/[^A-Za-z0-9_]/g, "_");
+	if (!known || known.has(plain)) return plain;
+	// Server and tool names can both hold `__`, so try every split. Only a known name matches.
+	for (let split = name.indexOf("__", 5); split >= 0; split = name.indexOf("__", split + 1)) {
+		const key = `${name.slice(5, split)}\0${name.slice(split + 2)}`;
+		const hash = createHash("sha256").update(key).digest("hex").slice(0, 8);
+		const hashed = `${plain.slice(0, 64 - hash.length - 1)}_${hash}`;
+		if (known.has(hashed)) return hashed;
+	}
+	return plain;
+}
+
+/**
  * Disabled tool names from a saved state, or undefined when it holds none.
  * A legacy allow-list maps to "every known non-core tool not in it".
  */
 export function disabledFromState(raw: unknown, allNames: string[]): string[] | undefined {
 	const state = raw as ToolboxState | undefined;
-	if (isStringArray(state?.disabledTools))
-		return state.disabledTools.filter((n) => !CORE_TOOLS.has(n));
+	if (isStringArray(state?.disabledTools)) {
+		const known = new Set(allNames);
+		return state.disabledTools
+			.map((n) => migrateToolName(n, known))
+			.filter((n) => !CORE_TOOLS.has(n));
+	}
 	if (isStringArray(state?.enabledTools)) {
 		const enabled = new Set(state.enabledTools);
 		return allNames.filter((n) => !enabled.has(n) && !CORE_TOOLS.has(n));
@@ -218,13 +243,13 @@ export function disabledFromState(raw: unknown, allNames: string[]): string[] | 
 }
 
 /** Deferred tool names the user chose to load on every session start. */
-export function loadedFromState(raw: unknown): string[] {
+export function loadedFromState(raw: unknown, allNames: string[] = []): string[] {
 	const loaded = (raw as ToolboxState | undefined)?.loadedTools;
-	return isStringArray(loaded) ? loaded : [];
+	const known = new Set(allNames);
+	return isStringArray(loaded) ? loaded.map((n) => migrateToolName(n, known)) : [];
 }
 
-const exposureOf = (tool: ToolInfo): string =>
-	(tool as ToolInfo & { exposure?: string }).exposure ?? "direct";
+const exposureOf = (tool: ToolInfo): string => tool.exposure ?? "direct";
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -305,7 +330,7 @@ function createState(pi: ExtensionAPI) {
 		const fromSession = fromFile ? undefined : loadFromSession(ctx);
 		const disabled = fromFile ?? disabledFromState(fromSession, names) ?? [];
 		disabledTools = new Set(disabled);
-		loadedTools = new Set(loadedFromState(fromFile ? file?.raw : fromSession));
+		loadedTools = new Set(loadedFromState(fromFile ? file?.raw : fromSession, names));
 		initialized = true;
 		apply();
 		// Migrate a legacy allow-list file to the disabled-list form.

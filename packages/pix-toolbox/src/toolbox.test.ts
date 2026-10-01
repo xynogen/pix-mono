@@ -5,6 +5,7 @@ import { join } from "node:path";
 import registerToolbox, {
 	buildRows,
 	disabledFromState,
+	loadedFromState,
 	nextState,
 	parseTargets,
 	renderList,
@@ -474,5 +475,29 @@ describe("toolbox.json persistence", () => {
 		expect(disabledFromState({ disabledTools: ["bash", "grep"] }, [])).toEqual(["grep"]);
 		expect(disabledFromState({ enabledTools: [] }, ["read", "grep"])).toEqual(["grep"]);
 		expect(disabledFromState({}, ["grep"])).toBeUndefined();
+	});
+
+	test("saved MCP names migrate to codemode identifiers", () => {
+		const state = {
+			disabledTools: ["mcp__my-srv__a-b", "web-search"],
+			loadedTools: ["mcp__x__y.z"],
+		};
+		expect(disabledFromState(state, [])).toEqual(["mcp__my_srv__a_b", "web-search"]);
+		expect(loadedFromState(state)).toEqual(["mcp__x__y_z"]);
+	});
+
+	test("saved MCP names find their hash-suffixed codemode name", () => {
+		// Literal values come from pix-mcp codemodeToolName. Its tests pin the same values.
+		const long = `mcp__srv__${"x".repeat(70)}`;
+		const collided = "mcp__a_b__c_695274f6";
+		const capped = `mcp__srv__${"x".repeat(45)}_fe6c03e8`;
+		const state = { disabledTools: ["mcp__a-b__c"], loadedTools: [long] };
+		expect(disabledFromState(state, [collided, capped])).toEqual([collided]);
+		expect(loadedFromState(state, [collided, capped])).toEqual([capped]);
+		// A server name with `__`: every split is tried, only the known name matches.
+		const dunder = "mcp__a__b__c_a92700ce";
+		expect(disabledFromState({ disabledTools: ["mcp__a__b__c"] }, [dunder])).toEqual([dunder]);
+		// Unknown everywhere: keep the plain sanitized name.
+		expect(loadedFromState({ loadedTools: ["mcp__q__r-s"] }, [dunder])).toEqual(["mcp__q__r_s"]);
 	});
 });
