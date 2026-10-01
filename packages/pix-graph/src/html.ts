@@ -110,6 +110,7 @@ body { background: #0f0f1a; color: #e0e0e0; font: 13px/1.4 -apple-system, BlinkM
 #search { width: 100%; background: #0f0f1a; border: 1px solid #3a3a5e; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font: inherit; outline: none; }
 #search:focus { border-color: #a882ff; }
 #search-results { max-height: 180px; overflow-y: auto; margin-top: 6px; }
+#link-controls { padding: 4px 12px; border-bottom: 1px solid #2a2a4e; }
 h3 { font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
 #info-panel { padding: 14px; border-bottom: 1px solid #2a2a4e; min-height: 140px; max-height: 45vh; display: flex; flex-direction: column; }
 #info-content { font-size: 13px; color: #ccc; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
@@ -136,6 +137,7 @@ input[type=checkbox] { accent-color: #a882ff; flex: none; }
 <main id="graph" aria-label="Code graph. Drag to pan, scroll to zoom, drag a node to move it."><div id="loading">Loading graph…</div></main>
 <aside id="sidebar">
 <div id="search-wrap"><input id="search" type="search" placeholder="Search nodes…" autocomplete="off" aria-label="Search nodes"><div id="search-results"></div></div>
+<div id="link-controls"><label><input type="checkbox" id="all-links">Show all links</label></div>
 <div id="info-panel"><h3>Node info</h3><div id="info-content" aria-live="polite"><span class="empty">Click a node to inspect it</span></div></div>
 <div id="legend-wrap"><h3>Communities</h3><div id="legend-controls"><label><input type="checkbox" id="all" checked>Select all</label></div><div id="legend"></div></div>
 <div id="stats"></div>
@@ -185,16 +187,39 @@ for (let g = 0, t = 0; g < members.length; g++) {
 	});
 }
 
+// ponytail: for graphs with 1000+ nodes the overview shows only confirmed links within a
+// community. The checkbox restores all links; focus always shows every link of the chosen node.
+// Upgrade to a link-strength slider if this two-level view is not enough.
+let showAllLinks = N < 1000;
+$("all-links").checked = showAllLinks;
+$("all-links").addEventListener("change", (e) => { showAllLinks = e.target.checked; redraw(); });
 // Edge buckets: inside a community, an edge takes the community color. Cross-community edges stay
 // faint gray. Inferred edges are fainter than extracted ones. Calibration knob: the alpha values.
 const links = DATA.links.map(([s, t, r, guess]) => ({ source: s, target: t, inside: DATA.nodes[s][1] === DATA.nodes[t][1], guess: !!guess }));
-const BUCKETS = [{ color: "rgba(150,150,190,0.035)", links: [] }, { color: "rgba(150,150,190,0.09)", links: [] }];
-PALETTE.forEach((hex) => BUCKETS.push({ color: rgba(hex, 0.22), links: [] }, { color: rgba(hex, 0.5), links: [] }));
+const BUCKETS = [{ color: "rgba(150,150,190,0.035)", links: [], detail: true }, { color: "rgba(150,150,190,0.09)", links: [], detail: true }];
+PALETTE.forEach((hex) => BUCKETS.push({ color: rgba(hex, 0.22), links: [], detail: true }, { color: rgba(hex, 0.5), links: [], detail: false }));
 for (const l of links) BUCKETS[(l.inside ? 2 + 2 * (DATA.nodes[l.source][1] % PALETTE.length) : 0) + (l.guess ? 0 : 1)].links.push(l);
 
 const hidden = new Set();
 let sim, zoom, canvas, ctx, transform, W = 0, H = 0, dpr = 1, hover = -1, selected = -1, queued = false;
 const redraw = () => { if (!queued) { queued = true; requestAnimationFrame(draw); } };
+
+// Calibration knobs for motion. Obsidian fades the hover highlight in and out. Without a fade the
+// dim snaps on in one frame. FADE_MS is the fade time. ZOOM_MS is the click-to-focus camera move.
+// vis-network (graphify) uses 1000 ms easeInOutQuad for focus. 900 ms with d3.easeCubicInOut
+// feels the same, but the long tail is shorter.
+const FADE_MS = 400, ZOOM_MS = 900;
+// fade goes 0 -> 1 when a focus node appears and 1 -> 0 when it goes. lastFocus keeps the old
+// highlight on screen while it fades out.
+let fade = 0, fadeFrom = 0, fadeTo = 0, fadeStart = 0, lastFocus = -1;
+function setFocusTarget() {
+	const target = hover >= 0 || selected >= 0 ? 1 : 0;
+	if (target === fadeTo) return redraw();
+	fadeFrom = fade; fadeTo = target; fadeStart = performance.now();
+	redraw();
+}
+// Ease in and out, so the dim starts soft and ends soft. Ease-out alone reached 61% in 70 ms.
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const shown = (n) => !hidden.has(n.g);
 
 function neighbors(i) {
@@ -211,14 +236,25 @@ function draw() {
 	ctx.fillRect(0, 0, W, H);
 	ctx.translate(transform.x, transform.y);
 	ctx.scale(k, k);
-	const focus = hover >= 0 ? hover : selected;
-	const near = focus >= 0 ? neighbors(focus) : null;
+	if (fade !== fadeTo) {
+		const t = Math.min(1, (performance.now() - fadeStart) / FADE_MS);
+		fade = fadeFrom + (fadeTo - fadeFrom) * easeInOut(t);
+		if (t >= 1) fade = fadeTo;
+		else redraw();
+	}
+	let focus = hover >= 0 ? hover : selected;
+	if (focus >= 0) lastFocus = focus;
+	else if (fade > 0) focus = lastFocus;
+	const near = focus >= 0 && fade > 0 ? neighbors(focus) : null;
+	// dim: the opacity of everything outside the focus. Background edges go 1 -> 0.2, nodes 1 -> 0.18.
+	const dim = (to) => 1 - (1 - to) * fade;
 	const x0 = -transform.x / k, y0 = -transform.y / k, x1 = x0 + W / k, y1 = y0 + H / k;
 	const inView = (n) => n.x + n.r > x0 && n.x - n.r < x1 && n.y + n.r > y0 && n.y - n.r < y1;
 
 	ctx.lineWidth = 1 / k;
-	ctx.globalAlpha = near ? 0.2 : 1;
+	ctx.globalAlpha = near ? dim(0.2) : 1;
 	for (const b of BUCKETS) {
+		if (!showAllLinks && b.detail) continue;
 		ctx.strokeStyle = b.color;
 		ctx.beginPath();
 		for (const l of b.links) {
@@ -232,7 +268,7 @@ function draw() {
 
 	byColor.forEach((list, c) => {
 		ctx.fillStyle = PALETTE[c];
-		ctx.globalAlpha = near ? 0.18 : 1;
+		ctx.globalAlpha = near ? dim(0.18) : 1;
 		ctx.beginPath();
 		for (const n of list) {
 			if (!shown(n) || (near && near.has(n.i)) || !inView(n)) continue;
@@ -252,12 +288,14 @@ function draw() {
 	}
 	for (const i of new Set([selected, hover])) {
 		if (i < 0) continue;
+		ctx.globalAlpha = i === hover ? Math.max(fade, 0.4) : 1;
 		ctx.strokeStyle = i === hover ? HI : "#ffffff";
 		ctx.lineWidth = 2 / k;
 		ctx.beginPath();
 		ctx.arc(nodes[i].x, nodes[i].y, nodes[i].r + 2 / k, 0, TAU);
 		ctx.stroke();
 	}
+	ctx.globalAlpha = 1;
 
 	// Labels keep one screen size. They fade in by on-screen node radius, so hubs label first.
 	// A label that would overlap one already drawn is skipped, like Obsidian. LABEL_ORDER puts the
@@ -273,7 +311,10 @@ function draw() {
 	for (const i of order) {
 		const n = nodes[i];
 		if (!shown(n) || !inView(n) || (i !== focus && near && !near.has(i))) continue;
-		const a = i === focus ? 1 : Math.min(1, Math.max(0, (n.r * k - (near ? LABEL_AT / 2 : LABEL_AT)) / LABEL_AT));
+		const base = Math.min(1, Math.max(0, (n.r * k - LABEL_AT) / LABEL_AT));
+		const lit = i === focus ? 1 : Math.min(1, Math.max(0, (n.r * k - LABEL_AT / 2) / LABEL_AT));
+		// A neighbor label blends from its normal zoom fade to its focus fade.
+		const a = near ? base + (lit - base) * fade : base;
 		if (a < 0.03) continue;
 		const text = DATA.nodes[i][0];
 		const w = ctx.measureText(text).width * k, sx = transform.applyX(n.x), sy = transform.applyY(n.y) + n.r * k + 3;
@@ -293,7 +334,7 @@ const LABEL_ORDER = [...degree.keys()].sort((a, b) => degree[b] - degree[a]);
 
 // The focus node's edges: accent color, arrowheads, inferred edges dashed.
 function drawFocusEdges(i, k) {
-	ctx.globalAlpha = 0.75;
+	ctx.globalAlpha = 0.75 * fade;
 	ctx.strokeStyle = HI;
 	ctx.fillStyle = HI;
 	ctx.lineWidth = 1 / k;
@@ -385,9 +426,9 @@ function start() {
 		if (i === hover) return;
 		hover = i;
 		canvas.style.cursor = i >= 0 ? "pointer" : "grab";
-		redraw();
+		setFocusTarget();
 	});
-	canvas.addEventListener("pointerleave", () => { hover = -1; redraw(); });
+	canvas.addEventListener("pointerleave", () => { hover = -1; setFocusTarget(); });
 	canvas.addEventListener("click", (e) => {
 		const i = find(transform.invertX(e.offsetX), transform.invertY(e.offsetY));
 		i >= 0 ? showInfo(i) : clearInfo();
@@ -402,10 +443,10 @@ function row(label, meta, g, act) {
 	return b;
 }
 
-function clearInfo() { selected = -1; redraw(); $("info-content").innerHTML = '<span class="empty">Click a node to inspect it</span>'; }
+function clearInfo() { selected = -1; setFocusTarget(); $("info-content").innerHTML = '<span class="empty">Click a node to inspect it</span>'; }
 
 function showInfo(i) {
-	selected = i; redraw();
+	selected = i; setFocusTarget();
 	const [label, g, loc] = DATA.nodes[i];
 	const near = new Map();
 	for (const k of adj[i]) {
@@ -425,7 +466,7 @@ function focusNode(i) {
 	showInfo(i);
 	if (!zoom) return;
 	const k = Math.max(transform.k, 1.5);
-	d3.select(canvas).transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-n.x, -n.y));
+	d3.select(canvas).transition().duration(ZOOM_MS).ease(d3.easeCubicInOut).call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-n.x, -n.y));
 }
 
 // Community legend: a checkbox shows or hides every member, like graphify.

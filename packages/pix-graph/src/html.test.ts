@@ -50,6 +50,14 @@ describe("renderGraphHtml", () => {
 		expect(JSON.parse(json)).toEqual(graphPageData(graph));
 	});
 
+	test("offers a reversible overview on large graphs without hiding focused links", () => {
+		const html = renderGraphHtml(graph);
+		expect(html).toContain('<input type="checkbox" id="all-links">Show all links');
+		expect(html).toMatch(/N < 1000/);
+		expect(html).toMatch(/!showAllLinks && b\.detail/);
+		expect(html).toMatch(/if \(near\) drawFocusEdges\(focus, k\)/);
+	});
+
 	test("pins the graph box to the viewport so the canvas cannot grow without limit", () => {
 		// Regression: an unbounded graph box let the height: 100% canvas grow ~480px/2s.
 		const html = renderGraphHtml(graph);
