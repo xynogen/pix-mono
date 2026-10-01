@@ -32,7 +32,7 @@
       "name": "@xynogen/pix-aria2",
       "version": "0.1.4",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.28.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.0",
         "maria2": "^0.4.1",
       },
@@ -87,7 +87,7 @@
       "version": "0.6.8",
       "dependencies": {
         "@xynogen/pix-data": "^0.5.0",
-        "@xynogen/pix-pretty": "^1.13.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -100,11 +100,11 @@
       "name": "@xynogen/pix-core",
       "version": "0.5.60",
       "dependencies": {
-        "@xynogen/pix-ask": "^0.2.32",
+        "@xynogen/pix-ask": "^0.2.33",
         "@xynogen/pix-bash": "^0.2.9",
         "@xynogen/pix-commands": "^0.6.8",
         "@xynogen/pix-data": "^0.5.3",
-        "@xynogen/pix-diagnostics": "^0.3.4",
+        "@xynogen/pix-diagnostics": "^0.3.5",
         "@xynogen/pix-display": "^0.2.3",
         "@xynogen/pix-edit": "^0.2.7",
         "@xynogen/pix-find": "^0.3.3",
@@ -116,13 +116,13 @@
         "@xynogen/pix-nudge": "^0.3.2",
         "@xynogen/pix-optimizer": "^1.2.2",
         "@xynogen/pix-powershell": "^0.1.1",
-        "@xynogen/pix-pretty": "^1.28.1",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-prompts": "^0.5.4",
         "@xynogen/pix-read": "^0.4.2",
         "@xynogen/pix-runtime": "^0.12.2",
         "@xynogen/pix-skills": "^0.8.11",
-        "@xynogen/pix-subagent": "^0.10.4",
-        "@xynogen/pix-todo": "^0.4.4",
+        "@xynogen/pix-subagent": "^0.10.5",
+        "@xynogen/pix-todo": "^0.4.5",
         "@xynogen/pix-update": "^0.2.4",
         "@xynogen/pix-welcome": "^0.2.5",
         "@xynogen/pix-write": "^0.2.7",
@@ -163,7 +163,7 @@
       "name": "@xynogen/pix-display",
       "version": "0.2.3",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.21.0",
+        "@xynogen/pix-pretty": "^1.29.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -186,7 +186,7 @@
       "name": "@xynogen/pix-env",
       "version": "0.2.3",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.16.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.0",
       },
       "peerDependencies": {
@@ -200,7 +200,7 @@
       "name": "@xynogen/pix-find",
       "version": "0.3.3",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.19.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -212,7 +212,7 @@
       "version": "0.2.7",
       "dependencies": {
         "@xynogen/pix-data": "^0.5.3",
-        "@xynogen/pix-pretty": "^1.28.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.0",
       },
       "peerDependencies": {
@@ -253,7 +253,7 @@
       "name": "@xynogen/pix-grep",
       "version": "0.3.3",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.19.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -268,7 +268,7 @@
       "name": "@xynogen/pix-hunk",
       "version": "0.1.5",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.28.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.0",
       },
       "peerDependencies": {
@@ -281,7 +281,7 @@
       "name": "@xynogen/pix-ls",
       "version": "0.3.3",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.19.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -323,7 +323,7 @@
       "version": "0.2.11",
       "dependencies": {
         "@xynogen/pix-data": "^0.5.3",
-        "@xynogen/pix-pretty": "^1.11.2",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -345,7 +345,7 @@
       "name": "@xynogen/pix-optimizer",
       "version": "1.2.2",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.28.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -397,7 +397,7 @@
       "name": "@xynogen/pix-prompts",
       "version": "0.5.4",
       "dependencies": {
-        "@xynogen/pix-runtime": "^0.12.0",
+        "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -428,7 +428,7 @@
       "version": "0.3.2",
       "dependencies": {
         "@vscode/ripgrep": "^1.18.0",
-        "@xynogen/pix-pretty": "^1.28.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.0",
       },
       "peerDependencies": {
@@ -441,8 +441,8 @@
       "version": "0.8.11",
       "dependencies": {
         "@xynogen/pix-gate": "^0.3.3",
-        "@xynogen/pix-pretty": "^1.25.0",
-        "@xynogen/pix-runtime": "^0.12.0",
+        "@xynogen/pix-pretty": "^1.29.0",
+        "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -511,7 +511,7 @@
       "name": "@xynogen/pix-toolbox",
       "version": "0.1.17",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.11.2",
+        "@xynogen/pix-pretty": "^1.29.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -534,7 +534,7 @@
       "name": "@xynogen/pix-voice",
       "version": "0.1.5",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.28.0",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -562,7 +562,7 @@
       "name": "@xynogen/pix-welcome",
       "version": "0.2.5",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.11.2",
+        "@xynogen/pix-pretty": "^1.29.0",
         "@xynogen/pix-runtime": "^0.12.2",
       },
       "peerDependencies": {
@@ -584,7 +584,7 @@
     },
   },
   "overrides": {
-    "brace-expansion": "5.0.9",
+    "brace-expansion": "5.0.12",
     "fast-uri": "3.1.8",
     "protobufjs": "7.6.5",
     "undici": "8.10.2",
@@ -972,7 +972,7 @@
 
     "bowser": ["bowser@2.14.1", "", {}, "sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg=="],
 
-    "brace-expansion": ["brace-expansion@5.0.9", "", { "dependencies": { "balanced-match": "^4.0.2" } }, "sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg=="],
+    "brace-expansion": ["brace-expansion@5.0.12", "", { "dependencies": { "balanced-match": "^4.0.2" } }, "sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ=="],
 
     "buffer-equal-constant-time": ["buffer-equal-constant-time@1.0.1", "", {}, "sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA=="],
 
@@ -1106,7 +1106,7 @@
 
     "highlight.js": ["highlight.js@10.7.3", "", {}, "sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A=="],
 
-    "hono": ["hono@4.13.5", "", {}, "sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw=="],
+    "hono": ["hono@4.13.7", "", {}, "sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ=="],
 
     "hosted-git-info": ["hosted-git-info@9.0.3", "", { "dependencies": { "lru-cache": "^11.1.0" } }, "sha512-Hc+ghLoSt6QaYZUv0WBiIvmMDZuZZ7oaDvdH8MbfOO4lOsxdXLEvuC6ePoGs9H1X9oCLyq6+NVN0MKqD+ydxyg=="],
 
@@ -1122,7 +1122,7 @@
 
     "inherits": ["inherits@2.0.4", "", {}, "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ=="],
 
-    "ip-address": ["ip-address@10.5.1", "", {}, "sha512-EXujUp9jyOI/chPgtqk6uy7fDq8AeCB/WlfEuPg9LN0fN9lzKAKfuDYi60SMhHwgUiEhZvVYsbGZN+RUU1INiA=="],
+    "ip-address": ["ip-address@10.7.1", "", {}, "sha512-4OUAqU9Z1i3vCnS05hzGiFnEMDpQ+62pAD/MVQOp83fYyNC8GleCqaS0QikQBmcWCrKFiUs/B8ztRRiYOAXuCA=="],
 
     "ipaddr.js": ["ipaddr.js@1.9.1", "", {}, "sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g=="],
 
@@ -1300,7 +1300,7 @@
 
     "type-is": ["type-is@2.1.0", "", { "dependencies": { "content-type": "^2.0.0", "media-typer": "^1.1.0", "mime-types": "^3.0.0" } }, "sha512-faYHw0anBbc/kWF3zFTEnxSFOAGUX9GFbOBthvDdLsIlEoWOFOtS0zgCiQYwIskL9iGXZL3kAXD8OoZ4GmMATA=="],
 
-    "typebox": ["typebox@1.3.8", "", {}, "sha512-xYaJgF0KMvBViKWRaKTAtfR6sDt/yH6xAjGAHXYJxKxUF4pVyPXZZhIlwOg6cDIE81N7L0pyIHs136RHBm6rLQ=="],
+    "typebox": ["typebox@1.3.27", "", {}, "sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA=="],
 
     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
@@ -1340,13 +1340,7 @@
 
     "@aws-sdk/credential-provider-sso/@aws-sdk/token-providers": ["@aws-sdk/token-providers@3.1138.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/nested-clients": "^3.997.46", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-GpyAr0DD63YOEmYFM6Df+gJuIgC92MMTiBK4FTKfxii5MJ9ge20epR7LyroulscYlG89J+ZB2ivFDPjvfQhzdw=="],
 
-    "@earendil-works/pi-agent-core/typebox": ["typebox@1.3.27", "", {}, "sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA=="],
-
-    "@earendil-works/pi-ai/typebox": ["typebox@1.3.27", "", {}, "sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA=="],
-
     "@earendil-works/pi-coding-agent/chalk": ["chalk@6.0.0", "", {}, "sha512-2uNTXIuTTxk7ciZgAU1BQcgnchcG0xXnrs6jzkQfj9SsRa9M2s5zE8WT96hS6KmG4MzWHSrvH43DF1m4XRkrFg=="],
-
-    "@earendil-works/pi-coding-agent/typebox": ["typebox@1.3.27", "", {}, "sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA=="],
 
     "body-parser/content-type": ["content-type@2.0.0", "", {}, "sha512-j/O/d7GcZCyNl7/hwZAb606rzqkyvaDctLmckbxLzHvFBzTJHuGEdodATcP3yIRoDrLHkIATJuvzbFlp/ki2cQ=="],
 
