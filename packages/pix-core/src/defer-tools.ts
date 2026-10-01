@@ -14,15 +14,13 @@ export const CORE_TOOLS: ReadonlySet<string> = new Set(["read", "bash", "edit", 
 const TOOL_SEARCH = "tool_search";
 
 export default function deferNonCoreTools(pi: ExtensionAPI): void {
-	// SAFETY: the pinned Pi types predate `exposure`. The running host reads it.
-	type Tool = { name: string; exposure?: string };
-	const register = pi.registerTool.bind(pi) as (tool: Tool) => void;
-	pi.registerTool = ((tool: Tool) =>
+	const register = pi.registerTool.bind(pi);
+	pi.registerTool = (tool) =>
 		register(
 			CORE_TOOLS.has(tool.name) || (tool.exposure ?? "direct") !== "direct"
 				? tool
 				: { ...tool, exposure: "deferred" },
-		)) as unknown as ExtensionAPI["registerTool"];
+		);
 
 	// Pi registers tool_search inactive. Without it, deferred tools are unreachable.
 	pi.on("session_start", () => {
