@@ -213,7 +213,7 @@ describe("buildCodeGraph", () => {
 		expect(existsSync(join(out, "graph.json"))).toBe(true);
 		expect(existsSync(join(out, "graph.cleaned.json"))).toBe(true);
 		expect(existsSync(join(out, "GRAPH_REPORT.md"))).toBe(true);
-		expect(readFileSync(join(out, "graph.html"), "utf8")).toMatch(/new vis\.Network\(/);
+		expect(readFileSync(join(out, "graph.html"), "utf8")).toMatch(/d3\.forceSimulation\(/);
 
 		const graph = JSON.parse(readFileSync(join(out, "graph.json"), "utf8"));
 		expect(Array.isArray(graph.nodes)).toBe(true);

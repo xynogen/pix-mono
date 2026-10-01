@@ -50,10 +50,10 @@ describe("renderGraphHtml", () => {
 		expect(JSON.parse(json)).toEqual(graphPageData(graph));
 	});
 
-	test("pins the graph row to the viewport so the canvas cannot grow without limit", () => {
-		// Regression: an auto-height grid row let vis-network's height: 100% canvas grow ~480px/2s.
+	test("pins the graph box to the viewport so the canvas cannot grow without limit", () => {
+		// Regression: an unbounded graph box let the height: 100% canvas grow ~480px/2s.
 		const html = renderGraphHtml(graph);
-		expect(html).toMatch(/body \{[^}]*grid-template-rows: 100vh;[^}]*overflow: hidden;/);
+		expect(html).toMatch(/body \{[^}]*height: 100vh;[^}]*overflow: hidden;/);
 		expect(html).toMatch(/#graph \{[^}]*min-height: 0;[^}]*overflow: hidden;/);
 	});
 });
