@@ -60,6 +60,7 @@ bun packages/pix-graph/src/cli.ts path "<from>" "<to>"          # shortest path 
 | `.pi/graph/graph.json` | Full graph — nodes, links, community assignments |
 | `.pi/graph/graph.cleaned.json` | Same, with false inferred `calls` edges removed (validated against real TS bindings) |
 | `.pi/graph/GRAPH_REPORT.md` | Communities, god nodes (most-connected abstractions), surprising cross-file connections |
+| `.pi/graph/graph.html` | Interactive view for the user. The user opens it with `/graph`. Do not read it into context. |
 
 The `.pi/` directory is gitignored, so the graph never gets committed.
 

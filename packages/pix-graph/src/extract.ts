@@ -1,5 +1,6 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, sep } from "node:path";
+import { runToolSync } from "@xynogen/pix-runtime/exec";
 import ts from "typescript";
 import type { GraphLink, GraphNode } from "./analyzer.ts";
 import { createGraphParseCache, type GraphParseCache } from "./parse-cache.ts";
@@ -19,7 +20,6 @@ function byText(a: string, b: string): number {
 }
 
 const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage", "graphify-out"]);
 
 /** Slugify a path fragment to the `[a-z0-9_]` node-id alphabet. */
 function slug(text: string): string {
@@ -42,24 +42,25 @@ function entityNodeId(fileId: string, name: string): string {
 	return slug(`${fileId}_${name}`);
 }
 
-/** Walk a directory tree, yielding code files (respects SKIP_DIRS). */
+/**
+ * List code files under `root`. ripgrep applies `.gitignore`, `.ignore`, `.rgignore` and
+ * `.dockerignore`. Hidden paths are scanned unless an ignore file excludes them, and a
+ * `!path` line in `.ignore` re-includes a gitignored path.
+ */
 export function collectFiles(root: string): string[] {
-	const out: string[] = [];
-	const walk = (dir: string): void => {
-		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			if (entry.name.startsWith(".") && entry.name !== ".") continue;
-			const full = join(dir, entry.name);
-			if (entry.isDirectory()) {
-				if (!SKIP_DIRS.has(entry.name)) walk(full);
-			} else if (CODE_EXTENSIONS.has(extname(entry.name))) {
-				out.push(full);
-			}
-		}
-	};
-	const stat = statSync(root);
-	if (stat.isDirectory()) walk(root);
-	else if (CODE_EXTENSIONS.has(extname(root))) out.push(root);
-	return out.sort(byText);
+	if (!statSync(root).isDirectory()) return CODE_EXTENSIONS.has(extname(root)) ? [root] : [];
+	const args = ["--files", "--hidden", "--no-require-git", "--glob", "!.git"];
+	for (const ext of CODE_EXTENSIONS) args.push("--glob", `*${ext}`);
+	if (existsSync(join(root, ".dockerignore"))) args.push("--ignore-file", ".dockerignore");
+	const r = runToolSync("rg", args, { cwd: root, timeoutMs: 30_000 });
+	// rg exits 1 when no file matches.
+	if (r.code === 1 && !r.stderr.trim()) return [];
+	if (r.code !== 0) throw new Error(`rg --files failed in ${root}: ${r.stderr.trim() || r.code}`);
+	return r.stdout
+		.split("\n")
+		.filter(Boolean)
+		.map((rel) => join(root, rel))
+		.sort(byText);
 }
 
 function line(source: ts.SourceFile, node: ts.Node): string {

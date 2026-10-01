@@ -13,7 +13,7 @@
  * schema; kept minimal (single tool, two modes) per the token-budget rule.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -28,9 +28,11 @@ import {
 import { formatDuration, SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
+import { openTarget } from "@xynogen/pix-runtime/os";
 import { projectDir } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
 import type { GraphData } from "./analyzer.ts";
+import { renderGraphHtml } from "./html.ts";
 import { createGraphParseCache } from "./parse-cache.ts";
 import type { BuildProgress } from "./pipeline.ts";
 import { query as queryGraph } from "./query.ts";
@@ -157,6 +159,28 @@ export default function registerGraph(pi: ExtensionAPI): void {
 	once(pi, "pix-graph", () => {
 		const cwd = process.cwd();
 		const parseCache = createGraphParseCache();
+
+		pi.registerCommand("graph", {
+			description: "Open the code graph (graph.html) in the browser",
+			handler: async (_args, ctx) => {
+				const html = join(cwd, OUT_DIR, "graph.html");
+				try {
+					// A graph from an older build or from graphify has no HTML yet. Render it from the JSON.
+					if (!existsSync(html)) {
+						const graph = loadGraph(cwd);
+						if (!graph) {
+							ctx.ui.notify('No graph yet. Ask the agent to run graph(action:"build").', "warning");
+							return;
+						}
+						writeFileSync(html, renderGraphHtml(graph));
+					}
+					await openTarget(html);
+					ctx.ui.notify(`Opened ${OUT_DIR}/graph.html`, "info");
+				} catch (error) {
+					ctx.ui.notify(`Cannot open graph: ${getErrorMessage(error)}`, "error");
+				}
+			},
+		});
 
 		pi.registerTool({
 			name: "graph",
@@ -308,7 +332,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 						return ok(
 							`Graph ${r.cached ? "unchanged (cache hit)" : `built in ${took}`}: ` +
 								`${r.files} files → ${r.nodes} nodes, ${r.links} links, ` +
-								`${r.communities} communities → ${OUT_DIR}/` +
+								`${r.communities} communities → ${OUT_DIR}/ (view: /graph)` +
 								(r.cached ? "" : ` · parsed ${r.parsedFiles} · reused ${r.reusedFiles}`),
 						);
 					} catch (error) {

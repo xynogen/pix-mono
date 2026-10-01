@@ -68,14 +68,26 @@ describe("extract", () => {
 		expect(links.some((l) => l.relation === "imports")).toBe(true);
 	});
 
-	test("skips node_modules and non-code files", () => {
+	test("respects ignore files and scans un-ignored hidden dirs", () => {
 		const root = fixture();
-		mkdirSync(join(root, "node_modules/pkg"), { recursive: true });
-		writeFileSync(join(root, "node_modules/pkg/index.ts"), "export const x = 1;\n");
-		writeFileSync(join(root, "packages/a/README.md"), "# docs\n");
-		const files = collectFiles(root);
-		expect(files.every((f) => !f.includes("node_modules"))).toBe(true);
-		expect(files.every((f) => f.endsWith(".ts"))).toBe(true);
+		const put = (rel: string, body = "export const x = 1;\n") => {
+			mkdirSync(join(root, rel, ".."), { recursive: true });
+			writeFileSync(join(root, rel), body);
+		};
+		put(".gitignore", "node_modules\n.venv\n");
+		put(".dockerignore", "dist\n");
+		put("node_modules/pkg/index.ts");
+		put(".venv/lib/site-packages/x.js");
+		put("dist/out.js");
+		put(".pi/ext/hook.ts");
+		put("packages/a/README.md", "# docs\n");
+		const rel = collectFiles(root).map((f) => f.slice(root.length + 1).replaceAll("\\", "/"));
+		expect(rel).toEqual([
+			".pi/ext/hook.ts",
+			"packages/a/src/lonely.ts",
+			"packages/a/src/main.ts",
+			"packages/b/src/util.ts",
+		]);
 	});
 });
 
@@ -108,6 +120,23 @@ describe("cluster", () => {
 			],
 		};
 		expect(cohesionScore(graph, ["a", "b", "c"])).toBe(1);
+	});
+
+	test("cohesion counts parallel and reverse edges once", () => {
+		const graph = {
+			nodes: [
+				{ id: "a", label: "a" },
+				{ id: "b", label: "b" },
+				{ id: "c", label: "c" },
+			],
+			links: [
+				{ source: "a", target: "b", relation: "calls" },
+				{ source: "a", target: "b", relation: "imports" },
+				{ source: "b", target: "a", relation: "calls" },
+				{ source: "b", target: "c", relation: "x" },
+			],
+		};
+		expect(cohesionScore(graph, ["a", "b", "c", "a"])).toBe(0.67);
 	});
 
 	test("empty graph yields no communities", () => {
@@ -184,6 +213,7 @@ describe("buildCodeGraph", () => {
 		expect(existsSync(join(out, "graph.json"))).toBe(true);
 		expect(existsSync(join(out, "graph.cleaned.json"))).toBe(true);
 		expect(existsSync(join(out, "GRAPH_REPORT.md"))).toBe(true);
+		expect(readFileSync(join(out, "graph.html"), "utf8")).toMatch(/new vis\.Network\(/);
 
 		const graph = JSON.parse(readFileSync(join(out, "graph.json"), "utf8"));
 		expect(Array.isArray(graph.nodes)).toBe(true);

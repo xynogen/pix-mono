@@ -15,6 +15,7 @@ import {
 
 export { createGraphParseCache } from "./extract.ts";
 
+import { renderGraphHtml } from "./html.ts";
 import { renderGraphReport } from "./report.ts";
 
 /** Result of a full build — the graph and where it landed on disk. */
@@ -65,7 +66,7 @@ const yieldToLoop = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 // ponytail: bump this when extraction changes for builds outside the pix-graph source tree.
 const CACHE_VERSION = 1;
 const CACHE_FILE = ".graph-cache.json";
-const OUTPUT_FILES = ["graph.json", "graph.cleaned.json", "GRAPH_REPORT.md"] as const;
+const OUTPUT_FILES = ["graph.json", "graph.cleaned.json", "GRAPH_REPORT.md", "graph.html"] as const;
 
 type CacheEntry = { key: string; result: BuildResult };
 
@@ -102,7 +103,7 @@ function cachedBuild(outputDir: string, key: string): BuildResult | undefined {
 
 /**
  * Full code-graph pipeline: extract → build/cluster → analyze → clean → write.
- * Writes graph.json, graph.cleaned.json, and GRAPH_REPORT.md under `outputDir`.
+ * Writes graph.json, graph.cleaned.json, GRAPH_REPORT.md, and graph.html under `outputDir`.
  */
 export function buildCodeGraph(
 	inputPath: string,
@@ -124,6 +125,7 @@ export function buildCodeGraph(
 		`${JSON.stringify(cleaned.cleanedGraph, null, 2)}\n`,
 	);
 	writeFileSync(resolve(outputDir, "GRAPH_REPORT.md"), report);
+	writeFileSync(resolve(outputDir, "graph.html"), renderGraphHtml(cleaned.cleanedGraph));
 
 	return {
 		files: fileCount,
@@ -231,6 +233,7 @@ export async function buildCodeGraphProgress(
 		`${JSON.stringify(cleaned.cleanedGraph, null, 2)}\n`,
 	);
 	writeFileSync(resolve(outputDir, "GRAPH_REPORT.md"), report);
+	writeFileSync(resolve(outputDir, "graph.html"), renderGraphHtml(cleaned.cleanedGraph));
 
 	const result: BuildResult = {
 		files: fileCount,

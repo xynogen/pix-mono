@@ -37,6 +37,7 @@ pix-graph path "<from>" "<to>" [--graph FILE]      # shortest path between nodes
 | `graph.json` | Full graph: nodes, links, community assignments |
 | `graph.cleaned.json` | Inferred `calls` edges validated against real TS bindings; false ones removed |
 | `GRAPH_REPORT.md` | Communities, god nodes, surprising cross-file connections |
+| `graph.html` | Interactive view of `graph.cleaned.json`: community colors, search, node details. Open it with `/graph`. |
 
 ## Library
 

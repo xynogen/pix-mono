@@ -135,13 +135,16 @@ export function cluster(graph: GraphData): Communities {
 
 /** Ratio of actual intra-community edges to the maximum possible. */
 export function cohesionScore(graph: GraphData, members: string[]): number {
-	const n = members.length;
-	if (n <= 1) return 1;
 	const set = new Set(members);
-	let actual = 0;
-	for (const link of graph.links) {
-		if (link.source !== link.target && set.has(link.source) && set.has(link.target)) actual += 1;
+	const n = set.size;
+	if (n <= 1) return 1;
+	// Count each unordered pair once: parallel edges (calls + imports, a→b + b→a) must not push the score above 1.
+	const pairs = new Set<string>();
+	for (const { source, target } of graph.links) {
+		if (source === target || !set.has(source) || !set.has(target)) continue;
+		pairs.add(source < target ? `${source}\0${target}` : `${target}\0${source}`);
 	}
+	const actual = pairs.size;
 	const possible = (n * (n - 1)) / 2;
 	return possible > 0 ? Math.round((actual / possible) * 100) / 100 : 0;
 }

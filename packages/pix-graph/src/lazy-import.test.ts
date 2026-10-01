@@ -10,6 +10,6 @@ mock.module("typescript", () => {
 
 test("loading the graph extension does not import typescript", async () => {
 	const { default: registerGraph } = await import("./graph.ts");
-	registerGraph({ registerTool() {}, on() {} } as never);
+	registerGraph({ registerTool() {}, registerCommand() {}, on() {} } as never);
 	expect(typescriptLoaded).toBe(false);
 });

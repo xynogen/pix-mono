@@ -30,12 +30,23 @@ type ToolDef = {
 	) => { render: (width: number) => string[] };
 };
 
-/** Minimal ExtensionAPI mock that captures the registered tool. */
+type CommandDef = {
+	handler: (
+		args: string,
+		ctx: { ui: { notify(msg: string, kind?: string): void } },
+	) => Promise<void>;
+};
+let command: CommandDef | null = null;
+
+/** Minimal ExtensionAPI mock that captures the registered tool and command. */
 function captureTool(): ToolDef {
 	let tool: ToolDef | null = null;
 	const pi = {
 		registerTool(def: ToolDef) {
 			tool = def;
+		},
+		registerCommand(name: string, def: CommandDef) {
+			if (name === "graph") command = def;
 		},
 	} as never;
 	registerGraph(pi);
@@ -209,5 +220,21 @@ describe("graph tool", () => {
 		const res = await run({ action: "query", question: "how does greet work" }, root);
 		const hits = (res.details as { query?: { hits: Array<{ label: string }> } }).query?.hits ?? [];
 		expect(hits.some((h) => h.label.includes("greet"))).toBe(true);
+	});
+
+	test("/graph warns when no graph exists", async () => {
+		const root = fixture();
+		const prev = process.cwd();
+		process.chdir(root);
+		const notes: Array<[string, string | undefined]> = [];
+		try {
+			captureTool();
+			await command?.handler("", { ui: { notify: (msg, kind) => notes.push([msg, kind]) } });
+		} finally {
+			process.chdir(prev);
+		}
+		expect(notes).toEqual([
+			['No graph yet. Ask the agent to run graph(action:"build").', "warning"],
+		]);
 	});
 });
