@@ -184,8 +184,8 @@ describe("resolve order", () => {
 		expect(hit.path?.replaceAll("\\", "/")).toMatch(/Program Files\/Git\/bin\/bash\.exe$/);
 	});
 
-	test("alternate names (powershell.exe under WSL) resolve", () => {
-		if (isWin) return; // Windows finds powershell.exe by the first name through PATHEXT.
+	// Windows finds powershell.exe by the first name through PATHEXT.
+	test.skipIf(isWin)("alternate names (powershell.exe under WSL) resolve", () => {
 		const s = sandbox();
 		s.put(s.pathDir, "powershell.exe");
 		const wsl: HostPlatform = { ...host, os: "linux", exe: "", wsl: true };
