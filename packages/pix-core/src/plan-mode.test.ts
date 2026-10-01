@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { CustomEditor, type KeybindingsManager } from "@earendil-works/pi-coding-agent";
 import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
 import { setIconMode } from "@xynogen/pix-pretty/icon-catalog";
-import { attachTabToggle, isPlanPath, modeStatus, parsePlan } from "./plan-mode.ts";
+import { attachModeKeys, isPlanPath, modeStatus, parsePlan } from "./plan-mode.ts";
 
 describe("modeStatus", () => {
 	it("plan shows its icon in warning, normal shows another icon in muted", () => {
@@ -13,8 +13,8 @@ describe("modeStatus", () => {
 	});
 });
 
-describe("attachTabToggle", () => {
-	it("Tab toggles in an empty prompt and stays a normal key with text", () => {
+describe("attachModeKeys", () => {
+	it("Shift+Tab toggles mode, Tab cycles thinking only in an empty prompt", () => {
 		const tui = { requestRender() {} } as unknown as TUI;
 		const editor = new CustomEditor(
 			tui,
@@ -22,14 +22,20 @@ describe("attachTabToggle", () => {
 			{ matches: () => false } as unknown as KeybindingsManager,
 		);
 		let toggles = 0;
-		attachTabToggle(editor, () => toggles++);
-		editor.handleInput("	");
-		editor.handleInput("	");
-		expect(toggles).toBe(2);
-		expect(editor.getText()).toBe("");
+		let cycles = 0;
+		editor.onAction("app.thinking.cycle", () => cycles++);
+		attachModeKeys(editor, () => toggles++);
+		editor.handleInput("\t");
+		editor.handleInput("\x1b[Z");
+		expect({ toggles, cycles, text: editor.getText() }).toEqual({
+			toggles: 1,
+			cycles: 1,
+			text: "",
+		});
 		editor.handleInput("a");
-		editor.handleInput("	");
-		expect(toggles).toBe(2);
+		editor.handleInput("\t");
+		editor.handleInput("\x1b[Z");
+		expect({ toggles, cycles }).toEqual({ toggles: 2, cycles: 1 });
 		expect(editor.getText()).toStartWith("a");
 	});
 });

@@ -1,7 +1,8 @@
 /**
  * pix-core plan mode — `/plan` opens a modal to manage saved plans in
  * `<cwd>/.pi/plans/*.md`. Plan mode turns on when the user starts a new plan or
- * edits one from the modal. Tab in an empty prompt, or ctrl+alt+p, toggles it by hand.
+ * edits one from the modal. Shift+Tab, or ctrl+alt+p, toggles it by hand.
+ * Tab in an empty prompt cycles the thinking level (Pi's default Shift+Tab action).
  *
  * While plan mode is on:
  *   - active tools shrink to `read` + `write` + `bash` (previous set restored on exit);
@@ -99,14 +100,19 @@ function listPlans(cwd: string): Plan[] {
 }
 
 /**
- * Tab toggles plan mode only in an empty prompt with no autocomplete list open.
- * Any text in the prompt keeps Tab for Pi's path and slash-command completion.
+ * Shift+Tab toggles plan mode. Tab cycles the thinking level, but only in an empty
+ * prompt with no autocomplete list open. Any text keeps Tab for Pi's completion.
+ * The thinking cycle reuses Pi's own `app.thinking.cycle` handler (status line included).
  */
-export function attachTabToggle(editor: CustomEditor, toggle: () => void): void {
+export function attachModeKeys(editor: CustomEditor, toggleMode: () => void): void {
 	const handleInput = editor.handleInput.bind(editor);
 	editor.handleInput = (data: string) => {
+		if (matchesKey(data, "shift+tab")) {
+			toggleMode();
+			return;
+		}
 		if (matchesKey(data, "tab") && editor.getText() === "" && !editor.isShowingAutocomplete()) {
-			toggle();
+			editor.actionHandlers.get("app.thinking.cycle")?.();
 			return;
 		}
 		handleInput(data);
@@ -211,13 +217,13 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 	});
 
 	// ponytail: registerShortcut("tab") runs before the editor and would break Pi's
-	// Tab autocomplete. Wrap the editor so Tab toggles only when the prompt is empty.
+	// Tab autocomplete. Wrap the editor so Tab acts only when the prompt is empty.
 	pi.on("session_start", (_event, ctx) => {
 		if (ctx.mode !== "tui") return;
 		const previous = ctx.ui.getEditorComponent();
 		ctx.ui.setEditorComponent((tui, theme, kb) => {
 			const editor = previous?.(tui, theme, kb) ?? new CustomEditor(tui, theme, kb);
-			if (editor instanceof CustomEditor) attachTabToggle(editor, () => apply(ctx, !enabled));
+			if (editor instanceof CustomEditor) attachModeKeys(editor, () => apply(ctx, !enabled));
 			return editor;
 		});
 	});
@@ -228,7 +234,7 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 			return {
 				block: true,
 				reason:
-					"Plan mode: only read, bash, and write are allowed. Toggle off with Tab (empty prompt) or ctrl+alt+p.",
+					"Plan mode: only read, bash, and write are allowed. Toggle off with Shift+Tab or ctrl+alt+p.",
 			};
 		}
 		if (isToolCallEventType("write", event) && !isPlanPath(ctx.cwd, event.input.path)) {
