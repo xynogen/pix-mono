@@ -118,7 +118,7 @@ export function modeStatus(
 	on: boolean,
 	fg: (role: "warning" | "muted", text: string) => string,
 ): string {
-	return on ? fg("warning", `${icon("mode.plan")} plan`) : fg("muted", icon("mode.normal"));
+	return on ? fg("warning", icon("mode.plan")) : fg("muted", icon("mode.normal"));
 }
 
 export default function registerPlanMode(pi: ExtensionAPI): void {
@@ -166,7 +166,7 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 		}
 		if (result.kind === "new") {
 			apply(ctx, true);
-			// pix-display turns <prompt name="plan"> into a "plan prompt" chip and sends
+			// pix-display turns <prompt name="plan"> into a "prompt" chip and sends
 			// the tag verbatim, so the model sees the guide and the user sees a chip.
 			// pix-display adds the trailing space after the chip.
 			ctx.ui.setEditorText("");

@@ -7,7 +7,8 @@
  *   long pasted text        →  buffer: [paste #1 +42 lines]     display: 󰉿 text 42 lines
  *   /tmp/shot.png           →  buffer: [paste #2 13 chars]      display: 󰋩 image #2
  *   <path>src/a.ts</path>   →  buffer: [paste #3 8 chars]       display: 󰉿 @a.ts
- *   <prompt name="plan">…   →  buffer: [paste #4 900 chars]     display:  plan prompt
+ *   <prompt name="plan">…   →  buffer: [paste #4 900 chars]     display:  prompt
+ *   <prompt name="plan-edit">…  →  …                            display:  edit prompt
  *   <skill>a/b@tdd</skill>  →  buffer: [paste #5 7 chars]       display: 󱁤 $tdd a/b
  *
  * Tags and Pi's `<paste>…</paste>` payloads are promoted to atomic paste markers (one backspace deletes the whole chip) and
@@ -98,7 +99,13 @@ function chipLabel(
 		};
 	}
 	if (value.kind === "prompt") {
-		return { head: `${icon("paste.prompt")} ${value.name}`, meta: "prompt", color: FG_YELLOW };
+		// The first name segment is the producer namespace (`plan`). The icon already shows it.
+		const sub = value.name.split("-").slice(1).join("-");
+		return {
+			head: `${icon("paste.prompt")}${sub ? ` ${sub}` : ""}`,
+			meta: "prompt",
+			color: FG_YELLOW,
+		};
 	}
 	if (value.kind === "skill") {
 		// `owner/repo@name` (skills.sh) or bare `name` (local).

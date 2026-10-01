@@ -5,10 +5,10 @@ import { setIconMode } from "@xynogen/pix-pretty/icon-catalog";
 import { attachTabToggle, isPlanPath, modeStatus, parsePlan } from "./plan-mode.ts";
 
 describe("modeStatus", () => {
-	it("plan shows its icon and label in warning, normal shows another icon in muted", () => {
+	it("plan shows its icon in warning, normal shows another icon in muted", () => {
 		setIconMode("ascii");
 		const fg = (role: string, text: string) => `<${role}>${text}`;
-		expect(modeStatus(true, fg)).toBe("<warning>P plan");
+		expect(modeStatus(true, fg)).toBe("<warning>P");
 		expect(modeStatus(false, fg)).toBe("<muted>>");
 	});
 });

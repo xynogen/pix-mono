@@ -233,9 +233,12 @@ test("installChips renders <prompt> as a prompt chip and sends the tag verbatim"
 	const tag = '<prompt name="plan">guide\nline 2</prompt>';
 	e.handleInput(`\x1b[200~${tag}\x1b[201~`);
 	expect(e.getExpandedText()).toBe(`${tag} `);
-	expect(strip(e.render(100).join("\n"))).toContain(`${icon("paste.prompt")} plan prompt`);
+	expect(strip(e.render(100).join("\n"))).toContain(`${icon("paste.prompt")} prompt`);
 	expect(renderHistoryChips(`${tag} add login`)).toBe(
-		`\`${icon("paste.prompt")} plan prompt\` add login`,
+		`\`${icon("paste.prompt")} prompt\` add login`,
+	);
+	expect(renderHistoryChips('<prompt name="plan-edit">x</prompt>')).toBe(
+		`\`${icon("paste.prompt")} edit prompt\``,
 	);
 });
 
