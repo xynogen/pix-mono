@@ -73,6 +73,8 @@ type CacheEntry = { key: string; result: BuildResult };
 function buildKey(files: string[], repoRoot: string, inputPath: string): string {
 	const hash = createHash("sha256");
 	hash.update(`${CACHE_VERSION}\0${resolve(repoRoot)}\0${resolve(inputPath)}\0`);
+	// A renderer change must rewrite graph.html, or an old page (with old bugs) survives updates.
+	hash.update(readFileSync(new URL("./html.ts", import.meta.url)));
 	for (const file of files) {
 		hash.update(relative(repoRoot, file));
 		hash.update("\0");
