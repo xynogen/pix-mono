@@ -24,6 +24,24 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Every Linux binary in packages/pix-runtime/src/binaries/catalog.ts, so tests use the real
+      # tools. The runner image already has git, bash, ssh, scp, sshpass, sudo, aria2c, npm, and
+      # npx. bun install gives pi. WSL-only, macOS-only, and Windows-only entries cannot run here.
+      # ponytail: rtk is pinned with its checksum. Bump RTK_VERSION and the sha256 together.
+      - name: Install test binaries
+        env:
+          RTK_VERSION: 0.50.0
+          RTK_SHA256: bc2b8902b0d9c796c82ef45f16ae2307e17757afeca5ee156235a3dc7bda5f89
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ripgrep ffmpeg xclip wl-clipboard xdg-utils
+          npm install -g hunkdiff@0.23.0
+          asset=rtk-x86_64-unknown-linux-musl.tar.gz
+          curl -fsSLO "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/${asset}"
+          echo "${RTK_SHA256}  ${asset}" | sha256sum -c -
+          sudo tar -xzf "${asset}" -C /usr/local/bin rtk
+          rg --version | head -1; ffmpeg -version | head -1; hunk --version; rtk --version
+
       - name: Static analysis
         run: bun run static-analysis
 
