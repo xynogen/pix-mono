@@ -1,7 +1,11 @@
 import { describe, expect, it, mock } from "bun:test";
 import { resolve } from "node:path";
 import { resolveAddTargetPath } from "../src/config.ts";
-import { type AddPanelCallbacks, McpAddPanel } from "../src/mcp-add-panel.ts";
+import {
+	type AddPanelCallbacks,
+	type EditPanelOptions,
+	McpAddPanel,
+} from "../src/mcp-add-panel.ts";
 
 const ENTER = "\r";
 const DOWN = "\x1b[B";
@@ -236,5 +240,125 @@ describe("MCP add text paste", () => {
 		p.handleInput("mcp\n?token=x\x1b[201~");
 		expect(p.getFieldValue("url")).toBe("https://example.com/mcp?token=x");
 		p.dispose();
+	});
+});
+
+describe("MCP add panel Pi fields", () => {
+	function run(
+		values: Record<string, string>,
+		entry?: EditPanelOptions,
+	): {
+		p: McpAddPanel;
+		written: unknown[];
+		connects: string[];
+		results: unknown[];
+	} {
+		const written: unknown[] = [];
+		const connects: string[] = [];
+		const results: unknown[] = [];
+		const tui = { requestRender: mock(() => {}), terminal: { rows: 40 } };
+		const callbacks: AddPanelCallbacks = {
+			resolveTargetPath: () => "/tmp/mcp.json",
+			previewEntry: () => ({
+				path: "/tmp/mcp.json",
+				existed: false,
+				changed: true,
+				beforeText: "",
+				afterText: "{}",
+				diffText: "",
+			}),
+			writeEntry: (_path, _name, e) => {
+				written.push(e);
+				return "/tmp/mcp.json";
+			},
+			isNameTaken: () => entry !== undefined,
+			testConnect: async (name) => {
+				connects.push(name);
+				return "connected";
+			},
+		};
+		const p = new McpAddPanel({ cwd: "/tmp", callbacks, edit: entry }, tui, (r) => {
+			results.push(r);
+		});
+		if (!entry) p.handleInput(ENTER); // pickType -> stdio form
+		for (const [key, value] of Object.entries(values)) p.setFieldValue(key, value);
+		p.handleInput(ENTER); // form -> pickScope (add) or preview (edit)
+		if (!entry) p.handleInput(ENTER); // pickScope -> preview
+		p.handleInput(ENTER); // preview -> write
+		return { p, written, connects, results };
+	}
+
+	it("writes description, timeout, and enabled:false, and skips the connection test", () => {
+		const { p, written, connects, results } = run({
+			name: "srv",
+			command: "npx",
+			description: "  Docs search  ",
+			timeout: "2.5",
+			disabled: "true",
+		});
+		expect(written).toEqual([
+			expect.objectContaining({ description: "Docs search", timeout: 2.5, enabled: false }),
+		]);
+		expect(connects).toEqual([]);
+		expect(results).toEqual([expect.objectContaining({ connectStatus: "disabled" })]);
+		p.dispose();
+	});
+
+	it("removes unset fields and tests the connection of an enabled server", async () => {
+		const { p, written, connects } = run(
+			{ description: "", timeout: "", disabled: "" },
+			{
+				name: "srv",
+				targetPath: "/tmp/mcp.json",
+				entry: { command: "npx", description: "old", timeout: 9, enabled: false },
+			},
+		);
+		expect(p.getFieldValue("command")).toBe("npx");
+		expect(written).toEqual([
+			expect.objectContaining({ description: undefined, timeout: undefined, enabled: undefined }),
+		]);
+		await Promise.resolve();
+		expect(connects).toEqual(["srv"]);
+		p.dispose();
+	});
+
+	it("prefills the fields when it edits a server", () => {
+		const tui = { requestRender: mock(() => {}), terminal: { rows: 40 } };
+		const p = new McpAddPanel(
+			{
+				cwd: "/tmp",
+				callbacks: {
+					resolveTargetPath: () => "/tmp/x.json",
+					previewEntry: () => {
+						throw new Error("unused");
+					},
+					writeEntry: () => "/tmp/x.json",
+					isNameTaken: () => true,
+					testConnect: async () => "connected",
+				},
+				edit: {
+					name: "srv",
+					targetPath: "/tmp/x.json",
+					entry: { url: "https://a", description: "Docs", timeout: 30, enabled: false },
+				},
+			},
+			tui,
+			() => {},
+		);
+		expect(p.getFieldValue("description")).toBe("Docs");
+		expect(p.getFieldValue("timeout")).toBe("30");
+		expect(p.getFieldValue("disabled")).toBe("true");
+		expect(stripAnsi(p.render(120).join("\n"))).toContain("Disabled: [x] on");
+		p.dispose();
+	});
+
+	it("rejects a timeout that is not a positive number", () => {
+		for (const timeout of ["0", "-1", "abc", "Infinity"]) {
+			const { p, written } = run({ name: "srv", command: "npx", timeout });
+			expect(written).toEqual([]);
+			expect(p.getStep()).toBe("form");
+			expect(p.getError()).toBe("Timeout must be a positive number of seconds.");
+			p.dispose();
+		}
 	});
 });

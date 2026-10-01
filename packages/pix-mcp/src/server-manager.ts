@@ -6,6 +6,7 @@ import type {
 } from "@modelcontextprotocol/client";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { abortable, throwIfAborted } from "./abort.ts";
+import { resolveConfigRecord, resolveOAuthSecret } from "./config-value.ts";
 import {
 	handleUrlElicitation,
 	registerElicitationHandler,
@@ -47,7 +48,7 @@ import {
 	SERVER_STREAM_RESULT_PATCH_METHOD,
 	serverStreamResultPatchNotificationSchema,
 } from "./types.ts";
-import { interpolateEnvRecord, resolveBearerToken, resolveConfigPath } from "./utils.ts";
+import { resolveBearerToken, resolveConfigPath } from "./utils.ts";
 
 // OAuth connects wait on a human browser round-trip (login, consent, redirect),
 // which routinely runs far past the base request timeout. Scale connect/call
@@ -75,6 +76,7 @@ export class McpServerManager {
 	private connectPromises = new Map<string, Promise<ServerConnection>>();
 	private uiStreamListeners = new Map<string, UiStreamListener>();
 	private samplingConfig: ServerSamplingConfig | undefined;
+	private providerToken: ((provider: string) => Promise<string | undefined>) | undefined;
 	private elicitationConfig: ServerElicitationConfig | undefined;
 	private acceptedUrlElicitations = new Map<string, Set<string>>();
 	private defaultRequestTimeoutMs: number | undefined;
@@ -91,6 +93,13 @@ export class McpServerManager {
 
 	/** Default cwd for stdio servers without an explicit config `cwd`. */
 	constructor(private readonly defaultCwd?: string) {}
+
+	/** Token source for `auth: { provider }` servers, usually Pi's model registry. */
+	setProviderTokenResolver(
+		resolver: ((provider: string) => Promise<string | undefined>) | undefined,
+	): void {
+		this.providerToken = resolver;
+	}
 
 	setSamplingConfig(config: ServerSamplingConfig | undefined): void {
 		this.samplingConfig = config;
@@ -110,13 +119,16 @@ export class McpServerManager {
 	}
 
 	private buildRequestOptions(
-		_definition?: ServerDefinition,
+		definition?: ServerDefinition,
 		signal?: AbortSignal,
 	): RequestOptions | undefined {
+		// A per-server `timeout` (seconds, Pi mcp.json) is exact. The shared base is
+		// scaled 3× because slow servers routinely need more than the base wait.
+		const serverMs = normalizeRequestTimeoutMs(
+			typeof definition?.timeout === "number" ? definition.timeout * 1000 : undefined,
+		);
 		const base = this.defaultRequestTimeoutMs;
-		// Slow servers routinely need more than the base wait, so scale the
-		// connect/call timeout 3× across the board. Not config-exposed on purpose.
-		const timeout = base !== undefined ? base * REQUEST_TIMEOUT_FACTOR : undefined;
+		const timeout = serverMs ?? (base !== undefined ? base * REQUEST_TIMEOUT_FACTOR : undefined);
 
 		if (!signal && timeout === undefined) {
 			return undefined;
@@ -188,7 +200,7 @@ export class McpServerManager {
 			transport = new StdioClientTransport({
 				command,
 				args,
-				env: resolveEnv(definition.env),
+				env: await resolveEnv(definition.env, name),
 				cwd: resolveConfigPath(definition.cwd) ?? this.defaultCwd,
 				stderr: definition.debug ? "inherit" : "ignore",
 			});
@@ -352,7 +364,7 @@ export class McpServerManager {
 		}
 
 		// Build headers first (including any bearer token)
-		const headers = resolveHeaders(definition.headers) ?? {};
+		const headers = (await resolveConfigRecord(definition.headers, serverName)) ?? {};
 
 		// For bearer auth, add the token to headers BEFORE creating requestInit
 		if (definition.auth === "bearer") {
@@ -364,11 +376,12 @@ export class McpServerManager {
 
 		// Create request init with headers (Authorization now included for bearer auth)
 		const requestInit = Object.keys(headers).length > 0 ? { headers } : undefined;
+		const fetch = this.providerFetch(definition, serverName);
 
 		// For OAuth servers, create an auth provider
 		let authProvider: McpOAuthProvider | undefined;
 		if (supportsOAuth(definition)) {
-			const oauthConfig = extractOAuthConfig(definition);
+			const oauthConfig = extractOAuthConfig(await resolveOAuthSecret(definition, serverName));
 			authProvider = new McpOAuthProvider(serverName, definition.url!, oauthConfig, {
 				onRedirect: async (_authUrl) => {
 					// URL is captured by startAuth, no need to log
@@ -381,6 +394,7 @@ export class McpServerManager {
 		const streamableTransport = new StreamableHTTPClientTransport(url, {
 			requestInit,
 			authProvider,
+			fetch,
 		});
 
 		try {
@@ -395,7 +409,7 @@ export class McpServerManager {
 			await streamableTransport.close().catch(() => {});
 
 			// StreamableHTTP works - create fresh transport for actual use
-			return new StreamableHTTPClientTransport(url, { requestInit, authProvider });
+			return new StreamableHTTPClientTransport(url, { requestInit, authProvider, fetch });
 		} catch (error) {
 			// StreamableHTTP failed, close and try SSE fallback
 			await streamableTransport.close().catch(() => {});
@@ -421,8 +435,32 @@ export class McpServerManager {
 			}
 
 			// SSE is the legacy transport
-			return new SSEClientTransport(url, { requestInit, authProvider });
+			return new SSEClientTransport(url, { requestInit, authProvider, fetch });
 		}
+	}
+
+	/**
+	 * `auth: { provider }`: send the Pi login token on every request. It is read per request,
+	 * so a refreshed login applies without a reconnect. Config validation allows it only from
+	 * the global Pi mcp.json, for https or loopback http.
+	 */
+	private providerFetch(
+		definition: ServerDefinition,
+		serverName: string,
+	): ((url: string | URL, init?: RequestInit) => Promise<Response>) | undefined {
+		const auth = definition.auth;
+		if (typeof auth !== "object" || !auth) return undefined;
+		return async (url, init) => {
+			const token = await this.providerToken?.(auth.provider);
+			if (!token) {
+				throw new Error(
+					`MCP server "${serverName}" needs a ${auth.provider} login. Run /login ${auth.provider}.`,
+				);
+			}
+			const headers = new Headers(init?.headers);
+			headers.set("Authorization", `Bearer ${token}`);
+			return fetch(url, { ...init, headers });
+		};
 	}
 
 	private async fetchAllTools(client: Client, requestOptions?: RequestOptions): Promise<McpTool[]> {
@@ -584,9 +622,12 @@ export class McpServerManager {
 }
 
 /**
- * Resolve environment variables with interpolation.
+ * Resolve environment variables with interpolation and `!command` values.
  */
-function resolveEnv(env?: Record<string, string>): Record<string, string> {
+async function resolveEnv(
+	env: Record<string, string> | undefined,
+	serverName: string,
+): Promise<Record<string, string>> {
 	// Copy process.env, filtering out undefined values
 	const resolved: Record<string, string> = {};
 	for (const [key, value] of Object.entries(process.env)) {
@@ -595,17 +636,8 @@ function resolveEnv(env?: Record<string, string>): Record<string, string> {
 		}
 	}
 
-	if (!env) return resolved;
-
-	const overrides = interpolateEnvRecord(env);
+	const overrides = await resolveConfigRecord(env, serverName);
 	return overrides ? { ...resolved, ...overrides } : resolved;
-}
-
-/**
- * Resolve headers with environment variable interpolation.
- */
-function resolveHeaders(headers?: Record<string, string>): Record<string, string> | undefined {
-	return interpolateEnvRecord(headers);
 }
 
 function normalizeRequestTimeoutMs(timeoutMs: number | undefined): number | undefined {

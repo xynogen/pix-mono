@@ -155,3 +155,60 @@ describe("mcp-panel rendering", () => {
 		panel.dispose();
 	});
 });
+
+describe("mcp-panel Pi server fields", () => {
+	it("shows a disabled server and does not reconnect it", () => {
+		const config: McpConfig = { mcpServers: { off: { command: "npx", enabled: false } } };
+		const callbacks = createCallbacks();
+		const reconnect = mock(async () => true);
+		callbacks.reconnect = reconnect;
+		const panel = createMcpPanel(
+			config,
+			null,
+			new Map(),
+			callbacks,
+			{ requestRender: () => {} },
+			() => {},
+		);
+		expect(stripAnsi(panel.render(120).join("\n"))).toMatch(/off .* · disabled/);
+		panel.handleInput("\u001b[B"); // past + Add server to the server row
+		panel.handleInput("\x12"); // ctrl+r
+		expect(reconnect).not.toHaveBeenCalled();
+		expect(stripAnsi(panel.render(120).join("\n"))).toContain(
+			"off is disabled — ctrl+e to enable it.",
+		);
+		panel.dispose();
+	});
+
+	it("marks exposure-direct tools and returns tool names on save", () => {
+		const config: McpConfig = {
+			mcpServers: {
+				atlassian: {
+					command: "npx",
+					exposure: "deferred",
+					toolExposure: { list_projects: "direct" },
+				},
+			},
+		};
+		const done = mock<(result: McpPanelResult) => void>();
+		const panel = createMcpPanel(
+			config,
+			createCache(config),
+			new Map(),
+			createCallbacks(),
+			{ requestRender: () => {} },
+			done,
+		);
+		expect(stripAnsi(panel.render(120).join("\n"))).toContain("1/2");
+		panel.handleInput("\u001b[B");
+		panel.handleInput("\r"); // expand
+		panel.handleInput("\x1b[B");
+		panel.handleInput("\r"); // toggle the first tool on
+		panel.handleInput("\x1b");
+		panel.handleInput("\r"); // Keep & Close
+		const result = done.mock.calls[0]![0];
+		expect(result.changes.get("atlassian")).toBe(true);
+		expect(result.toolNames?.get("atlassian")).toEqual(["search\u0007issues", "list_projects"]);
+		panel.dispose();
+	});
+});

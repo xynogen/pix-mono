@@ -158,6 +158,28 @@ function fieldsForType(type: AddServerType): FieldDef[] {
 		hint: "turn each MCP resource into a get_<name> tool (space toggles)",
 		toggle: true,
 	};
+	// Pi mcp.json fields, shared by both transports.
+	const piFields: FieldDef[] = [
+		{
+			key: "description",
+			label: "Description",
+			placeholder: "what the server offers",
+			hint: "one line, shown in the mcp tool server list",
+		},
+		{
+			key: "timeout",
+			label: "Timeout (s)",
+			placeholder: "default",
+			hint: "per-request timeout in seconds",
+		},
+		{
+			key: "disabled",
+			label: "Disabled",
+			placeholder: "off",
+			hint: "keep the entry without connecting (space toggles)",
+			toggle: true,
+		},
+	];
 	if (type === "stdio") {
 		return [
 			...common,
@@ -187,6 +209,7 @@ function fieldsForType(type: AddServerType): FieldDef[] {
 			},
 			directTools,
 			exposeResources,
+			...piFields,
 		];
 	}
 	// ponytail: one URL option; connection probes Streamable HTTP then legacy SSE.
@@ -219,6 +242,7 @@ function fieldsForType(type: AddServerType): FieldDef[] {
 		},
 		directTools,
 		exposeResources,
+		...piFields,
 	];
 }
 
@@ -269,6 +293,21 @@ function parseExposeResources(value: string): true | undefined {
 	return value === "true" ? true : undefined;
 }
 
+/** Description, timeout, and disabled fields → entry fields. Unset values are removed. */
+function parsePiFields(
+	values: Record<string, string>,
+): Pick<ServerEntry, "description" | "timeout" | "enabled"> | { error: string } {
+	const timeoutText = (values.timeout ?? "").trim();
+	const timeout = timeoutText ? Number(timeoutText) : undefined;
+	if (timeout !== undefined && !(Number.isFinite(timeout) && timeout > 0))
+		return { error: "Timeout must be a positive number of seconds." };
+	return {
+		description: (values.description ?? "").trim() || undefined,
+		timeout,
+		enabled: values.disabled === "true" ? false : undefined,
+	};
+}
+
 function inferType(entry: ServerEntry): AddServerType {
 	return entry.url ? "http" : "stdio";
 }
@@ -307,6 +346,9 @@ function fieldsFromEntry(name: string, entry: ServerEntry): Record<string, strin
 			entry.headers && Object.keys(entry.headers).length ? JSON.stringify(entry.headers) : "",
 		bearerTokenEnv: entry.bearerTokenEnv ?? "",
 		bearerToken: entry.bearerToken ?? "",
+		description: entry.description ?? "",
+		timeout: entry.timeout !== undefined ? String(entry.timeout) : "",
+		disabled: entry.enabled === false ? "true" : "",
 	};
 }
 
@@ -326,7 +368,7 @@ export interface AddPanelResult {
 	configChanged: boolean;
 	serverName?: string;
 	targetPath?: string;
-	connectStatus?: "connected" | "needs-auth" | "failed";
+	connectStatus?: "connected" | "needs-auth" | "failed" | "disabled";
 }
 
 export interface EditPanelOptions {
@@ -425,6 +467,9 @@ export class McpAddPanel {
 		if (this.options.callbacks.isNameTaken(name) && name !== this.options.edit?.name)
 			return { error: `Server "${name}" already exists.` };
 
+		const pi = parsePiFields(this.fieldValues);
+		if ("error" in pi) return pi;
+
 		const type = this.selectedType;
 		if (type === "stdio") {
 			const command = (this.fieldValues.command ?? "").trim();
@@ -445,6 +490,7 @@ export class McpAddPanel {
 					cwd: (this.fieldValues.cwd ?? "").trim() || undefined,
 					directTools,
 					exposeResources: parseExposeResources(this.fieldValues.exposeResources ?? ""),
+					...pi,
 				};
 				return { name, entry };
 			} catch (error) {
@@ -473,6 +519,7 @@ export class McpAddPanel {
 		entry.bearerToken = (this.fieldValues.bearerToken ?? "").trim() || undefined;
 		entry.directTools = parseDirectTools(this.fieldValues.directTools ?? "");
 		entry.exposeResources = parseExposeResources(this.fieldValues.exposeResources ?? "");
+		Object.assign(entry, pi);
 		return { name, entry };
 	}
 
@@ -727,6 +774,18 @@ export class McpAddPanel {
 					this.step = "preview";
 					this.busy = false;
 					this.tui.requestRender();
+					return;
+				}
+				if (built.entry.enabled === false) {
+					// A disabled server must not connect, so skip the connection test.
+					this.cleanup();
+					this.done({
+						cancelled: false,
+						configChanged: true,
+						serverName: built.name,
+						targetPath,
+						connectStatus: "disabled",
+					});
 					return;
 				}
 				this.connectStatus = "Testing connection...";

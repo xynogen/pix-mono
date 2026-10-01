@@ -9,10 +9,12 @@ const connection = {
 	status: "connected",
 	tools: [] as McpTool[],
 	resources: [] as McpResource[],
+	client: { getInstructions: () => undefined },
 };
 let callback: ((name: string) => void) | undefined;
 const manager = {
 	setDefaultRequestTimeoutMs: mock(() => {}),
+	setProviderTokenResolver: mock(() => {}),
 	setMetadataChangedCallback: mock((fn: typeof callback) => {
 		callback = fn;
 	}),

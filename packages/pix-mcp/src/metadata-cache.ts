@@ -7,7 +7,7 @@ import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { getAgentPath } from "./agent-dir.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
 import type { McpResource, McpTool, ServerEntry, ToolMetadata } from "./types.ts";
-import { formatToolName, isToolExcluded } from "./types.ts";
+import { formatToolName, isToolHidden } from "./types.ts";
 import { getToolUiResourceUri } from "./ui-app-bridge-helpers.ts";
 import {
 	extractToolUiStreamMode,
@@ -37,6 +37,8 @@ export interface ServerCacheEntry {
 	configHash: string;
 	tools: CachedTool[];
 	resources: CachedResource[];
+	/** Server instructions from initialize. Fallback summary for the codemode namespace. */
+	instructions?: string;
 	cachedAt: number;
 }
 
@@ -122,13 +124,13 @@ export function reconstructToolMetadata(
 	serverName: string,
 	entry: ServerCacheEntry,
 	prefix: "server" | "none" | "short",
-	definition: Pick<ServerEntry, "exposeResources" | "excludeTools">,
+	definition: Pick<ServerEntry, "exposeResources" | "excludeTools" | "exposure" | "toolExposure">,
 ): ToolMetadata[] {
 	const metadata: ToolMetadata[] = [];
 
 	for (const tool of entry.tools ?? []) {
 		if (!tool?.name) continue;
-		if (isToolExcluded(tool.name, serverName, prefix, definition.excludeTools)) {
+		if (isToolHidden(tool.name, serverName, prefix, definition)) {
 			continue;
 		}
 
@@ -146,7 +148,7 @@ export function reconstructToolMetadata(
 		for (const resource of entry.resources ?? []) {
 			if (!resource?.name || !resource?.uri) continue;
 			const baseName = `get_${resourceNameToToolName(resource.name)}`;
-			if (isToolExcluded(baseName, serverName, prefix, definition.excludeTools)) {
+			if (isToolHidden(baseName, serverName, prefix, definition)) {
 				continue;
 			}
 

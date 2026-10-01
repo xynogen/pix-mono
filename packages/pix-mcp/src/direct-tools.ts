@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
 	AgentToolResult,
 	AgentToolUpdateCallback,
@@ -20,9 +21,9 @@ import type { McpExtensionState } from "./state.ts";
 import { formatSchema } from "./tool-metadata.ts";
 import { resolveMcpResultContent, transformMcpContent } from "./tool-registrar.ts";
 import type { DirectToolSpec, McpConfig, McpContent } from "./types.ts";
-import { formatToolName, isToolExcluded } from "./types.ts";
+import { formatToolName, isDirectTool, isToolHidden } from "./types.ts";
 import { maybeStartUiSession, type UiSessionRuntime } from "./ui-session.ts";
-import { formatAuthRequiredMessage } from "./utils.ts";
+import { formatAuthRequiredMessage, truncateAtWord } from "./utils.ts";
 
 const BUILTIN_NAMES = new Set(["read", "bash", "edit", "write", "grep", "find", "ls", "mcp"]);
 // ponytail: Dedup per process. A reload resets it, so one warning shows per load.
@@ -111,6 +112,7 @@ export function resolveDirectTools(
 	cache: MetadataCache | null,
 	prefix: "server" | "none" | "short",
 	envOverride?: string[],
+	selectAll = false,
 ): DirectToolSpec[] {
 	const specs: DirectToolSpec[] = [];
 	if (!cache) return specs;
@@ -142,28 +144,27 @@ export function resolveDirectTools(
 		const serverCache = cache.servers[serverName];
 		if (!serverCache || !isServerCacheValid(serverCache, definition)) continue;
 
-		let toolFilter: true | string[] | false = false;
-
-		if (envOverride) {
-			if (envServers.has(serverName)) {
-				toolFilter = true;
-			} else if (envTools.has(serverName)) {
-				toolFilter = [...envTools.get(serverName)!];
-			}
+		// MCP_DIRECT_TOOLS wins over config. Without it, exposure wins over legacy directTools.
+		let isSelected: (name: string) => boolean;
+		if (selectAll) {
+			isSelected = () => true;
+		} else if (envOverride) {
+			const tools = envTools.get(serverName);
+			if (!envServers.has(serverName) && !tools) continue;
+			isSelected = (name) => envServers.has(serverName) || !!tools?.has(name);
 		} else {
-			if (definition.directTools !== undefined) {
-				toolFilter = definition.directTools;
-			} else if (globalDirect) {
-				toolFilter = globalDirect;
-			}
+			const legacy = definition.directTools ?? globalDirect;
+			if (!legacy && !definition.exposure && !definition.toolExposure) continue;
+			isSelected = (name) => isDirectTool(definition, name, legacy);
 		}
 
-		if (!toolFilter) continue;
-
 		for (const tool of serverCache.tools ?? []) {
-			if (toolFilter !== true && !toolFilter.includes(tool.name)) continue;
-			if (isToolExcluded(tool.name, serverName, prefix, definition.excludeTools)) continue;
-			const prefixedName = formatToolName(tool.name, serverName, prefix);
+			if (!isSelected(tool.name)) continue;
+			if (isToolHidden(tool.name, serverName, prefix, definition)) continue;
+			const prefixedName = capToolName(
+				formatToolName(tool.name, serverName, prefix),
+				`${serverName}\0${tool.name}`,
+			);
 			if (BUILTIN_NAMES.has(prefixedName)) {
 				noteSkippedDirectTool(prefixedName);
 				continue;
@@ -187,9 +188,12 @@ export function resolveDirectTools(
 		if (definition.exposeResources === true) {
 			for (const resource of serverCache.resources ?? []) {
 				const baseName = `get_${resourceNameToToolName(resource.name)}`;
-				if (toolFilter !== true && !toolFilter.includes(baseName)) continue;
-				if (isToolExcluded(baseName, serverName, prefix, definition.excludeTools)) continue;
-				const prefixedName = formatToolName(baseName, serverName, prefix);
+				if (!isSelected(baseName)) continue;
+				if (isToolHidden(baseName, serverName, prefix, definition)) continue;
+				const prefixedName = capToolName(
+					formatToolName(baseName, serverName, prefix),
+					`${serverName}\0${baseName}`,
+				);
 				if (BUILTIN_NAMES.has(prefixedName)) {
 					noteSkippedDirectTool(prefixedName);
 					continue;
@@ -218,20 +222,48 @@ export function resolveCodemodeTools(
 	cache: MetadataCache | null,
 ): DirectToolSpec[] {
 	// ponytail: Reuse direct-tool metadata and execution. Raw CallToolResult needs an outputSchema later.
-	const allTools: McpConfig = {
-		...config,
-		settings: { ...config.settings, directTools: true },
-		mcpServers: Object.fromEntries(
-			Object.entries(config.mcpServers).map(([name, definition]) => [
-				name,
-				{ ...definition, directTools: true },
-			]),
-		),
-	};
-	return resolveDirectTools(allTools, cache, "server").map((spec) => ({
-		...spec,
-		prefixedName: `mcp__${spec.serverName}__${spec.originalName}`,
-	}));
+	const specs = resolveDirectTools(config, cache, "server", undefined, true);
+	// Codemode turns every non-identifier char into `_`. Names that sanitize alike would call the
+	// wrong tool, so all of them get a hash suffix (Pi's built-in MCP rule, independent of order).
+	const plain = specs.map((spec) => codemodeToolName(spec.serverName, spec.originalName));
+	return specs.map((spec, i) => {
+		const name = plain[i] as string;
+		const collides = plain.indexOf(name) !== plain.lastIndexOf(name);
+		const instructions = cache?.servers[spec.serverName]?.instructions?.trim();
+		// Pi rule: the configured description, else the first line of the server instructions.
+		const serverDescription = serverSummary(
+			config.mcpServers[spec.serverName]?.description || instructions,
+		);
+		return {
+			...spec,
+			prefixedName: codemodeToolName(spec.serverName, spec.originalName, collides),
+			...(serverDescription ? { serverDescription } : {}),
+			...(instructions ? { serverInstructions: instructions } : {}),
+		};
+	});
+}
+
+const MAX_TOOL_NAME_LENGTH = 64;
+
+/** `mcp__<server>__<tool>` as a JS identifier, capped at 64 chars with a hash suffix. */
+export function codemodeToolName(server: string, tool: string, forceHash = false): string {
+	const name = `mcp__${server}__${tool}`.replace(/[^A-Za-z0-9_]/g, "_");
+	return capToolName(name, `${server}\0${tool}`, forceHash);
+}
+
+/** Providers reject tool names over 64 chars. Cut and add a hash of `key` so names stay unique. */
+export function capToolName(name: string, key: string, forceHash = false): string {
+	if (name.length <= MAX_TOOL_NAME_LENGTH && !forceHash) return name;
+	const hash = createHash("sha256").update(key).digest("hex").slice(0, 8);
+	return `${name.slice(0, MAX_TOOL_NAME_LENGTH - hash.length - 1)}_${hash}`;
+}
+
+// ponytail: 80 chars keeps the proxy server list short. Raise it if summaries get cut too often.
+const SERVER_DESCRIPTION_CHARS = 80;
+
+/** First line of the configured server description, bounded for prompt text. */
+export function serverSummary(description: string | undefined): string {
+	return truncateAtWord(description?.trim().split("\n", 1)[0] ?? "", SERVER_DESCRIPTION_CHARS);
 }
 
 export function getMissingConfiguredDirectToolServers(
@@ -243,7 +275,10 @@ export function getMissingConfiguredDirectToolServers(
 
 	for (const [serverName, definition] of Object.entries(config.mcpServers)) {
 		const hasDirectTools =
-			definition.directTools !== undefined ? !!definition.directTools : !!globalDirect;
+			definition.exposure === "direct" ||
+			Object.values(definition.toolExposure ?? {}).includes("direct") ||
+			(!definition.exposure &&
+				(definition.directTools !== undefined ? !!definition.directTools : !!globalDirect));
 
 		if (!hasDirectTools) continue;
 
@@ -278,13 +313,13 @@ export function buildProxyDescription(
 		const entry = cache?.servers?.[serverName];
 		const definition = config.mcpServers[serverName];
 		const toolCount = (entry?.tools ?? []).filter(
-			(tool) => !isToolExcluded(tool.name, serverName, prefix, definition.excludeTools),
+			(tool) => !isToolHidden(tool.name, serverName, prefix, definition),
 		).length;
 		const resourceCount =
 			definition?.exposeResources === true
 				? (entry?.resources ?? []).filter((resource) => {
 						const baseName = `get_${resourceNameToToolName(resource.name)}`;
-						return !isToolExcluded(baseName, serverName, prefix, definition.excludeTools);
+						return !isToolHidden(baseName, serverName, prefix, definition);
 					}).length
 				: 0;
 		const totalItems = toolCount + resourceCount;
@@ -292,12 +327,14 @@ export function buildProxyDescription(
 		const directCount = directByServer.get(serverName) ?? 0;
 		const proxyCount = totalItems - directCount;
 		if (proxyCount > 0) {
-			serverSummaries.push(`${serverName} (${proxyCount} tools)`);
+			const summary = serverSummary(definition?.description);
+			serverSummaries.push(`${serverName} (${proxyCount} tools)${summary ? `: ${summary}` : ""}`);
 		}
 	}
 
 	if (serverSummaries.length > 0) {
-		desc += `\nServers: ${serverSummaries.join(", ")}\n`;
+		// `; ` because server summaries can contain commas.
+		desc += `\nServers: ${serverSummaries.join("; ")}\n`;
 	}
 
 	desc += `\nModes: tool+args=call; describe=schema; search=find; server=list; connect=refresh; action=auth/UI; empty=status.`;

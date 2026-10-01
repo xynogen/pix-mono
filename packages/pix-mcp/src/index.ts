@@ -15,7 +15,7 @@ import {
 	showStatus,
 	showTools,
 } from "./commands.ts";
-import { loadMcpConfig } from "./config.ts";
+import { loadMcpConfig, takeUnsupportedConfigNotes } from "./config.ts";
 import {
 	buildProxyDescription,
 	createDirectToolExecutor,
@@ -161,7 +161,13 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 				description: spec.description || "(no description)",
 				promptSnippet: truncateAtWord(spec.description, 100) || `MCP tool from ${spec.serverName}`,
 				exposure: codemodeNames.has(name) ? "deferred" : "direct",
-				namespace: codemodeNames.has(name) ? { name: spec.serverName } : undefined,
+				namespace: codemodeNames.has(name)
+					? {
+							name: spec.serverName,
+							...(spec.serverDescription ? { description: spec.serverDescription } : {}),
+							...(spec.serverInstructions ? { instructions: spec.serverInstructions } : {}),
+						}
+					: undefined,
 				parameters: Type.Unsafe(normalizeDirectToolInputSchema(spec.inputSchema) as never),
 				async execute(...args: Parameters<typeof execute>) {
 					if (generation !== lifecycleGeneration)
@@ -208,10 +214,20 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 	}
 
 	// Raw console output clogs the TUI prompt. Batch skips into one transient warning.
+	// The transient slot shows the newest message only, so both notes share one line.
 	function reportSkippedDirectTools(ctx: ExtensionContext): void {
 		const skipped = takeSkippedDirectTools();
-		if (skipped.length === 0) return;
-		const message = `MCP: skipped ${pluralize(skipped.length, "direct tool")} (name collision): ${skipped.join(", ")}`;
+		const ignored = takeUnsupportedConfigNotes();
+		const parts = [
+			...(skipped.length
+				? [
+						`skipped ${pluralize(skipped.length, "direct tool")} (name collision): ${skipped.join(", ")}`,
+					]
+				: []),
+			...(ignored.length ? [`ignored mcp.json values: ${ignored.join(", ")}`] : []),
+		];
+		if (parts.length === 0) return;
+		const message = `MCP: ${parts.join("; ")}`;
 		if (ctx.hasUI) showTransientMessage(ctx.ui, message, "warning");
 		else console.warn(message);
 	}

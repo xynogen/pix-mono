@@ -4,6 +4,21 @@
 
 import type { ContentBlock, McpContent } from "./types.ts";
 
+// Provider-accepted image types. Anything else persisted in history fails every later request.
+const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/** A provider-safe image block, or the reason it is not one. */
+function imageBlock(data: string | undefined, mimeType: string | undefined): ContentBlock {
+	const mime = mimeType?.toLowerCase() ?? "";
+	const clean = data?.replace(/\s+/g, "") ?? "";
+	if (!IMAGE_MIME_TYPES.has(mime))
+		return { type: "text", text: `[Image omitted: unsupported type ${mimeType ?? "(none)"}]` };
+	if (!clean || clean.length % 4 !== 0 || !BASE64.test(clean))
+		return { type: "text", text: `[Image omitted: invalid base64 ${mime} data]` };
+	return { type: "image", data: clean, mimeType: mime };
+}
+
 /**
  * Transform MCP content types to Pi content blocks.
  */
@@ -12,13 +27,7 @@ export function transformMcpContent(content: McpContent[]): ContentBlock[] {
 		if (c.type === "text") {
 			return { type: "text" as const, text: c.text ?? "" };
 		}
-		if (c.type === "image") {
-			return {
-				type: "image" as const,
-				data: c.data ?? "",
-				mimeType: c.mimeType ?? "image/png",
-			};
-		}
+		if (c.type === "image") return imageBlock(c.data, c.mimeType);
 		if (c.type === "resource") {
 			const resourceUri = c.resource?.uri ?? "(no URI)";
 			const resourceContent =

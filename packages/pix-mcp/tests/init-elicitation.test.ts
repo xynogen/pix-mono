@@ -19,6 +19,7 @@ mock.module("../src/server-manager.ts", () => ({
 		const manager = {
 			setDefaultRequestTimeoutMs: mock(() => {}),
 			setSamplingConfig: mock(() => {}),
+			setProviderTokenResolver: mock(() => {}),
 			setElicitationConfig: mock(() => {}),
 			getConnection: mock(() => {}),
 			connect: mock(() => {}),

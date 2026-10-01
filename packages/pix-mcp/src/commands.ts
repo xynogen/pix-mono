@@ -8,6 +8,7 @@ import {
 	getMcpDiscoverySummary,
 	getServerProvenance,
 	isServerNameTaken,
+	loadMcpConfig,
 	previewAddServerEntry,
 	previewCompatibilityImports,
 	previewRemoveServerEntry,
@@ -477,13 +478,20 @@ export async function openMcpPanel(
 	ctx: ExtensionContext,
 	configOverridePath?: string,
 ): Promise<PanelFlowResult> {
-	if (Object.keys(state.config.mcpServers).length === 0) {
+	const configPath = (pi.getFlag("mcp-config") as string | undefined) ?? configOverridePath;
+	// Live config skips `enabled: false` servers. Add them back so the panel can show and edit them.
+	const disabled = Object.entries(
+		loadMcpConfig(configPath, ctx.cwd, { includeDisabled: true }).mcpServers,
+	).filter(([name, definition]) => definition.enabled === false && !state.config.mcpServers[name]);
+	const config: McpConfig = {
+		...state.config,
+		mcpServers: { ...state.config.mcpServers, ...Object.fromEntries(disabled) },
+	};
+	if (Object.keys(config.mcpServers).length === 0) {
 		return openMcpSetup(state, pi, ctx, configOverridePath, "empty");
 	}
 
-	const config = state.config;
 	const cache = loadMetadataCache();
-	const configPath = (pi.getFlag("mcp-config") as string | undefined) ?? configOverridePath;
 	const provenanceMap = getServerProvenance(configPath, ctx.cwd);
 	const { lines: noticeLines, fingerprint } = buildSharedConfigNoticeLines(configPath, ctx.cwd);
 
@@ -525,7 +533,7 @@ export async function openMcpPanel(
 							return;
 						}
 						if (!result.cancelled && result.changes.size > 0) {
-							writeDirectToolsConfig(result.changes, provenanceMap, config);
+							writeDirectToolsConfig(result.changes, provenanceMap, config, result.toolNames);
 							configChanged = true;
 							ctx.ui.notify(
 								"Direct tools updated. Pi will reload after this panel closes.",

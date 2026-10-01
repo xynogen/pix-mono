@@ -37,6 +37,28 @@ Pix MCP also reads, in increasing precedence:
 Run `/mcp setup` for guided discovery, or `pix-mcp init` to detect supported
 Cursor, Claude, Codex, Windsurf, and VS Code configs.
 
+### Pi mcp.json fields
+
+Pix MCP reads these server fields from Pi's `mcp.json` format:
+
+| Field | Effect |
+|---|---|
+| `description` | One line in the `mcp` tool server list and the codemode namespace. Without it, the namespace uses the first line of the server instructions. |
+| `enabled: false` | Keeps the entry without connecting. `/mcp` shows it as `disabled`. Edit it there to enable it again. |
+| `timeout` | Per-request timeout in seconds. Overrides `settings.requestTimeoutMs`. |
+| `exposure` | `codemode` or `deferred` (default, found through `tool_search`), `direct` (declared to the model), or `hidden` (unreachable). `codemode-deferred` is an alias of `codemode`. |
+| `toolExposure` | Per-tool exposure. Keys are tool names or `*` patterns. Exact names win, then the first matching pattern, then `exposure`. |
+| `auth: { "provider": "<name>" }` | Sends the token of a Pi `/login` provider. Allowed only in `<Pi agent dir>/mcp.json`, for an `https` URL or `http` on `localhost`, `127.0.0.1`, or `[::1]`. |
+| `"!command"` in `headers`, `env`, or `oauth.clientSecret` | Runs the command in `bash` (Git Bash on Windows) at connect time, with a 10 s timeout, and uses the trimmed stdout. A good result is cached until Pi restarts. A failure is retried on the next connect. |
+
+`exposure` and `toolExposure` win over `directTools`. `MCP_DIRECT_TOOLS` wins over both, but a
+`hidden` tool stays hidden. Pix MCP drops an invalid value and shows one warning line for it.
+In `/mcp`, the direct-tools toggle writes `toolExposure` for a server that uses `exposure`, and
+`directTools` for other servers.
+
+Project files (`.mcp.json`, `.pi/mcp.json`) can start local commands through `command` and
+`"!command"` values. Review a project's MCP config before you open it in Pi.
+
 ## Token-efficient defaults
 
 - One compact `mcp` proxy tool is exposed instead of every remote tool schema.

@@ -11,8 +11,14 @@ import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import type { CachedTool, MetadataCache, ServerCacheEntry } from "./metadata-cache.ts";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
-import type { McpConfig, McpPanelCallbacks, McpPanelResult, ServerProvenance } from "./types.ts";
-import { isToolExcluded } from "./types.ts";
+import type {
+	McpConfig,
+	McpPanelCallbacks,
+	McpPanelResult,
+	ServerEntry,
+	ServerProvenance,
+} from "./types.ts";
+import { isDirectTool, isToolHidden } from "./types.ts";
 
 /**
  * Recover the printable character a key event represents, or undefined if the
@@ -209,6 +215,10 @@ interface ServerState {
 	source: "user" | "project" | "import";
 	importKind?: string;
 	excludeTools?: string[];
+	exposure?: ServerEntry["exposure"];
+	toolExposure?: ServerEntry["toolExposure"];
+	/** `enabled: false` in config. Shown so the user can edit it back on. */
+	disabled: boolean;
 	exposeResources: boolean;
 	connectionStatus: ConnectionStatus;
 	tools: ToolState[];
@@ -274,23 +284,17 @@ class McpPanel {
 			const prov = provenance.get(serverName);
 			const serverCache = cache?.servers?.[serverName];
 
-			const globalDirect = config.settings?.directTools;
-			let toolFilter: true | string[] | false = false;
-			if (definition.directTools !== undefined) {
-				toolFilter = definition.directTools;
-			} else if (globalDirect) {
-				toolFilter = globalDirect;
-			}
+			// Save writes toolExposure for an exposure server, else legacy directTools.
+			const legacy = definition.directTools ?? config.settings?.directTools;
 
 			const tools: ToolState[] = [];
 			if (serverCache) {
 				for (const tool of serverCache.tools ?? []) {
-					if (isToolExcluded(tool.name, serverName, this.prefix, definition.excludeTools)) {
+					if (isToolHidden(tool.name, serverName, this.prefix, definition)) {
 						continue;
 					}
 
-					const isDirect =
-						toolFilter === true || (Array.isArray(toolFilter) && toolFilter.includes(tool.name));
+					const isDirect = isDirectTool(definition, tool.name, legacy);
 					tools.push({
 						name: tool.name,
 						description: tool.description ?? "",
@@ -302,12 +306,11 @@ class McpPanel {
 				if (definition.exposeResources === true) {
 					for (const resource of serverCache.resources ?? []) {
 						const baseName = `get_${resourceNameToToolName(resource.name)}`;
-						if (isToolExcluded(baseName, serverName, this.prefix, definition.excludeTools)) {
+						if (isToolHidden(baseName, serverName, this.prefix, definition)) {
 							continue;
 						}
 
-						const isDirect =
-							toolFilter === true || (Array.isArray(toolFilter) && toolFilter.includes(baseName));
+						const isDirect = isDirectTool(definition, baseName, legacy);
 						const ct: CachedTool = { name: baseName, description: resource.description };
 						tools.push({
 							name: baseName,
@@ -328,6 +331,9 @@ class McpPanel {
 				source: prov?.kind ?? "user",
 				importKind: prov?.importKind,
 				excludeTools: definition.excludeTools,
+				exposure: definition.exposure,
+				toolExposure: definition.toolExposure,
+				disabled: definition.enabled === false,
 				exposeResources: definition.exposeResources === true,
 				connectionStatus: status,
 				tools,
@@ -399,9 +405,14 @@ class McpPanel {
 
 	private buildResult(): McpPanelResult {
 		const changes = new Map<string, true | string[] | false>();
+		const toolNames = new Map<string, string[]>();
 		for (const server of this.servers) {
 			const changed = server.tools.some((t) => t.isDirect !== t.wasDirect);
 			if (!changed) continue;
+			toolNames.set(
+				server.name,
+				server.tools.map((t) => t.name),
+			);
 			const directTools = server.tools.filter((t) => t.isDirect);
 			if (directTools.length === server.tools.length && server.tools.length > 0) {
 				changes.set(server.name, true);
@@ -414,7 +425,7 @@ class McpPanel {
 				);
 			}
 		}
-		return { changes, cancelled: false };
+		return { changes, toolNames, cancelled: false };
 	}
 
 	private requestAdd(): void {
@@ -628,6 +639,11 @@ class McpPanel {
 			if (!item || item.type === "add") return;
 			const server = this.servers[item.serverIndex];
 			if (!server) return;
+			if (server.disabled) {
+				this.importNotice = `${sanitizeDisplayText(server.name)} is disabled — ctrl+e to enable it.`;
+				this.tui.requestRender();
+				return;
+			}
 			if (server.connectionStatus === "connecting") return;
 			server.connectionStatus = "connecting";
 			this.callbacks
@@ -808,7 +824,7 @@ class McpPanel {
 
 		const newTools: ToolState[] = [];
 		for (const tool of entry.tools ?? []) {
-			if (isToolExcluded(tool.name, server.name, this.prefix, server.excludeTools)) {
+			if (isToolHidden(tool.name, server.name, this.prefix, server)) {
 				continue;
 			}
 
@@ -829,7 +845,7 @@ class McpPanel {
 		if (server.exposeResources) {
 			for (const resource of entry.resources ?? []) {
 				const baseName = `get_${resourceNameToToolName(resource.name)}`;
-				if (isToolExcluded(baseName, server.name, this.prefix, server.excludeTools)) {
+				if (isToolHidden(baseName, server.name, this.prefix, server)) {
 					continue;
 				}
 
@@ -1069,6 +1085,7 @@ class McpPanel {
 		const separator = fg(t.description, " · ");
 		// Auth progress is shown once in the bottom notice; keep the row clean.
 		if (this.authInFlight === server.name) return "";
+		if (server.disabled) return `${separator}${fg(t.description, "disabled")}`;
 		if (server.connectionStatus === "needs-auth")
 			return `${separator}${fg(t.description, "needs auth")}`;
 		if (server.connectionStatus === "connecting")

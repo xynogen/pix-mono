@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import {
 	buildProxyDescription,
+	codemodeToolName,
 	resolveCodemodeTools,
 	resolveDirectTools,
 	takeSkippedDirectTools,
@@ -124,6 +125,38 @@ describe("codemode tool discovery", () => {
 		expect(resolveCodemodeTools(config, cache)).toMatchObject([
 			{ serverName: "demo", originalName: "lookup", prefixedName: "mcp__demo__lookup" },
 		]);
+	});
+
+	it("gives sanitized identifiers and hash-suffixes names that sanitize alike", () => {
+		const config: McpConfig = {
+			mcpServers: { "my-srv": { command: "node", description: "Files, dirs\nsecond line" } },
+		};
+		const cache: MetadataCache = {
+			version: 1,
+			servers: {
+				"my-srv": {
+					configHash: computeServerHash(config.mcpServers["my-srv"]!),
+					cachedAt: Date.now(),
+					tools: [{ name: "read-file" }, { name: "read_file" }, { name: "list" }],
+					resources: [],
+				},
+			},
+		};
+		const names = resolveCodemodeTools(config, cache).map((s) => s.prefixedName);
+		expect(names[2]).toBe("mcp__my_srv__list");
+		for (const name of names.slice(0, 2))
+			expect(name).toMatch(/^mcp__my_srv__read_file_[0-9a-f]{8}$/);
+		expect(new Set(names).size).toBe(3);
+		expect(resolveCodemodeTools(config, cache)[0]?.serverDescription).toBe("Files, dirs");
+		expect(buildProxyDescription(config, cache, [])).toContain(
+			"Servers: my-srv (3 tools): Files, dirs\n",
+		);
+	});
+
+	it("caps long names at 64 chars with a hash suffix", () => {
+		const name = codemodeToolName("server", "x".repeat(80));
+		expect(name).toHaveLength(64);
+		expect(name).toMatch(/^mcp__server__x+_[0-9a-f]{8}$/);
 	});
 });
 

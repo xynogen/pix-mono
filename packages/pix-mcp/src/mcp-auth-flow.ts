@@ -5,6 +5,7 @@
  */
 import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import open from "open";
+import { resolveOAuthSecret } from "./config-value.ts";
 import {
 	clearAllCredentials,
 	clearClientInfo,
@@ -159,7 +160,9 @@ export async function startAuth(
 	definition?: ServerEntry,
 	options: { waitForBrowserCallback?: boolean } = {},
 ): Promise<{ authorizationUrl: string; callbackCompletion?: Promise<AuthStatus> }> {
-	const config = definition ? extractOAuthConfig(definition) : {};
+	const config = definition
+		? extractOAuthConfig(await resolveOAuthSecret(definition, serverName))
+		: {};
 
 	if (config.grantType === "client_credentials") {
 		const storedAuth = await getAuthForUrl(serverName, serverUrl);

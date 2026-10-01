@@ -5,7 +5,15 @@ import { dirname, join, resolve } from "node:path";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { homeDir, projectDir } from "@xynogen/pix-runtime/paths";
 import { getAgentPath } from "./agent-dir.ts";
-import type { ImportKind, McpConfig, McpSettings, ServerEntry, ServerProvenance } from "./types.ts";
+import type {
+	ImportKind,
+	McpConfig,
+	McpExposure,
+	McpSettings,
+	ServerEntry,
+	ServerProvenance,
+} from "./types.ts";
+import { getToolExposure, normalizeExposure } from "./types.ts";
 
 const GENERIC_GLOBAL_CONFIG_PATH = join(homeDir(), ".config", "mcp", "mcp.json");
 const PROJECT_CONFIG_NAME = ".mcp.json";
@@ -195,16 +203,120 @@ export function getMcpDiscoverySummary(
 	};
 }
 
-export function loadMcpConfig(overridePath?: string, cwd = process.cwd()): McpConfig {
+export function loadMcpConfig(
+	overridePath?: string,
+	cwd = process.cwd(),
+	options: { includeDisabled?: boolean } = {},
+): McpConfig {
 	let config: McpConfig = { mcpServers: {} };
+	let piGlobal: Record<string, ServerEntry> = {};
 
 	for (const source of getConfigSources(overridePath, cwd)) {
 		const loaded = readValidatedConfig(source.readPath, `MCP config from ${source.readPath}`);
 		if (!loaded) continue;
+		if (source.id === "pi-global") piGlobal = loaded.mcpServers;
 		config = mergeConfigs(config, expandImports(loaded, cwd));
 	}
 
-	return config;
+	return applyPiServerFields(config, piGlobal, options.includeDisabled);
+}
+
+// Pi mcp.json values pix-mcp drops. Each is reported once per process.
+const reportedUnsupported = new Set<string>();
+let pendingUnsupported: string[] = [];
+
+/** Drain "server: field" notes for values that are dropped. The caller shows them TUI-safe. */
+export function takeUnsupportedConfigNotes(): string[] {
+	const out = pendingUnsupported;
+	pendingUnsupported = [];
+	return out;
+}
+
+function noteUnsupported(note: string): void {
+	if (reportedUnsupported.has(note)) return;
+	reportedUnsupported.add(note);
+	pendingUnsupported.push(note);
+}
+
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Pi rule: a provider token goes only to https, or to http on a loopback host. */
+function isSafeProviderUrl(url: string | undefined): boolean {
+	if (!url || !URL.canParse(url)) return false;
+	const parsed = new URL(url);
+	return (
+		parsed.protocol === "https:" ||
+		(parsed.protocol === "http:" && LOOPBACK_HOSTS.has(parsed.hostname))
+	);
+}
+
+/**
+ * Apply the Pi mcp.json server fields:
+ * - `enabled: false` drops the server, unless `includeDisabled` (the /mcp panel lists it).
+ * - `exposure` / `toolExposure` aliases resolve. Invalid values are dropped and noted.
+ * - `auth: { provider }` stays only when the Pi global mcp.json sets it for the same URL.
+ *   A project or imported file cannot choose where a login token goes.
+ */
+export function applyPiServerFields(
+	config: McpConfig,
+	piGlobal: Record<string, ServerEntry> = {},
+	includeDisabled = false,
+): McpConfig {
+	const mcpServers: Record<string, ServerEntry> = {};
+	for (const [name, original] of Object.entries(config.mcpServers)) {
+		if (original.enabled === false && !includeDisabled) continue;
+		const entry: ServerEntry = { ...original };
+		// Pi rejects these types. Drop the bad field and note it, so one typo cannot crash the load.
+		if (entry.description !== undefined && typeof entry.description !== "string") {
+			noteUnsupported(`${name}: description must be a string`);
+			delete entry.description;
+		}
+		if (entry.enabled !== undefined && typeof entry.enabled !== "boolean") {
+			noteUnsupported(`${name}: enabled must be a boolean`);
+			delete entry.enabled;
+		}
+		if (
+			entry.timeout !== undefined &&
+			!(typeof entry.timeout === "number" && Number.isFinite(entry.timeout) && entry.timeout > 0)
+		) {
+			noteUnsupported(`${name}: timeout must be a positive number of seconds`);
+			delete entry.timeout;
+		}
+		if (entry.exposure !== undefined) {
+			const exposure = normalizeExposure(entry.exposure);
+			if (!exposure) noteUnsupported(`${name}: exposure "${String(entry.exposure)}"`);
+			entry.exposure = exposure;
+		}
+		if (entry.toolExposure !== undefined) {
+			const resolved: Record<string, McpExposure> = {};
+			for (const [tool, value] of Object.entries(entry.toolExposure ?? {})) {
+				const exposure = normalizeExposure(value);
+				if (exposure) resolved[tool] = exposure;
+				else noteUnsupported(`${name}: toolExposure "${tool}"`);
+			}
+			entry.toolExposure = resolved;
+		}
+		if (typeof entry.auth === "object") {
+			const provider = entry.auth?.provider;
+			const global = piGlobal[name];
+			const fromGlobal =
+				typeof global?.auth === "object" &&
+				global.auth?.provider === provider &&
+				global.url === entry.url;
+			if (typeof provider !== "string" || !provider) {
+				noteUnsupported(`${name}: auth.provider must be a provider name`);
+				delete entry.auth;
+			} else if (!fromGlobal) {
+				noteUnsupported(`${name}: auth.provider is only allowed in the global Pi mcp.json`);
+				delete entry.auth;
+			} else if (!isSafeProviderUrl(entry.url)) {
+				noteUnsupported(`${name}: auth.provider needs https, or http on localhost`);
+				delete entry.auth;
+			}
+		}
+		mcpServers[name] = entry;
+	}
+	return { ...config, mcpServers };
 }
 
 function getConfigSources(overridePath?: string, cwd = process.cwd()): ConfigSourceSpec[] {
@@ -798,13 +910,37 @@ export function isServerNameTaken(
 	overridePath?: string,
 	cwd = process.cwd(),
 ): boolean {
-	const cfg = loadMcpConfig(overridePath, cwd);
+	const cfg = loadMcpConfig(overridePath, cwd, { includeDisabled: true });
 	return name in cfg.mcpServers;
 }
+/**
+ * Apply a /mcp direct-tools choice. A server that uses Pi `exposure` gets per-tool
+ * `toolExposure` entries (`direct`, else `codemode`), because exposure wins over `directTools`.
+ * Other servers keep the legacy `directTools` field.
+ */
+export function withDirectChoice(
+	entry: ServerEntry,
+	value: true | string[] | false,
+	toolNames: string[],
+): ServerEntry {
+	if (entry.exposure === undefined && entry.toolExposure === undefined) {
+		return { ...entry, directTools: value };
+	}
+	const toolExposure: Record<string, McpExposure> = { ...entry.toolExposure };
+	for (const tool of toolNames) {
+		const direct = value === true || (Array.isArray(value) && value.includes(tool));
+		if (direct) toolExposure[tool] = "direct";
+		else if (getToolExposure(entry, tool) === "direct") toolExposure[tool] = "codemode";
+	}
+	return { ...entry, toolExposure };
+}
+
 export function writeDirectToolsConfig(
 	changes: Map<string, true | string[] | false>,
 	provenance: Map<string, ServerProvenance>,
 	fullConfig: McpConfig,
+	/** Visible tool names per server. Needed to write `toolExposure` for exposure servers. */
+	toolNames?: Map<string, string[]>,
 ): void {
 	const byPath = new Map<
 		string,
@@ -826,14 +962,9 @@ export function writeDirectToolsConfig(
 		const servers = getServersObject(raw);
 
 		for (const { name, value, prov } of entries) {
-			if (prov.kind === "import") {
-				const fullDef = fullConfig.mcpServers[name];
-				if (fullDef) {
-					servers[name] = { ...fullDef, directTools: value };
-				}
-			} else if (servers[name]) {
-				servers[name] = { ...servers[name], directTools: value };
-			}
+			const base = prov.kind === "import" ? fullConfig.mcpServers[name] : servers[name];
+			if (!base) continue;
+			servers[name] = withDirectChoice(base, value, toolNames?.get(name) ?? []);
 		}
 
 		setServersObject(raw, servers);

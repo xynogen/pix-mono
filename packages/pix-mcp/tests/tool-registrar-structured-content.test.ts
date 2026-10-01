@@ -1,6 +1,26 @@
 import { describe, expect, it } from "bun:test";
 import { resolveMcpResultContent } from "../src/tool-registrar.ts";
 
+describe("MCP image blocks", () => {
+	it("keeps a valid image and replaces an unsafe one with a text note", () => {
+		const blocks = resolveMcpResultContent({
+			content: [
+				{ type: "image", data: "iVBORw0K\nGgo=", mimeType: "IMAGE/PNG" },
+				{ type: "image", data: "PHN2Zz4=", mimeType: "image/svg+xml" },
+				{ type: "image", data: "not base64!", mimeType: "image/jpeg" },
+				{ type: "image", mimeType: "image/webp" },
+			],
+		});
+		expect(blocks[0]).toEqual({ type: "image", data: "iVBORw0KGgo=", mimeType: "image/png" });
+		expect(blocks.slice(1).map((b) => b.type)).toEqual(["text", "text", "text"]);
+		expect(blocks.slice(1).map((b) => (b as { text: string }).text)).toEqual([
+			expect.stringMatching(/^\[Image omitted: unsupported type image\/svg\+xml\]$/),
+			expect.stringMatching(/^\[Image omitted: invalid base64 image\/jpeg data\]$/),
+			expect.stringMatching(/^\[Image omitted: invalid base64 image\/webp data\]$/),
+		]);
+	});
+});
+
 describe("resolveMcpResultContent", () => {
 	it("returns transformed content blocks when content is present", () => {
 		const blocks = resolveMcpResultContent({
@@ -46,11 +66,11 @@ describe("resolveMcpResultContent", () => {
 
 	it("does not fall back when content has a non-text block", () => {
 		const blocks = resolveMcpResultContent({
-			content: [{ type: "image", data: "abc", mimeType: "image/png" }],
+			content: [{ type: "image", data: "abcd", mimeType: "image/png" }],
 			structuredContent: { should: "not appear" },
 		});
 
-		expect(blocks).toEqual([{ type: "image", data: "abc", mimeType: "image/png" }]);
+		expect(blocks).toEqual([{ type: "image", data: "abcd", mimeType: "image/png" }]);
 	});
 
 	it("degrades gracefully when structuredContent is not serializable", () => {

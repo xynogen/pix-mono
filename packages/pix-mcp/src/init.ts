@@ -56,6 +56,7 @@ export async function initializeMcp(
 	// the SDK's initialize handshake and every tool/resource call so a silent
 	// server can't hang the connect or a callTool forever.
 	manager.setDefaultRequestTimeoutMs(config.settings?.requestTimeoutMs ?? ioTimeoutMs());
+	manager.setProviderTokenResolver((provider) => ctx.modelRegistry.getApiKeyForProvider(provider));
 	const samplingAutoApprove = config.settings?.samplingAutoApprove === true;
 	if (config.settings?.sampling !== false && (ctx.hasUI || samplingAutoApprove)) {
 		manager.setSamplingConfig({
@@ -297,10 +298,12 @@ export function updateMetadataCache(state: McpExtensionState, serverName: string
 	const resources =
 		definition.exposeResources === true ? serializeResources(connection.resources) : [];
 
+	const instructions = connection.client.getInstructions?.()?.trim();
 	const entry: ServerCacheEntry = {
 		configHash,
 		tools,
 		resources,
+		...(instructions ? { instructions } : {}),
 		cachedAt: Date.now(),
 	};
 

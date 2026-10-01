@@ -55,6 +55,7 @@ mock.module("../src/mcp-auth-flow.ts", () => ({
 
 mock.module("../src/config.ts", () => ({
 	loadMcpConfig: mocks.loadMcpConfig,
+	takeUnsupportedConfigNotes: () => [],
 }));
 
 mock.module("../src/metadata-cache.ts", () => ({

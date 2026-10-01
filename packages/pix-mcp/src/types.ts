@@ -289,6 +289,16 @@ export interface OAuthConfig {
 
 // Server configuration
 export interface ServerEntry {
+	/** One-line summary, shown in the proxy server list and the tool namespace. Same field as Pi mcp.json. */
+	description?: string;
+	/** `false` keeps the entry without connecting to it (Pi mcp.json). */
+	enabled?: boolean;
+	/** Per-request timeout in seconds (Pi mcp.json). Overrides settings.requestTimeoutMs. */
+	timeout?: number;
+	/** How tools reach the model (Pi mcp.json). Wins over `directTools`. */
+	exposure?: McpExposure;
+	/** Per-tool exposure. Keys are server tool names or `*` patterns. */
+	toolExposure?: Record<string, McpExposure>;
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
@@ -301,9 +311,10 @@ export interface ServerEntry {
 	 * - 'oauth' - Use OAuth 2.1 (auto-discovers endpoints, supports dynamic client registration)
 	 * - 'bearer' - Use static Bearer token
 	 * - false - Disable authentication
+	 * - { provider } - Send the token of a Pi `/login` provider (global Pi mcp.json only)
 	 * If not specified and url is present, OAuth will be auto-detected unless custom headers are configured
 	 */
-	auth?: "oauth" | "bearer" | false;
+	auth?: "oauth" | "bearer" | false | { provider: string };
 	bearerToken?: string;
 	bearerTokenEnv?: string;
 	/**
@@ -390,6 +401,10 @@ export interface DirectToolSpec {
 	resourceUri?: string;
 	uiResourceUri?: string;
 	uiStreamMode?: UiStreamMode;
+	/** Server summary for the codemode namespace (tool_search ranking, describeNamespace). */
+	serverDescription?: string;
+	/** Server instructions from initialize, returned by codemode's describeNamespace(). */
+	serverInstructions?: string;
 }
 
 export interface ServerProvenance {
@@ -423,6 +438,8 @@ export interface AddPanelResultForPanel {
 }
 export interface McpPanelResult {
 	changes: Map<string, true | string[] | false>;
+	/** Visible tool names of each changed server, for `toolExposure` writes. */
+	toolNames?: Map<string, string[]>;
 	cancelled: boolean;
 	addedServer?: AddPanelResultForPanel;
 	wantsAdd?: boolean;
@@ -459,6 +476,65 @@ export function formatToolName(
 
 function normalizeToolName(value: string): string {
 	return value.replace(/-/g, "_");
+}
+
+/** Pi mcp.json exposure. `codemode` and `deferred` both mean the deferred registration here. */
+export type McpExposure = "codemode" | "deferred" | "direct" | "hidden";
+const EXPOSURES = new Set<string>(["codemode", "deferred", "direct", "hidden"]);
+
+/** A valid exposure, with Pi's old `codemode-deferred` alias resolved. Else undefined. */
+export function normalizeExposure(value: unknown): McpExposure | undefined {
+	const v = value === "codemode-deferred" ? "codemode" : value;
+	return typeof v === "string" && EXPOSURES.has(v) ? (v as McpExposure) : undefined;
+}
+
+/**
+ * Exposure of one tool, same order as Pi: exact `toolExposure` key, first matching `*` pattern,
+ * then the server `exposure`. Undefined means not set, so the legacy `directTools` decides.
+ */
+export function getToolExposure(
+	definition: Pick<ServerEntry, "exposure" | "toolExposure">,
+	toolName: string,
+): McpExposure | undefined {
+	const overrides = definition.toolExposure ?? {};
+	const exact = normalizeExposure(overrides[toolName]);
+	if (exact) return exact;
+	for (const [pattern, value] of Object.entries(overrides)) {
+		if (!pattern.includes("*")) continue;
+		const source = pattern
+			.split("*")
+			.map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+			.join(".*");
+		if (new RegExp(`^${source}$`).test(toolName)) return normalizeExposure(value);
+	}
+	return normalizeExposure(definition.exposure);
+}
+
+/** A legacy `directTools` value, or the global `settings.directTools` fallback. */
+export type DirectToolsFilter = boolean | string[] | undefined;
+
+/** Direct when exposure says `direct`. With no exposure set, the legacy `directTools` decides. */
+export function isDirectTool(
+	definition: Pick<ServerEntry, "exposure" | "toolExposure">,
+	toolName: string,
+	legacy: DirectToolsFilter,
+): boolean {
+	const exposure = getToolExposure(definition, toolName);
+	if (exposure) return exposure === "direct";
+	return legacy === true || (Array.isArray(legacy) && legacy.includes(toolName));
+}
+
+/** Excluded by `excludeTools`, or `hidden` by exposure. Hidden tools are unreachable everywhere. */
+export function isToolHidden(
+	toolName: string,
+	serverName: string,
+	prefix: "server" | "none" | "short",
+	definition: Pick<ServerEntry, "excludeTools" | "exposure" | "toolExposure">,
+): boolean {
+	return (
+		getToolExposure(definition, toolName) === "hidden" ||
+		isToolExcluded(toolName, serverName, prefix, definition.excludeTools)
+	);
 }
 
 export function isToolExcluded(
