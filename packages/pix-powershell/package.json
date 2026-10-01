@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-powershell",
-	"version": "0.1.1",
+	"version": "0.1.0",
 	"description": "Pi tool — PowerShell execution with pretty output (renders Pi's built-in powershell tool like pix-bash)",
 	"type": "module",
 	"main": "src/index.ts",

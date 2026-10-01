@@ -63,7 +63,7 @@
 		"@xynogen/pix-grep": "^0.3.3",
 		"@xynogen/pix-ls": "^0.3.3",
 		"@xynogen/pix-bash": "^0.2.9",
-		"@xynogen/pix-powershell": "^0.1.1",
+		"@xynogen/pix-powershell": "^0.1.0",
 		"@xynogen/pix-todo": "^0.4.5",
 		"@xynogen/pix-ask": "^0.3.0",
 		"@xynogen/pix-optimizer": "^1.3.0",
