@@ -15,7 +15,7 @@ const graph = {
 	],
 	links: [
 		{ source: "a", target: "b", relation: "calls" },
-		{ source: "b", target: "c", relation: "imports" },
+		{ source: "b", target: "c", relation: "imports", confidence: "INFERRED" },
 		{ source: "a", target: "missing", relation: "calls" },
 		{ source: "a", target: "a", relation: "self" },
 	],
@@ -32,7 +32,7 @@ describe("graphPageData", () => {
 			],
 			links: [
 				[0, 1, 0],
-				[1, 2, 1],
+				[1, 2, 1, 1],
 			],
 			groups: [
 				["pkg/src #0", 2],

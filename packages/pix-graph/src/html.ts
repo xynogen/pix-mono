@@ -11,8 +11,8 @@ export interface GraphPageData {
 	rels: string[];
 	/** `[label, community index, file:line]`. */
 	nodes: [string, number, string][];
-	/** `[source node index, target node index, relation index]`. */
-	links: [number, number, number][];
+	/** `[source node index, target node index, relation index, 1 if not EXTRACTED]`. */
+	links: ([number, number, number] | [number, number, number, 1])[];
 	/** `[name, member count]`, largest first. Index = community index. */
 	groups: [string, number][];
 }
@@ -63,7 +63,7 @@ export function graphPageData(graph: GraphData): GraphPageData {
 	});
 	const rels: string[] = [];
 	const relIndex = new Map<string, number>();
-	const links: [number, number, number][] = [];
+	const links: GraphPageData["links"] = [];
 	for (const l of graph.links) {
 		const s = index.get(l.source);
 		const t = index.get(l.target);
@@ -73,7 +73,8 @@ export function graphPageData(graph: GraphData): GraphPageData {
 			r = rels.push(l.relation) - 1;
 			relIndex.set(l.relation, r);
 		}
-		links.push([s, t, r]);
+		// ponytail: a missing confidence counts as EXTRACTED, so old graph.json files stay solid.
+		links.push(l.confidence && l.confidence !== "EXTRACTED" ? [s, t, r, 1] : [s, t, r]);
 	}
 	return { rels, nodes, links, groups };
 }
@@ -96,8 +97,9 @@ export function renderGraphHtml(graph: GraphData, title = "pix-graph"): string {
 :root { color-scheme: light dark; --bg: #fafafa; --fg: #222; --dim: #666; --line: #ddd; --panel: #fff; --hi: #2563eb; }
 @media (prefers-color-scheme: dark) { :root { --bg: #111; --fg: #ddd; --dim: #888; --line: #333; --panel: #181818; --hi: #60a5fa; } }
 * { box-sizing: border-box; }
-body { margin: 0; display: grid; grid-template-columns: 1fr 340px; height: 100vh; font: 13px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
-#graph { position: relative; min-width: 0; }
+body { margin: 0; display: grid; grid-template-columns: 1fr 340px; grid-template-rows: 100vh; height: 100vh; overflow: hidden; font: 13px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+/* A fixed row plus min-height: 0 stops the vis canvas (height: 100%) from growing its own row forever. */
+#graph { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 #loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); }
 aside { display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow: hidden; border-left: 1px solid var(--line); background: var(--panel); }
 header { display: flex; gap: 8px; align-items: center; }
@@ -137,6 +139,12 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => "&#" + c.charCodeAt(0) + 
 const color = (g) => "hsl(" + ((g * 137.508) % 360) + ",60%,52%)";
 const dark = matchMedia("(prefers-color-scheme: dark)").matches;
 const font = { color: dark ? "#ddd" : "#222", strokeWidth: 3, strokeColor: dark ? "#111" : "#fafafa" };
+// One flat rgba per edge kind. vis-network cannot fade hsl() colors, and inherited or dashed
+// edges cost a gradient or setLineDash per edge per frame.
+const ink = dark ? "200,200,210" : "60,60,70";
+const hi = dark ? "#60a5fa" : "#2563eb";
+const edgeColor = (a) => ({ color: "rgba(" + ink + "," + a + ")", hover: hi, highlight: hi });
+const SOLID = edgeColor(0.35), FAINT = edgeColor(0.12);
 const members = DATA.groups.map(() => []);
 DATA.nodes.forEach((n, i) => members[n[1]].push(i));
 const degree = new Uint32Array(DATA.nodes.length);
@@ -146,9 +154,9 @@ let net, view = -1;
 function draw(nodes, edges, options) {
 	if (net) net.destroy();
 	net = new vis.Network($("graph"), { nodes, edges }, {
-		nodes: { shape: "dot", font, scaling: { min: 4, max: 44, label: { enabled: true, min: 11, max: 28, drawThreshold: 8 } } },
-		edges: { smooth: false, color: { inherit: "from", opacity: 0.35 }, selectionWidth: 2 },
-		physics: { solver: "barnesHut", barnesHut: { gravitationalConstant: -6000, springLength: 140 }, stabilization: { iterations: 120, updateInterval: 40 } },
+		nodes: { shape: "dot", font, scaling: { min: 4, max: 44, label: { enabled: true, min: 11, max: 28, drawThreshold: 12 } } },
+		edges: { smooth: false, color: SOLID, width: 1, selectionWidth: 1.5, hoverWidth: 0.5, arrows: { to: { scaleFactor: 0.4 } } },
+		physics: { solver: "barnesHut", barnesHut: { gravitationalConstant: -6000, springLength: 140 }, stabilization: { iterations: 80, updateInterval: 40 } },
 		interaction: { hover: true, tooltipDelay: 120, hideEdgesOnDrag: true, hideEdgesOnZoom: true },
 		layout: { improvedLayout: false },
 		...options,
@@ -168,7 +176,7 @@ function overview() {
 	}
 	const nodes = DATA.groups.map(([name, size], g) => ({ id: g, label: name.replace(/ #\\d+$/, ""), value: size, color: color(g), title: name + " · " + size + " nodes" }));
 	const edges = [...weights].map(([key, w]) => { const [from, to] = key.split(",").map(Number); return { from, to, value: w, title: w + " links" }; });
-	draw(nodes, edges, { edges: { smooth: false, color: { inherit: "both", opacity: 0.25 }, scaling: { min: 1, max: 8 } } });
+	draw(nodes, edges, { edges: { smooth: false, color: SOLID, selectionWidth: 1.5, scaling: { min: 1, max: 8 } } });
 	net.on("doubleClick", (e) => e.nodes.length && openGroup(e.nodes[0]));
 	net.on("click", (e) => e.nodes.length && showGroup(e.nodes[0]));
 	$("title").textContent = "Communities"; $("back").hidden = true;
@@ -183,7 +191,7 @@ function openGroup(g, focusNode) {
 	const set = new Set(members[g]);
 	const nodes = members[g].map((i) => ({ id: i, label: DATA.nodes[i][0], value: degree[i], color: color(g), title: DATA.nodes[i][2] }));
 	const edges = [];
-	for (const [s, t, r] of DATA.links) if (set.has(s) && set.has(t)) edges.push({ from: s, to: t, arrows: "to", title: DATA.rels[r] });
+	for (const [s, t, r, guess] of DATA.links) if (set.has(s) && set.has(t)) edges.push({ from: s, to: t, title: DATA.rels[r] + (guess ? " (inferred)" : ""), color: guess ? FAINT : undefined });
 	draw(nodes, edges);
 	net.on("click", (e) => e.nodes.length && showNode(e.nodes[0]));
 	if (focusNode !== undefined) net.once("stabilizationIterationsDone", () => focusOn(focusNode));
@@ -215,9 +223,10 @@ function showGroup(g) {
 function showNode(i) {
 	const [label, g, loc] = DATA.nodes[i];
 	const near = new Map();
-	for (const [s, t, r] of DATA.links) {
-		if (s === i) near.set(t, "→ " + DATA.rels[r]);
-		else if (t === i) near.set(s, "← " + DATA.rels[r]);
+	for (const [s, t, r, guess] of DATA.links) {
+		const rel = DATA.rels[r] + (guess ? "?" : "");
+		if (s === i) near.set(t, "→ " + rel);
+		else if (t === i) near.set(s, "← " + rel);
 	}
 	$("info").innerHTML = "<p><strong>" + esc(label) + "</strong></p><p><code>" + esc(loc) + '</code></p><p class="muted">degree ' + degree[i] + "</p><h2>Neighbors (" + near.size + ")</h2><ul id=near></ul>";
 	const ul = $("near");
