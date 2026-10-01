@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-voice",
-	"version": "0.1.5",
+	"version": "0.2.0",
 	"description": "Provider-neutral speech-to-text and text-to-speech tools for Pi",
 	"type": "module",
 	"main": "src/index.ts",

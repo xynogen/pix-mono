@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-aria2",
-	"version": "0.1.4",
+	"version": "0.2.0",
 	"description": "Pi tool — fast resumable downloads via an auto-managed aria2 RPC daemon",
 	"type": "module",
 	"main": "src/index.ts",

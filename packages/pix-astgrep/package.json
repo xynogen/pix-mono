@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-astgrep",
-	"version": "0.1.5",
+	"version": "0.2.0",
 	"description": "Pi extension — AST-aware structural search and symbol reads (ast-grep, opt-in)",
 	"type": "module",
 	"main": "src/index.ts",
