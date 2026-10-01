@@ -137,7 +137,7 @@ export const CATALOG = {
 		},
 	},
 	rg: {
-		usedBy: ["pix-search", "pix-grep"],
+		usedBy: ["pix-search", "pix-grep", "pix-graph"],
 		os: ALL,
 		hint: {
 			android: "pkg install ripgrep",
@@ -242,7 +242,7 @@ export const CATALOG = {
 		hint: { default: "WSL only: install wslu" },
 	},
 	bash: {
-		usedBy: ["pix-bash"],
+		usedBy: ["pix-bash", "pix-mcp"],
 		os: ALL,
 		hint: { win32: "winget install Git.Git (Git Bash)", default: "install bash" },
 		// Same locations Pi searches: Git for Windows puts only Git\cmd on PATH.
