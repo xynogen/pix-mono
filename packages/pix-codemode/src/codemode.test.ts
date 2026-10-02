@@ -125,11 +125,21 @@ describe("codemode renderer", () => {
 	});
 });
 
-test("extension preserves the native definition and schema identity", () => {
+test("extension wraps the enabled native tool only after session start", () => {
 	const captured = capturePi();
+	let start: (() => void) | undefined;
+	Object.assign(captured.pi, {
+		on: (event: string, handler: () => void) => {
+			if (event === "session_start") start = handler;
+		},
+		getAllTools: () => [{ name: "codemode" }],
+	});
 	const native = capturePi();
 	createCodemodeExtension()(native.pi as unknown as ExtensionAPI);
 	extension(captured.pi as unknown as ExtensionAPI);
+	expect(captured.names).toEqual([]);
+	expect(typeof start).toBe("function");
+	start?.();
 	expect(captured.names).toEqual(["codemode"]);
 	for (const key of Object.keys(native.tool)) {
 		if (["renderCall", "renderResult", "execute", "prepareLoadout"].includes(key)) continue;
@@ -142,4 +152,18 @@ test("extension preserves the native definition and schema identity", () => {
 	expect(captured.tool.renderShell).toBe("self");
 	expect(typeof captured.tool.execute).toBe("function");
 	expect(new MockTextComponent("ok").getText()).toBe("ok");
+});
+
+test("extension does not enable a disabled native codemode tool", () => {
+	const captured = capturePi();
+	let start: (() => void) | undefined;
+	Object.assign(captured.pi, {
+		on: (event: string, handler: () => void) => {
+			if (event === "session_start") start = handler;
+		},
+		getAllTools: () => [],
+	});
+	extension(captured.pi as unknown as ExtensionAPI);
+	start?.();
+	expect(captured.names).toEqual([]);
 });

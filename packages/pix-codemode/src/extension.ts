@@ -27,6 +27,11 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 				return typeof value === "function" ? value.bind(target) : value;
 			},
 		});
-		host.createCodemodeExtension()(proxy);
+		// ponytail: Pi has no renderer-only hook. Wrap after load so the builtin stays loaded.
+		// Replace this registration with a renderer hook when Pi exposes one.
+		pi.on("session_start", () => {
+			if (!pi.getAllTools().some((tool) => tool.name === "codemode")) return;
+			host.createCodemodeExtension()(proxy);
+		});
 	});
 }
