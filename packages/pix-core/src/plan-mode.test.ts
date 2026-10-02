@@ -1,8 +1,33 @@
 import { describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { CustomEditor, type KeybindingsManager } from "@earendil-works/pi-coding-agent";
 import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
 import { setIconMode } from "@xynogen/pix-pretty/icon-catalog";
-import { attachModeKeys, isPlanPath, modeStatus, parsePlan } from "./plan-mode.ts";
+import { tempDir } from "@xynogen/pix-runtime/paths";
+import { attachModeKeys, isPlanPath, listPlans, modeStatus, parsePlan } from "./plan-mode.ts";
+
+describe("listPlans", () => {
+	it("sorts by modification time, newest first, then by file name", () => {
+		const cwd = mkdtempSync(join(tempDir(), "plan-order-"));
+		const dir = join(cwd, ".pi", "plans");
+		try {
+			mkdirSync(dir, { recursive: true });
+			for (const [file, time] of [
+				["z-old.md", 1000],
+				["a-new.md", 2000],
+				["b-new.md", 2000],
+			] as const) {
+				const path = join(dir, file);
+				writeFileSync(path, "# Plan");
+				utimesSync(path, time, time);
+			}
+			expect(listPlans(cwd).map((plan) => plan.file)).toEqual(["b-new.md", "a-new.md", "z-old.md"]);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+});
 
 describe("modeStatus", () => {
 	it("plan shows its icon in warning, normal shows another icon in muted", () => {

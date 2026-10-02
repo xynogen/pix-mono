@@ -86,7 +86,7 @@ export function isPlanPath(cwd: string, path: string): boolean {
 	return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
 }
 
-function listPlans(cwd: string): Plan[] {
+export function listPlans(cwd: string): Plan[] {
 	const dir = resolve(cwd, PLAN_DIR);
 	let files: string[];
 	try {
@@ -95,12 +95,11 @@ function listPlans(cwd: string): Plan[] {
 		return [];
 	}
 	return files
-		.sort()
-		.reverse()
 		.map((f) => ({
 			...parsePlan(f, readFileSync(join(dir, f), "utf-8")),
 			updated_at: statSync(join(dir, f)).mtimeMs,
-		}));
+		}))
+		.sort((a, b) => b.updated_at - a.updated_at || b.file.localeCompare(a.file));
 }
 
 /**
