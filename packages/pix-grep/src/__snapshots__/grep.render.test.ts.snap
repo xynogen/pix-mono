@@ -1,0 +1,77 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`grep UI captures the call title, target, path and glob roles 1`] = `
+[
+  "<toolTitle+bold>grep</toolTitle+bold> <dim>TODO</dim> <muted>in src</muted> <muted>(*.ts)</muted>                                                         ",
+]
+`;
+
+exports[`grep UI captures a single hit with a full-width success close 1`] = `
+[
+  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`grep UI captures multiple hits in order with the same success shape 1`] = `
+[
+  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
+  "  <dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                           ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`grep UI captures the unframed collapsed summary 1`] = `
+[
+  "<success>✓ </success> <toolTitle+bold>grep</toolTitle+bold> <dim>“TODO” in src</dim> <muted>·</muted> <muted>2 matches</muted>                                               ",
+]
+`;
+
+exports[`grep UI restores both complete hits when the collapsed card is expanded 1`] = `
+[
+  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
+  "  <dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                           ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`grep UI captures a structured error, its collapsed summary and its expanded diagnostic 1`] = `
+{
+  "collapsed": [
+    "<error>✗ </error> <toolTitle+bold>grep</toolTitle+bold> <dim>“(” in src</dim> <muted>·</muted> <muted>failed</muted>                                                     ",
+  ],
+  "expanded": [
+    "<error>regex parse error: unclosed group</error>                                               ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "normal": [
+    "<error>regex parse error: unclosed group</error>                                               ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+}
+`;
+
+exports[`grep UI captures a partial result without a completed close 1`] = `
+[
+  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
+  "  <dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                           ",
+]
+`;
+
+exports[`grep UI captures long output at 80 columns without a mock wrapping shortcut 1`] = `
+[
+  "  <dim>src/long.ts:42:</dim><success+bold>TODO</success+bold><dim> detail detail detail detail detail detail detail detail de</dim>",
+  "                                                                                ",
+  "  <dim>  src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                         ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`grep UI captures long output at 120 columns without a mock wrapping shortcut 1`] = `
+[
+  "  <dim>src/long.ts:42:</dim><success+bold>TODO</success+bold><dim> detail detail detail detail detail detail detail detail detail detail detail detail detail detail </dim>",
+  "                                                                                                                        ",
+  "  <dim>  src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                                                                 ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
