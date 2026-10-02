@@ -1,6 +1,7 @@
 ---
 name: lsp
 description: Select and configure a project language server for pix-diagnostics. Use when LSP is missing, unavailable, or needs setup for a language.
+disable-model-invocation: true
 ---
 # Project LSP Setup
 

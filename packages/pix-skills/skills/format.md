@@ -1,6 +1,7 @@
 ---
 name: format
 description: Select and run the project's formatter through bash. Use when asked to format code, check formatting, or apply style fixes.
+disable-model-invocation: true
 ---
 # Project Format
 

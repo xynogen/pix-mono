@@ -1,6 +1,7 @@
 ---
 name: tdd
 description: Pragmatic test-driven development for any language or framework. Use when building features or fixing bugs test-first without dogma — red-green loop, seams, vertical slices, with sanctioned exceptions.
+disable-model-invocation: true
 ---
 # Pragmatic TDD
 
