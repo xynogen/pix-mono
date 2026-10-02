@@ -9,6 +9,7 @@
  */
 
 import type { AgentToolUpdateCallback, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { FG_DIM, RST, resolveBaseBackground } from "./ansi.ts";
 import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
@@ -81,6 +82,9 @@ export function collapseProgressFrames(text: string): string {
 		})
 		.join("\n");
 }
+
+/** Body indent: one tab. pi-tui renders `\t` as 3 cells, the title column after the 2-cell status icon + space. */
+const BODY_PAD = "\t";
 
 /** Canonical shell output normalization: collapse CR progress frames, then
  *  squeeze blank runs and trim. */
@@ -202,7 +206,7 @@ export function registerShellTool(
 						theme,
 					);
 				} else {
-					text.setText(fillToolBackground(`  ${theme.fg("muted", "done")}`));
+					text.setText(fillToolBackground(`${BODY_PAD}${theme.fg("muted", "done")}`));
 				}
 				return text;
 			}
@@ -226,15 +230,17 @@ export function registerShellTool(
 				const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 				const show = lines.slice(0, maxShow);
 				const footer =
-					lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
+					lineCount > maxShow
+						? [`${FG_DIM}${BODY_PAD}… ${lineCount - maxShow} more lines${RST}`]
+						: [];
 				// Every result (including single-line) is framed; the rules follow exit
 				// status: green ok, red failure. The `✓ exit N` header is dropped — the
 				// collapsed row already carries status.
 				const exitCode = d.exitCode as number | null;
 				const statusKey = exitCode === null || exitCode === 0 ? "success" : "error";
 				const paint = (s: string) => theme.fg(statusKey, s);
-				const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
-				const body = show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`);
+				const sw = Math.max(8, termW() - visibleWidth(BODY_PAD) - 2); // section-rule width inside the indent
+				const body = show.map((line) => `${BODY_PAD}${sectionRule(line, theme, sw) ?? line}`);
 				const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
 				text.setText(fillToolBackground(out.join("\n")));
 				return text;
@@ -245,11 +251,15 @@ export function registerShellTool(
 			if (isPartial) {
 				const liveLines = normalizeShellText(String(fallbackText)).split("\n").slice(-5);
 				text.setText(
-					fillToolBackground(liveLines.map((line) => `  ${theme.fg("dim", line)}`).join("\n")),
+					fillToolBackground(
+						liveLines.map((line) => `${BODY_PAD}${theme.fg("dim", line)}`).join("\n"),
+					),
 				);
 				return text;
 			}
-			text.setText(fillToolBackground(`  ${theme.fg("dim", String(fallbackText).slice(0, 120))}`));
+			text.setText(
+				fillToolBackground(`${BODY_PAD}${theme.fg("dim", String(fallbackText).slice(0, 120))}`),
+			);
 			return completed();
 		},
 	});

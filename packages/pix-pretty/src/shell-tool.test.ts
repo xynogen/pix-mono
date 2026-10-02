@@ -202,6 +202,8 @@ describe("registerShellTool", () => {
 		// no "✓ exit 0" header; the rules carry status by color.
 		expect(collapsed).toContain("- -");
 		expect(collapsed).toContain("Checked 382 files");
+		// Body starts at the title column (2-cell icon + space).
+		expect(strip(collapsed)).toMatch(/^\tChecked 382 files/m);
 		expect(strip(collapsed)).not.toContain("✓ exit 0");
 		const expanded =
 			tool
