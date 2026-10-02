@@ -4,6 +4,23 @@ import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
 
 const theme = { fg: (_key: string, text: string) => text };
 
+test("marked command body aligns with the title column", () => {
+	const preview = commandPreview(
+		"◐  codemode",
+		"first\nsecond",
+		undefined,
+		theme,
+		{},
+		() => {},
+		false,
+		3,
+	);
+	const rows = preview.render(40);
+	expect(rows.slice(1).map((row) => row.slice(0, 3))).toEqual(["   ", "   "]);
+	expect(rows[1]).toBe("   first");
+	expect(rows[2]).toBe("   second");
+});
+
 test("command preview separates parameters, wraps without dropping text, and bounds collapse", async () => {
 	const code = 'printf "a quoted value" && echo next';
 	const state = {};

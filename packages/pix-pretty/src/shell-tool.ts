@@ -13,6 +13,7 @@ import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse"
 import { FG_DIM, RST, resolveBaseBackground } from "./ansi.ts";
 import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
+import { icon } from "./icon-catalog.ts";
 import { renderBashOutput } from "./renderers.ts";
 import type { ToolContext } from "./tools/context.ts";
 import type {
@@ -32,6 +33,7 @@ import {
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
+	padIcon,
 	renderToolError,
 	ruleFrame,
 	sectionRule,
@@ -145,7 +147,7 @@ export function registerShellTool(
 			resolveBaseBackground(theme);
 			const displayCmdRaw = (args.command ?? "").trim();
 			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
-			const label = theme.fg("toolTitle", theme.bold(name));
+			const label = `${theme.fg("warning", padIcon(icon("status.running")))} ${theme.fg("toolTitle", theme.bold(name))}`;
 			const collapseState = renderCtx.state as CollapseState;
 			if (hideCollapsedToolCall(collapseState, renderCtx.expanded, (value) => text.setText(value)))
 				return text;
@@ -158,6 +160,7 @@ export function registerShellTool(
 				renderCtx.state,
 				renderCtx.invalidate,
 				renderCtx.expanded,
+				3,
 			);
 		},
 

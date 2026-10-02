@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test";
+import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
+import { icon } from "./icon-catalog.ts";
 import { collapseProgressFrames, registerShellTool, type ShellToolOptions } from "./shell-tool.ts";
 import { capturePi, makeRenderCtx, makeTheme, makeToolContext } from "./test-utils.ts";
 import type { ThemeLike, ToolResultLike } from "./types.ts";
+import { renderCollapsedToolRow } from "./utils.ts";
 
 const okFactory = () => ({
 	execute: async () => ({ content: [{ type: "text" as const, text: "ok" }], details: undefined }),
@@ -41,6 +44,20 @@ describe("collapseProgressFrames", () => {
 });
 
 describe("registerShellTool", () => {
+	it.each(["bash", "powershell"])("aligns %s running and collapsed titles", (name) => {
+		const { pi, tool } = capturePi();
+		registerShellTool(pi, okFactory, makeToolContext(), { ...bashOpts, name });
+		const theme = makeTheme();
+		const call = stripVTControlCharacters(
+			tool.renderCall?.({ command: "echo ok" }, theme, makeRenderCtx())?.render(120)[0] ?? "",
+		);
+		const collapsed = stripVTControlCharacters(
+			renderCollapsedToolRow(theme, name, "echo ok", "done"),
+		);
+		expect(call).toStartWith(icon("status.running"));
+		expect(visibleWidth(call.slice(0, call.indexOf(name)))).toBe(3);
+		expect(visibleWidth(collapsed.slice(0, collapsed.indexOf(name)))).toBe(3);
+	});
 	it("clamps renderCall to small terminal widths", () => {
 		const { pi, tool } = capturePi();
 		registerShellTool(pi, okFactory, makeToolContext({ terminalWidth: () => 24 }), bashOpts);

@@ -11,6 +11,7 @@ import {
 	formatJson,
 	frameToolResult,
 	hideCollapsedToolCall,
+	padIcon,
 	pluralize,
 	renderCollapsedToolRow,
 	unframeToolResult,
@@ -79,13 +80,14 @@ export function renderCall(args: { code?: string }, theme: ThemeLike, ctx: Conte
 	if (hideCollapsedToolCall(ctx.state, ctx.expanded, (value) => text.setText(value))) return text;
 	const code = typeof args.code === "string" ? args.code : "[invalid arg]";
 	return commandPreview(
-		theme.fg("toolTitle", theme.bold("codemode")),
+		`${theme.fg("warning", padIcon(icon("status.running")))} ${theme.fg("toolTitle", theme.bold("codemode"))}`,
 		code,
 		"javascript",
 		theme,
 		ctx.state,
 		ctx.invalidate,
 		ctx.expanded,
+		3,
 	);
 }
 

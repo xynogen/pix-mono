@@ -16,6 +16,7 @@ import {
 	summarize,
 } from "@xynogen/pix-pretty/diff-render";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { lang } from "@xynogen/pix-pretty/lang";
 import type {
 	PiPrettyApi,
@@ -33,6 +34,7 @@ import {
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
+	padIcon,
 	renderCollapsedToolRow,
 	renderToolError,
 	setResultDetails,
@@ -135,7 +137,7 @@ export function registerWriteTool(
 				)
 			)
 				return text;
-			const hdr = `${theme.fg("toolTitle", theme.bold(label))} ${theme.fg("dim", sp(fp))}`;
+			const hdr = `${theme.fg("warning", padIcon(icon("status.running")))} ${theme.fg("toolTitle", theme.bold(label))} ${theme.fg("dim", sp(fp))}`;
 
 			if (args?.content && isNew) {
 				const previewKey = `create:${diffThemeCacheKey(theme)}:${fp}:${String(args.content).length}:${renderCtx.expanded ? "full" : "preview"}`;

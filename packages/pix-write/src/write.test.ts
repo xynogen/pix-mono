@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import { stripVTControlCharacters } from "node:util";
+import { visibleWidth } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	capturePi,
 	makeRenderCtx,
@@ -6,12 +9,27 @@ import {
 	makeToolContext,
 } from "@xynogen/pix-pretty/test-utils";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
+import { renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
 import { registerWriteTool } from "./write";
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
 const noopTrack = () => {};
 
 describe("registerWriteTool", () => {
+	it("aligns the running title with the collapsed title", () => {
+		const { pi, tool } = capturePi();
+		registerWriteTool(pi, noopFactory, makeToolContext(), noopTrack);
+		const theme = makeTheme();
+		const call = stripVTControlCharacters(
+			tool.renderCall?.({ path: "package.json" }, theme, makeRenderCtx())?.render(120)[0] ?? "",
+		);
+		const collapsed = stripVTControlCharacters(
+			renderCollapsedToolRow(theme, "write", "package.json", "saved"),
+		);
+		expect(call).toStartWith(icon("status.running"));
+		expect(visibleWidth(call.slice(0, call.indexOf("write")))).toBe(3);
+		expect(visibleWidth(collapsed.slice(0, collapsed.indexOf("write")))).toBe(3);
+	});
 	it("registers a tool named 'write'", () => {
 		const { pi, names } = capturePi();
 		registerWriteTool(pi, noopFactory, makeToolContext(), noopTrack);

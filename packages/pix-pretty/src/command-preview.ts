@@ -10,6 +10,7 @@ export function commandPreview(
 	state: Record<string, unknown>,
 	invalidate: () => void,
 	expanded = false,
+	indent = 2,
 ) {
 	type Slot = { code: string; language: string | undefined; theme: typeof theme; styled: string };
 	let slot = state.commandPreview as Slot | undefined;
@@ -44,13 +45,14 @@ export function commandPreview(
 				return new Text(`${header}${separator}${current.styled}`, 0, 0).render(width);
 			}
 			// ponytail: wrap without rewriting shell syntax or quoted strings. Add a shell parser only for semantic formatting.
-			const lines = wrapTextWithAnsi(current.styled, Math.max(1, width - 2));
+			const padding = " ".repeat(indent);
+			const lines = wrapTextWithAnsi(current.styled, Math.max(1, width - indent));
 			const shown = expanded ? lines : lines.slice(0, 16);
 			return [
 				truncateToWidth(`${header}${separator}`, width, "…"),
-				...shown.map((line) => `  ${line}`),
+				...shown.map((line) => `${padding}${line}`),
 				...(shown.length < lines.length
-					? [theme.fg("muted", `  … +${lines.length - shown.length} lines`)]
+					? [theme.fg("muted", `${padding}… +${lines.length - shown.length} lines`)]
 					: []),
 			];
 		},
