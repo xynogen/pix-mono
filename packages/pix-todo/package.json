@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-todo",
-	"version": "0.4.5",
-	"description": "Pi tool — durable execution checklist (todo)",
+	"version": "0.4.6",
+	"description": "Pi tool \u2014 durable execution checklist (todo)",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
@@ -35,7 +35,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.25.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.0"
 	},
 	"peerDependencies": {

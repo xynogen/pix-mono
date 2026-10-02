@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-aria2",
-	"version": "0.2.0",
-	"description": "Pi tool — fast resumable downloads via an auto-managed aria2 RPC daemon",
+	"version": "0.2.1",
+	"description": "Pi tool \u2014 fast resumable downloads via an auto-managed aria2 RPC daemon",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {
@@ -43,7 +43,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.29.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.0",
 		"maria2": "^0.4.1"
 	},

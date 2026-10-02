@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-subagent",
-	"version": "0.10.5",
-	"description": "Pi tool — planner-driven sub-agents: spawn, fetch, steer scoped child agents",
+	"version": "0.10.6",
+	"description": "Pi tool \u2014 planner-driven sub-agents: spawn, fetch, steer scoped child agents",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {
@@ -42,7 +42,7 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-data": "^0.5.3",
-		"@xynogen/pix-pretty": "^1.25.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.2"
 	},
 	"peerDependencies": {

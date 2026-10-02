@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-graph",
-	"version": "0.3.0",
-	"description": "Pi extension — native TS code knowledge graph (extract, cluster, analyze, query)",
+	"version": "0.3.1",
+	"description": "Pi extension \u2014 native TS code knowledge graph (extract, cluster, analyze, query)",
 	"type": "module",
 	"main": "src/index.ts",
 	"bin": {
@@ -58,7 +58,7 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.25.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.2",
 		"typescript": "^5.7.0"
 	}

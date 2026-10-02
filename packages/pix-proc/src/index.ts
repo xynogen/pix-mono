@@ -14,6 +14,7 @@
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
+import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
@@ -181,16 +182,18 @@ export default function registerRunner(pi: ExtensionAPI): void {
 				}),
 			),
 		}),
-		renderCall(args, theme) {
+		renderCall(args, theme, context) {
 			const a = args as { action?: string; command?: string; handle?: string };
 			const target = a.command ?? a.handle ?? "";
-			const text = new Text("", 0, 0);
-			text.setText(
-				`${theme.fg("toolTitle", theme.bold("proc"))} ${theme.fg("dim", a.action ?? "")}${
-					target ? ` ${theme.fg("muted", target)}` : ""
-				}`,
+			return commandPreview(
+				`${theme.fg("toolTitle", theme.bold("proc"))} ${theme.fg("dim", a.action ?? "")}`,
+				target,
+				a.command ? "bash" : undefined,
+				theme as unknown as { fg: (key: string, text: string) => string },
+				context.state,
+				context.invalidate,
+				context.expanded,
 			);
-			return text;
 		},
 		renderResult(result, options, theme, context) {
 			const details = result.details as ProcResultDetails | undefined;

@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-diagnostics",
-	"version": "0.3.5",
-	"description": "Pi extension — lazy LSP diagnostics, navigation, and a compact session widget",
+	"version": "0.3.6",
+	"description": "Pi extension \u2014 lazy LSP diagnostics, navigation, and a compact session widget",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {
@@ -51,7 +51,7 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.26.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.2",
 		"vscode-jsonrpc": "^9.0.0"
 	}

@@ -59,9 +59,7 @@ describe("registerPowerShellTool", () => {
 		);
 
 		expect(names).toEqual(["powershell"]);
-		expect(collapsed?.getText()).toContain(
-			"✓  powershell <dim>Get-ChildItem -Force · +1 steps</dim>",
-		);
+		expect(collapsed?.getText()).toContain("<dim>Get-ChildItem -Force; Get-Date</dim>");
 		expect(collapsed?.getText()).toMatch(/<muted>2 lines · [\d.]+s<\/muted>/);
 	});
 

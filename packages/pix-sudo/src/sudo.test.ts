@@ -700,7 +700,7 @@ describe("sudo_run tool execute()", () => {
 		});
 		// Markers are width-normalized (padIcon) so 1-cell and 2-cell glyphs align.
 		expect(renderResult(successHost, success, false)).toContain(
-			`${padIcon(COLLAPSED_TOOL_GLYPH.success)} sudo apt install ripgrep · exit 0 · 18 lines`,
+			`${padIcon(COLLAPSED_TOOL_GLYPH.success)} sudo · exit 0 · 18 lines · apt install ripgrep`,
 		);
 
 		const deniedHost = makeHost();
@@ -713,7 +713,7 @@ describe("sudo_run tool execute()", () => {
 		);
 		expect(denied.details).toMatchObject({ outcome: "denied", cancellationKind: "denied" });
 		expect(renderResult(deniedHost, denied, false)).toContain(
-			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo systemctl restart foo · denied`,
+			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo · denied · systemctl restart foo`,
 		);
 
 		const timeoutHost = makeHost();
@@ -726,7 +726,7 @@ describe("sudo_run tool execute()", () => {
 		);
 		expect(timedOut.details).toMatchObject({ outcome: "timed-out", cancellationKind: "timeout" });
 		expect(renderResult(timeoutHost, timedOut, false)).toContain(
-			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo apt update · timed out`,
+			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo · timed out · apt update`,
 		);
 
 		const failedHost = makeHost();
@@ -749,7 +749,7 @@ describe("sudo_run tool execute()", () => {
 			errorKind: "exit-code",
 		});
 		expect(renderResult(failedHost, failed, false)).toContain(
-			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo apt update · exit 1 · 12 lines`,
+			`${padIcon(COLLAPSED_TOOL_GLYPH.error)} sudo · exit 1 · 12 lines · apt update`,
 		);
 	});
 
@@ -798,7 +798,7 @@ describe("sudo_run tool execute()", () => {
 			makeCtx({ overlayResult: { action: "approved", password: "secret-value" } }),
 		);
 		const compact = renderResult(host, result, false);
-		expect(compact).toContain("sudo apt update printf injected");
+		expect(compact).toContain("apt update printf injected");
 		expect(compact.split("\n")).toHaveLength(1);
 	});
 
@@ -831,7 +831,7 @@ describe("sudo_run tool execute()", () => {
 		);
 
 		expect(collapsedCall).toBe("");
-		expect(expandedCall).toContain("sudo printf output");
+		expect(expandedCall).toContain("sudo · printf output");
 		const expandedResult = renderResult(host, result, true, state);
 		expect(expandedResult).toContain("original stdout");
 		expect(expandedResult).toContain("original stderr");

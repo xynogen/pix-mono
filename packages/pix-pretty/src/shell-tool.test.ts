@@ -55,7 +55,7 @@ describe("registerShellTool", () => {
 		);
 
 		expect(text).toBeDefined();
-		const rendered = text?.getText() ?? "";
+		const rendered = text?.render(24).join("\n") ?? "";
 		for (const line of rendered.split("\n")) {
 			expect(visibleWidth(line)).toBeLessThanOrEqual(24);
 		}
@@ -89,9 +89,17 @@ describe("registerShellTool", () => {
 		);
 
 		expect(call?.getText()).toBe("");
-		expect(result?.getText()).toContain("✓  bash <dim>bun test</dim>");
+		const openCall = tool.renderCall?.({ command: "echo hello" }, theme, makeRenderCtx());
+		const hiddenCall = tool.renderCall?.(
+			{ command: "echo hello" },
+			theme,
+			makeRenderCtx({ state: { collapsed: true }, lastComponent: openCall }),
+		);
+		expect(hiddenCall?.getText()).toBe("");
+		expect(hiddenCall?.render(80)).toEqual([]);
+		expect(result?.getText()).toContain("bun test && bun run lint && git diff --check");
 		expect(result?.getText()).toContain("<muted>2 lines · 2.5s</muted>");
-		expect(result?.getText()).not.toContain("git diff --check");
+		expect(result?.render(24).join("\n")).toContain("…");
 	});
 
 	it("restores full output when an elapsed card is expanded", () => {
@@ -145,7 +153,7 @@ describe("registerShellTool", () => {
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
 		expect(render({ timer: 1 })).toContain("- -");
-		expect(render({ collapsed: true })).toContain("✗  bash bun test · exit 1");
+		expect(render({ collapsed: true })).toContain("✗  bash · exit 1");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 
 		const partial =
@@ -302,7 +310,7 @@ describe("registerShellTool", () => {
 			makeTheme(),
 			makeRenderCtx({ isError: true, state: { collapsed: true } }),
 		);
-		expect(rendered?.getText()).toContain("✗  bash bun test · exit 1");
+		expect(rendered?.getText()).toContain("✗  bash · exit 1");
 	});
 
 	it("registers, labels, and collapses under the configured tool name", () => {
@@ -325,7 +333,7 @@ describe("registerShellTool", () => {
 
 		expect(names).toEqual(["powershell"]);
 		expect(call?.getText()).toMatch(/powershell.*<dim>Get-ChildItem -Force/);
-		expect(collapsed?.getText()).toContain("✓  powershell <dim>Get-ChildItem</dim>");
+		expect(collapsed?.getText()).toContain("<dim>x</dim>");
 	});
 
 	it("marks output matching failurePattern as exit 1 when no code is reported", async () => {

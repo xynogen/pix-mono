@@ -343,6 +343,30 @@ describe("truncate", () => {
 	});
 });
 
+describe("ssh call renderer", () => {
+	it("separates the host and wraps highlighted commands at the viewport width", async () => {
+		let call: ((...args: unknown[]) => { render(width: number): string[] }) | undefined;
+		registerSsh({
+			registerTool(tool: unknown) {
+				call = (tool as { renderCall: typeof call }).renderCall;
+			},
+		} as unknown as ExtensionAPI);
+		if (!call) throw new Error("renderCall missing");
+		const theme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
+		const ctx = { state: {}, expanded: false, invalidate() {} };
+		const short = call({ host: "user@host", command: "echo ok" }, theme, ctx);
+		expect(short.render(80).join("\n")).toContain("ssh user@host · echo ok");
+		const command =
+			"cd ~/worker-service && git fetch -q origin && git checkout -q -B main origin/main";
+		call({ host: "user@host", command }, theme, ctx);
+		await Promise.resolve();
+		const long = call({ host: "user@host", command }, theme, ctx).render(40);
+		expect(long[0]).toContain("ssh user@host ·");
+		expect(long.length).toBeGreaterThan(2);
+		expect(long[1]).toMatch(/^ {2}/);
+	});
+});
+
 describe("ssh result renderer", () => {
 	const theme = {
 		fg: (key: string, text: string) => `[${key}]${text}[/]`,

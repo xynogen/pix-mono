@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-update",
-	"version": "0.2.4",
-	"description": "Pi extension — /update self-update command",
+	"version": "0.2.5",
+	"description": "Pi extension \u2014 /update self-update command",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {
@@ -43,7 +43,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.21.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.0"
 	},
 	"peerDependencies": {

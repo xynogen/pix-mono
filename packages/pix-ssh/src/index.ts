@@ -28,6 +28,7 @@
 import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { FG_DIM, RST, resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
+import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -36,12 +37,12 @@ import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-
 import {
 	dotJoin,
 	fillToolBackground,
+	formatCollapsedToolRow,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	normalizeLineEndings,
-	renderCollapsedToolRow,
 	renderToolError,
 	ruleFrame,
 	sectionRule,
@@ -890,14 +891,17 @@ export default function (pi: ExtensionAPI): void {
 				return text;
 			}
 			const operation = normalizeOperation(args);
-			const command = safeOneLine(operation.command) || "(empty command)";
+			const command = operation.command || "(empty command)";
 			const prefix = operation.sudo ? "sudo " : "";
-			text.setText(
-				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold(operation.action === "file" ? "ssh file" : "ssh"))} ${theme.fg("dim", host)} ${theme.fg("muted", prefix + command)}`,
-				),
+			return commandPreview(
+				`${theme.fg("toolTitle", theme.bold(operation.action === "file" ? "ssh file" : "ssh"))} ${theme.fg("dim", host)}`,
+				prefix + command,
+				"bash",
+				theme,
+				renderCtx.state,
+				renderCtx.invalidate,
+				renderCtx.expanded,
 			);
-			return text;
 		}) as never,
 
 		renderResult: ((
@@ -934,16 +938,17 @@ export default function (pi: ExtensionAPI): void {
 				)
 			) {
 				const status = details.outcome === "success" ? "success" : "error";
-				text.setText(
-					renderCollapsedToolRow(
+				return collapsedCommandRow(
+					formatCollapsedToolRow(
 						theme,
 						"ssh",
-						`${details.host}  ${safeOneLine(details.command)}`,
+						details.host,
 						terminalMeta(details),
 						status,
-					),
+					).trimEnd(),
+					safeOneLine(details.command),
+					theme,
 				);
-				return text;
 			}
 
 			if (details.outcome === "awaiting-approval" || details.outcome === "running") {

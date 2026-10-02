@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-mcp",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"description": "Token-efficient MCP gateway for the Pix Pi distro",
 	"type": "module",
 	"main": "src/index.ts",
@@ -48,7 +48,7 @@
 	"dependencies": {
 		"@modelcontextprotocol/client": "^2.0.0",
 		"@modelcontextprotocol/ext-apps": "^1.2.2",
-		"@xynogen/pix-pretty": "^1.25.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.2",
 		"open": "^10.2.0",
 		"recheck": "^4.5.0",

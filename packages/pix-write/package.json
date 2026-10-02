@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-write",
-	"version": "0.2.7",
-	"description": "Pi tool — file write with diff rendering",
+	"version": "0.2.8",
+	"description": "Pi tool \u2014 file write with diff rendering",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {
@@ -39,7 +39,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.25.0",
+		"@xynogen/pix-pretty": "^1.30.0",
 		"@xynogen/pix-runtime": "^0.12.2"
 	},
 	"peerDependencies": {

@@ -21,6 +21,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { lookupBenchmark } from "@xynogen/pix-data";
+import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	COLLAPSED_TOOL_GLYPH,
@@ -899,7 +900,19 @@ export function createAgentTool(
 				renderCtx.invalidate,
 				renderCtx.expanded,
 			);
-			return new Text(formatAgentCall(args as Record<string, unknown>, theme, !collapsed), 0, 0);
+			const input = args as Record<string, unknown>;
+			const header = formatAgentCall(input, theme, false);
+			if (collapsed || typeof input.prompt !== "string" || !input.prompt)
+				return new Text(header, 0, 0);
+			return commandPreview(
+				header,
+				input.prompt,
+				undefined,
+				theme as unknown as { fg: (key: string, text: string) => string },
+				renderCtx.state,
+				renderCtx.invalidate,
+				renderCtx.expanded,
+			);
 		},
 
 		renderResult(result, { expanded, isPartial }, theme, renderCtx) {

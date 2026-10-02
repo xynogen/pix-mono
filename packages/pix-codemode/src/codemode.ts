@@ -1,13 +1,13 @@
 import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
+import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
-	fillToolBackground,
 	formatJson,
 	frameToolResult,
 	hideCollapsedToolCall,
@@ -30,7 +30,7 @@ type Call = {
 };
 type Details = { calls?: Call[]; fullOutputPath?: string };
 type Slot = { key: string; theme: ThemeLike; text?: string };
-type State = CollapseState & { highlights?: Record<string, Slot> };
+type State = CollapseState & Record<string, unknown> & { highlights?: Record<string, Slot> };
 type Context = {
 	state: State;
 	expanded: boolean;
@@ -78,17 +78,15 @@ export function renderCall(args: { code?: string }, theme: ThemeLike, ctx: Conte
 	const text = new PreviewText();
 	if (hideCollapsedToolCall(ctx.state, ctx.expanded, (value) => text.setText(value))) return text;
 	const code = typeof args.code === "string" ? args.code : "[invalid arg]";
-	const lines = code.split("\n");
-	const shown = ctx.expanded ? code : lines.slice(0, 16).join("\n");
-	const title = `${theme.fg("toolTitle", theme.bold("codemode"))} ${theme.fg("muted", pluralize(lines.length, "line"))}`;
-	const hint =
-		!ctx.expanded && lines.length > 16
-			? `\n${theme.fg("muted", `… +${lines.length - 16} lines`)}`
-			: "";
-	const body = `${title}\n${highlight(shown, "javascript", "call", theme, ctx)}${hint}`;
-	if (ctx.expanded) return new Text(body, 0, 0);
-	text.setText(fillToolBackground(body));
-	return text;
+	return commandPreview(
+		theme.fg("toolTitle", theme.bold("codemode")),
+		code,
+		"javascript",
+		theme,
+		ctx.state,
+		ctx.invalidate,
+		ctx.expanded,
+	);
 }
 
 function output(result: AgentToolResult<Details>) {

@@ -9,9 +9,9 @@
  */
 
 import type { AgentToolUpdateCallback, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth } from "@earendil-works/pi-tui";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { BG_BASE, FG_DIM, RST, resolveBaseBackground } from "./ansi.ts";
+import { FG_DIM, RST, resolveBaseBackground } from "./ansi.ts";
+import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { renderBashOutput } from "./renderers.ts";
 import type { ToolContext } from "./tools/context.ts";
@@ -26,12 +26,12 @@ import type {
 import {
 	dotJoin,
 	fillToolBackground,
+	formatCollapsedToolRow,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
-	renderCollapsedToolRow,
 	renderToolError,
 	ruleFrame,
 	sectionRule,
@@ -95,8 +95,8 @@ export function registerShellTool(
 	ctx: ToolContext,
 	options: ShellToolOptions,
 ): void {
-	const { cwd, TextComponent, terminalWidth } = ctx;
-	const { name, summarize, failurePattern } = options;
+	const { cwd, TextComponent } = ctx;
+	const { name, failurePattern } = options;
 	const origTool = createTool(cwd);
 
 	pi.registerTool({
@@ -150,25 +150,15 @@ export function registerShellTool(
 			if (hideCollapsedToolCall(collapseState, renderCtx.expanded, (value) => text.setText(value)))
 				return text;
 			const timeout = args.timeout ? ` ${theme.fg("muted", `(${args.timeout}s timeout)`)}` : "";
-			const cmdLines = displayCmdRaw.split("\n");
-			const firstLine = cmdLines[0] ?? "";
-			const compactCmd =
-				cmdLines.length > 1
-					? `${firstLine} ${theme.fg("muted", `… (+${cmdLines.length - 1} lines)`)}`
-					: firstLine;
-			const baseCmd = renderCtx.expanded ? displayCmdRaw : compactCmd;
-			const availableWidth = Math.max(1, (terminalWidth?.() ?? termW()) - 1);
-			const prefix = `${label} `;
-			const reserve = Math.max(0, availableWidth - timeout.length);
-			const displayCmd = truncateToWidth(
-				theme.fg("dim", baseCmd),
-				Math.max(1, reserve - prefix.length),
-				"…",
+			return commandPreview(
+				label + timeout,
+				displayCmdRaw,
+				name === "powershell" ? "powershell" : "bash",
+				theme,
+				renderCtx.state,
+				renderCtx.invalidate,
+				renderCtx.expanded,
 			);
-			text.setText(
-				fillToolBackground(`${prefix}${displayCmd}${timeout}`, BG_BASE, terminalWidth?.()),
-			);
-			return text;
 		},
 
 		renderResult(
@@ -203,15 +193,10 @@ export function registerShellTool(
 						lc > 0 && `${lc} ${lc === 1 ? "line" : "lines"}`,
 						durationMs > 0 && formatDuration(durationMs, "bash"),
 					]);
-					text.setText(
-						renderCollapsedToolRow(
-							theme,
-							name,
-							summarize(String(d.command ?? "")),
-							meta,
-							status,
-							terminalWidth?.(),
-						),
+					return collapsedCommandRow(
+						formatCollapsedToolRow(theme, name, "", meta, status).trimEnd(),
+						String(d.command ?? ""),
+						theme,
 					);
 				} else {
 					text.setText(fillToolBackground(`  ${theme.fg("muted", "done")}`));

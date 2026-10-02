@@ -70,7 +70,7 @@ describe("registerBashTool", () => {
 		);
 
 		expect(text).toBeDefined();
-		const rendered = text?.getText() ?? "";
+		const rendered = text?.render(24).join("\n") ?? "";
 		for (const line of rendered.split("\n")) {
 			expect(visibleWidth(line)).toBeLessThanOrEqual(24);
 		}
@@ -104,9 +104,9 @@ describe("registerBashTool", () => {
 		);
 
 		expect(call?.getText()).toBe("");
-		expect(result?.getText()).toContain("✓  bash <dim>bun test · +2 steps</dim>");
+		expect(result?.getText()).toContain("bun test && bun run lint && git diff --check");
 		expect(result?.getText()).toContain("<muted>2 lines · 2.5s</muted>");
-		expect(result?.getText()).not.toContain("git diff --check");
+		expect(result?.render(24).join("\n")).toContain("…");
 	});
 
 	it("collapses a non-zero exit thrown by Pi's built-in bash tool", async () => {
@@ -134,6 +134,6 @@ describe("registerBashTool", () => {
 			makeTheme(),
 			makeRenderCtx({ isError: true, state: { collapsed: true } }),
 		);
-		expect(rendered?.getText()).toContain("✗  bash bun test · exit 1");
+		expect(rendered?.getText()).toContain("✗  bash · exit 1");
 	});
 });

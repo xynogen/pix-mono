@@ -5,6 +5,7 @@ import registerRunner from "./index.ts";
 
 type Component = { render(width: number): string[] };
 type Tool = {
+	renderCall(args: unknown, theme: unknown, context: unknown): Component;
 	renderResult(result: unknown, options: unknown, theme: unknown, context: unknown): Component;
 };
 
@@ -35,6 +36,18 @@ function result(ok: boolean, lines: string[], error?: string) {
 }
 
 describe("proc renderer", () => {
+	test("wraps long commands with the shared parameter separator", () => {
+		const lines = tool()
+			.renderCall(
+				{ action: "start", command: "npm run dev && echo a long command with several parameters" },
+				plainTheme,
+				{ state: {}, invalidate() {}, expanded: false },
+			)
+			.render(32);
+		expect(lines[0]).toContain("proc start ·");
+		expect(lines.length).toBeGreaterThan(2);
+		expect(lines[1]).toMatch(/^ {2}/);
+	});
 	test("collapsed success shows the process glyph and a dashed close", () => {
 		const rendered = tool()
 			.renderResult(
