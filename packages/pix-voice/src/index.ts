@@ -7,6 +7,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { pixRuntime } from "@xynogen/pix-runtime/config";
 import { once } from "@xynogen/pix-runtime/once";
 import { registerBuiltinProviders } from "./builtin.ts";
 import registerVoiceCommand from "./command.ts";
@@ -17,6 +18,9 @@ import registerTranscribe from "./transcribe.ts";
 export default function registerPixVoice(pi: ExtensionAPI): void {
 	registerBuiltinProviders();
 	once(pi, "pix-voice", () => {
+		pi.on("session_start", async () => {
+			await pixRuntime().init();
+		});
 		registerVoiceCommand(pi);
 		registerSttCommand(pi);
 		registerTranscribe(pi);

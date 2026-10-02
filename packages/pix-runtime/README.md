@@ -10,7 +10,9 @@ See `DESIGN.md` for the full contract.
 ## What it does
 
 - Versioned, sparse `pix.json` (`$version: 1`) — defaults resolve in code.
-- Typed sections: `collapse`, `pretty`, `io`, `compaction`, `optimizer`, `gate`.
+- Typed sections: `collapse`, `pretty`, `io`, `compaction`, `optimizer`, `gate`, `fetch`, `search`, `voice`, `toolbox`.
+- `/pix` has a Footer tab for `pretty.footer` visibility.
+- Startup imports legacy service config files and archives them only after a successful save.
 - Atomic writes behind a serialized in-process queue and a short-lived
   cross-process lock. A failed write leaves the old file intact.
 - Immutable, deeply frozen config snapshots with a monotonic revision.

@@ -21,7 +21,9 @@ import { benchScoreColor, formatCost, lookupBenchmark, resolveModelsDev } from "
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
 import { fmtTokenCount } from "@xynogen/pix-pretty/widget-format";
+import { config, onConfigChange } from "@xynogen/pix-runtime/config";
 import { runGit } from "@xynogen/pix-runtime/os";
+import { prettySection } from "@xynogen/pix-runtime/sections";
 
 // ─── Pure formatting helpers ─────────────────────────────────────────
 
@@ -151,9 +153,16 @@ export function computeTps(totalOutput: number, elapsedSec: number): number | nu
 }
 
 /** Tokens block (in/out + cache/cost). Always returns a string; caller decides visibility. */
-function renderTokens(totals: SessionTotals, theme: Theme, faded = false): string {
-	let s = `${icon("net.in")} ${fmtTokenCount(totals.input)} ${icon("net.out")} ${fmtTokenCount(totals.output)}`;
-	if (totals.cost > 0) s += ` $${totals.cost.toFixed(3)}`;
+function renderTokens(
+	totals: SessionTotals,
+	theme: Theme,
+	faded: boolean,
+	parts: typeof prettySection.defaults.footer,
+): string {
+	let s = parts.tokens
+		? `${icon("net.in")} ${fmtTokenCount(totals.input)} ${icon("net.out")} ${fmtTokenCount(totals.output)}`
+		: "";
+	if (parts.cost && totals.cost > 0) s += ` $${totals.cost.toFixed(3)}`;
 	return theme.fg(faded ? "muted" : "dim", s);
 }
 
@@ -208,11 +217,13 @@ function renderModel(
 		| undefined,
 	thinking: string,
 	theme: Theme,
+	parts: typeof prettySection.defaults.footer,
 ): string {
 	const rawId = model?.id ?? "?";
 	const id = rawId.replace(/^[a-z]+\//i, "");
 	const provider = model?.provider ?? "";
-	let out = theme.fg("muted", `${icon("model")}  `) + theme.fg("accent", id);
+	let out = parts.model ? theme.fg("muted", `${icon("model")}  `) + theme.fg("accent", id) : "";
+	const separator = () => (out ? theme.fg("muted", " · ") : "");
 	const THINK_ABBR: Record<string, string> = {
 		minimal: "min",
 		low: "low",
@@ -221,22 +232,22 @@ function renderModel(
 		xhigh: "xhigh",
 		off: "off",
 	};
-	if (thinking) {
+	if (parts.thinking && thinking) {
 		const abbr = THINK_ABBR[thinking] ?? thinking.slice(0, 3);
-		out += theme.fg("muted", " · ") + renderThinkingLevel(theme, thinking, abbr);
+		out += separator() + renderThinkingLevel(theme, thinking, abbr);
 	}
-	if (provider && id !== "?") {
+	if (parts.price && provider && id !== "?") {
 		// modelgrep first; registered model cost/ctx fills private / gateway gaps
 		const dev = resolveModelsDev(provider, id, model);
 		const costStr = fmtCost(dev);
 		// color the $ and numbers green, separator muted
-		out += theme.fg("muted", " · ") + theme.fg("success", costStr);
+		out += separator() + theme.fg("success", costStr);
 	}
 	const bench = lookupBenchmark(id);
-	if (bench) {
+	if (parts.score && bench) {
 		const score = bench.overallScore ?? "?";
 		const scoreColor = benchScoreColor(bench.overallScore);
-		out += theme.fg("muted", " · ") + theme.fg(scoreColor, `${icon("score")}${score}`);
+		out += separator() + theme.fg(scoreColor, `${icon("score")}${score}`);
 	}
 	return out;
 }
@@ -474,6 +485,7 @@ export default function (pi: ExtensionAPI) {
 
 		ctx.ui.setFooter((tui, theme: Theme, footerData: ReadonlyFooterDataProvider) => {
 			requestRender = () => tui.requestRender();
+			const unsubConfig = onConfigChange(() => tui.requestRender(), { paths: ["pretty.footer.*"] });
 			const unsub = footerData.onBranchChange(() => {
 				void refreshGit(ctx.cwd);
 				tui.requestRender();
@@ -482,17 +494,21 @@ export default function (pi: ExtensionAPI) {
 			return {
 				dispose() {
 					unsub();
+					unsubConfig();
 					requestRender = null;
 				},
 				invalidate() {},
 				render(width: number): string[] {
 					const sep = theme.fg("muted", " | ");
 
+					// A version-skewed pix-runtime copy can own the globalThis singleton and
+					// parse "pretty" without the footer key. Merge defaults so render never sees undefined.
+					const parts = { ...prettySection.defaults.footer, ...config(prettySection).footer };
 					const totals = computeSessionTotals(ctx.sessionManager.getBranch());
 					const tokens =
-						tokensState === "off" ? "" : renderTokens(totals, theme, tokensState === "dim");
+						tokensState === "off" ? "" : renderTokens(totals, theme, tokensState === "dim", parts);
 					const ctxUsage = renderCtxUsage(ctx.getContextUsage?.(), theme);
-					const model = renderModel(ctx.model, pi.getThinkingLevel?.() ?? "", theme);
+					const model = renderModel(ctx.model, pi.getThinkingLevel?.() ?? "", theme, parts);
 					const { branchSeg, markersSeg } = renderBranch(
 						footerData.getGitBranch(),
 						gitStatus,
@@ -504,17 +520,22 @@ export default function (pi: ExtensionAPI) {
 						theme,
 					);
 
-					const loc =
-						theme.fg("muted", `${icon("cwd")}  `) +
-						theme.fg("accent", shortCwd(ctx.cwd)) +
-						branchSeg;
-					const markersPart = markersSeg ? sep + markersSeg : "";
-					const tpsPart = liveTps ? sep + theme.fg("accent", liveTps) : "";
-
-					const tokensPart = tokens ? sep + tokens : "";
-					const ctxPart = ctxUsage ? sep + ctxUsage : "";
-					const line = `${modePart}${loc}${markersPart}${ctxPart}${sep}${model}${otherPart}${tokensPart}${tpsPart}`;
-					return [truncateToWidth(line, width)];
+					const loc = parts.cwd
+						? theme.fg("muted", `${icon("cwd")}  `) + theme.fg("accent", shortCwd(ctx.cwd))
+						: "";
+					const line = [
+						parts.mode ? modePart.slice(0, -sep.length) : "",
+						loc + (parts.git ? branchSeg : ""),
+						parts.git ? markersSeg : "",
+						parts.context ? ctxUsage : "",
+						model,
+						parts.statuses ? otherPart.slice(sep.length) : "",
+						tokens,
+						parts.tps && liveTps ? theme.fg("accent", liveTps) : "",
+					]
+						.filter(Boolean)
+						.join(sep);
+					return line ? [truncateToWidth(line, width)] : [];
 				},
 			};
 		});

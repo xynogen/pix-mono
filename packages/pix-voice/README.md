@@ -63,7 +63,7 @@ once. Rows with a list open it in the modal: type to filter, then press enter.
 | dictation key | Any Pi key id. Needs a Pi restart. |
 | play after generation | Play `speak` output. ffmpeg plays it on Linux and macOS. Windows uses the built-in PowerShell `MediaPlayer` |
 
-Settings stay in `~/.pi/agent/voice.json`:
+Settings live in `~/.pi/agent/pix.json` under `voice`. This example shows the section value:
 
 ```json
 {
@@ -79,8 +79,8 @@ Settings stay in `~/.pi/agent/voice.json`:
 }
 ```
 
-When `voice.json` does not exist, the first load copies the audio defaults from
-the old `~/.pi/agent/9router.json`.
+Startup imports `voice.json` into unified config and preserves existing `pix.json.voice` values.
+After a successful save, the old file becomes `voice.json.migrated-v1`.
 
 ## Dictation
 

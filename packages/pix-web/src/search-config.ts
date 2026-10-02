@@ -1,37 +1,17 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { agentDir } from "@xynogen/pix-runtime/paths";
+import { config, onConfigChange, type PixRuntime, pixRuntime } from "@xynogen/pix-runtime/config";
+import { searchSection, type WebConfig } from "@xynogen/pix-runtime/sections";
 
-export interface SearchConfig {
-	provider: string;
-	nineRouterModel: string;
+export type SearchConfig = WebConfig;
+export function loadSearchConfig(runtime: PixRuntime = pixRuntime()): SearchConfig {
+	return { ...runtime.get(searchSection) };
 }
-
-export const SEARCH_CONFIG_PATH = join(agentDir(), "search.json");
-
-const DEFAULT_CONFIG: SearchConfig = {
-	provider: "auto",
-	nineRouterModel: "exa",
-};
-
-export function loadSearchConfig(path = SEARCH_CONFIG_PATH): SearchConfig {
-	try {
-		const value = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
-		return {
-			provider: typeof value.provider === "string" ? value.provider : DEFAULT_CONFIG.provider,
-			nineRouterModel:
-				typeof value.nineRouterModel === "string"
-					? value.nineRouterModel
-					: DEFAULT_CONFIG.nineRouterModel,
-		};
-	} catch {
-		return { ...DEFAULT_CONFIG };
-	}
+export async function saveSearchConfig(
+	value: SearchConfig,
+	runtime: PixRuntime = pixRuntime(),
+): Promise<void> {
+	const change = await runtime.update(searchSection, value);
+	if (!change && JSON.stringify(runtime.get(searchSection)) !== JSON.stringify(value))
+		throw new Error("Failed to save search settings to pix.json");
 }
-
-export function saveSearchConfig(config: SearchConfig, path = SEARCH_CONFIG_PATH): void {
-	mkdirSync(dirname(path), { recursive: true });
-	writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-}
-
-export const searchConfig = loadSearchConfig();
+export const searchConfig = { ...config(searchSection) };
+onConfigChange(() => Object.assign(searchConfig, config(searchSection)), { paths: ["search.*"] });

@@ -30,6 +30,18 @@ import { ioSection } from "./io.ts";
 import { optimizerSection } from "./optimizer.ts";
 import { prettySection } from "./pretty.ts";
 
+export {
+	fetchSection,
+	searchSection,
+	type ToolboxConfig,
+	toolboxSection,
+	type VoiceConfig,
+	voiceSection,
+	type WebConfig,
+} from "./services.ts";
+
+import { fetchSection, searchSection, toolboxSection, voiceSection } from "./services.ts";
+
 /** All built-in sections, in stable registration order. */
 export const builtinSections = [
 	collapseSection,
@@ -38,4 +50,8 @@ export const builtinSections = [
 	optimizerSection,
 	gateSection,
 	compactionSection,
+	fetchSection,
+	searchSection,
+	voiceSection,
+	toolboxSection,
 ] as const;

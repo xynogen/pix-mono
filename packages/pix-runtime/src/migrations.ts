@@ -106,7 +106,31 @@ export function importOptimizerSidecar(
 	agentDir: string,
 	ctx: ParseContext,
 ): { changed: boolean; archive?: () => void } {
-	const sidecarPath = join(agentDir, "optimizer.json");
+	const imports = ["optimizer", "voice", "fetch", "search", "toolbox"];
+	let changed = false;
+	const archives: (() => void)[] = [];
+	for (const section of imports) {
+		const result = importSidecar(doc, agentDir, ctx, section);
+		changed ||= result.changed;
+		if (result.archive) archives.push(result.archive);
+	}
+	return {
+		changed,
+		archive: archives.length
+			? () => {
+					for (const archive of archives) archive();
+				}
+			: undefined,
+	};
+}
+
+function importSidecar(
+	doc: RawDocument,
+	agentDir: string,
+	ctx: ParseContext,
+	section: string,
+): { changed: boolean; archive?: () => void } {
+	const sidecarPath = join(agentDir, `${section}.json`);
 	if (!existsSync(sidecarPath)) return { changed: false };
 
 	let raw: Record<string, unknown>;
@@ -118,32 +142,39 @@ export function importOptimizerSidecar(
 		ctx.diagnostic({
 			code: "MIGRATION_FAILED",
 			severity: "warning",
-			path: "optimizer.json",
-			message: "malformed optimizer sidecar left untouched",
+			path: `${section}.json`,
+			message: `malformed ${section} config left unchanged`,
 			cause: err,
 		});
 		return { changed: false };
 	}
 
-	const existing = isObj(doc.optimizer) ? { ...doc.optimizer } : {};
+	const existing = isObj(doc[section]) ? { ...doc[section] } : {};
 	let changed = false;
-	for (const key of OPTIMIZER_KEYS) {
+	for (const key of section === "optimizer" ? OPTIMIZER_KEYS : Object.keys(raw)) {
 		const value = raw[key];
-		if (typeof value === "string" && !(key in existing)) {
+		if ((section !== "optimizer" || typeof value === "string") && !(key in existing)) {
 			existing[key] = value;
 			changed = true;
 		}
 	}
-	if (changed) doc.optimizer = existing;
+	if (changed) doc[section] = existing;
 
-	const hasLegacyToon = typeof raw.toon === "string";
+	const hasLegacyToon = section === "optimizer" && typeof raw.toon === "string";
 	const archive = () => {
 		let target = `${sidecarPath}.migrated-v1`;
 		if (existsSync(target)) target = `${target}.${Date.now()}`;
 		try {
 			renameSync(sidecarPath, target);
-		} catch {
-			// A competing process may have moved it — ENOENT is benign.
+		} catch (err) {
+			if ((err as NodeJS.ErrnoException).code !== "ENOENT")
+				ctx.diagnostic({
+					code: "MIGRATION_FAILED",
+					severity: "warning",
+					path: sidecarPath,
+					message: "config backup failed; original file remains",
+					cause: err,
+				});
 		}
 	};
 

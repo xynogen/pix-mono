@@ -19,7 +19,7 @@ import {
 import { createBinariesTab } from "./binaries-tab.ts";
 import { icon } from "./icon-catalog.ts";
 import type { PixRuntime } from "./runtime.ts";
-import type { DeepPartial, SectionHandle } from "./schema.ts";
+import { type DeepPartial, deepMerge, type SectionHandle } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { compactionSection } from "./sections/compaction.ts";
 import { gateSection } from "./sections/gate.ts";
@@ -184,6 +184,17 @@ const SETTINGS: SettingRow<unknown>[] = [
 		read: (v) => v.guardrails,
 		patch: (guardrails) => ({ guardrails: guardrails as "on" | "off" }),
 	}),
+	...Object.keys(prettySection.defaults.footer).map((key) => {
+		const part = key as keyof typeof prettySection.defaults.footer;
+		return row({
+			section: "Footer",
+			label: part,
+			handle: prettySection,
+			values: ["show", "hide"],
+			read: (v) => (v.footer[part] ? "show" : "hide"),
+			patch: (value) => ({ footer: { [part]: value === "show" } }),
+		});
+	}),
 ];
 
 /** Env whose agent dir is the folder holding pix.json (binary.json lives beside it). */
@@ -191,7 +202,7 @@ function binariesEnv(runtime: PixRuntime): NodeJS.ProcessEnv {
 	return { ...process.env, PI_CODING_AGENT_DIR: dirname(runtime.path) };
 }
 
-const TABS = ["Settings", "Binaries"] as const;
+const TABS = ["Settings", "Binaries", "Footer"] as const;
 
 function buildSummary(runtime: PixRuntime): string {
 	const lines = [`Pix Settings (${runtime.path})`, ""];
@@ -270,13 +281,16 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					const switchTab = (direction: -1 | 1) => {
 						const next = (TABS.indexOf(tab) + direction + TABS.length) % TABS.length;
 						tab = TABS[next] ?? "Settings";
+						selected = 0;
 						bodyOffset = 0;
 						inspectingPage = false;
 						if (tab === "Binaries") binariesTab().refresh();
 					};
 
+					const rows = () =>
+						SETTINGS.filter((r) => (r.section === "Footer") === (tab === "Footer"));
 					const cycle = (direction: -1 | 1) => {
-						const row = SETTINGS[selected];
+						const row = rows()[selected];
 						if (!row) return;
 						// Functional updater: the runtime queue serializes writes, and the
 						// callback sees the latest committed value — so rapid presses each
@@ -296,7 +310,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							const next = (cur + direction + row.values.length) % row.values.length;
 							const val = row.values[next];
 							if (val === undefined) return state;
-							return { ...state, ...(row.patch(val) as object) };
+							return deepMerge(state, row.patch(val) as DeepPartial<SettingsState>);
 						};
 						// Re-render AFTER the commit lands; the synchronous render in
 						// handleInput fires before the queued write and shows a stale value.
@@ -306,7 +320,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							.catch(() => ui.notify(`pix: failed to update ${row.label}`, "error"));
 					};
 					const move = (direction: -1 | 1) => {
-						selected = (selected + direction + SETTINGS.length) % SETTINGS.length;
+						selected = (selected + direction + rows().length) % rows().length;
 						inspectingPage = false;
 					};
 
@@ -346,12 +360,13 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								maxBodyOffset = result.maxBodyOffset;
 								return result.lines;
 							}
-							const labelW = Math.max(...SETTINGS.map((r) => r.label.length));
+							const settings = rows();
+							const labelW = Math.max(...settings.map((r) => r.label.length));
 							const body: string[] = [];
 							const settingBodyLines: number[] = [];
 							let lastSection = "";
-							for (let i = 0; i < SETTINGS.length; i++) {
-								const row = SETTINGS[i];
+							for (let i = 0; i < settings.length; i++) {
+								const row = settings[i];
 								if (!row) continue;
 								if (row.section !== lastSection) {
 									if (lastSection) body.push("");

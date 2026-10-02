@@ -13,15 +13,12 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import type {
 	ExtensionAPI,
 	ExtensionContext,
 	Theme,
 	ToolInfo,
 } from "@earendil-works/pi-coding-agent";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
 	fuzzyFilter,
 	Input,
@@ -41,6 +38,8 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { config, pixRuntime, updateConfig } from "@xynogen/pix-runtime/config";
+import { toolboxSection } from "@xynogen/pix-runtime/sections";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -196,10 +195,6 @@ interface ToolboxState {
 	enabledTools?: string[];
 }
 
-function getStatePath(): string {
-	return join(getAgentDir(), "toolbox.json");
-}
-
 const isStringArray = (v: unknown): v is string[] =>
 	Array.isArray(v) && v.every((x) => typeof x === "string");
 
@@ -286,26 +281,32 @@ function createState(pi: ExtensionAPI) {
 			console.warn("toolbox: persist failed:", err);
 		}
 		// Write to disk so state survives across completely new sessions
-		try {
-			const sp = getStatePath();
-			mkdirSync(dirname(sp), { recursive: true });
-			writeFileSync(sp, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
-		} catch (err) {
-			console.warn("toolbox: file persist failed:", err);
-		}
+		void updateConfig(toolboxSection, { ...data, loadedTools: data.loadedTools ?? [] })
+			.then((change) => {
+				if (
+					!change &&
+					JSON.stringify(config(toolboxSection).disabledTools) !==
+						JSON.stringify(data.disabledTools)
+				)
+					pi.sendMessage({
+						customType: "toolbox-error",
+						content: "Failed to save toolbox settings to pix.json",
+						display: true,
+					});
+			})
+			.catch((err) =>
+				pi.sendMessage({
+					customType: "toolbox-error",
+					content: `Failed to save toolbox settings: ${String(err)}`,
+					display: true,
+				}),
+			);
 	}
 
 	/** Raw persisted state from disk, or undefined when absent/corrupt. */
 	function loadFromFile(): { raw: unknown; legacy: boolean } | undefined {
-		try {
-			const sp = getStatePath();
-			if (!existsSync(sp)) return undefined;
-			const raw = JSON.parse(readFileSync(sp, "utf-8")) as ToolboxState;
-			return { raw, legacy: !isStringArray(raw?.disabledTools) };
-		} catch {
-			// corrupt, or a test env without getAgentDir
-			return undefined;
-		}
+		const raw = config(toolboxSection);
+		return Object.keys(raw).length ? { raw, legacy: !isStringArray(raw.disabledTools) } : undefined;
 	}
 
 	/** Latest toolbox-config entry in the session, or undefined. */
@@ -397,6 +398,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 	// Defer init until tools are registered — session_start fires after all extensions load.
 	// Try to restore persisted state; fall back to full init if no config found.
 	pi.on("session_start", async (_event, ctx) => {
+		await pixRuntime().init();
 		state.restoreFromBranch(ctx);
 	});
 

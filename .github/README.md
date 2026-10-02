@@ -18,6 +18,44 @@ Or use the [one-shot installer](#install). It installs Pi, a theme, and the dist
 >
 > **🐧 Linux/macOS** tested. Windows has its own installer and per-OS code paths, but CI runs on Linux only.
 
+## Configuration
+
+Pix stores its settings in `~/.pi/agent/pix.json`. `PI_CODING_AGENT_DIR` can change this directory.
+
+| Section | Settings |
+| --- | --- |
+| `pretty` | Icons, display limits, diffs, and `footer` visibility |
+| `collapse` | Tool result collapse and delay |
+| `io` | Network timeout |
+| `compaction` | Context trigger and token floor |
+| `optimizer` | Caveman, ponytail, and RTK |
+| `gate` | Approval rules |
+| `fetch` / `search` | Default web provider and 9router model |
+| `voice` | Speech providers, models, microphone, language, shortcut, cleanup, and playback |
+| `toolbox` | Disabled tools and deferred tools selected for loading |
+
+Use `/pix` for shared settings and the **Footer** tab. Use `/web`, `/voice`, and `/toolbox` for their settings.
+All these commands save to `pix.json`. Defaults apply when a field is absent.
+
+On startup, Pix imports `voice.json`, `fetch.json`, `search.json`, `toolbox.json`, and `optimizer.json`.
+Existing values in `pix.json` win. After a successful save, Pix renames old files to `*.json.migrated-v1`.
+Malformed files stay unchanged. Keep the backups until you check the imported settings.
+
+Pi owns `settings.json`, authentication, trust, and model files. MCP owns its server config and authentication.
+Caches and crash records are data, not settings. These files remain separate.
+Project LSP settings remain in `<project>/.pi/lsp.json`. Binary path overrides remain in `binary.json`.
+
+```json
+{
+  "$version": 1,
+  "pretty": { "footer": { "price": false, "score": false } },
+  "fetch": { "provider": "curl" },
+  "search": { "provider": "auto", "nineRouterModel": "exa" },
+  "voice": { "sttLanguage": "id", "ttsPlay": false },
+  "toolbox": { "disabledTools": ["fetch"] }
+}
+```
+
 ## Packages
 
 ### Core bundle

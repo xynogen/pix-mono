@@ -1,57 +1,28 @@
-import { describe, expect, test } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { tempDir } from "@xynogen/pix-runtime/paths";
+import { expect, test } from "bun:test";
+import { createIsolatedRuntime } from "@xynogen/pix-runtime/testing";
 import { loadConfig, parseLanguage, saveConfig } from "./config.ts";
 
-const missing = join(tempDir(), "pix-voice-missing.json");
-
-describe("voice config", () => {
-	test("uses auto providers and playback when no file exists", () => {
-		expect(loadConfig(missing, missing)).toEqual({
-			sttProvider: "auto",
-			ttsProvider: "auto",
-			sttNineRouterModel: "dg/nova-3",
-			ttsNineRouterModel: "edge-tts/en-US-AriaNeural",
-			ttsPlay: true,
-			sttDevice: "default",
-			sttLanguage: "auto",
-			sttShortcut: "ctrl+alt+z",
-			sttCleanup: "off",
-		});
-	});
-
-	test("persists a provider and the 9router model", () => {
-		const dir = mkdtempSync(join(tempDir(), "pix-voice-config-"));
-		const path = join(dir, "voice.json");
-		const config = loadConfig(path, missing);
-		config.sttProvider = "groq";
-		config.sttNineRouterModel = "dg/nova-2";
-		saveConfig(config, path);
-		expect(loadConfig(path, missing)).toMatchObject({
+test("voice settings persist in unified config", async () => {
+	const isolated = createIsolatedRuntime();
+	try {
+		const settings = loadConfig(isolated.runtime);
+		expect(settings).toMatchObject({ sttProvider: "auto", ttsPlay: true, sttCleanup: "off" });
+		settings.sttProvider = "groq";
+		settings.sttNineRouterModel = "dg/nova-2";
+		await saveConfig(settings, isolated.runtime);
+		await isolated.runtime.reload();
+		expect(loadConfig(isolated.runtime)).toMatchObject({
 			sttProvider: "groq",
 			sttNineRouterModel: "dg/nova-2",
 		});
-	});
+	} finally {
+		isolated.cleanup();
+	}
+});
 
-	test("seeds 9router models from the old pix-9router file", () => {
-		const dir = mkdtempSync(join(tempDir(), "pix-voice-legacy-"));
-		const legacy = join(dir, "9router.json");
-		writeFileSync(
-			legacy,
-			JSON.stringify({ sttModel: "dg/nova-2", ttsModel: "openai/tts-1/nova", ttsPlay: false }),
-		);
-		expect(loadConfig(join(dir, "voice.json"), legacy)).toMatchObject({
-			sttNineRouterModel: "dg/nova-2",
-			ttsNineRouterModel: "openai/tts-1/nova",
-			ttsPlay: false,
-		});
-	});
-
-	test("accepts language codes and auto, and rejects other text", () => {
-		expect(parseLanguage(" EN ")).toBe("en");
-		expect(parseLanguage("pt-BR")).toBe("pt-br");
-		expect(parseLanguage("")).toBe("auto");
-		expect(() => parseLanguage("English")).toThrow(/not a language code/);
-	});
+test("language validation accepts codes and rejects names", () => {
+	expect(parseLanguage(" EN ")).toBe("en");
+	expect(parseLanguage("pt-BR")).toBe("pt-br");
+	expect(parseLanguage("")).toBe("auto");
+	expect(() => parseLanguage("English")).toThrow(/not a language code/);
 });

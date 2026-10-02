@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pixRuntime } from "@xynogen/pix-runtime/config";
+import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerToolbox, {
 	buildRows,
 	disabledFromState,
@@ -208,10 +209,10 @@ describe("nextState", () => {
 
 // ─── Integration: /toolbox command ──────────────────────────────────────────
 
-// Isolate from real ~/.pi/agent/toolbox.json on disk
+// Isolate unified settings from the user's config.
 let tmpAgentDir: string;
 beforeAll(() => {
-	tmpAgentDir = mkdtempSync(join(tmpdir(), "toolbox-test-"));
+	tmpAgentDir = mkdtempSync(join(tempDir(), "toolbox-test-"));
 	process.env.PI_CODING_AGENT_DIR = tmpAgentDir;
 });
 afterAll(() => {
@@ -291,10 +292,12 @@ function makeCtx() {
 describe("/toolbox command", () => {
 	type Note = { text: string; level?: string };
 	const ALL = ["read", "write", "bash", "grep", "find"];
-	const statePath = () => join(tmpAgentDir, "toolbox.json");
+	const statePath = () => join(tmpAgentDir, "pix.json");
 
 	async function boot(tools = ALL, deferred: string[] = [], mcp: string[] = []) {
+		await pixRuntime().flush();
 		rmSync(statePath(), { force: true });
+		await pixRuntime().reload();
 		const host = makeHost(tools, deferred, mcp);
 		registerToolbox(host.pi);
 		await host.emit("session_start", {}, {});
@@ -321,6 +324,7 @@ describe("/toolbox command", () => {
 		await host.command("toolbox")?.handler("enable hunk", ctx);
 		expect(host.getActive()).toEqual([...ALL, "hunk"]);
 
+		await pixRuntime().flush();
 		const next = makeHost([...ALL, "hunk"], ["hunk"]);
 		registerToolbox(next.pi);
 		await next.emit("session_start", {}, {});
@@ -328,10 +332,17 @@ describe("/toolbox command", () => {
 
 		await next.command("toolbox")?.handler("defer hunk", ctx);
 		expect(next.getActive()).toEqual(ALL);
-		expect(JSON.parse(readFileSync(statePath(), "utf-8"))).toEqual({ disabledTools: [] });
+		await pixRuntime().flush();
+		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
+			disabledTools: [],
+			loadedTools: [],
+		});
 
 		await next.command("toolbox")?.handler("disable hunk", ctx);
-		expect(JSON.parse(readFileSync(statePath(), "utf-8"))).toEqual({ disabledTools: ["hunk"] });
+		await pixRuntime().flush();
+		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
+			disabledTools: ["hunk"],
+		});
 	});
 
 	test("a disabled tool is blocked, and a tool_search load of it is undone", async () => {
@@ -436,9 +447,13 @@ describe("/toolbox command", () => {
 
 // ─── Persistence: disabledTools ─────────────────────────────────────────────
 
-describe("toolbox.json persistence", () => {
-	const statePath = () => join(tmpAgentDir, "toolbox.json");
-	const clear = () => rmSync(statePath(), { force: true });
+describe("pix.json toolbox persistence", () => {
+	const statePath = () => join(tmpAgentDir, "pix.json");
+	const clear = async () => {
+		await pixRuntime().flush();
+		rmSync(statePath(), { force: true });
+		await pixRuntime().reload();
+	};
 
 	async function bootWith(tools: string[]) {
 		const host = makeHost(tools);
@@ -448,27 +463,38 @@ describe("toolbox.json persistence", () => {
 	}
 
 	test("first run activates every tool and writes no file", async () => {
-		clear();
+		await clear();
 		const host = await bootWith(["read", "grep", "find"]);
 		expect(host.getActive()).toEqual(["read", "grep", "find"]);
 		expect(existsSync(statePath())).toBe(false);
 	});
 
 	test("disable saves only the disabled tool; a tool installed later is active", async () => {
-		clear();
+		await clear();
 		const first = await bootWith(["read", "grep", "find"]);
 		await first.command("toolbox")?.handler("disable grep", makeCtx().ctx);
-		expect(JSON.parse(readFileSync(statePath(), "utf-8"))).toEqual({ disabledTools: ["grep"] });
+		await pixRuntime().flush();
+		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
+			disabledTools: ["grep"],
+		});
 
 		const next = await bootWith(["read", "grep", "find", "newtool"]);
 		expect(next.getActive()).toEqual(["read", "find", "newtool"]);
 	});
 
 	test("legacy enabledTools file migrates to disabledTools", async () => {
-		writeFileSync(statePath(), JSON.stringify({ enabledTools: ["read", "grep"] }));
+		await clear();
+		writeFileSync(
+			statePath(),
+			JSON.stringify({ $version: 1, toolbox: { enabledTools: ["read", "grep"] } }),
+		);
+		await pixRuntime().reload();
 		const host = await bootWith(["read", "grep", "find"]);
 		expect(host.getActive()).toEqual(["read", "grep"]);
-		expect(JSON.parse(readFileSync(statePath(), "utf-8"))).toEqual({ disabledTools: ["find"] });
+		await pixRuntime().flush();
+		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
+			disabledTools: ["find"],
+		});
 	});
 
 	test("core tools cannot be stored as disabled", () => {

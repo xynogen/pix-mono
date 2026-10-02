@@ -67,12 +67,12 @@ function nineRouterModel(kind: VoiceKind): string {
 	return kind === "stt" ? voiceConfig.sttNineRouterModel : voiceConfig.ttsNineRouterModel;
 }
 
-function saveNineRouterModel(kind: VoiceKind, value: string | undefined): void {
+async function saveNineRouterModel(kind: VoiceKind, value: string | undefined): Promise<void> {
 	const model = value?.trim();
 	if (!model) return;
 	if (kind === "stt") voiceConfig.sttNineRouterModel = model;
 	else voiceConfig.ttsNineRouterModel = model;
-	saveConfig(voiceConfig);
+	await saveConfig(voiceConfig);
 }
 
 /** Color-coded provider tree, the same view as /web. Only 9router has a model field. */
@@ -95,12 +95,12 @@ async function editProvider(ctx: ExtensionContext, kind: VoiceKind): Promise<voi
 		});
 		if (!action) return;
 		if (action.kind === "model") {
-			saveNineRouterModel(kind, action.value);
+			await saveNineRouterModel(kind, action.value);
 			continue;
 		}
 		if (kind === "stt") voiceConfig.sttProvider = action.id;
 		else voiceConfig.ttsProvider = action.id;
-		saveConfig(voiceConfig);
+		await saveConfig(voiceConfig);
 		return;
 	}
 }
@@ -218,13 +218,13 @@ export default function registerVoiceCommand(pi: ExtensionAPI): void {
 						onAction: async ({ key, value }) => {
 							const [kind, field] = key.split(":") as [VoiceKind, string];
 							if (field === "provider") return "close";
-							if (field === "model") saveNineRouterModel(kind, value);
+							if (field === "model") await saveNineRouterModel(kind, value);
 							else if (field === "test") {
 								if (stopMeter) stopTest();
 								else startTest();
 							} else if (field === "device" && value) {
 								voiceConfig.sttDevice = value;
-								saveConfig(voiceConfig);
+								await saveConfig(voiceConfig);
 								// Keep the test on the new input.
 								if (stopMeter) {
 									stopTest();
@@ -233,15 +233,15 @@ export default function registerVoiceCommand(pi: ExtensionAPI): void {
 							} else if (field === "language" && value) {
 								// Throws on a bad code. The modal shows the error and stays open.
 								voiceConfig.sttLanguage = parseLanguage(value);
-								saveConfig(voiceConfig);
+								await saveConfig(voiceConfig);
 							} else if (field === "cleanup" && value) {
 								// Throws on an unknown model. The modal shows the error and stays open.
 								cleanupModel(value.trim(), ctx);
 								voiceConfig.sttCleanup = value.trim();
-								saveConfig(voiceConfig);
+								await saveConfig(voiceConfig);
 							} else if (field === "shortcut" && value) {
 								voiceConfig.sttShortcut = value;
-								saveConfig(voiceConfig);
+								await saveConfig(voiceConfig);
 								showTransientMessage(
 									ctx.ui,
 									`Dictation key: ${value}. Restart Pi to use it.`,
@@ -249,7 +249,7 @@ export default function registerVoiceCommand(pi: ExtensionAPI): void {
 								);
 							} else if (field === "play") {
 								voiceConfig.ttsPlay = !voiceConfig.ttsPlay;
-								saveConfig(voiceConfig);
+								await saveConfig(voiceConfig);
 							}
 							return undefined;
 						},

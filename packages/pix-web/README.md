@@ -29,7 +29,7 @@ automatic selection uses `curl`. Other packages can register providers through
 `@xynogen/pix-web/providers`.
 
 `/web` sets the fetch and search defaults in one settings view.
-The settings stay separate from `pix-9router` in `~/.pi/agent/fetch.json`:
+The settings live in `~/.pi/agent/pix.json` under `fetch`. This example shows the section value:
 
 ```json
 {
@@ -107,7 +107,7 @@ search provider and the 9Router search model. The 9Router provider handles its
 own fallback. When no API provider is configured, automatic selection uses
 SearXNG.
 
-Search settings stay separate from fetch in `~/.pi/agent/search.json`:
+Search settings live in `~/.pi/agent/pix.json` under `search`. This example shows the section value:
 
 ```json
 {

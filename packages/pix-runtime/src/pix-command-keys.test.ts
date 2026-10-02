@@ -350,13 +350,18 @@ describe("/pix tabs", () => {
 	const SHIFT_TAB = { legacy: "\u001b[Z", kitty: "\u001b[9;2u" } as const;
 
 	for (const enc of ENCODINGS) {
-		it(`tab / shift+tab switch between Settings and Binaries (${enc})`, async () => {
+		it(`tab / shift+tab switch between Settings, Binaries, and Footer (${enc})`, async () => {
 			if (enc === "kitty") setKittyProtocolActive(true);
 			try {
 				const d = await openOverlay(getKeybindings(), 60);
 				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>.* {2}Binaries {2}/);
 				d.feed(TAB[enc]);
 				expect(d.lines()[1]).toMatch(/ {2}Settings {2}.*<b> {2}Binaries {2}<\/b>/);
+				d.feed(TAB[enc]);
+				expect(d.lines()[1]).toMatch(/<b> {2}Footer {2}<\/b>/);
+				expect(d.lines().join("\n")).toMatch(/mode\s+show/);
+				d.feed(SHIFT_TAB[enc]);
+				expect(d.lines()[1]).toMatch(/<b> {2}Binaries {2}<\/b>/);
 				d.feed(SHIFT_TAB[enc]);
 				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>/);
 			} finally {

@@ -1,28 +1,21 @@
-import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tempDir } from "@xynogen/pix-runtime/paths";
+import { expect, test } from "bun:test";
+import { createIsolatedRuntime } from "@xynogen/pix-runtime/testing";
 import { loadSearchConfig, saveSearchConfig } from "./search-config.ts";
 
-describe("search config", () => {
-	test("uses separate defaults when no file exists", () => {
-		expect(loadSearchConfig(join(tempDir(), "missing-pix-search.json"))).toEqual({
+test("search settings persist in unified config", async () => {
+	const isolated = createIsolatedRuntime();
+	try {
+		expect(loadSearchConfig(isolated.runtime)).toEqual({
 			provider: "auto",
 			nineRouterModel: "exa",
 		});
-	});
-
-	test("persists the search provider and 9Router model", () => {
-		const directory = mkdtempSync(join(tempDir(), "pix-search-"));
-		const path = join(directory, "search.json");
-		try {
-			saveSearchConfig({ provider: "9router", nineRouterModel: "tavily" }, path);
-			expect(loadSearchConfig(path)).toEqual({
-				provider: "9router",
-				nineRouterModel: "tavily",
-			});
-		} finally {
-			rmSync(directory, { recursive: true, force: true });
-		}
-	});
+		await saveSearchConfig({ provider: "9router", nineRouterModel: "custom" }, isolated.runtime);
+		await isolated.runtime.reload();
+		expect(loadSearchConfig(isolated.runtime)).toEqual({
+			provider: "9router",
+			nineRouterModel: "custom",
+		});
+	} finally {
+		isolated.cleanup();
+	}
 });

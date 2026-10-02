@@ -17,7 +17,7 @@ type Service = {
 	kind: "fetch" | "search";
 	section: string;
 	config: ProviderConfig;
-	save: (config: ProviderConfig) => void;
+	save: (config: ProviderConfig) => Promise<void>;
 	providers: () => ProviderRow[];
 	order: string[];
 	noKey: Set<string>;
@@ -114,11 +114,11 @@ async function editService(ctx: ExtensionContext, service: Service): Promise<voi
 		if (!action) return;
 		if (action.kind === "model") {
 			service.config.nineRouterModel = action.value;
-			service.save(service.config);
+			await service.save(service.config);
 			continue;
 		}
 		service.config.provider = action.id;
-		service.save(service.config);
+		await service.save(service.config);
 		return;
 	}
 }
@@ -154,7 +154,7 @@ export function registerWebCommand(pi: ExtensionAPI): void {
 					);
 					if (!provider) return;
 					service.config.provider = provider;
-					service.save(service.config);
+					await service.save(service.config);
 				}
 				return;
 			}
@@ -165,13 +165,13 @@ export function registerWebCommand(pi: ExtensionAPI): void {
 					title: `${icon("settings")} Web Settings`,
 					rows: settingsRows,
 					selected: cursor,
-					onAction: ({ key, value }) => {
+					onAction: async ({ key, value }) => {
 						const [kind, field] = key.split(":");
 						if (field === "provider") return "close";
 						const service = SERVICES.find((item) => item.kind === kind);
 						if (!service || !value) return undefined;
 						service.config.nineRouterModel = value;
-						service.save(service.config);
+						await service.save(service.config);
 						return undefined;
 					},
 				});

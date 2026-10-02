@@ -39,7 +39,7 @@ Dependency facts (check with `jq .dependencies packages/<p>/package.json`):
 - `pix-pretty` and `pix-data` depend only on `pix-runtime`.
 - Almost every feature package depends on `pix-pretty` + `pix-runtime`. `pix-footer`, `pix-models`, `pix-subagent`, `pix-commands` and `pix-9router` also use `pix-data`.
 - Two sanctioned sideways edges exist: `pix-skills` → `pix-gate/lib` (one safety policy for bash and skill directives). `pix-core` → every bundled member.
-- `pix-toolbox` depends on `pix-pretty` only. Keep it independent of `pix-runtime`. `pix-themes` has no code and no deps.
+- `pix-toolbox` uses `pix-pretty` and `pix-runtime` for UI and unified configuration. `pix-themes` has no code and no deps.
 - The per-package catalog (descriptions, bundled vs standalone) lives in [`.github/README.md`](.github/README.md). Do not copy it here.
 
 ### 2.2 How Pi loads a package

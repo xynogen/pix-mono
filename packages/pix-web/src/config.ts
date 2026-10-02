@@ -1,37 +1,17 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { agentDir } from "@xynogen/pix-runtime/paths";
+import { config, onConfigChange, type PixRuntime, pixRuntime } from "@xynogen/pix-runtime/config";
+import { fetchSection, type WebConfig } from "@xynogen/pix-runtime/sections";
 
-export interface FetchConfig {
-	provider: string;
-	nineRouterModel: string;
+export type FetchConfig = WebConfig;
+export function loadFetchConfig(runtime: PixRuntime = pixRuntime()): FetchConfig {
+	return { ...runtime.get(fetchSection) };
 }
-
-export const FETCH_CONFIG_PATH = join(agentDir(), "fetch.json");
-
-const DEFAULT_CONFIG: FetchConfig = {
-	provider: "auto",
-	nineRouterModel: "exa",
-};
-
-export function loadFetchConfig(path = FETCH_CONFIG_PATH): FetchConfig {
-	try {
-		const value = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
-		return {
-			provider: typeof value.provider === "string" ? value.provider : DEFAULT_CONFIG.provider,
-			nineRouterModel:
-				typeof value.nineRouterModel === "string"
-					? value.nineRouterModel
-					: DEFAULT_CONFIG.nineRouterModel,
-		};
-	} catch {
-		return { ...DEFAULT_CONFIG };
-	}
+export async function saveFetchConfig(
+	value: FetchConfig,
+	runtime: PixRuntime = pixRuntime(),
+): Promise<void> {
+	const change = await runtime.update(fetchSection, value);
+	if (!change && JSON.stringify(runtime.get(fetchSection)) !== JSON.stringify(value))
+		throw new Error("Failed to save fetch settings to pix.json");
 }
-
-export function saveFetchConfig(config: FetchConfig, path = FETCH_CONFIG_PATH): void {
-	mkdirSync(dirname(path), { recursive: true });
-	writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-}
-
-export const fetchConfig = loadFetchConfig();
+export const fetchConfig = { ...config(fetchSection) };
+onConfigChange(() => Object.assign(fetchConfig, config(fetchSection)), { paths: ["fetch.*"] });

@@ -1,4 +1,4 @@
-import { defineSection, enumOr, isObj, posNumOr } from "../schema.ts";
+import { boolOr, defineSection, enumOr, isObj, posNumOr } from "../schema.ts";
 
 export type IconMode = "nerd" | "unicode" | "ascii";
 export type LsStyle = "grid" | "tree";
@@ -19,6 +19,21 @@ export interface PrettyConfig {
 	maxHighlightChars: number;
 	cacheLimit: number;
 	diff: DiffConfig;
+	footer: Record<
+		| "mode"
+		| "cwd"
+		| "git"
+		| "context"
+		| "model"
+		| "thinking"
+		| "price"
+		| "score"
+		| "statuses"
+		| "tokens"
+		| "cost"
+		| "tps",
+		boolean
+	>;
 }
 
 const ICON_MODES: readonly IconMode[] = ["nerd", "unicode", "ascii"];
@@ -43,15 +58,35 @@ const DEFAULTS: Readonly<PrettyConfig> = {
 	maxHighlightChars: 80_000,
 	cacheLimit: 128,
 	diff: { splitMinWidth: 150, splitMinCodeWidth: 60 },
+	footer: {
+		mode: true,
+		cwd: true,
+		git: true,
+		context: true,
+		model: true,
+		thinking: true,
+		price: true,
+		score: true,
+		statuses: true,
+		tokens: true,
+		cost: true,
+		tps: true,
+	},
 };
 
 export const prettySection = defineSection<"pretty", PrettyConfig>({
 	key: "pretty",
 	defaults: DEFAULTS,
 	parse(raw) {
-		if (!isObj(raw)) return { ...DEFAULTS, diff: { ...DEFAULTS.diff } };
+		if (!isObj(raw)) return structuredClone(DEFAULTS);
 		const rawDiff = isObj(raw.diff) ? raw.diff : {};
+		const rawFooter = isObj(raw.footer) ? raw.footer : {};
+		const footer = { ...DEFAULTS.footer };
+		for (const key of Object.keys(footer) as (keyof typeof footer)[]) {
+			footer[key] = boolOr(rawFooter[key], DEFAULTS.footer[key]);
+		}
 		return {
+			footer,
 			icons: enumOr(raw.icons, ICON_MODES, DEFAULTS.icons),
 			lsStyle: enumOr(raw.lsStyle, LS_STYLES, DEFAULTS.lsStyle),
 			maxRenderWidth: renderSizeOr(raw.maxRenderWidth, DEFAULTS.maxRenderWidth),
