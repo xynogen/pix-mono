@@ -1,0 +1,49 @@
+{
+	"name": "@xynogen/pix-codemode",
+	"version": "0.1.0",
+	"description": "Pi codemode tool with highlighted scripts and Pix result rendering",
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./extension": "./src/extension.ts"
+	},
+	"scripts": {
+		"test": "bun test"
+	},
+	"files": [
+		"src",
+		"!src/**/*.test.*",
+		"README.md",
+		"LICENSE"
+	],
+	"pi": {
+		"extensions": [
+			"src/extension.ts"
+		]
+	},
+	"keywords": [
+		"pi",
+		"pi-package",
+		"pi-extension",
+		"codemode"
+	],
+	"author": "xynogen",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/xynogen/pix-mono.git",
+		"directory": "packages/pix-codemode"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@xynogen/pix-pretty": "^1.29.0",
+		"@xynogen/pix-runtime": "^0.12.2"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	}
+}

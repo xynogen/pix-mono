@@ -61,6 +61,7 @@ npm:@xynogen/pix-subagent
 
 # EXTENSION module — standalone extension + tool packages.
 EXTENSION_PACKAGES="
+npm:@xynogen/pix-codemode
 npm:@xynogen/pix-themes
 npm:@xynogen/pix-mcp
 npm:@xynogen/pix-env

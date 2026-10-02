@@ -43,6 +43,7 @@ $__pixUninstaller = {
 		"npm:@xynogen/pix-subagent"
 	)
 	$ExtensionPackages = @(
+		"npm:@xynogen/pix-codemode"
 		"npm:@xynogen/pix-themes"
 		"npm:@xynogen/pix-mcp"
 		"npm:@xynogen/pix-env"

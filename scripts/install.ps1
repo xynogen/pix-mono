@@ -41,6 +41,7 @@ $__pixInstaller = {
 
 	# Opt-in Pix extensions - each carries a setup cost or sensitive capability.
 	$OptInPixPackages = @(
+		@{ Spec = "npm:@xynogen/pix-codemode"; Reason = "Native codemode with highlighted scripts and Pix result frames; replaces the built-in renderer, so enable it explicitly." }
 		@{ Spec = "npm:@xynogen/pix-mcp"; Reason = "Token-efficient MCP gateway - external servers can execute commands or access sensitive services, so configure and enable it explicitly." }
 		@{ Spec = "npm:@xynogen/pix-web"; Reason = "Provider-neutral fetch and search tools - supports Exa, Tavily, You.com, Brave, SearXNG, 9Router, and basic HTTP." }
 		@{ Spec = "npm:@xynogen/pix-9router"; Reason = "9Router LLM provider - needs a 9Router API key." }

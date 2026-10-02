@@ -69,6 +69,7 @@ Layers, low to high: **L0** `pix-runtime` → **L1** `pix-pretty`, `pix-data` �
 - Every factory wraps its body in `once(pi, "<pkg>", …)` from `@xynogen/pix-runtime/once`. Pi re-evaluates modules on every reload, so process-wide state lives on `globalThis`.
 - A new bundled package needs three edits in `pix-core`: a dependency, an import, and an entry in `MEMBERS`.
 - The reference package shape is `packages/pix-ls`.
+- Standalone: `pix-codemode` restyles the native codemode tool and stays outside `pix-core`.
 
 Read [`docs/architecture.md`](docs/architecture.md) before you add a package, a shared helper, or a cross-package import. It has the layer diagram, load model, package anatomy, and import resolution.
 

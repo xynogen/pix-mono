@@ -76,6 +76,7 @@ RECOMMENDED_PACKAGES="
 # Opt-in Pix extensions — each carries a setup cost or sensitive capability.
 # Format: "<spec>|<why it's opt-in>"
 OPTIN_PIX_PACKAGES="
+npm:@xynogen/pix-codemode|Native codemode with highlighted scripts and Pix result frames; replaces the built-in renderer, so enable it explicitly.
 npm:@xynogen/pix-mcp|Token-efficient MCP gateway — external servers can execute commands or access sensitive services, so configure and enable it explicitly.
 npm:@xynogen/pix-web|Provider-neutral fetch and search tools — supports Exa, Tavily, You.com, Brave, SearXNG, 9Router, and basic HTTP.
 npm:@xynogen/pix-9router|9Router LLM provider — needs a 9Router API key.

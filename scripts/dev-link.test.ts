@@ -62,6 +62,20 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 const hasBash = spawnSync("bash", ["-c", "echo ok"], { encoding: "utf8" }).stdout?.trim() === "ok";
 
 describe("dev-link", () => {
+	test.skipIf(!hasBash)("discovers and registers pix-codemode from its manifest", () => {
+		const dir = join(root, "packages", "pix-codemode");
+		mkdirSync(dir);
+		writeFileSync(join(dir, "package.json"), readFileSync(join(import.meta.dir, "..", "packages", "pix-codemode", "package.json")));
+		const result = spawnSync("bash", [join(root, "scripts", "dev-link.sh"), "pix-codemode"], {
+			cwd: root,
+			env: { ...process.env, HOME: join(root, "home"), PI_NPM_DIR: join(root, "pi"), PATH: `${join(root, "bin")}:${process.env.PATH}` },
+			encoding: "utf8",
+		});
+		expect(result.status).toBe(0);
+		expect(readlinkSync(join(root, "pi", "node_modules", "@xynogen", "pix-codemode"))).toBe(dir);
+		const settings = JSON.parse(readFileSync(join(root, "home", ".pi", "agent", "settings.json"), "utf8"));
+		expect(settings.packages.map((p: string) => p.replaceAll("\\", "/"))).toEqual([dir.replaceAll("\\", "/")]);
+	});
 	test.skipIf(!hasBash)("installs workspace dependencies and links selected package dependency closure", () => {
 		const result = spawnSync("bash", [join(root, "scripts", "dev-link.sh"), "pix-app"], {
 			cwd: root,
