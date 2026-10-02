@@ -10,7 +10,7 @@
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon, rule } from "@xynogen/pix-pretty/utils";
 import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
 import type { AgentManager } from "../agent-manager.ts";
 import { getConfig } from "../agent-types.ts";
@@ -338,10 +338,11 @@ export class AgentWidget {
 				? truncate(`  ${theme.fg("muted", "◦")} ${theme.fg("muted", `${queued.length} queued`)}`)
 				: undefined;
 
-		const maxBody = MAX_WIDGET_LINES - 1;
+		const maxBody = MAX_WIDGET_LINES - 2;
 		const totalBody = finishedLines.length + runningLines.length + (queuedLine ? 1 : 0);
 
 		const lines: string[] = [
+			rule(w, (glyphs) => theme.fg("borderMuted", glyphs)),
 			truncate(`${theme.fg(headingColor, headingIcon)} ${theme.fg(headingColor, "Agents")}`),
 		];
 

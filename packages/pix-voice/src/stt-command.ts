@@ -17,7 +17,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, rule } from "@xynogen/pix-pretty/utils";
 import { listMicrophones, type Recording, startRecording } from "@xynogen/pix-runtime/audio";
 import { cleanTranscript, cleanupModel, hasSlip } from "./cleanup.ts";
 import { voiceConfig } from "./config.ts";
@@ -117,13 +117,16 @@ function showWidget(ctx: ExtensionContext): void {
 			redraw = () => tui.requestRender();
 			return {
 				render() {
+					const separator = rule(tui.terminal.columns, (glyphs) => theme.fg("borderMuted", glyphs));
 					if (phase?.kind !== "recording")
 						return [
+							separator,
 							`${theme.fg("warning", "…")} ${theme.fg("toolTitle", phase?.kind === "transcribing" ? phase.step : "transcribing")}${theme.fg("muted", " · esc cancel")}`,
 						];
 					const loud = phase.level !== undefined && phase.level > -12;
 					const db = phase.level === undefined ? "" : ` ${phase.level.toFixed(0)} dB`;
 					return [
+						separator,
 						`${theme.fg("error", "●")} ${theme.fg("toolTitle", "recording")} ${theme.fg("dim", truncateToWidth(phase.device ?? voiceConfig.sttDevice, DEVICE_WIDTH, "…", true))} ${theme.fg(loud ? "warning" : "success", levelBar(phase.level))}${theme.fg("muted", `${db} · ${heldSince === undefined ? `${voiceConfig.sttShortcut} stop` : "release to stop"} · esc cancel`)}`,
 					];
 				},

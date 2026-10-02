@@ -9,7 +9,7 @@
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { dotJoin } from "@xynogen/pix-pretty/utils";
+import { dotJoin, rule } from "@xynogen/pix-pretty/utils";
 import {
 	type ContextUsageLike,
 	describeActivity,
@@ -151,34 +151,26 @@ export function renderBtwWidget(
 	const headingIcon = hasActive ? icon("status.pending") : icon("status.done"); // running · all done
 	const spinner = SPINNER[frame % SPINNER.length] ?? "";
 
-	const runningLines = running.map((j) =>
-		truncate(`${theme.fg("muted", "\u251c\u2500")} ${runningLine(j, theme, spinner, now)}`),
-	);
-	const finishedLines = finished.map((j) =>
-		truncate(`${theme.fg("muted", "\u251c\u2500")} ${finishedLine(j, theme)}`),
-	);
+	const runningLines = running.map((j) => truncate(`  ${runningLine(j, theme, spinner, now)}`));
+	const finishedLines = finished.map((j) => truncate(`  ${finishedLine(j, theme)}`));
 
 	const lines: string[] = [
+		rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
 		truncate(
 			`${theme.fg(headingColor, headingIcon)} ${theme.fg(headingColor, "BTW")}${theme.fg("muted", ` (${running.length})`)}`,
 		),
 	];
 
 	const body = [...runningLines, ...finishedLines];
-	const maxBody = MAX_WIDGET_LINES - 1;
+	const maxBody = MAX_WIDGET_LINES - 2;
 	if (body.length <= maxBody) {
 		lines.push(...body);
 	} else {
 		const shown = body.slice(0, maxBody - 1);
 		const hidden = body.length - shown.length;
 		lines.push(...shown);
-		lines.push(
-			truncate(`${theme.fg("muted", "\u251c\u2500")} ${theme.fg("muted", `+${hidden} more`)}`),
-		);
+		lines.push(truncate(`  ${theme.fg("muted", `+${hidden} more`)}`));
 	}
 
-	// Fix the last connector ├─ → └─.
-	const last = lines.length - 1;
-	if (last > 0) lines[last] = (lines[last] ?? "").replace("\u251c\u2500", "\u2514\u2500");
 	return lines;
 }

@@ -88,15 +88,20 @@ test("a running background agent keeps its widget registered across updates", ()
 	widget.dispose();
 });
 
-test("widget rows align under the heading without tree connectors", () => {
-	const widget = new AgentWidget(makeManager([runningBg]), new Map());
+test("widget has a full-width top rule and indented rows within its line limit", () => {
+	const agents = Array.from({ length: 20 }, (_, i) => ({ ...runningBg, id: `a${i}` }));
+	const widget = new AgentWidget(makeManager(agents), new Map());
 	const ctx = makeSpyCtx();
 	widget.setUICtx(ctx);
 	widget.update();
 	if (typeof ctx.widgetContent !== "function") throw new Error("agent widget was not registered");
 	const component = ctx.widgetContent({ terminal: { columns: 160 } }, ctx.theme);
 	const lines = component.render();
-	expect(lines[1]).toMatch(/^ {2}\S.*Agent.*long job/);
+	expect(lines[0]).toBe("─".repeat(160));
+	expect(lines[1]).toMatch(/^○ Agents$/);
+	expect(lines[2]).toMatch(/^ {2}\S.*Agent.*long job/);
+	expect(lines).toHaveLength(12);
+	expect(lines.at(-1)).toMatch(/^ {2}\+\d+ more \(\d+ running\)$/);
 	widget.dispose();
 });
 

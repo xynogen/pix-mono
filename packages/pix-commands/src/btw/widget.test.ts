@@ -66,7 +66,8 @@ describe("BTW widget layout", () => {
 		expect(output).toContain("<muted>[GPT]</muted>");
 		expect(output).toMatch(/<muted>[^<]*2 · 1\.0s<\/muted>/);
 		expect(output).toContain("<dim>Reading auth.ts</dim>");
-		expect(output).toContain("<muted>└─</muted>");
+		expect(output.split("\n")[0]).toBe(`<borderMuted>${"─".repeat(500)}</borderMuted>`);
+		expect(output.split("\n")[2]).toMatch(/^ {2}<accent>/);
 	});
 
 	test("finished jobs linger with a check, then drop after the window", () => {
@@ -108,8 +109,9 @@ describe("BTW widget layout", () => {
 	test("overflow collapses excess rows into a +N more line", () => {
 		const many = Array.from({ length: 20 }, (_, i) => job({ id: i + 1 }));
 		const lines = renderBtwWidget(many, theme, 0, 1_000, 200);
-		expect(lines.length).toBeLessThanOrEqual(12);
-		expect(lines.at(-1)).toContain("more");
+		expect(lines).toHaveLength(12);
+		expect(lines[0]).toBe("─".repeat(200));
+		expect(lines.at(-1)).toBe("  +11 more");
 	});
 
 	test("hasVisibleJobs mirrors render visibility", () => {
