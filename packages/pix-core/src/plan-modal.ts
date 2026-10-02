@@ -31,6 +31,16 @@ export type PlanModalResult =
 	| { kind: "toggle" };
 
 const LIST_ROWS = 10;
+const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "always" });
+
+export function planAge(updated_at: number | undefined, now = Date.now()): string {
+	if (updated_at === undefined || !Number.isFinite(updated_at)) return "";
+	const seconds = Math.max(0, Math.floor((now - updated_at) / 1000));
+	if (seconds < 60) return "just now";
+	if (seconds < 3600) return relativeTime.format(-Math.floor(seconds / 60), "minute");
+	if (seconds < 86400) return relativeTime.format(-Math.floor(seconds / 3600), "hour");
+	return relativeTime.format(-Math.floor(seconds / 86400), "day");
+}
 
 type View = "list" | "plan" | "confirm";
 
@@ -56,7 +66,16 @@ export class PlanModal {
 				label: "+ New plan",
 				description: "Plan mode on + plan guide in the prompt bar",
 			},
-			...plans.map((p, i) => ({ value: String(i), label: p.title, description: p.description })),
+			...plans.map((p, i) => ({
+				value: String(i),
+				label: p.title,
+				description: [
+					p.updated_at === undefined ? "" : `Updated ${planAge(p.updated_at)}`,
+					p.description,
+				]
+					.filter(Boolean)
+					.join(" · "),
+			})),
 		];
 		this.list = new SelectList(items, LIST_ROWS, selectListTheme(theme));
 		this.list.onSelect = (item) => {
@@ -164,6 +183,7 @@ export class PlanModal {
 				confirm ? t.fg("warning", t.bold(`Delete ${plan.file}?`)) : title(plan.title),
 				...(plan.description ? [t.fg("dim", plan.description)] : []),
 				hint(`${this.planDir}/${plan.file}`),
+				...(plan.updated_at === undefined ? [] : [hint(`Updated ${planAge(plan.updated_at)}`)]),
 			];
 			body = plan.body.split("\n");
 			footer = [

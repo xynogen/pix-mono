@@ -1,7 +1,21 @@
 import { describe, expect, it } from "bun:test";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { KeybindingsManager, type TUI, TUI_KEYBINDINGS } from "@earendil-works/pi-tui";
-import { PlanModal, type PlanModalResult } from "./plan-modal.ts";
+import { PlanModal, type PlanModalResult, planAge } from "./plan-modal.ts";
+
+it("formats plan ages in minutes, hours, and days", () => {
+	const now = 200_000_000;
+	for (const [elapsed, expected] of [
+		[60_000, "1 minute ago"],
+		[3_600_000, "1 hour ago"],
+		[86_400_000, "1 day ago"],
+		[172_800_000, "2 days ago"],
+	] as const) {
+		expect(planAge(now - elapsed, now)).toBe(expected);
+	}
+	expect(planAge(now + 1000, now)).toBe("just now");
+	expect(planAge(undefined, now)).toBe("");
+});
 
 const theme = {
 	fg: (_c: string, t: string) => t,
@@ -9,7 +23,13 @@ const theme = {
 	bold: (t: string) => t,
 } as unknown as Theme;
 const tui = { requestRender: () => {}, terminal: { rows: 40 } } as unknown as TUI;
-const plan = { file: "a.md", title: "Auth", description: "Add login", body: "### Task 1: x" };
+const plan = {
+	file: "a.md",
+	title: "Auth",
+	description: "Add login",
+	body: "### Task 1: x",
+	updated_at: Date.now() - 86_400_000,
+};
 const ENTER = "\r";
 const DOWN = "\u001b[B";
 
@@ -36,6 +56,17 @@ describe("PlanModal", () => {
 	it("lists New plan first, then saved plans, inside a rounded frame", () => {
 		const { text } = open();
 		expect(text()).toMatch(/^╭[\s\S]*\+ New plan[\s\S]*Auth[\s\S]*╰/);
+		expect(text()).toContain("Updated 1 day ago");
+		const longDescription = new PlanModal(
+			[{ ...plan, description: "A long description ".repeat(20) }],
+			".pi/plans",
+			false,
+			tui,
+			theme,
+			new KeybindingsManager(TUI_KEYBINDINGS),
+			() => {},
+		);
+		expect(longDescription.render(100).join("\n")).toContain("Updated 1 day ago");
 	});
 
 	it("opens a plan and executes it", () => {

@@ -14,7 +14,7 @@
  * message — no hidden automation.
  */
 
-import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { CustomEditor, isToolCallEventType } from "@earendil-works/pi-coding-agent";
@@ -60,6 +60,7 @@ When done, say: "Plan saved to <path>. Use /plan to run it."
 The goal follows this guide.`;
 
 export interface Plan {
+	updated_at?: number;
 	file: string;
 	title: string;
 	description: string;
@@ -96,7 +97,10 @@ function listPlans(cwd: string): Plan[] {
 	return files
 		.sort()
 		.reverse()
-		.map((f) => parsePlan(f, readFileSync(join(dir, f), "utf-8")));
+		.map((f) => ({
+			...parsePlan(f, readFileSync(join(dir, f), "utf-8")),
+			updated_at: statSync(join(dir, f)).mtimeMs,
+		}));
 }
 
 /**
