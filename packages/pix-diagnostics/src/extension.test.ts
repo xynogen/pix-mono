@@ -61,14 +61,17 @@ describe("pix-diagnostics extension", () => {
 		expect(m.statuses).toEqual([{ key: "pi-lens-lsp", value: undefined }]);
 	});
 
-	test("a write result stays hidden until the file has findings", async () => {
+	test("a failed write does not start a check or show the widget", async () => {
 		const m = mockPi();
 		registerExtension(m.pi as never);
 		const start = m.handlers.find((h) => h.event === "session_start");
 		start?.fn({}, m.ctx);
 
 		const toolResult = m.handlers.find((h) => h.event === "tool_result");
-		await toolResult?.fn({ toolName: "write", input: { path: "/repo/a.ts" } }, m.ctx);
+		await toolResult?.fn(
+			{ toolName: "write", input: { path: "/repo/a.ts" }, isError: true },
+			m.ctx,
+		);
 		expect(m.widgets.at(-1)).toEqual({ key: "pi-lens-lsp", content: undefined });
 		expect(m.statuses).toEqual([{ key: "pi-lens-lsp", value: undefined }]);
 	});

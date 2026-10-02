@@ -87,6 +87,35 @@ function harness(cwd: string) {
 }
 
 describe("pix-diagnostics end-to-end", () => {
+	test("automatic write checks report clean, uncertain and failed checks without losing output", async () => {
+		const h = harness(tempDir());
+		const handler = h.handlers.get("tool_result");
+		const event = {
+			toolName: "write",
+			input: { path: "a.ts" },
+			content: [{ type: "text", text: "Written." }],
+			isError: false,
+		};
+		for (const state of ["clean", "unconfirmed", "unavailable"] as const) {
+			h.manager.check = async () => [
+				{ filePath: join(tempDir(), "a.ts"), diagnostics: [], checkedAt: Date.now(), state },
+			];
+			const response = (await handler?.(event, {})) as { content: Array<{ text: string }> };
+			expect(response.content[0]?.text).toBe("Written.");
+			expect(response.content[1]?.text).toContain(state === "clean" ? "1 clean" : `1 ${state}`);
+			expect(response.content[1]?.text).not.toContain("Check these diagnostics");
+		}
+		h.manager.check = async () => {
+			throw new Error("server stopped");
+		};
+		const response = (await handler?.(event, {})) as {
+			content: Array<{ text: string }>;
+			isError?: boolean;
+		};
+		expect(response.content[1]?.text).toContain("Check unavailable: server stopped");
+		expect(response.isError).toBeUndefined();
+		await h.manager.shutdown();
+	});
 	test("stays lazy, checks, caches, navigates, and shuts down", async () => {
 		const cwd = mkdtempSync(join(tempDir(), "pix-int-"));
 		const file = join(cwd, "a.ts");
@@ -98,9 +127,25 @@ describe("pix-diagnostics end-to-end", () => {
 		const nav = h.tools.find((t) => t.name === "lsp_navigation");
 		if (!diag || !nav) throw new Error("tools missing");
 
-		// A write result must not start any process.
-		await h.handlers.get("tool_result")?.({ toolName: "write", input: { path: file } }, {});
-		expect(h.starts).toBe(0);
+		// Successful edits run LSP and keep the original result.
+		const edited = (await h.handlers.get("tool_result")?.(
+			{
+				toolName: "edit",
+				input: { path: file },
+				content: [{ type: "text", text: "Edited." }],
+				isError: false,
+			},
+			{},
+		)) as { content: Array<{ text: string }> };
+		expect(h.starts).toBe(1);
+		expect(edited.content[0]?.text).toBe("Edited.");
+		expect(edited.content[1]?.text).toContain("Type mismatch");
+		expect(edited.content[1]?.text).toContain("Check these diagnostics before the next change.");
+		const failed = await h.handlers.get("tool_result")?.(
+			{ toolName: "write", input: { path: file }, isError: true },
+			{},
+		);
+		expect(failed).toBeUndefined();
 
 		// The first LSP tool call starts exactly one server and finds one error.
 		const fresh = await diag.execute("t1", { source: "lsp", paths: [file] });

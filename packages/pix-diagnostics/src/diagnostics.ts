@@ -7,18 +7,19 @@
  *
  * The render path does no file I/O — it reads only in-memory store state. The
  * default export wires one store, one lazy LSP manager, the two tools, and the
- * session lifecycle. `write`/`edit` results only mark files as touched.
+ * session lifecycle. Successful `write`/`edit` results include a fresh LSP check.
  */
 
-import { basename } from "node:path";
+import { basename, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import { truncateHead } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { rule } from "@xynogen/pix-pretty/utils";
 import { DispositionStore } from "./dispositions.ts";
 import { createManager, type LspManager } from "./lsp/manager.ts";
 import { DiagnosticStore } from "./store.ts";
-import { registerDiagnosticsTool } from "./tools/diagnostics-tool.ts";
+import { collectFindings, registerDiagnosticsTool, summarize } from "./tools/diagnostics-tool.ts";
 import { registerMarkTool } from "./tools/mark-tool.ts";
 import { registerNavigationTool } from "./tools/navigation-tool.ts";
 
@@ -104,13 +105,33 @@ export default function registerDiagnostics(
 		updateWidget(ctx, store);
 	});
 
-	pi.on("tool_result", async (event, _ctx) => {
-		if (event.toolName === "write" || event.toolName === "edit") {
-			const filePath = (event.input as { path?: string })?.path;
-			if (typeof filePath === "string") {
-				store.set({ filePath, diagnostics: [], checkedAt: Date.now(), state: "touched" });
-			}
+	pi.on("tool_result", async (event) => {
+		if (event.isError || !["write", "edit"].includes(event.toolName)) return;
+		const path = event.input?.path;
+		if (typeof path !== "string" || !path.trim()) return;
+		const filePath = resolve(cwd, path);
+		store.set({ filePath, diagnostics: [], checkedAt: Date.now(), state: "touched" });
+		let report: string;
+		try {
+			const snapshots = await manager.check({ paths: [filePath], severity: "all" });
+			for (const snapshot of snapshots) store.set(snapshot);
+			const findings = collectFindings(cwd, snapshots, "all");
+			report = findings.length ? findings.join("\n") : summarize(snapshots);
+			if (findings.length) report += "\nCheck these diagnostics before the next change.";
+		} catch (error) {
+			store.set({ filePath, diagnostics: [], checkedAt: Date.now(), state: "unavailable" });
+			report = `Check unavailable: ${error instanceof Error ? error.message : String(error)}`;
 		}
+		return {
+			content: [
+				...(event.content ?? []),
+				{
+					type: "text" as const,
+					text: `LSP after ${event.toolName}:\n${truncateHead(report).content}`,
+				},
+			],
+			structuredContent: event.structuredContent,
+		};
 	});
 
 	pi.on("session_shutdown", async (_event, ctx) => {

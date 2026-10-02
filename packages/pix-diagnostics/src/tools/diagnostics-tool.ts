@@ -63,7 +63,7 @@ function formatFinding(cwd: string, d: PixDiagnostic): string {
 	return `${relativePath(cwd, d.filePath)}:${d.line}:${d.column} ${d.severity}${code} ${d.message}`;
 }
 
-function collectFindings(
+export function collectFindings(
 	cwd: string,
 	snapshots: DiagnosticSnapshot[],
 	severity: Severity,
@@ -230,7 +230,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 	});
 }
 
-function summarize(snapshots: DiagnosticSnapshot[]): string {
+export function summarize(snapshots: DiagnosticSnapshot[]): string {
 	if (snapshots.length === 0) return "No diagnostics.";
 	const clean = snapshots.filter((s) => s.state === "clean").length;
 	const parts = [`${snapshots.length} files`, `${clean} clean`];
