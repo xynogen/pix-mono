@@ -3,7 +3,7 @@
 Pi extension providing focused slash commands:
 
 - `/clear` — flush Pi's cached model data.
-- `/btw [--ctx] <question>` — ask an isolated side question without interrupting the main agent (`--ctx` folds in recent main-session turns).
+- `/btw [--no-ctx] <question>` — ask a side question without interrupting the main agent. It sees recent main-session turns by default (`--no-ctx` runs it fully isolated).
 - `/afk` — toggle AFK mode for unattended runs (yellow auto-allow, red/root auto-deny).
 - `/yolo` — toggle YOLO mode for unattended runs (auto-approve nearly everything incl. red/root; capable models only, session consent required).
 
@@ -16,8 +16,8 @@ Deletes `~/.cache/pi` and the jiti transpile cache (`<tmpdir>/jiti`) to flush st
 `/btw` runs a separate in-memory child session concurrently with the main agent:
 
 ```text
-/btw what is the difference between a mutex and a semaphore?
-/btw --ctx given what we just did, what should I test first?
+/btw given what we just did, what should I test first?
+/btw --no-ctx what is the difference between a mutex and a semaphore?
 ```
 
 Run `/btw` with no question to print usage. The live
@@ -27,9 +27,9 @@ answer card in the log never expires.
 
 The child session:
 
-- starts with an empty conversation and a lean Pix system prompt;
+- starts a fresh in-memory session with a lean Pix system prompt;
 - snapshots the main session's model, thinking level, active tools, credentials, extensions, and working directory;
-- never imports the main conversation **unless you pass `--ctx`**, which folds the last 10 main-session turns in as a one-shot, read-only preamble (visible in the question, still a fresh isolated session — nothing is written back to the main thread);
+- gets the last 10 main-session turns as a one-shot, read-only text preamble (user and assistant text only, tool output dropped). It is still a fresh in-memory session, and nothing goes back to the main thread. Pass `--no-ctx` to send no main conversation;
 - publishes its Markdown answer in a visually distinct side-thread card;
 - keeps rendered BTW answers out of future main-agent LLM context;
 - supports multiple concurrent side questions.

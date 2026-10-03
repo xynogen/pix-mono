@@ -124,21 +124,23 @@ export function registerBtw(pi: ExtensionAPI): void {
 	};
 
 	pi.registerCommand("btw", {
-		description: "Ask an isolated side question without interrupting the main agent",
+		description: "Ask a side question with recent context, without interrupting the main agent",
 		handler: async (rawArgs, ctx) => {
 			latestUi = ctx.ui;
 
-			// Flag: --ctx folds in the last N main-session turns as read-only context.
+			// The last N main-session turns go in as read-only text by default. An aside
+			// with no context cannot answer "what we just did". --no-ctx opts out.
+			// ponytail: text preamble, not a full fork, so the cost stays bounded at N turns.
 			const tokens = rawArgs.trim().split(/\s+/).filter(Boolean);
-			const withCtx = tokens.includes("--ctx");
-			const question = tokens.filter((t) => t !== "--ctx").join(" ");
+			const withCtx = !tokens.includes("--no-ctx");
+			const question = tokens.filter((t) => t !== "--no-ctx" && t !== "--ctx").join(" ");
 
 			if (!question) {
 				ctx.ui.notify(
 					[
-						"Usage: /btw [--ctx] <question>",
-						`  --ctx  include the last ${BTW_CTX_TURNS} main-session turns as read-only context`,
-						"By default the aside is fully isolated (sees no main conversation).",
+						"Usage: /btw [--no-ctx] <question>",
+						`By default the aside sees the last ${BTW_CTX_TURNS} main-session turns as read-only context.`,
+						"  --no-ctx  run fully isolated (sees no main conversation)",
 					].join("\n"),
 					"warning",
 				);
