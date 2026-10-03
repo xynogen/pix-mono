@@ -9,11 +9,13 @@ import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
 import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
 import { shortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 
+import { initHashline } from "@xynogen/pix-runtime/hashline";
 import { once } from "@xynogen/pix-runtime/once";
 import { homeDir } from "@xynogen/pix-runtime/paths";
 import { registerReadTool } from "./read.ts";
 
-export default function pixReadExtension(pi: ExtensionAPI): void {
+export default async function pixReadExtension(pi: ExtensionAPI): Promise<void> {
+	await initHashline();
 	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-read", () => {
 		const createReadTool = (createReadToolDefinition ??

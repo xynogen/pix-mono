@@ -49,7 +49,7 @@
 		"@modelcontextprotocol/client": "^2.0.0",
 		"@modelcontextprotocol/ext-apps": "^1.2.2",
 		"@xynogen/pix-pretty": "^1.30.0",
-		"@xynogen/pix-runtime": "^0.12.2",
+		"@xynogen/pix-runtime": "^0.13.0",
 		"open": "^10.2.0",
 		"recheck": "^4.5.0",
 		"zod": "^3.25.0 || ^4.0.0"

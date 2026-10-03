@@ -1,4 +1,12 @@
-import { describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { createReadToolDefinition as piReadDefinition } from "@earendil-works/pi-coding-agent";
+import { initHashline } from "@xynogen/pix-runtime/hashline";
+import { tempDir } from "@xynogen/pix-runtime/paths";
+
+beforeAll(initHashline);
+
 import {
 	capturePi,
 	makeRenderCtx,
@@ -9,15 +17,10 @@ import type { ToolResultLike } from "@xynogen/pix-pretty/types";
 import { applyReadDefaults, DEFAULT_READ_LIMIT, registerReadTool } from "./read";
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
-
-// Factory that echoes each requested path as file content, for batch tests.
-const echoFactory = (() => ({
-	parameters: { type: "object", required: ["path"], properties: { path: { type: "string" } } },
-	execute: async (_id: string, params: { path?: string }) => ({
-		content: [{ type: "text", text: `content of ${params.path}` }],
-		details: undefined,
-	}),
-})) as unknown as typeof noopFactory;
+const createReadToolDefinition =
+	piReadDefinition as unknown as import("@xynogen/pix-pretty/types").ToolFactory<
+		import("@earendil-works/pi-coding-agent").ReadToolInput
+	>;
 
 describe("applyReadDefaults", () => {
 	it("applies a conservative default without overriding an explicit limit", () => {
@@ -33,6 +36,44 @@ describe("applyReadDefaults", () => {
 });
 
 describe("registerReadTool", () => {
+	it("anchors captured source without annotating notices or display details", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-read-"));
+		await writeFile(join(cwd, "source.ts"), "\uFEFFa\r\nb\rc\n");
+		const { pi, tool } = capturePi();
+		registerReadTool(pi, createReadToolDefinition, { ...makeToolContext(), cwd });
+		const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+		const result = await execute("id", { path: "source.ts", limit: 2 }, undefined, undefined, {
+			cwd,
+		});
+		expect((result.content?.[0] as { text: string }).text).toMatch(
+			/^1#[0-9A-F]{3}\|a\n2#[0-9A-F]{3}\|b\n\n\[.*offset=3/,
+		);
+		expect(result.details).toMatchObject({ content: "a\nb", lineCount: 2 });
+	});
+	it("keeps pagination anchors stable and caps complete batch lines including annotation bytes", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-pages-"));
+		await writeFile(join(cwd, "small.ts"), "a\nb\n");
+		await writeFile(join(cwd, "large.ts"), `${"x".repeat(51000)}\ny\n`);
+		await writeFile(join(cwd, "other.ts"), "z".repeat(3000));
+		const { pi, tool } = capturePi();
+		registerReadTool(pi, createReadToolDefinition, { ...makeToolContext(), cwd });
+		const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+		const getText = (result: ToolResultLike) => (result.content?.[0] as { text: string }).text;
+		const full = await execute("id", { path: "small.ts" }, undefined, undefined, { cwd });
+		const page = await execute("id", { path: "small.ts", offset: 2 }, undefined, undefined, {
+			cwd,
+		});
+		expect(getText(page)).toBe(getText(full).split("\n")[1]!);
+		const batch = await execute("id", { paths: ["large.ts", "other.ts"] }, undefined, undefined, {
+			cwd,
+		});
+		expect(Buffer.byteLength(getText(batch))).toBeLessThanOrEqual(50 * 1024);
+		for (const line of getText(batch)
+			.split("\n")
+			.filter((line) => /^\d+#/.test(line))) {
+			expect(line).toMatch(/^\d+#[0-9A-F]{3}\|(?:x{51000}|y|z{3000})$/);
+		}
+	});
 	it("registers a tool named 'read'", () => {
 		const { pi, names } = capturePi();
 		registerReadTool(pi, noopFactory, makeToolContext());
@@ -95,8 +136,10 @@ describe("registerReadTool", () => {
 	});
 
 	it("reads multiple paths in one call and caps into a combined batch result", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-batch-"));
+		for (const name of ["a.ts", "b.ts"]) await writeFile(join(cwd, name), `content of ${name}`);
 		const { pi, tool } = capturePi();
-		registerReadTool(pi, echoFactory, makeToolContext());
+		registerReadTool(pi, createReadToolDefinition, { ...makeToolContext(), cwd });
 		const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
 		const result = await execute("tid", { paths: ["a.ts", "b.ts"] }, undefined, undefined, {});
 		const details = result.details as { _type: string; items: unknown[]; index: string };
@@ -108,8 +151,10 @@ describe("registerReadTool", () => {
 	});
 
 	it("keeps the single-file shape when only one path is given", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-single-"));
+		await writeFile(join(cwd, "solo.ts"), "content of solo.ts");
 		const { pi, tool } = capturePi();
-		registerReadTool(pi, echoFactory, makeToolContext());
+		registerReadTool(pi, createReadToolDefinition, { ...makeToolContext(), cwd });
 		const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
 		const result = await execute("tid", { path: "solo.ts" }, undefined, undefined, {});
 		const details = result.details as { _type: string; filePath: string };

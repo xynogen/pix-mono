@@ -1,10 +1,14 @@
-import { existsSync, readFileSync } from "node:fs";
+import { constants } from "node:fs";
+import { access, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type {
 	AgentToolUpdateCallback,
 	EditToolInput,
 	ExtensionContext,
 	ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { MAX_RENDER_LINES } from "@xynogen/pix-pretty/config";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
@@ -43,6 +47,9 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { decodeLines, hashLine, parseAnchor, type SourceLine } from "@xynogen/pix-runtime/hashline";
+import { expandHome } from "@xynogen/pix-runtime/paths";
+import { Type } from "typebox";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -80,18 +87,172 @@ export function getEditOperations(input: EditParams): EditOperation[] {
 	return oldText && oldText !== newText ? [{ oldText, newText }] : [];
 }
 
-// 1-based file line where `needle` begins post-edit, for absolute diff gutters.
-// 0 = file unreadable or needle not found (renderer falls back to relative).
-// Duplicate identical edits collapse to the first match — acceptable.
-function opEditLine(filePath: string, needle: string): number {
-	try {
-		if (!filePath || !existsSync(filePath)) return 0;
-		const f = readFileSync(filePath, "utf-8");
-		const idx = f.indexOf(needle);
-		return idx >= 0 ? f.slice(0, idx).split("\n").length : 0;
-	} catch {
-		return 0;
+type HashEdit = {
+	op: "replace" | "insert_before" | "insert_after";
+	pos: string;
+	end?: string;
+	lines: string[];
+};
+type HashParams = { path: string; edits: HashEdit[] };
+
+const editSchema = Type.Object(
+	{
+		path: Type.String(),
+		edits: Type.Array(
+			Type.Object(
+				{
+					op: Type.Union([
+						Type.Literal("replace"),
+						Type.Literal("insert_before"),
+						Type.Literal("insert_after"),
+					]),
+					pos: Type.String({ description: "Original LINE#HASH anchor from read" }),
+					end: Type.Optional(Type.String({ description: "Inclusive end anchor, replace only" })),
+					lines: Type.Array(
+						Type.String({
+							description: "Literal source line without a delimiter or anchor prefix",
+						}),
+					),
+				},
+				{ additionalProperties: false },
+			),
+			{ minItems: 1 },
+		),
+	},
+	{ additionalProperties: false },
+);
+
+export function prepareHashArguments(input: unknown): unknown {
+	if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+	const args = { ...input } as Record<string, unknown>;
+	if (typeof args.edits === "string") args.edits = JSON.parse(args.edits);
+	if (args.edits && typeof args.edits === "object" && !Array.isArray(args.edits))
+		args.edits = [args.edits];
+	return args;
+}
+
+export function editPath(path: string, cwd: string): string {
+	let value = path.replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ").replace(/^@/, "");
+	if (
+		process.platform === "win32" &&
+		value.startsWith("/") &&
+		!value.startsWith("//") &&
+		!value.includes("\\")
+	) {
+		value = value.replace(
+			/^\/(?:mnt\/|cygdrive\/)?([a-z])(?:\/(.*))?$/i,
+			(_all, drive: string, tail: string | undefined) =>
+				`${drive.toUpperCase()}:\\${(tail ?? "").replaceAll("/", "\\")}`,
+		);
 	}
+	value = expandHome(value);
+	if (value.startsWith("file://")) value = fileURLToPath(value);
+	return resolve(cwd, value);
+}
+
+function applyHashEdits(bytes: Buffer, input: unknown) {
+	const args = prepareHashArguments(input) as HashParams;
+	if (
+		!args ||
+		typeof args.path !== "string" ||
+		!args.path ||
+		!Array.isArray(args.edits) ||
+		!args.edits.length
+	)
+		throw new Error("Invalid hashline edit input");
+	if (Object.keys(args).some((key) => !["path", "edits"].includes(key)))
+		throw new Error("Legacy exact-text fields are not supported");
+	const source = decodeLines(bytes);
+	const check = (value: unknown) => {
+		const parsed = parseAnchor(value);
+		const line = source.lines[parsed.line - 1];
+		if (!line) throw new Error(`Anchor out of bounds: ${String(value)}`);
+		if (hashLine(line.text) !== parsed.hash)
+			throw new Error(`Stale anchor: ${String(value)}. Read the file again.`);
+		return parsed.line;
+	};
+	const replacements: Array<{ start: number; end: number; lines: string[] }> = [];
+	const gaps = new Map<number, string[]>();
+	for (const edit of args.edits) {
+		if (
+			!edit ||
+			typeof edit !== "object" ||
+			Object.keys(edit).some((key) => !["op", "pos", "end", "lines"].includes(key))
+		)
+			throw new Error("Legacy or invalid edit fields");
+		if (
+			!["replace", "insert_before", "insert_after"].includes(edit.op) ||
+			!Array.isArray(edit.lines) ||
+			edit.lines.some(
+				(line) =>
+					typeof line !== "string" ||
+					/[\r\n\0]|^[1-9]\d*#[0-9A-F]{3}\|/.test(line) ||
+					/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(line),
+			)
+		)
+			throw new Error("Invalid edit operation or source lines");
+		const start = check(edit.pos);
+		if (edit.op === "replace") {
+			const end = edit.end === undefined ? start : check(edit.end);
+			if (end < start) throw new Error("Reversed replacement range");
+			replacements.push({ start, end, lines: edit.lines });
+		} else {
+			if (edit.end !== undefined) throw new Error("end is only allowed for replace");
+			const gap = edit.op === "insert_before" ? start - 1 : start;
+			gaps.set(gap, [...(gaps.get(gap) ?? []), ...edit.lines]);
+		}
+	}
+	replacements.sort((a, b) => a.start - b.start);
+	for (let i = 0; i < replacements.length; i++) {
+		const range = replacements[i]!;
+		if (i && replacements[i - 1]!.end >= range.start)
+			throw new Error("Overlapping replacement ranges");
+		for (const gap of gaps.keys())
+			if (gap >= range.start && gap < range.end)
+				throw new Error("Insertion overlaps a replacement range");
+	}
+	const output: SourceLine[] = [];
+	const ops: Array<EditOperation & { editLine: number }> = [];
+	const append = (lines: string[]) =>
+		output.push(...lines.map((text) => ({ text, ending: source.delimiter })));
+	let rangeIndex = 0;
+	for (let gap = 0; gap <= source.lines.length; ) {
+		const insertion = gaps.get(gap);
+		if (insertion?.length) {
+			const context = source.lines[Math.max(0, gap - 1)]!.text;
+			ops.push({
+				oldText: context,
+				newText:
+					gap === 0 ? [...insertion, context].join("\n") : [context, ...insertion].join("\n"),
+				editLine: Math.max(1, output.length + (gap === 0 ? 1 : 0)),
+			});
+			append(insertion);
+		}
+		if (gap === source.lines.length) break;
+		const range = replacements[rangeIndex];
+		if (range?.start === gap + 1) {
+			ops.push({
+				oldText: source.lines
+					.slice(gap, range.end)
+					.map((line) => line.text)
+					.join("\n"),
+				newText: range.lines.join("\n"),
+				editLine: output.length + 1,
+			});
+			append(range.lines);
+			gap = range.end;
+			rangeIndex++;
+		} else {
+			output.push({ ...source.lines[gap]! });
+			gap++;
+		}
+	}
+	for (let i = 0; i < output.length; i++) {
+		if (i === output.length - 1)
+			output[i]!.ending = source.finalNewline ? output[i]!.ending || source.delimiter : "";
+		else if (!output[i]!.ending) output[i]!.ending = source.delimiter;
+	}
+	return { content: source.bom + output.map((line) => line.text + line.ending).join(""), ops };
 }
 
 export function summarizeEditOperations(operations: EditOperation[]) {
@@ -120,31 +281,50 @@ export function registerEditTool(
 	pi.registerTool({
 		...origEdit,
 		name: "edit",
-		// The edit description and schema already carry these rules. Drop the <rules> copy (~110 tokens/turn).
+		description:
+			"Edit a file with original LINE#HASH anchors from read. Use replace (optional inclusive end), insert_before, or insert_after, with literal source lines. Empty replacement lines delete. All anchors refer to the original file. Ranges must not overlap. Insertions may touch range boundaries, not interior gaps. Same-gap inserts follow input order. Use write for empty files or complete rewrites.",
+		parameters: editSchema,
+		promptSnippet: "Edit source lines with hashline anchors",
 		promptGuidelines: [],
+		prepareArguments: prepareHashArguments,
+		constrainedSampling: { type: "json_schema", strict: "prefer" },
 		renderShell: "self",
 
 		async execute(
-			tid: string,
-			params: EditParams,
+			_tid: string,
+			params: HashParams,
 			sig: AbortSignal | undefined,
-			upd: AgentToolUpdateCallback<unknown> | undefined,
+			_upd: AgentToolUpdateCallback<unknown> | undefined,
 			toolCtx: ExtensionContext,
 		) {
-			const fp = params.path ?? params.file_path ?? "";
-			const operations = getEditOperations(params);
+			const fp = typeof params?.path === "string" ? params.path : "";
+			let operations: Array<EditOperation & { editLine: number }> = [];
 			const fileLang = lang(fp);
 
 			let result: ToolResultLike;
 			try {
-				result = (await origEdit.execute(
-					tid,
-					// SAFETY: EditParams preserves the built-in edit schema and only adds legacy aliases.
-					params as unknown as Parameters<typeof origEdit.execute>[1],
-					sig,
-					upd,
-					toolCtx,
-				)) as ToolResultLike;
+				if (!fp) throw new Error("path must be a nonempty string");
+				const absolutePath = editPath(fp, toolCtx?.cwd || cwd);
+				result = await withFileMutationQueue(absolutePath, async () => {
+					const abort = () => {
+						if (sig?.aborted) throw new Error("Operation aborted");
+					};
+					abort();
+					await access(absolutePath, constants.R_OK | constants.W_OK);
+					abort();
+					const bytes = await readFile(absolutePath);
+					abort();
+					const applied = applyHashEdits(bytes, params);
+					operations = applied.ops;
+					abort();
+					// ponytail: in-place writes preserve links and mode, not crash atomicity. Use a separate atomic-write design if needed.
+					await writeFile(absolutePath, applied.content, "utf8");
+					abort();
+					return {
+						content: [{ type: "text", text: `Edited ${fp}: ${params.edits.length} operations.` }],
+						details: undefined,
+					};
+				});
 			} catch (error) {
 				const text = getErrorMessage(error);
 				if (sig?.aborted || /aborted/i.test(text)) throw error;
@@ -173,7 +353,7 @@ export function registerEditTool(
 				setResultDetails(result, {
 					_type: "editInfo",
 					summary,
-					editLine: opEditLine(fp, op0.newText),
+					editLine: op0.editLine,
 					oldContent: op0.oldText,
 					newContent: op0.newText,
 					language: fileLang,
@@ -192,13 +372,17 @@ export function registerEditTool(
 					newContent: op.newText,
 					language: fileLang,
 					filePath: fp,
-					editLine: opEditLine(fp, op.newText),
+					editLine: op.editLine,
 				})),
 			});
 			return result;
 		},
 
-		renderCall(args: EditParams, theme: ThemeLike, renderCtx: RenderContextLike<EditRenderState>) {
+		renderCall(
+			args: EditParams & Partial<HashParams>,
+			theme: ThemeLike,
+			renderCtx: RenderContextLike<EditRenderState>,
+		) {
 			resolveBaseBackground(theme);
 			const fp = args?.path ?? args?.file_path ?? "";
 			const operations = getEditOperations(args);
@@ -211,6 +395,12 @@ export function registerEditTool(
 				return text;
 			const hdr = `${theme.fg("toolTitle", theme.bold("edit"))} ${theme.fg("dim", sp(fp))}`;
 
+			if (Array.isArray(args.edits) && args.edits.some((edit) => "pos" in edit)) {
+				text.setText(
+					fillToolBackground(dotJoin([hdr, theme.fg("muted", `${args.edits.length} operations`)])),
+				);
+				return text;
+			}
 			if (operations.length === 0) {
 				text.setText(fillToolBackground(hdr));
 				return text;
@@ -223,6 +413,7 @@ export function registerEditTool(
 				[
 					hdr,
 					operations.length > 1 && theme.fg("muted", `${operations.length} edits`),
+					theme.fg("muted", "estimate"),
 					coloredSummary,
 				],
 				paint,

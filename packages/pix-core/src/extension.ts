@@ -42,7 +42,7 @@ import registerCompaction from "./compaction.ts";
 import deferNonCoreTools from "./defer-tools.ts";
 import registerPlanMode from "./plan-mode.ts";
 
-type PixExtension = (pi: ExtensionAPI) => void;
+type PixExtension = (pi: ExtensionAPI) => void | Promise<void>;
 
 // Compile-time boundary: every member must accept the Pi host contract.
 const MEMBERS = [
@@ -89,6 +89,6 @@ const MEMBERS = [
 	registerPlanMode,
 ] satisfies readonly PixExtension[];
 
-export default function (pi: ExtensionAPI): void {
-	for (const register of MEMBERS) register(pi);
+export default async function (pi: ExtensionAPI): Promise<void> {
+	for (const register of MEMBERS) await register(pi);
 }

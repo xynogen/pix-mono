@@ -1,7 +1,14 @@
+import { constants } from "node:fs";
+import { access, readFile } from "node:fs/promises";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,
 	ReadToolInput,
+} from "@earendil-works/pi-coding-agent";
+import {
+	detectSupportedImageMimeTypeFromFile,
+	type ReadToolOptions,
+	truncateHead,
 } from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
@@ -45,6 +52,7 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { anchor, decodeLines } from "@xynogen/pix-runtime/hashline";
 
 export const DEFAULT_READ_LIMIT = 400;
 
@@ -59,6 +67,8 @@ type ReadFileDetails = {
 	content: string;
 	offset: number;
 	lineCount: number;
+	modelContent?: string;
+	notice?: string;
 };
 type ReadImageDetails = {
 	_type: "readImage";
@@ -105,7 +115,7 @@ function sectionFromItem(item: ReadItem): BatchSection {
 	}
 	return {
 		id: item.filePath,
-		body: item.content,
+		body: item.modelContent ?? item.content,
 		units: item.lineCount,
 		nouns: LINE_NOUNS,
 		hint: "use offset",
@@ -124,7 +134,7 @@ export function registerReadTool(
 		...origRead,
 		name: "read",
 		description:
-			"Read text files and images. Text reads default to 400 lines and remain capped by Pi's 2,000-line/50KB hard limit. Use offset/limit to continue large files. Pass `paths` to read several known files in one call.",
+			"Read text as LINE#HASH|source anchors for edit, or attach images. Text defaults to 400 lines, capped at 2,000 lines/50KB including anchors. Use offset/limit to continue. Pass paths for a batch.",
 		parameters: withOptionalStringArray(
 			origRead.parameters,
 			"paths",
@@ -150,9 +160,28 @@ export function registerReadTool(
 			const runOne = async (path: string, callId: string): Promise<ToolResultLike> => {
 				const { paths: _paths, ...rest } = params;
 				const effectiveParams = applyReadDefaults({ ...rest, path });
-				const result = (await origRead.execute(
+				let captured: Buffer | undefined;
+				let image = false;
+				const injected = (
+					createReadTool as ToolFactory<ReadToolInput> &
+						((cwd: string, options: ReadToolOptions) => ReturnType<ToolFactory<ReadToolInput>>)
+				)(cwd, {
+					operations: {
+						access: (fp) => access(fp, constants.R_OK),
+						readFile: async (fp) => {
+							captured = await readFile(fp);
+							return captured;
+						},
+						detectImageMimeType: async (fp) => {
+							const mime = await detectSupportedImageMimeTypeFromFile(fp);
+							image = Boolean(mime);
+							return mime;
+						},
+					},
+				});
+				const result = (await injected.execute(
 					callId,
-					effectiveParams,
+					{ ...effectiveParams, offset: 1, limit: 1 },
 					sig,
 					upd,
 					toolCtx,
@@ -167,17 +196,51 @@ export function registerReadTool(
 					});
 					return result;
 				}
-				const textContent = getTextContent(result);
-				if (textContent && path) {
-					const normalizedContent = normalizeLineEndings(textContent);
-					setResultDetails(result, {
-						_type: "readFile",
-						filePath: path,
-						content: normalizedContent,
-						offset,
-						lineCount: normalizedContent.split("\n").length,
-					});
+				if (image) return result;
+				if (!captured) throw new Error("Read operation did not capture source bytes");
+				if (
+					!Number.isSafeInteger(offset) ||
+					offset < 1 ||
+					!Number.isSafeInteger(effectiveParams.limit) ||
+					effectiveParams.limit! < 1
+				)
+					throw new Error("offset and limit must be positive integers");
+				const source = decodeLines(captured);
+				if (source.lines.length && offset > source.lines.length)
+					throw new Error(
+						`Offset ${offset} is beyond end of file (${source.lines.length} lines total)`,
+					);
+				const selected = source.lines.slice(offset - 1, offset - 1 + effectiveParams.limit!);
+				const annotated = selected
+					.map((line, i) => `${anchor(offset + i, line.text)}|${line.text}`)
+					.join("\n");
+				let capped = truncateHead(annotated);
+				if (offset - 1 + capped.outputLines < source.lines.length) {
+					const reserve = Buffer.byteLength(
+						`[Read continues at offset=${offset + selected.length}. The next line exceeds the byte limit.]\n\n`,
+					);
+					capped = truncateHead(annotated, { maxBytes: BATCH_MAX_BYTES - reserve });
 				}
+				const count = capped.outputLines;
+				const notice =
+					offset - 1 + count < source.lines.length
+						? `[Read continues at offset=${offset + count}. ${capped.firstLineExceedsLimit ? "The next line exceeds the byte limit." : ""}]`
+						: "";
+				result.content = [
+					{ type: "text", text: [capped.content, notice].filter(Boolean).join("\n\n") },
+				];
+				setResultDetails(result, {
+					_type: "readFile",
+					filePath: path,
+					content: selected
+						.slice(0, count)
+						.map((line) => line.text)
+						.join("\n"),
+					offset,
+					lineCount: count,
+					modelContent: capped.content,
+					notice,
+				});
 				return result;
 			};
 
@@ -219,12 +282,40 @@ export function registerReadTool(
 					? { _type: "readError", filePath: entry.path, message: entry.error }
 					: itemFromResult(entry.path, offset, entry.result as ToolResultLike),
 			);
-			const { index, text } = capSections(
-				items.map(sectionFromItem),
-				BATCH_MAX_BYTES,
-				params.limit ?? DEFAULT_READ_LIMIT,
-				omitted,
-			);
+			let budget = BATCH_MAX_BYTES;
+			let index = "";
+			let text = "";
+			const originals = items.map(sectionFromItem);
+			do {
+				const capped = capSections(
+					originals,
+					budget,
+					Math.min(params.limit ?? DEFAULT_READ_LIMIT, 2000),
+					omitted,
+				);
+				index = capped.index;
+				// capSections can cut its first line. Never publish a partial source anchor.
+				const blocks = capped.sections.map((section, i) => {
+					const originalLines = originals[i]!.body.split("\n");
+					const complete = section.body
+						.split("\n")
+						.filter((line, n) => line === originalLines[n])
+						.join("\n");
+					const item = items[i]!;
+					const notice = section.truncated
+						? `[Read continues. Use offset=${(item._type === "readFile" ? item.offset : 1) + (complete ? complete.split("\n").length : 0)}.]`
+						: item._type === "readFile"
+							? item.notice
+							: "";
+					return `===== ${section.id} =====\n${section.error ?? [complete, notice].filter(Boolean).join("\n\n")}`;
+				});
+				text = [index, ...blocks].join("\n\n");
+				const excess = Buffer.byteLength(text) - BATCH_MAX_BYTES;
+				if (excess <= 0) break;
+				if (budget === 0)
+					throw new Error("Batch metadata exceeds the byte limit. Read fewer paths.");
+				budget = Math.max(0, budget - excess);
+			} while (Buffer.byteLength(text) > BATCH_MAX_BYTES);
 			const images = items.filter((i): i is ReadImageDetails => i._type === "readImage");
 			const details: ReadBatchDetails = { _type: "readBatch", items, index };
 			return {

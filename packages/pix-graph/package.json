@@ -59,7 +59,7 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-pretty": "^1.30.0",
-		"@xynogen/pix-runtime": "^0.12.2",
+		"@xynogen/pix-runtime": "^0.13.0",
 		"typescript": "^5.7.0"
 	}
 }

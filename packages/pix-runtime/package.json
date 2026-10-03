@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-runtime",
-	"version": "0.12.2",
+	"version": "0.13.0",
 	"description": "Pix shared runtime — versioned pix.json config, atomic persistence, typed change events",
 	"type": "module",
 	"main": "src/index.ts",
@@ -28,6 +28,7 @@
 		"./collapse": "./src/collapse.ts",
 		"./icon-catalog": "./src/icon-catalog.ts",
 		"./io": "./src/io.ts",
+		"./hashline": "./src/hashline.ts",
 		"./lfid": "./src/lfid.ts",
 		"./once": "./src/once.ts",
 		"./paths": "./src/paths.ts",
@@ -63,5 +64,8 @@
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
 		"@earendil-works/pi-tui": "*"
+	},
+	"dependencies": {
+		"xxhash-wasm": "1.1.0"
 	}
 }

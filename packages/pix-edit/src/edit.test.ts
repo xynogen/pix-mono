@@ -1,4 +1,11 @@
-import { describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
+import { link, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { anchor, hashLine, initHashline } from "@xynogen/pix-runtime/hashline";
+import { tempDir } from "@xynogen/pix-runtime/paths";
+
+beforeAll(initHashline);
+
 import {
 	capturePi,
 	makeRenderCtx,
@@ -6,10 +13,22 @@ import {
 	makeToolContext,
 } from "@xynogen/pix-pretty/test-utils";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-import { getEditOperations, registerEditTool, summarizeEditOperations } from "./edit";
+import {
+	editPath,
+	getEditOperations,
+	prepareHashArguments,
+	registerEditTool,
+	summarizeEditOperations,
+} from "./edit";
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
 const noopTrack = () => {};
+const executeTool = (tool: Record<string, unknown>, ...args: unknown[]) =>
+	(
+		tool.execute as (
+			...args: unknown[]
+		) => Promise<import("@xynogen/pix-pretty/types").ToolResultLike>
+	)(...args);
 // Several edit tests assert on the exact fg key in framing rules, so tag every key.
 const keyedTheme: ThemeLike = {
 	fg: (key: string, value: string) => `[${key}]${value}[/${key}]`,
@@ -17,6 +36,56 @@ const keyedTheme: ThemeLike = {
 };
 
 describe("registerEditTool", () => {
+	it("applies original gaps in input order outside deleted ranges", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-edit-"));
+		const path = join(cwd, "source.ts");
+		await writeFile(path, "\uFEFFa\r\nb\rc\n");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		const result = await executeTool(
+			tool,
+			"id",
+			{
+				path: "source.ts",
+				edits: [
+					{ op: "insert_after", pos: anchor(1, "a"), lines: ["first"] },
+					{ op: "replace", pos: anchor(2, "b"), lines: [] },
+					{ op: "insert_before", pos: anchor(2, "b"), lines: ["second"] },
+					{ op: "insert_after", pos: anchor(2, "b"), lines: ["third"] },
+				],
+			},
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		expect(result.isError).not.toBe(true);
+		expect(await readFile(path, "utf8")).toBe("\uFEFFa\r\nfirst\r\nsecond\r\nthird\r\nc\n");
+	});
+	it("rejects interior gaps and legacy input before writing", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-reject-"));
+		const path = join(cwd, "source.ts");
+		await writeFile(path, "a\nb\nc");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		for (const edits of [
+			[
+				{ op: "replace", pos: anchor(1, "a"), end: anchor(3, "c"), lines: [] },
+				{ op: "insert_after", pos: anchor(1, "a"), lines: ["x"] },
+			],
+			[{ oldText: "a", newText: "x" }],
+		]) {
+			const result = await executeTool(
+				tool,
+				"id",
+				{ path: "source.ts", edits },
+				undefined,
+				undefined,
+				{ cwd },
+			);
+			expect(result.isError).toBe(true);
+			expect(await readFile(path, "utf8")).toBe("a\nb\nc");
+		}
+	});
 	it("registers a self-rendered edit tool", () => {
 		const { pi, tool, names } = capturePi();
 		registerEditTool(pi, noopFactory, makeToolContext(), noopTrack);
@@ -121,6 +190,166 @@ describe("registerEditTool", () => {
 		expect(render({ collapsed: true }, true).join("\n")).toContain(diagnostic);
 		expect(render({ collapsed: true }, true).at(-1)).toBe(`[error]${"- ".repeat(40)}[/error]`);
 		expect(render({}, false, true)).toEqual([expect.stringContaining(diagnostic)]);
+	});
+});
+
+describe("hashline acceptance", () => {
+	it("preserves newline state, repeated positions, adjacent boundaries, and gutters", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-cases-"));
+		const path = join(cwd, "case.ts");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		for (const ending of ["\n", "\r\n", "\r"]) {
+			for (const final of ["", ending]) {
+				await writeFile(path, ["same", "same", "last"].join(ending) + final);
+				const result = await executeTool(
+					tool,
+					"id",
+					{
+						path,
+						edits: [
+							{ op: "replace", pos: anchor(2, "same"), lines: ["new", "extra"] },
+							{ op: "replace", pos: anchor(3, "last"), lines: ["end"] },
+							{ op: "insert_after", pos: anchor(2, "same"), lines: ["boundary"] },
+						],
+					},
+					undefined,
+					undefined,
+					{ cwd },
+				);
+				expect(result.isError).not.toBe(true);
+				expect(await readFile(path, "utf8")).toBe(
+					["same", "new", "extra", "boundary", "end"].join(ending) + final,
+				);
+				expect(
+					(result.details as { ops: { editLine: number }[] }).ops.map((op) => op.editLine),
+				).toEqual([2, 3, 5]);
+			}
+		}
+	});
+	it("rejects syntax, stale hashes, bounds, ranges, encodings, and cancellation without mutation", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-invalid-"));
+		const path = join(cwd, "case.ts");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		const source = "a\nb\nc";
+		await writeFile(path, source);
+		for (const edits of [
+			[{ op: "replace", pos: "1#bad", lines: ["x"] }],
+			[{ op: "replace", pos: anchor(1, "wrong"), lines: ["x"] }],
+			[{ op: "replace", pos: anchor(4, "c"), lines: [] }],
+			[{ op: "replace", pos: anchor(3, "c"), end: anchor(1, "a"), lines: [] }],
+			[
+				{ op: "replace", pos: anchor(1, "a"), end: anchor(2, "b"), lines: [] },
+				{ op: "replace", pos: anchor(2, "b"), lines: [] },
+			],
+			[{ op: "insert_before", pos: anchor(1, "a"), end: anchor(2, "b"), lines: [] }],
+			[{ op: "replace", pos: anchor(1, "a"), lines: ["x\ny"] }],
+			[{ op: "replace", pos: anchor(1, "a"), lines: ["\ud800"] }],
+		]) {
+			const result = await executeTool(tool, "id", { path, edits }, undefined, undefined, { cwd });
+			expect(result.isError).toBe(true);
+			expect(await readFile(path, "utf8")).toBe(source);
+		}
+		const edits = [{ op: "replace", pos: anchor(1, "a"), lines: [] }];
+		await expect(
+			executeTool(tool, "id", { path, edits }, AbortSignal.abort(), undefined, { cwd }),
+		).rejects.toThrow("Operation aborted");
+		for (const bytes of [Buffer.from([0xff]), Buffer.from("a\0b"), Buffer.from("")]) {
+			await writeFile(path, bytes);
+			expect(
+				(await executeTool(tool, "id", { path, edits }, undefined, undefined, { cwd })).isError,
+			).toBe(true);
+			expect(await readFile(path)).toEqual(bytes);
+		}
+	});
+	it("uses one delimiter choice and preserves untouched mixed endings", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-mixed-"));
+		const path = join(cwd, "case.ts");
+		await writeFile(path, "a\rb\nc\nd");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		await executeTool(
+			tool,
+			"id",
+			{
+				path,
+				edits: [
+					{ op: "insert_after", pos: anchor(1, "a"), lines: ["x"] },
+					{ op: "insert_after", pos: anchor(4, "d"), lines: ["y"] },
+				],
+			},
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		expect(await readFile(path, "utf8")).toBe("a\rx\nb\nc\nd\ny");
+	});
+	it("writes in place through a hard link without replacing the inode or mode", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-links-"));
+		const path = join(cwd, "source.ts");
+		const alias = join(cwd, "alias.ts");
+		await writeFile(path, "a\n", { mode: 0o640 });
+		await link(path, alias);
+		const before = await stat(path);
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		const result = await executeTool(
+			tool,
+			"id",
+			{ path: alias, edits: [{ op: "replace", pos: anchor(1, "a"), lines: ["b"] }] },
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		expect(result.isError).not.toBe(true);
+		expect(await readFile(path, "utf8")).toBe("b\n");
+		const after = await stat(path);
+		expect({ ino: after.ino, mode: after.mode, nlink: after.nlink }).toEqual({
+			ino: before.ino,
+			mode: before.mode,
+			nlink: before.nlink,
+		});
+	});
+	it("documents short-hash collisions and unchecked replacement interiors", async () => {
+		const seen = new Map<string, string>();
+		let collision: [string, string] | undefined;
+		for (let i = 0; i <= 4096; i++) {
+			const text = `source-${i}`;
+			const hash = hashLine(text);
+			const previous = seen.get(hash);
+			if (previous) {
+				collision = [previous, text];
+				break;
+			}
+			seen.set(hash, text);
+		}
+		expect(collision).toBeDefined();
+		expect(hashLine(collision![0])).toBe(hashLine(collision![1]));
+		const cwd = await mkdtemp(join(tempDir(), "hashline-limits-"));
+		const path = join(cwd, "source.ts");
+		await writeFile(path, "a\nchanged interior\nc");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		const result = await executeTool(
+			tool,
+			"id",
+			{ path, edits: [{ op: "replace", pos: anchor(1, "a"), end: anchor(3, "c"), lines: ["x"] }] },
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		expect(result.isError).not.toBe(true);
+		expect(await readFile(path, "utf8")).toBe("x");
+	});
+	it("normalizes argument shapes and Pi path syntax", () => {
+		const edit = { op: "replace", pos: anchor(1, "a"), lines: ["b"] };
+		expect(prepareHashArguments({ path: "x", edits: JSON.stringify(edit) })).toEqual({
+			path: "x",
+			edits: [edit],
+		});
+		expect(prepareHashArguments({ path: "x", edits: edit })).toEqual({ path: "x", edits: [edit] });
+		expect(editPath("@a\u202fb.ts", tempDir())).toBe(join(tempDir(), "a b.ts"));
 	});
 });
 

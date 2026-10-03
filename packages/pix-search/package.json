@@ -50,6 +50,6 @@
 	"dependencies": {
 		"@vscode/ripgrep": "^1.18.0",
 		"@xynogen/pix-pretty": "^1.30.0",
-		"@xynogen/pix-runtime": "^0.12.0"
+		"@xynogen/pix-runtime": "^0.13.0"
 	}
 }
