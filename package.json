@@ -34,7 +34,8 @@
 		"@types/bun": "latest",
 		"@types/node": "^22",
 		"typebox": "^1.1.38",
-		"typescript": "^5.7.0"
+		"typescript": "^5.7.0",
+		"typescript-language-server": "^6.0.1"
 	},
 	"engines": {
 		"bun": ">=1.1.0"

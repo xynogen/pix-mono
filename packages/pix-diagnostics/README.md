@@ -31,6 +31,45 @@ choose a server for the project. The project owns the server and its version.
 Required fields: `command`, `extensions`, and `languageId`. Optional fields:
 `args`, `filenames`, and `rootMarkers`.
 
+### Local TypeScript server
+
+Install the server as a project development dependency:
+
+```bash
+bun add --dev typescript-language-server
+```
+
+TypeScript must also exist in the project dependencies.
+Add this server to `<project>/.pi/lsp.json`:
+
+```json
+{
+  "servers": {
+    "typescript": {
+      "command": "bun",
+      "args": ["run", "typescript-language-server", "--stdio"],
+      "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
+      "languageId": "typescript",
+      "rootMarkers": ["tsconfig.base.json", "package.json", ".git"]
+    }
+  }
+}
+```
+
+The wrapper uses the project-local server, not a global installation.
+Run `/reload` after you change the server configuration.
+Then call `lens_diagnostics` with `source: "lsp"` and explicit file paths.
+This configuration does not add a JSON language server.
+
+### Diagnostic states
+
+- `clean`: the server confirms that the file has no findings.
+- `findings`: the server returns one or more diagnostics.
+- `unavailable`: no configured server can run for the file.
+- `unconfirmed`: the client cannot confirm diagnostics within the wait budget.
+
+An `unconfirmed` result does not mean that the file is clean.
+
 ## Install
 
 ```bash

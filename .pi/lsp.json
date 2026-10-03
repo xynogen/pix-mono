@@ -1,0 +1,11 @@
+{
+	"servers": {
+		"typescript": {
+			"command": "bun",
+			"args": ["run", "typescript-language-server", "--stdio"],
+			"extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
+			"languageId": "typescript",
+			"rootMarkers": ["tsconfig.base.json", "package.json", ".git"]
+		}
+	}
+}
