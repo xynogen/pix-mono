@@ -248,7 +248,7 @@ export function registerLsTool(
 			}
 
 			const output = getTextContent(result) || "listed";
-			text.setText(fillToolBackground(`  ${theme.fg("dim", output.slice(0, 120))}`));
+			text.setText(fillToolBackground(theme.fg("dim", output.slice(0, 120))));
 			return isPartial ? text : completed();
 		},
 	});

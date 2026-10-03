@@ -17,10 +17,12 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { type Component, Text } from "@earendil-works/pi-tui";
 import {
+	bodyLine,
 	type CollapsedToolStatus,
 	formatCollapsedToolRow,
 	frameToolResult,
 	hideCollapsedToolCall,
+	moreLines,
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -68,11 +70,9 @@ function dimBody(body: string, theme: Theme, expanded: boolean): string {
 	const lines = body.split("\n");
 	const maxShow = expanded ? lines.length : MAX_PREVIEW_LINES;
 	const shown = lines.slice(0, maxShow);
-	const out = shown.map((line) => `  ${theme.fg("dim", line)}`);
+	const out = shown.map((line) => bodyLine(line, theme, (l) => theme.fg("dim", l)));
 	const remaining = lines.length - maxShow;
-	if (remaining > 0) {
-		out.push(`  ${theme.fg("muted", `… ${remaining} more lines`)}`);
-	}
+	if (remaining > 0) out.push(moreLines(remaining, theme));
 	return out.join("\n");
 }
 
@@ -104,11 +104,11 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 		const body = allText(result);
 
 		if (ctx.isError) {
-			text.setText(`  ${theme.fg("error", body || "Error")}`);
+			text.setText(theme.fg("error", body || "Error"));
 			return opts.isPartial ? text : frameToolResult(text, theme, true);
 		}
 		if (!body.trim()) {
-			text.setText(`  ${theme.fg("muted", "(empty)")}`);
+			text.setText(theme.fg("muted", "(empty)"));
 			return opts.isPartial ? text : frameToolResult(text, theme, false);
 		}
 

@@ -8,15 +8,15 @@ exports[`grep UI captures the call title, target, path and glob roles 1`] = `
 
 exports[`grep UI captures a single hit with a full-width success close 1`] = `
 [
-  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
+  "<dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                             ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;
 
 exports[`grep UI captures multiple hits in order with the same success shape 1`] = `
 [
-  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
-  "  <dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                           ",
+  "<dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                             ",
+  "<dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                             ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;
@@ -29,8 +29,8 @@ exports[`grep UI captures the unframed collapsed summary 1`] = `
 
 exports[`grep UI restores both complete hits when the collapsed card is expanded 1`] = `
 [
-  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
-  "  <dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                           ",
+  "<dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                             ",
+  "<dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                             ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;
@@ -53,25 +53,25 @@ exports[`grep UI captures a structured error, its collapsed summary and its expa
 
 exports[`grep UI captures a partial result without a completed close 1`] = `
 [
-  "  <dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                           ",
-  "  <dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                           ",
+  "<dim>src/a.ts:1:</dim><success+bold>TODO</success+bold><dim> one</dim>                                                             ",
+  "<dim>src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                             ",
 ]
 `;
 
 exports[`grep UI captures long output at 80 columns without a mock wrapping shortcut 1`] = `
 [
-  "  <dim>src/long.ts:42:</dim><success+bold>TODO</success+bold><dim> detail detail detail detail detail detail detail detail de</dim>",
+  "<dim>src/long.ts:42:</dim><success+bold>TODO</success+bold><dim> detail detail detail detail detail detail detail detail deta</dim>",
   "                                                                                ",
-  "  <dim>  src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                         ",
+  "<dim>  src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                           ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;
 
 exports[`grep UI captures long output at 120 columns without a mock wrapping shortcut 1`] = `
 [
-  "  <dim>src/long.ts:42:</dim><success+bold>TODO</success+bold><dim> detail detail detail detail detail detail detail detail detail detail detail detail detail detail </dim>",
+  "<dim>src/long.ts:42:</dim><success+bold>TODO</success+bold><dim> detail detail detail detail detail detail detail detail detail detail detail detail detail detail de</dim>",
   "                                                                                                                        ",
-  "  <dim>  src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                                                                 ",
+  "<dim>  src/b.ts:2:</dim><success+bold>TODO</success+bold><dim> two</dim>                                                                                                   ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;

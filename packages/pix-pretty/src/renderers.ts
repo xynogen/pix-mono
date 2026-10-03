@@ -68,7 +68,7 @@ export async function renderFileContent(
 
 	out.push(rule(tw));
 	if (total > maxLines) {
-		out.push(`${FG_DIM}  … ${pluralize(total - maxLines, "more line")} (${total} total)${RST}`);
+		out.push(`${FG_DIM}… ${pluralize(total - maxLines, "more line")} (${total} total)${RST}`);
 	}
 	return out.join("\n");
 }

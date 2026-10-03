@@ -668,7 +668,7 @@ export async function renderUnified(
 
 	out.push(rule(tw));
 	if (diff.lines.length > vis.length) {
-		out.push(`${BG_BASE}${FG_DIM}  … ${diff.lines.length - vis.length} more lines${RST}`);
+		out.push(`${BG_BASE}${FG_DIM}… ${diff.lines.length - vis.length} more lines${RST}`);
 	}
 	return out.join("\n");
 }
@@ -850,7 +850,7 @@ export async function renderSplit(
 
 	out.push(`${rule(half)}${FG_RULE}┊${RST}${rule(half)}`);
 	if (rows.length > vis.length) {
-		out.push(`${BG_BASE}${FG_DIM}  … ${rows.length - vis.length} more lines${RST}`);
+		out.push(`${BG_BASE}${FG_DIM}… ${rows.length - vis.length} more lines${RST}`);
 	}
 	return out.join("\n");
 }

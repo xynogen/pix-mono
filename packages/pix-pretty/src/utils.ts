@@ -424,17 +424,11 @@ export function renderDimPreview(
 	const highlight = opts.highlight;
 	const output = normalizeLineEndings(text).trim() || "done";
 	const lines = output.split("\n");
-	const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
 	const body = lines
 		.slice(0, maxLines)
-		.map(
-			(line) => `  ${sectionRule(line, theme, sw) ?? dimLineWithHighlight(line, theme, highlight)}`,
-		);
-	const header = opts.header ? `  ${theme.fg("dim", opts.header)}` : undefined;
-	const overflow =
-		lines.length > maxLines
-			? `  ${theme.fg("muted", `… ${pluralize(lines.length - maxLines, "more line")}`)}`
-			: undefined;
+		.map((line) => bodyLine(line, theme, (l) => dimLineWithHighlight(l, theme, highlight)));
+	const header = opts.header ? theme.fg("dim", opts.header) : undefined;
+	const overflow = lines.length > maxLines ? moreLines(lines.length - maxLines, theme) : undefined;
 
 	if (opts.frame) {
 		// One shape regardless of line count: a single framed box, no floating
@@ -533,6 +527,9 @@ export function rule(w: number, paint?: RulePaint, style: RuleStyle = "solid"): 
 	return paint ? paint(glyphs) : `${FG_RULE}${glyphs}${RST}`;
 }
 
+/** Narrow theme for helpers that paint only `muted`. Pi's Theme and FgTheme both fit. */
+type MutedTheme = { fg: (key: "muted", text: string) => string };
+
 /** Matches an `=== label ===` separator line (a common shell/echo idiom). */
 const SECTION_RE = /^\s*={2,}\s*(.+?)\s*={2,}\s*$/;
 
@@ -546,7 +543,7 @@ const SECTION_RULE_LEAD = 4;
  * so the divider aligns with the surrounding tool frame. Label and rule both
  * use the muted role — theme-driven, ANSI-safe.
  */
-export function sectionRule(line: string, theme: FgTheme, width: number): string | null {
+export function sectionRule(line: string, theme: MutedTheme, width: number): string | null {
 	const m = SECTION_RE.exec(line);
 	if (!m || hasAnsi(line)) return null;
 	const label = ` ${m[1]} `;
@@ -555,6 +552,23 @@ export function sectionRule(line: string, theme: FgTheme, width: number): string
 	// full-width rule; wrap it snugly with 2 dashes each side (`── long text ──`).
 	const [lead, tail] = trail >= 2 ? [SECTION_RULE_LEAD, trail] : [2, 2];
 	return theme.fg("muted", `${"─".repeat(lead)}${label}${"─".repeat(tail)}`);
+}
+
+/**
+ * One tool-result body line, flush left (no indent). An `=== label ===` line
+ * becomes a full-width section rule. Other lines go through `paint`.
+ */
+export function bodyLine(
+	line: string,
+	theme: MutedTheme,
+	paint: (line: string) => string = (s) => s,
+): string {
+	return sectionRule(line, theme, termW()) ?? paint(line);
+}
+
+/** Muted `… N more lines` footer for a truncated tool-result body. */
+export function moreLines(count: number, theme: MutedTheme): string {
+	return theme.fg("muted", `… ${pluralize(count, "more line")}`);
 }
 
 /** Decorate completed tool output with status-colored default chrome. */

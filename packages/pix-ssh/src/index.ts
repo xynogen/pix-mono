@@ -27,7 +27,7 @@
 
 import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
-import { FG_DIM, RST, resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
+import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
@@ -35,6 +35,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
+	bodyLine,
 	dotJoin,
 	fillToolBackground,
 	formatCollapsedToolRow,
@@ -42,10 +43,10 @@ import {
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
+	moreLines,
 	normalizeLineEndings,
 	renderToolError,
 	ruleFrame,
-	sectionRule,
 	termW,
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
@@ -920,9 +921,7 @@ export default function (pi: ExtensionAPI): void {
 				if (renderCtx.isError) {
 					text.setText(renderToolError(getTextContent(result) || "Error", theme));
 				} else {
-					text.setText(
-						fillToolBackground(`  ${theme.fg("muted", getTextContent(result) || "done")}`),
-					);
+					text.setText(fillToolBackground(theme.fg("muted", getTextContent(result) || "done")));
 				}
 				return isPartial ? text : completed(renderCtx.isError);
 			}
@@ -952,9 +951,7 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			if (details.outcome === "awaiting-approval" || details.outcome === "running") {
-				text.setText(
-					fillToolBackground(`  ${theme.fg("muted", getTextContent(result) || "working")}`),
-				);
+				text.setText(fillToolBackground(theme.fg("muted", getTextContent(result) || "working")));
 				return text;
 			}
 
@@ -963,7 +960,7 @@ export default function (pi: ExtensionAPI): void {
 				text.setText(
 					details.outcome === "error"
 						? renderToolError(diagnostic, theme)
-						: fillToolBackground(`  ${theme.fg("warning", diagnostic)}`),
+						: fillToolBackground(theme.fg("warning", diagnostic)),
 				);
 				return isPartial ? text : completed(true);
 			}
@@ -975,18 +972,16 @@ export default function (pi: ExtensionAPI): void {
 			const lineCount = lines.length;
 
 			if (!rendered) {
-				text.setText(fillToolBackground(`  ${summary}`));
+				text.setText(fillToolBackground(summary));
 				return isPartial ? text : completed(details.outcome !== "success");
 			}
 
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 			const show = lines.slice(0, maxShow);
-			const footer =
-				lineCount > maxShow ? [`${FG_DIM}  … ${lineCount - maxShow} more lines${RST}`] : [];
+			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme)] : [];
 			const statusKey = details.outcome === "success" ? "success" : "error";
 			const paint = (s: string) => theme.fg(statusKey, s);
-			const sw = Math.max(8, termW() - 4); // section-rule width inside the 2-space indent
-			const body = show.map((line) => `  ${sectionRule(line, theme, sw) ?? line}`);
+			const body = show.map((line) => bodyLine(line, theme));
 			const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
 			text.setText(fillToolBackground(out.join("\n")));
 			return text;

@@ -200,7 +200,7 @@ describe("grep UI", () => {
 
 	it("restores both complete hits when the collapsed card is expanded", () => {
 		const { rows, plain } = capture(result(hits), { collapsed: true, expanded: true });
-		expect(plain.slice(0, 2)).toEqual(hits.split("\n").map((line) => `  ${line}`.padEnd(80)));
+		expect(plain.slice(0, 2)).toEqual(hits.split("\n").map((line) => line.padEnd(80)));
 		expectClose(rows, "success");
 		expect(rows).toMatchSnapshot();
 	});
@@ -237,9 +237,9 @@ describe("grep UI", () => {
 				expanded: true,
 			});
 			// Grep fits to the terminal before Text renders. This locks its actual truncation contract.
-			expect(plain[0]).toBe(`  ${longHit}`.slice(0, width));
+			expect(plain[0]).toBe(longHit.slice(0, width));
 			expect(plain[1]).toBe(" ".repeat(width));
-			expect(plain[2]).toBe("    src/b.ts:2:TODO two".padEnd(width));
+			expect(plain[2]).toBe("  src/b.ts:2:TODO two".padEnd(width));
 			expectClose(rows, "success", width);
 			expect(rows).toMatchSnapshot();
 		});

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import type { FgTheme } from "./types.ts";
 import {
+	bodyLine,
 	dotJoin,
 	fillToolBackground,
 	formatCollapsedToolRow,
@@ -11,6 +12,7 @@ import {
 	frameToolResult,
 	frameToolSection,
 	hideCollapsedToolCall,
+	moreLines,
 	padIcon,
 	pluralize,
 	renderCollapsedToolRow,
@@ -505,7 +507,7 @@ describe("renderDimPreview", () => {
 		const lines = plain(renderDimPreview("a\nb", theme, { frame: true, header: "2 files" })).split(
 			"\n",
 		);
-		expect(lines.slice(0, -1).map((line) => line.trimEnd())).toEqual(["  a", "  b"]);
+		expect(lines.slice(0, -1).map((line) => line.trimEnd())).toEqual(["a", "b"]);
 		expect(lines.at(-1)).toMatch(/^(?:- ){3,}-?$/);
 	});
 
@@ -607,6 +609,26 @@ describe("sectionRule", () => {
 		const out = sectionRule("=== x ===", tag, 400) ?? "";
 		const visible = out.replace(/<\/?[a-z]+>/g, "");
 		expect([...visible].length).toBe(400);
+	});
+});
+
+describe("bodyLine / moreLines", () => {
+	const tag: FgTheme = { fg: (key, text) => `<${key}>${text}</${key}>` };
+
+	it("keeps a body line flush left and applies the paint", () => {
+		expect(bodyLine("\tsrc/a.ts", tag)).toBe("\tsrc/a.ts");
+		expect(bodyLine("src/a.ts", tag, (l) => tag.fg("dim", l))).toBe("<dim>src/a.ts</dim>");
+	});
+
+	it("turns a section line into a full-width muted rule", () => {
+		const visible = bodyLine("=== x ===", tag).replace(/<\/?[a-z]+>/g, "");
+		expect(visible).toMatch(/^─{4} x ─+$/);
+		expect([...visible].length).toBe(termW());
+	});
+
+	it("writes a flush-left muted overflow footer", () => {
+		expect(moreLines(1, tag)).toBe("<muted>… 1 more line</muted>");
+		expect(moreLines(3, tag)).toBe("<muted>… 3 more lines</muted>");
 	});
 });
 

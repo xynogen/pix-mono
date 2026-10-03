@@ -353,7 +353,7 @@ export function registerReadTool(
 				const byteSize = Math.ceil(((d.data as string).length * 3) / 4);
 				text.setText(
 					fillToolBackground(
-						`  ${fileIcon(d.filePath as string, theme)}${theme.fg("dim", dotJoin([String(d.mimeType ?? "image"), humanSize(byteSize)]))}`,
+						`${fileIcon(d.filePath as string, theme)}${theme.fg("dim", dotJoin([String(d.mimeType ?? "image"), humanSize(byteSize)]))}`,
 					),
 				);
 				return isPartial ? text : completed();
@@ -366,7 +366,7 @@ export function registerReadTool(
 				const paint = (s: string) => theme.fg("success", s);
 				if (renderCtx.state._rk !== key) {
 					renderCtx.state._rk = key;
-					const loading = theme.fg("muted", "  reading…");
+					const loading = theme.fg("muted", "reading…");
 					renderCtx.state._rt = fillToolBackground(
 						(isPartial ? [loading] : ruleFrame([loading], [], undefined, paint)).join("\n"),
 					);
@@ -395,8 +395,8 @@ export function registerReadTool(
 					renderCtx.state._rt ??
 						fillToolBackground(
 							(isPartial
-								? [theme.fg("muted", "  reading…")]
-								: ruleFrame([theme.fg("muted", "  reading…")], [], undefined, paint)
+								? [theme.fg("muted", "reading…")]
+								: ruleFrame([theme.fg("muted", "reading…")], [], undefined, paint)
 							).join("\n"),
 						),
 				);
@@ -405,7 +405,7 @@ export function registerReadTool(
 
 			const fallback = result.content?.[0];
 			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "read";
-			text.setText(fillToolBackground(`  ${theme.fg("dim", String(fallbackText).slice(0, 120))}`));
+			text.setText(fillToolBackground(theme.fg("dim", String(fallbackText).slice(0, 120))));
 			return isPartial ? text : completed();
 		},
 	});
