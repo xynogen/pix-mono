@@ -10,10 +10,10 @@ const fakeServerPath = join(import.meta.dir, "fake-server.fixture.ts");
 const filePath = join(root, "a.ts");
 writeFileSync(filePath, "const x: number = 'bad';\n");
 
-async function startClient(): Promise<LspTransport> {
+async function startClient(args: string[] = []): Promise<LspTransport> {
 	return LspTransport.start({
 		command: process.execPath,
-		args: [fakeServerPath],
+		args: [fakeServerPath, ...args],
 		cwd: root,
 		rootUri: pathToFileURL(root).href,
 		serverId: "fake",
@@ -21,12 +21,24 @@ async function startClient(): Promise<LspTransport> {
 }
 
 describe("LspTransport", () => {
+	test("matches encoded Windows drive URIs and confirms empty publishes", async () => {
+		const client = await startClient(["--encoded-uri", "--empty"]);
+		try {
+			const started = Date.now();
+			await client.open(filePath, "typescript", "const x = 1;\n", 1);
+			expect(await client.waitForDiagnostics(filePath, 1, 2000)).toEqual([]);
+			expect(Date.now() - started).toBeLessThan(1500);
+			expect(await client.waitForDiagnostics(join(root, "silent.ts"), 1, 100)).toBeUndefined();
+		} finally {
+			await client.stop();
+		}
+	});
 	test("opens a document and waits for its diagnostics", async () => {
 		const client = await startClient();
 		await client.open(filePath, "typescript", "const x: number = 'bad';\n", 1);
 		const diagnostics = await client.waitForDiagnostics(filePath, 1, 2_000);
 		expect(diagnostics).toHaveLength(1);
-		expect(diagnostics[0]?.message).toBe("Type mismatch");
+		expect(diagnostics?.[0]?.message).toBe("Type mismatch");
 		await client.stop();
 		expect(client.state()).toBe("stopped");
 	});

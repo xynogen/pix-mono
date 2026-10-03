@@ -81,6 +81,7 @@ interface HarnessOptions {
 	clock?: FakeClock;
 	pausedStart?: boolean;
 	diagnostics?: LspDiagnostic[];
+	confirmed?: boolean;
 	resolve?: (filePath: string) => Promise<ResolveResult>;
 }
 
@@ -111,6 +112,8 @@ function createManagerHarness(options: HarnessOptions = {}): Harness {
 			state.starts++;
 			if (options.pausedStart) await gate;
 			const t = fakeTransport(options.diagnostics ?? []);
+			t.isPullCapable = () => false;
+			if (options.confirmed === false) t.waitForDiagnostics = async () => undefined;
 			const originalStop = t.stop;
 			t.stop = async () => {
 				state.stops++;
@@ -137,6 +140,14 @@ function createManagerHarness(options: HarnessOptions = {}): Harness {
 }
 
 describe("LazyLspManager", () => {
+	test("distinguishes an empty push from no publish", async () => {
+		for (const confirmed of [true, false]) {
+			const harness = createManagerHarness({ confirmed });
+			const [snapshot] = await harness.manager.check({ paths: ["/repo/a.ts"], severity: "all" });
+			expect(snapshot?.state).toBe(confirmed ? "clean" : "unconfirmed");
+			await harness.manager.shutdown();
+		}
+	});
 	test("starts no server until the first request", () => {
 		const harness = createManagerHarness();
 		expect(harness.starts).toBe(0);

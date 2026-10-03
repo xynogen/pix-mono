@@ -14,7 +14,7 @@
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
 	CancellationTokenSource,
 	createMessageConnection,
@@ -84,6 +84,16 @@ function mapDiagnostic(d: RawDiagnostic): LspDiagnostic {
 	};
 }
 
+function diagnosticUri(uri: string): string {
+	if (!uri.startsWith("file:")) return uri;
+	const canonical = pathToFileURL(fileURLToPath(uri)).href;
+	// Windows drive letters vary by server. Keep the remaining path case unchanged.
+	return canonical.replace(
+		/^file:\/\/\/([A-Z]):/i,
+		(_all, drive: string) => `file:///${drive.toUpperCase()}:`,
+	);
+}
+
 export class LspTransport {
 	private stateValue: TransportState = "starting";
 	private seq = 0;
@@ -147,7 +157,7 @@ export class LspTransport {
 		this.connection.onNotification(
 			"textDocument/publishDiagnostics",
 			(params: { uri: string; version?: number; diagnostics: RawDiagnostic[] }) => {
-				this.diagnostics.set(params.uri, {
+				this.diagnostics.set(diagnosticUri(params.uri), {
 					version: params.version,
 					diagnostics: params.diagnostics.map(mapDiagnostic),
 					seq: ++this.seq,
@@ -192,7 +202,7 @@ export class LspTransport {
 	}
 
 	private uriFor(filePath: string): string {
-		return pathToFileURL(filePath).href;
+		return diagnosticUri(pathToFileURL(filePath).href);
 	}
 
 	private touchOpen(uri: string): void {
@@ -266,17 +276,18 @@ export class LspTransport {
 		version: number,
 		waitMs: number,
 		signal?: AbortSignal,
-	): Promise<LspDiagnostic[]> {
+	): Promise<LspDiagnostic[] | undefined> {
 		const uri = this.uriFor(filePath);
 		const deadline = Date.now() + Math.max(1, waitMs);
 
-		return new Promise<LspDiagnostic[]>((resolve, reject) => {
+		return new Promise<LspDiagnostic[] | undefined>((resolve, reject) => {
 			let settleTimer: ReturnType<typeof setTimeout> | undefined;
 			let firstSeen = false;
 
 			const cleanup = (): void => {
 				this.waiters.delete(check);
 				if (settleTimer) clearTimeout(settleTimer);
+				clearTimeout(timeout);
 				if (signal) signal.removeEventListener("abort", onAbort);
 			};
 			const onAbort = (): void => {
@@ -293,7 +304,7 @@ export class LspTransport {
 
 			const finish = (): void => {
 				cleanup();
-				resolve(matches()?.diagnostics ?? []);
+				resolve(matches()?.diagnostics);
 			};
 
 			const check = (): void => {

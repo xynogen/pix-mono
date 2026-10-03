@@ -25,17 +25,24 @@ const versions = new Map<string, number>();
 
 function publish(uri: string, version: number): void {
 	connection.sendNotification("textDocument/publishDiagnostics", {
-		uri,
+		uri: process.argv.includes("--encoded-uri")
+			? uri.replace(
+					/^file:\/\/\/([A-Z]):/i,
+					(_all, drive: string) => `file:///${drive.toLowerCase()}%3A`,
+				)
+			: uri,
 		version,
-		diagnostics: [
-			{
-				range: { start: { line: 0, character: 12 }, end: { line: 0, character: 17 } },
-				severity: 1,
-				message: "Type mismatch",
-				source: "fake",
-				code: 1,
-			},
-		],
+		diagnostics: process.argv.includes("--empty")
+			? []
+			: [
+					{
+						range: { start: { line: 0, character: 12 }, end: { line: 0, character: 17 } },
+						severity: 1,
+						message: "Type mismatch",
+						source: "fake",
+						code: 1,
+					},
+				],
 	});
 }
 

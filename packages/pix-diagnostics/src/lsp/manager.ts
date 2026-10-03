@@ -120,7 +120,7 @@ export interface TransportLike {
 		version: number,
 		waitMs: number,
 		signal?: AbortSignal,
-	): Promise<LspDiagnostic[]>;
+	): Promise<LspDiagnostic[] | undefined>;
 	request<T>(method: string, params: unknown, signal?: AbortSignal): Promise<T>;
 	isPullCapable(): boolean;
 	updateEwma(ms: number): void;
@@ -312,7 +312,7 @@ class LazyLspManager implements LspManager {
 		const raw = await server.transport.waitForDiagnostics(path, version, waitMs, request.signal);
 		server.transport.updateEwma(this.deps.now() - started);
 
-		const diagnostics: PixDiagnostic[] = raw.map((d) => ({
+		const diagnostics: PixDiagnostic[] = (raw ?? []).map((d) => ({
 			filePath: path,
 			severity: SEVERITY_MAP[d.severity] ?? "error",
 			message: d.message,
@@ -325,7 +325,7 @@ class LazyLspManager implements LspManager {
 		}));
 
 		// Push-only server that never published: report unconfirmed, not clean.
-		const gotEvent = raw.length > 0 || server.transport.isPullCapable();
+		const gotEvent = raw !== undefined;
 		const state: DiagnosticSnapshot["state"] =
 			diagnostics.length > 0 ? "findings" : gotEvent ? "clean" : "unconfirmed";
 
