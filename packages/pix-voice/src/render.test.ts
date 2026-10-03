@@ -89,7 +89,7 @@ test("partial updates keep detail visible and do not schedule collapse", () => {
 		context(stub, { state }),
 	);
 	expect(stub.get()).toContain("streaming body");
-	expect(stub.component.render(20)).toEqual(["   [dim]streaming body"]);
+	expect(stub.component.render(20)).toEqual(["\t[dim]streaming body"]);
 	expect(state.timer).toBeUndefined();
 });
 
@@ -109,10 +109,10 @@ test("expanded mode restores full joined text", () => {
 		theme,
 		context(stub, { state: { collapsed: true }, expanded: true }),
 	);
-	expect(stub.get()).toBe("   [dim]first\n   [dim]second");
+	expect(stub.get()).toBe("\t[dim]first\n\t[dim]second");
 	expect(component.render(20)).toEqual([
-		"   [dim]first",
-		"   [dim]second",
+		"\t[dim]first",
+		"\t[dim]second",
 		"[success]- - - - - - - - - - ",
 	]);
 });
@@ -129,7 +129,7 @@ test("structured errors get red open frames but collapsed summaries stay unframe
 		theme,
 		context(open),
 	);
-	expect(openComponent.render(20)).toEqual(["   [dim]failed body", "[error]- - - - - - - - - - "]);
+	expect(openComponent.render(20)).toEqual(["\t[dim]failed body", "[error]- - - - - - - - - - "]);
 
 	const collapsed = stubComponent();
 	const collapsedComponent = rr(
@@ -156,7 +156,7 @@ test("terminal error body gets an error frame", () => {
 		theme,
 		context(stub, { isError: true, expanded: true }),
 	);
-	expect(component.render(20)).toEqual(["   [error]boom", "[error]- - - - - - - - - - "]);
+	expect(component.render(20)).toEqual(["\t[error]boom", "[error]- - - - - - - - - - "]);
 });
 
 test("renderResult caps the normal preview", () => {
@@ -204,7 +204,7 @@ test("renderResult renders empty and errors without compacting", () => {
 		theme,
 		context(empty),
 	);
-	expect(empty.get()).toBe("   [muted](empty)");
+	expect(empty.get()).toBe("\t[muted](empty)");
 
 	const failed = stubComponent();
 	rr(
@@ -213,5 +213,5 @@ test("renderResult renders empty and errors without compacting", () => {
 		theme,
 		context(failed, { isError: true, state: { collapsed: true } }),
 	);
-	expect(failed.get()).toBe("   [error]boom");
+	expect(failed.get()).toBe("\t[error]boom");
 });

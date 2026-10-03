@@ -559,17 +559,18 @@ export function sectionRule(line: string, theme: MutedTheme, width: number): str
  * becomes a full-width section rule. Other lines go through `paint`.
  */
 /**
- * Left pad that lines a result body up with the tool title: icon (2 cells) +
- * space. Same width as one Pi-rendered tab.
+ * Body indent: one tab. pi-tui renders `\t` as 3 cells, the title column after
+ * the 2-cell status icon + space.
  */
-export const BODY_PAD = "   ";
+export const BODY_PAD = "\t";
 
 export function bodyLine(
 	line: string,
 	theme: MutedTheme,
 	paint: (line: string) => string = (s) => s,
 ): string {
-	return `${BODY_PAD}${sectionRule(line, theme, termW() - BODY_PAD.length) ?? paint(line)}`;
+	// ponytail: 3 = pi-tui tab width. Use visibleWidth if BODY_PAD stops being one tab.
+	return `${BODY_PAD}${sectionRule(line, theme, termW() - 3) ?? paint(line)}`;
 }
 
 /** Muted `… N more lines` footer for a truncated tool-result body. */

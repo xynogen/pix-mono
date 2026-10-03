@@ -508,7 +508,7 @@ describe("renderDimPreview", () => {
 		const lines = plain(renderDimPreview("a\nb", theme, { frame: true, header: "2 files" })).split(
 			"\n",
 		);
-		expect(lines.slice(0, -1).map((line) => line.trimEnd())).toEqual(["   a", "   b"]);
+		expect(lines.slice(0, -1).map((line) => line.trimEnd())).toEqual(["	a", "	b"]);
 		expect(lines.at(-1)).toMatch(/^(?:- ){3,}-?$/);
 	});
 
@@ -625,8 +625,8 @@ describe("bodyLine / moreLines", () => {
 
 	it("turns a section line into a full-width muted rule", () => {
 		const visible = bodyLine("=== x ===", tag).replace(/<\/?[a-z]+>/g, "");
-		expect(visible).toMatch(/^ {3}─{4} x ─+$/);
-		expect([...visible].length).toBe(termW());
+		expect(visible).toMatch(/^\t─{4} x ─+$/);
+		expect([...visible].length).toBe(termW() - 2); // 1 tab char = 3 cells
 	});
 
 	it("writes an aligned muted overflow footer", () => {

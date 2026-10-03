@@ -9,7 +9,6 @@
  */
 
 import type { AgentToolUpdateCallback, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { visibleWidth } from "@earendil-works/pi-tui";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { resolveBaseBackground } from "./ansi.ts";
 import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
@@ -84,9 +83,6 @@ export function collapseProgressFrames(text: string): string {
 		})
 		.join("\n");
 }
-
-/** Body indent: one tab. pi-tui renders `\t` as 3 cells, the title column after the 2-cell status icon + space. */
-const BODY_PAD = "\t";
 
 /** Canonical shell output normalization: collapse CR progress frames, then
  *  squeeze blank runs and trim. */
