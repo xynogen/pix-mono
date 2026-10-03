@@ -28,6 +28,7 @@ import type {
 	WriteRenderState,
 } from "@xynogen/pix-pretty/types";
 import {
+	BODY_PAD,
 	fillToolBackground,
 	frameToolResult,
 	getErrorMessage,
@@ -233,16 +234,16 @@ export function registerWriteTool(
 						})
 						.catch(() => {
 							if (renderCtx.state._wdk !== key) return;
-							renderCtx.state._wdt = String(d.summary);
+							renderCtx.state._wdt = `${BODY_PAD}${d.summary}`;
 							renderCtx.invalidate();
 						});
 				}
-				text.setText(renderCtx.state._wdt ?? String(d.summary));
+				text.setText(renderCtx.state._wdt ?? `${BODY_PAD}${d.summary}`);
 				return isPartial ? text : completed();
 			}
 
 			if (d?._type === "noChange") {
-				text.setText(fillToolBackground(theme.fg("muted", "✓ no changes")));
+				text.setText(fillToolBackground(`${BODY_PAD}${theme.fg("muted", "✓ no changes")}`));
 				return isPartial ? text : completed();
 			}
 
@@ -252,7 +253,7 @@ export function registerWriteTool(
 					content: rawContent,
 					filePath: fp,
 				} = d as { lines: number; content: string; filePath: string };
-				const base = theme.fg("success", `✓ new file (${lineCount} lines)`);
+				const base = `${BODY_PAD}${theme.fg("success", `✓ new file (${lineCount} lines)`)}`;
 				const pk = `nf:${diffThemeCacheKey(theme)}:${fp}:${lineCount}:${renderCtx.expanded ? "full" : "preview"}`;
 				if (renderCtx.state._nfk !== pk) {
 					renderCtx.state._nfk = pk;
@@ -278,7 +279,9 @@ export function registerWriteTool(
 
 			const fallback = result.content?.[0];
 			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "written";
-			text.setText(fillToolBackground(theme.fg("dim", String(fallbackText).slice(0, 120))));
+			text.setText(
+				fillToolBackground(`${BODY_PAD}${theme.fg("dim", String(fallbackText).slice(0, 120))}`),
+			);
 			return isPartial ? text : completed();
 		},
 	});

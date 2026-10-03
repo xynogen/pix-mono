@@ -28,6 +28,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
+	BODY_PAD,
 	dotJoin,
 	fillToolBackground,
 	frameToolResult,
@@ -287,7 +288,7 @@ export function registerEditTool(
 				if (renderCtx.state._edk !== key) {
 					renderCtx.state._edk = key;
 					// ponytail: call already shows `edit <file> <summary>`; don't repeat summary+loc header — gutter carries absolute line
-					renderCtx.state._edt = theme.fg("muted", "rendering diff…");
+					renderCtx.state._edt = `${BODY_PAD}${theme.fg("muted", "rendering diff…")}`;
 					const dc = resolveDiffColors(theme);
 					const diff = parseDiff(
 						d.oldContent as string,
@@ -303,11 +304,11 @@ export function registerEditTool(
 						})
 						.catch(() => {
 							if (renderCtx.state._edk !== key) return;
-							renderCtx.state._edt = String(d.summary);
+							renderCtx.state._edt = `${BODY_PAD}${d.summary}`;
 							renderCtx.invalidate();
 						});
 				}
-				text.setText(renderCtx.state._edt ?? String(d.summary));
+				text.setText(renderCtx.state._edt ?? `${BODY_PAD}${d.summary}`);
 				return isPartial ? text : completed();
 			}
 
@@ -318,7 +319,7 @@ export function registerEditTool(
 				if (renderCtx.state._edk !== key) {
 					renderCtx.state._edk = key;
 					// ponytail: call already shows summary; render diffs directly
-					renderCtx.state._edt = theme.fg("muted", "rendering diff…");
+					renderCtx.state._edt = `${BODY_PAD}${theme.fg("muted", "rendering diff…")}`;
 					const dc = resolveDiffColors(theme);
 					Promise.all(
 						(
@@ -335,23 +336,25 @@ export function registerEditTool(
 					)
 						.then((rendered) => {
 							if (renderCtx.state._edk !== key) return;
-							const body = rendered.join(`\n${theme.fg("muted", "···")}\n`);
+							const body = rendered.join(`\n${`${BODY_PAD}${theme.fg("muted", "···")}`}\n`);
 							renderCtx.state._edt = body;
 							renderCtx.invalidate();
 						})
 						.catch(() => {
 							if (renderCtx.state._edk !== key) return;
-							renderCtx.state._edt = `${d.editCount} edits ${d.summary}`;
+							renderCtx.state._edt = `${BODY_PAD}${d.editCount} edits ${d.summary}`;
 							renderCtx.invalidate();
 						});
 				}
-				text.setText(renderCtx.state._edt ?? `${d.editCount} edits ${d.summary}`);
+				text.setText(renderCtx.state._edt ?? `${BODY_PAD}${d.editCount} edits ${d.summary}`);
 				return isPartial ? text : completed();
 			}
 
 			const fallback = result.content?.[0];
 			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "edited";
-			text.setText(fillToolBackground(theme.fg("dim", String(fallbackText).slice(0, 120))));
+			text.setText(
+				fillToolBackground(`${BODY_PAD}${theme.fg("dim", String(fallbackText).slice(0, 120))}`),
+			);
 			return isPartial ? text : completed();
 		},
 	});

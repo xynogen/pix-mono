@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import type { FgTheme } from "./types.ts";
 import {
+	BODY_PAD,
 	bodyLine,
 	dotJoin,
 	fillToolBackground,
@@ -507,7 +508,7 @@ describe("renderDimPreview", () => {
 		const lines = plain(renderDimPreview("a\nb", theme, { frame: true, header: "2 files" })).split(
 			"\n",
 		);
-		expect(lines.slice(0, -1).map((line) => line.trimEnd())).toEqual(["a", "b"]);
+		expect(lines.slice(0, -1).map((line) => line.trimEnd())).toEqual(["   a", "   b"]);
 		expect(lines.at(-1)).toMatch(/^(?:- ){3,}-?$/);
 	});
 
@@ -615,20 +616,22 @@ describe("sectionRule", () => {
 describe("bodyLine / moreLines", () => {
 	const tag: FgTheme = { fg: (key, text) => `<${key}>${text}</${key}>` };
 
-	it("keeps a body line flush left and applies the paint", () => {
-		expect(bodyLine("\tsrc/a.ts", tag)).toBe("\tsrc/a.ts");
-		expect(bodyLine("src/a.ts", tag, (l) => tag.fg("dim", l))).toBe("<dim>src/a.ts</dim>");
+	it("aligns a body line under the tool title and applies the paint", () => {
+		expect(bodyLine("src/a.ts", tag)).toBe(`${BODY_PAD}src/a.ts`);
+		expect(bodyLine("src/a.ts", tag, (l) => tag.fg("dim", l))).toBe(
+			`${BODY_PAD}<dim>src/a.ts</dim>`,
+		);
 	});
 
 	it("turns a section line into a full-width muted rule", () => {
 		const visible = bodyLine("=== x ===", tag).replace(/<\/?[a-z]+>/g, "");
-		expect(visible).toMatch(/^─{4} x ─+$/);
+		expect(visible).toMatch(/^ {3}─{4} x ─+$/);
 		expect([...visible].length).toBe(termW());
 	});
 
-	it("writes a flush-left muted overflow footer", () => {
-		expect(moreLines(1, tag)).toBe("<muted>… 1 more line</muted>");
-		expect(moreLines(3, tag)).toBe("<muted>… 3 more lines</muted>");
+	it("writes an aligned muted overflow footer", () => {
+		expect(moreLines(1, tag)).toBe(`${BODY_PAD}<muted>… 1 more line</muted>`);
+		expect(moreLines(3, tag)).toBe(`${BODY_PAD}<muted>… 3 more lines</muted>`);
 	});
 });
 

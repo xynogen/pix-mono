@@ -8,7 +8,7 @@ import { hlBlock } from "./highlight.ts";
 import { dirIcon, fileColor, fileIcon } from "./icons.ts";
 import { lang } from "./lang.ts";
 import type { FgTheme } from "./types.ts";
-import { lnum, normalizeLineEndings, pluralize, rule, termW } from "./utils.ts";
+import { BODY_PAD, lnum, normalizeLineEndings, pluralize, rule, termW } from "./utils.ts";
 
 /** Layout controls for {@link renderFileContent}. */
 export interface RenderFileContentOptions {
@@ -68,7 +68,9 @@ export async function renderFileContent(
 
 	out.push(rule(tw));
 	if (total > maxLines) {
-		out.push(`${FG_DIM}… ${pluralize(total - maxLines, "more line")} (${total} total)${RST}`);
+		out.push(
+			`${FG_DIM}${BODY_PAD}… ${pluralize(total - maxLines, "more line")} (${total} total)${RST}`,
+		);
 	}
 	return out.join("\n");
 }

@@ -14,7 +14,7 @@ import { MAX_HL_CHARS, MAX_RENDER_LINES, WORD_DIFF_MIN_SIM } from "./config.ts";
 import type { DiffLine, ParsedDiff } from "./diff.ts";
 import { hlBlock } from "./highlight.ts";
 import type { BundledLanguage, FgTheme } from "./types.ts";
-import { termW as utilsTermW } from "./utils.ts";
+import { BODY_PAD, termW as utilsTermW } from "./utils.ts";
 
 // ---------------------------------------------------------------------------
 // Env-overridable color/threshold helpers (mirror pi-diff)
@@ -668,7 +668,7 @@ export async function renderUnified(
 
 	out.push(rule(tw));
 	if (diff.lines.length > vis.length) {
-		out.push(`${BG_BASE}${FG_DIM}… ${diff.lines.length - vis.length} more lines${RST}`);
+		out.push(`${BG_BASE}${FG_DIM}${BODY_PAD}… ${diff.lines.length - vis.length} more lines${RST}`);
 	}
 	return out.join("\n");
 }
@@ -850,7 +850,7 @@ export async function renderSplit(
 
 	out.push(`${rule(half)}${FG_RULE}┊${RST}${rule(half)}`);
 	if (rows.length > vis.length) {
-		out.push(`${BG_BASE}${FG_DIM}… ${rows.length - vis.length} more lines${RST}`);
+		out.push(`${BG_BASE}${FG_DIM}${BODY_PAD}… ${rows.length - vis.length} more lines${RST}`);
 	}
 	return out.join("\n");
 }

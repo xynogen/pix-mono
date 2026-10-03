@@ -26,6 +26,7 @@ import type {
 	ToolResultLike,
 } from "./types.ts";
 import {
+	BODY_PAD,
 	bodyLine,
 	dotJoin,
 	fillToolBackground,
@@ -207,7 +208,7 @@ export function registerShellTool(
 						theme,
 					);
 				} else {
-					text.setText(fillToolBackground(theme.fg("muted", "done")));
+					text.setText(fillToolBackground(`${BODY_PAD}${theme.fg("muted", "done")}`));
 				}
 				return text;
 			}
@@ -254,7 +255,9 @@ export function registerShellTool(
 				);
 				return text;
 			}
-			text.setText(fillToolBackground(theme.fg("dim", String(fallbackText).slice(0, 120))));
+			text.setText(
+				fillToolBackground(`${BODY_PAD}${theme.fg("dim", String(fallbackText).slice(0, 120))}`),
+			);
 			return completed();
 		},
 	});

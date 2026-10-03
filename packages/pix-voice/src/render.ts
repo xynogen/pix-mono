@@ -17,6 +17,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { type Component, Text } from "@earendil-works/pi-tui";
 import {
+	BODY_PAD,
 	bodyLine,
 	type CollapsedToolStatus,
 	formatCollapsedToolRow,
@@ -104,11 +105,11 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 		const body = allText(result);
 
 		if (ctx.isError) {
-			text.setText(theme.fg("error", body || "Error"));
+			text.setText(`${BODY_PAD}${theme.fg("error", body || "Error")}`);
 			return opts.isPartial ? text : frameToolResult(text, theme, true);
 		}
 		if (!body.trim()) {
-			text.setText(theme.fg("muted", "(empty)"));
+			text.setText(`${BODY_PAD}${theme.fg("muted", "(empty)")}`);
 			return opts.isPartial ? text : frameToolResult(text, theme, false);
 		}
 

@@ -427,7 +427,7 @@ export function renderDimPreview(
 	const body = lines
 		.slice(0, maxLines)
 		.map((line) => bodyLine(line, theme, (l) => dimLineWithHighlight(l, theme, highlight)));
-	const header = opts.header ? theme.fg("dim", opts.header) : undefined;
+	const header = opts.header ? `${BODY_PAD}${theme.fg("dim", opts.header)}` : undefined;
 	const overflow = lines.length > maxLines ? moreLines(lines.length - maxLines, theme) : undefined;
 
 	if (opts.frame) {
@@ -555,20 +555,26 @@ export function sectionRule(line: string, theme: MutedTheme, width: number): str
 }
 
 /**
- * One tool-result body line, flush left (no indent). An `=== label ===` line
+ * One tool-result body line, aligned under the tool title. An `=== label ===` line
  * becomes a full-width section rule. Other lines go through `paint`.
  */
+/**
+ * Left pad that lines a result body up with the tool title: icon (2 cells) +
+ * space. Same width as one Pi-rendered tab.
+ */
+export const BODY_PAD = "   ";
+
 export function bodyLine(
 	line: string,
 	theme: MutedTheme,
 	paint: (line: string) => string = (s) => s,
 ): string {
-	return sectionRule(line, theme, termW()) ?? paint(line);
+	return `${BODY_PAD}${sectionRule(line, theme, termW() - BODY_PAD.length) ?? paint(line)}`;
 }
 
 /** Muted `… N more lines` footer for a truncated tool-result body. */
 export function moreLines(count: number, theme: MutedTheme): string {
-	return theme.fg("muted", `… ${pluralize(count, "more line")}`);
+	return `${BODY_PAD}${theme.fg("muted", `… ${pluralize(count, "more line")}`)}`;
 }
 
 /** Decorate completed tool output with status-colored default chrome. */

@@ -26,6 +26,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
+	BODY_PAD,
 	fillToolBackground,
 	frameToolResult,
 	getErrorMessage,
@@ -248,7 +249,7 @@ export function registerLsTool(
 			}
 
 			const output = getTextContent(result) || "listed";
-			text.setText(fillToolBackground(theme.fg("dim", output.slice(0, 120))));
+			text.setText(fillToolBackground(`${BODY_PAD}${theme.fg("dim", output.slice(0, 120))}`));
 			return isPartial ? text : completed();
 		},
 	});

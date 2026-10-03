@@ -35,6 +35,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
+	BODY_PAD,
 	bodyLine,
 	dotJoin,
 	fillToolBackground,
@@ -921,7 +922,9 @@ export default function (pi: ExtensionAPI): void {
 				if (renderCtx.isError) {
 					text.setText(renderToolError(getTextContent(result) || "Error", theme));
 				} else {
-					text.setText(fillToolBackground(theme.fg("muted", getTextContent(result) || "done")));
+					text.setText(
+						fillToolBackground(`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "done")}`),
+					);
 				}
 				return isPartial ? text : completed(renderCtx.isError);
 			}
@@ -951,7 +954,11 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			if (details.outcome === "awaiting-approval" || details.outcome === "running") {
-				text.setText(fillToolBackground(theme.fg("muted", getTextContent(result) || "working")));
+				text.setText(
+					fillToolBackground(
+						`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "working")}`,
+					),
+				);
 				return text;
 			}
 
@@ -960,7 +967,7 @@ export default function (pi: ExtensionAPI): void {
 				text.setText(
 					details.outcome === "error"
 						? renderToolError(diagnostic, theme)
-						: fillToolBackground(theme.fg("warning", diagnostic)),
+						: fillToolBackground(`${BODY_PAD}${theme.fg("warning", diagnostic)}`),
 				);
 				return isPartial ? text : completed(true);
 			}
@@ -972,7 +979,7 @@ export default function (pi: ExtensionAPI): void {
 			const lineCount = lines.length;
 
 			if (!rendered) {
-				text.setText(fillToolBackground(summary));
+				text.setText(fillToolBackground(`${BODY_PAD}${summary}`));
 				return isPartial ? text : completed(details.outcome !== "success");
 			}
 
