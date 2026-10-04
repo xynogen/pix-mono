@@ -94,28 +94,39 @@ type HashEdit = {
 	lines: string[];
 };
 type HashParams = { path: string; edits: HashEdit[] };
+type ExactParams = { path: string; edits: EditOperation[] };
+type EditInput = HashParams | ExactParams;
 
 const editSchema = Type.Object(
 	{
 		path: Type.String(),
 		edits: Type.Array(
-			Type.Object(
-				{
-					op: Type.Union([
-						Type.Literal("replace"),
-						Type.Literal("insert_before"),
-						Type.Literal("insert_after"),
-					]),
-					pos: Type.String({ description: "Original LINE#HASH anchor from read" }),
-					end: Type.Optional(Type.String({ description: "Inclusive end anchor, replace only" })),
-					lines: Type.Array(
-						Type.String({
-							description: "Literal source line without a delimiter or anchor prefix",
-						}),
-					),
-				},
-				{ additionalProperties: false },
-			),
+			Type.Union([
+				Type.Object(
+					{
+						op: Type.Union([
+							Type.Literal("replace"),
+							Type.Literal("insert_before"),
+							Type.Literal("insert_after"),
+						]),
+						pos: Type.String({ description: "Original LINE#HASH anchor from read" }),
+						end: Type.Optional(Type.String({ description: "Inclusive end anchor, replace only" })),
+						lines: Type.Array(
+							Type.String({
+								description: "Literal source line without a delimiter or anchor prefix",
+							}),
+						),
+					},
+					{ additionalProperties: false },
+				),
+				Type.Object(
+					{
+						oldText: Type.String({ minLength: 1, description: "Exact text, must match once" }),
+						newText: Type.String({ description: "Replacement text, empty deletes" }),
+					},
+					{ additionalProperties: false },
+				),
+			]),
 			{ minItems: 1 },
 		),
 	},
@@ -255,6 +266,50 @@ function applyHashEdits(bytes: Buffer, input: unknown) {
 	return { content: source.bom + output.map((line) => line.text + line.ending).join(""), ops };
 }
 
+function applyExactEdits(bytes: Buffer, args: ExactParams) {
+	if (Object.keys(args).some((key) => !["path", "edits"].includes(key)))
+		throw new Error("Invalid exact-text edit fields");
+	const source = decodeLines(bytes);
+	const original = source.lines.map((line) => line.text + line.ending).join("");
+	// ponytail: exact bytes only. Add newline normalization only if callers need it.
+	const ranges = args.edits
+		.map((edit) => {
+			if (
+				!edit ||
+				typeof edit !== "object" ||
+				Object.keys(edit).some((key) => !["oldText", "newText"].includes(key)) ||
+				typeof edit.oldText !== "string" ||
+				!edit.oldText ||
+				typeof edit.newText !== "string" ||
+				[edit.oldText, edit.newText].some((text) =>
+					/\0|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(text),
+				)
+			)
+				throw new Error("Invalid exact-text edit");
+			const start = original.indexOf(edit.oldText);
+			if (start < 0) throw new Error("oldText was not found. Use exact source text.");
+			if (original.indexOf(edit.oldText, start + 1) >= 0)
+				throw new Error("oldText matches more than once. Include more context.");
+			return { ...edit, start, end: start + edit.oldText.length };
+		})
+		.sort((a, b) => a.start - b.start);
+	let content = "";
+	let offset = 0;
+	const ops: Array<EditOperation & { editLine: number }> = [];
+	for (const range of ranges) {
+		if (range.start < offset) throw new Error("Overlapping exact-text edits");
+		content += original.slice(offset, range.start);
+		ops.push({
+			oldText: range.oldText,
+			newText: range.newText,
+			editLine: (content.match(/\r\n|\r|\n/g)?.length ?? 0) + 1,
+		});
+		content += range.newText;
+		offset = range.end;
+	}
+	return { content: source.bom + content + original.slice(offset), ops };
+}
+
 export function summarizeEditOperations(operations: EditOperation[]) {
 	const diffs = operations.map((e) => parseDiff(e.oldText, e.newText));
 	const totalAdded = diffs.reduce((sum, d) => sum + d.added, 0);
@@ -282,9 +337,9 @@ export function registerEditTool(
 		...origEdit,
 		name: "edit",
 		description:
-			"Edit a file with original LINE#HASH anchors from read. Use replace (optional inclusive end), insert_before, or insert_after, with literal source lines. Empty replacement lines delete. All anchors refer to the original file. Ranges must not overlap. Insertions may touch range boundaries, not interior gaps. Same-gap inserts follow input order. Use write for empty files or complete rewrites.",
+			"Edit using one format per call: hash anchors {op,pos,end?,lines} or exact text {oldText,newText}. Exact oldText must match once. All edits target the original file and must not overlap. Hash ops: replace, insert_before, insert_after. Empty lines or newText delete. Insertions may touch range boundaries, not interiors. Same-gap inserts follow input order. Use write for empty files or complete rewrites.",
 		parameters: editSchema,
-		promptSnippet: "Edit source lines with hashline anchors",
+		promptSnippet: "Edit with hash anchors or exact text",
 		promptGuidelines: [],
 		prepareArguments: prepareHashArguments,
 		constrainedSampling: { type: "json_schema", strict: "prefer" },
@@ -292,7 +347,7 @@ export function registerEditTool(
 
 		async execute(
 			_tid: string,
-			params: HashParams,
+			params: EditInput,
 			sig: AbortSignal | undefined,
 			_upd: AgentToolUpdateCallback<unknown> | undefined,
 			toolCtx: ExtensionContext,
@@ -314,14 +369,21 @@ export function registerEditTool(
 					abort();
 					const bytes = await readFile(absolutePath);
 					abort();
-					const applied = applyHashEdits(bytes, params);
+					const args = prepareHashArguments(params) as EditInput;
+					if (!Array.isArray(args.edits) || !args.edits.length)
+						throw new Error("edits must be a nonempty array");
+					const applied = args.edits.every(
+						(edit) => edit && typeof edit === "object" && "oldText" in edit,
+					)
+						? applyExactEdits(bytes, args as ExactParams)
+						: applyHashEdits(bytes, args);
 					operations = applied.ops;
 					abort();
 					// ponytail: in-place writes preserve links and mode, not crash atomicity. Use a separate atomic-write design if needed.
 					await writeFile(absolutePath, applied.content, "utf8");
 					abort();
 					return {
-						content: [{ type: "text", text: `Edited ${fp}: ${params.edits.length} operations.` }],
+						content: [{ type: "text", text: `Edited ${fp}: ${operations.length} operations.` }],
 						details: undefined,
 					};
 				});

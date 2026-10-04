@@ -61,7 +61,7 @@ describe("registerEditTool", () => {
 		expect(result.isError).not.toBe(true);
 		expect(await readFile(path, "utf8")).toBe("\uFEFFa\r\nfirst\r\nsecond\r\nthird\r\nc\n");
 	});
-	it("rejects interior gaps and legacy input before writing", async () => {
+	it("rejects interior gaps and mixed input before writing", async () => {
 		const cwd = await mkdtemp(join(tempDir(), "hashline-reject-"));
 		const path = join(cwd, "source.ts");
 		await writeFile(path, "a\nb\nc");
@@ -72,7 +72,10 @@ describe("registerEditTool", () => {
 				{ op: "replace", pos: anchor(1, "a"), end: anchor(3, "c"), lines: [] },
 				{ op: "insert_after", pos: anchor(1, "a"), lines: ["x"] },
 			],
-			[{ oldText: "a", newText: "x" }],
+			[
+				{ op: "replace", pos: anchor(1, "a"), lines: ["x"] },
+				{ oldText: "b", newText: "y" },
+			],
 		]) {
 			const result = await executeTool(
 				tool,
@@ -190,6 +193,80 @@ describe("registerEditTool", () => {
 		expect(render({ collapsed: true }, true).join("\n")).toContain(diagnostic);
 		expect(render({ collapsed: true }, true).at(-1)).toBe(`[error]${"- ".repeat(40)}[/error]`);
 		expect(render({}, false, true)).toEqual([expect.stringContaining(diagnostic)]);
+	});
+});
+
+describe("exact-text acceptance", () => {
+	it("replaces unique original text and records both diffs", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "exact-edit-"));
+		const path = join(cwd, "source.ts");
+		await writeFile(path, "\uFEFFalpha\r\nbeta\rgamma\n");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		const result = await executeTool(
+			tool,
+			"id",
+			{
+				path,
+				edits: [
+					{ oldText: "alpha", newText: "beta" },
+					{ oldText: "beta\r", newText: "" },
+				],
+			},
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		expect(result.isError).not.toBe(true);
+		expect(await readFile(path, "utf8")).toBe("\uFEFFbeta\r\ngamma\n");
+		expect(result.details).toMatchObject({
+			_type: "multiEditInfo",
+			editCount: 2,
+			ops: [
+				{ oldContent: "alpha", newContent: "beta", editLine: 1 },
+				{ oldContent: "beta\r", newContent: "", editLine: 2 },
+			],
+		});
+	});
+	it("rejects missing, ambiguous, overlapping, and malformed edits without writing", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "exact-invalid-"));
+		const path = join(cwd, "source.ts");
+		const source = "banana\nbanana\nunique";
+		await writeFile(path, source);
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		for (const edits of [
+			[{ oldText: "missing", newText: "x" }],
+			[{ oldText: "banana", newText: "x" }],
+			[
+				{ oldText: "unique", newText: "x" },
+				{ oldText: "nique", newText: "y" },
+			],
+			[
+				{ oldText: "unique", newText: "x" },
+				{ oldText: "missing", newText: "y" },
+			],
+			[{ oldText: "", newText: "x" }],
+			[{ oldText: "unique" }],
+			[{ oldText: "unique", newText: "\0" }],
+			[{ oldText: "unique", newText: "\ud800" }],
+			[{ oldText: "unique", newText: "x", pos: "1#ABC" }],
+		]) {
+			const result = await executeTool(tool, "id", { path, edits }, undefined, undefined, { cwd });
+			expect(result.isError).toBe(true);
+			expect(await readFile(path, "utf8")).toBe(source);
+		}
+		await writeFile(path, "banana");
+		const result = await executeTool(
+			tool,
+			"id",
+			{ path, edits: [{ oldText: "ana", newText: "x" }] },
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		expect(result.isError).toBe(true);
+		expect(await readFile(path, "utf8")).toBe("banana");
 	});
 });
 
