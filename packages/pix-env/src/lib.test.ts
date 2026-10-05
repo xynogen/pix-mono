@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
 import { tempDir } from "@xynogen/pix-runtime/paths";
+import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerEnv from "./extension.ts";
 import {
 	allRefsIn,
@@ -195,6 +196,64 @@ describe("read_env tool", () => {
 		expect(noUi.isError).toBe(true);
 		expect(noUi.content[0]?.text).not.toContain("secret-value");
 	});
+});
+
+test("W1 capture: read_env component and default Box results", async () => {
+	const fixture = await withUiFixture();
+	try {
+		const tool = captureEnvRead();
+		const typed = {
+			content: [
+				{ type: "text", text: "ENABLED = boolean\nPORT = int\nRATE = float\nTOKEN = string" },
+			],
+			details: {
+				action: "info",
+				types: { ENABLED: "boolean", PORT: "int", RATE: "float", TOKEN: "string" },
+			},
+		};
+		const component = tool.renderResult(typed, { isPartial: false }, roleTheme(), {
+			isError: false,
+		});
+		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot(
+			"typed component",
+		);
+		for (const [name, value, isPartial, isError] of [
+			["typed Box", typed, false, false],
+			["partial keeps current close", typed, true, false],
+			["names fallback", { content: [{ type: "text", text: "TOKEN = string" }] }, false, false],
+			[
+				"synthetic read",
+				{ content: [{ type: "text", text: "TOKEN=fixture-value" }], details: { action: "read" } },
+				false,
+				false,
+			],
+			[
+				"error",
+				{ content: [{ type: "text", text: "read_env requires interactive user approval." }] },
+				false,
+				true,
+			],
+			[
+				"empty typed body",
+				{
+					content: [{ type: "text", text: "No env variables loaded." }],
+					details: { action: "info", types: {} },
+				},
+				false,
+				false,
+			],
+		] as const) {
+			const rendered = tool.renderResult(
+				{ ...value, content: [...value.content] },
+				{ isPartial },
+				roleTheme(),
+				{ isError },
+			);
+			expect(captureRows(rendered, { width: 80, surface: "host-box" })).toMatchSnapshot(name);
+		}
+	} finally {
+		await fixture.restore();
+	}
 });
 
 describe("parseEnv", () => {

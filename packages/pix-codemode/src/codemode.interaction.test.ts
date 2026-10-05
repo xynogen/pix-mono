@@ -1,24 +1,17 @@
-import { afterAll, beforeAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, jest, test } from "bun:test";
 import { Text } from "@earendil-works/pi-tui";
 import { makeTheme } from "@xynogen/pix-pretty/test-utils";
 import { frameToolResult, unframeToolResult } from "@xynogen/pix-pretty/utils";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
-import { createIsolatedRuntime } from "@xynogen/pix-runtime/testing";
+import { withUiFixture } from "../../../scripts/ui-capture.ts";
 import { renderResult } from "./codemode.ts";
 
-const fixture = createIsolatedRuntime();
-const key = Symbol.for("@xynogen/pix-runtime");
-const globals = globalThis as unknown as Record<symbol, unknown>;
-const previous = globals[key];
+let fixture: Awaited<ReturnType<typeof withUiFixture>>;
 beforeAll(async () => {
-	globals[key] = fixture.runtime;
-	await fixture.runtime.init();
-	await fixture.runtime.update(collapseSection, { enabled: false });
+	fixture = await withUiFixture();
 });
 afterAll(async () => {
-	await fixture.runtime.shutdown();
-	globals[key] = previous;
-	fixture.cleanup();
+	await fixture?.restore();
 });
 
 const result = (text: string) => ({ content: [{ type: "text" as const, text }], details: {} });
@@ -26,16 +19,58 @@ const options = { expanded: false, isPartial: false };
 
 test("errors cancel collapse and restore the visible state", () => {
 	const state = { collapsed: true, timer: setTimeout(() => {}, 60_000) };
-	const theme = makeTheme();
-	renderResult(result("Script error:\nbad input"), options, theme, {
-		state,
-		expanded: false,
-		invalidate: () => {},
-	});
-	expect(state.collapsed).toBe(false);
-	expect(state.timer).toBeUndefined();
+	try {
+		const theme = makeTheme();
+		renderResult(result("Script error:\nbad input"), options, theme, {
+			state,
+			expanded: false,
+			invalidate: () => {},
+		});
+		expect(state.collapsed).toBe(false);
+		expect(state.timer).toBeUndefined();
+	} finally {
+		clearTimeout(state.timer);
+	}
 });
 
+test("actual collapse schedules once and error cancels before expiry", async () => {
+	await fixture.runtime.update(collapseSection, (current) => ({
+		...current,
+		enabled: true,
+		delaySec: 1,
+		tools: {},
+	}));
+	jest.useFakeTimers();
+	const state: { collapsed?: boolean; timer?: ReturnType<typeof setTimeout> } = {};
+	let invalidations = 0;
+	const ctx = { state, expanded: false, invalidate: () => invalidations++ };
+	try {
+		renderResult(result("plain"), options, makeTheme(), ctx);
+		const timer = state.timer;
+		expect(timer).toBeDefined();
+		renderResult(result("plain"), options, makeTheme(), ctx);
+		expect(state.timer).toBe(timer);
+		jest.advanceTimersByTime(1000);
+		expect(state.collapsed).toBe(true);
+		expect(invalidations).toBe(1);
+		clearTimeout(state.timer);
+		state.collapsed = false;
+		state.timer = undefined;
+		renderResult(result("plain"), options, makeTheme(), ctx);
+		renderResult(result("Script error:\nbad"), options, makeTheme(), ctx);
+		jest.advanceTimersByTime(1000);
+		expect(state.collapsed).toBe(false);
+		expect(invalidations).toBe(1);
+	} finally {
+		clearTimeout(state.timer);
+		jest.useRealTimers();
+		await fixture.runtime.update(collapseSection, (current) => ({
+			...current,
+			enabled: false,
+			tools: {},
+		}));
+	}
+});
 test("reuses a framed custom component and updates its body", () => {
 	const theme = makeTheme();
 	const inner = {

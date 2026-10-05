@@ -1,0 +1,129 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Settings and Footer actual overlay captures: settings 1`] = `
+[
+  "<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Pix Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>  Settings  </accent+bg:customMessageBg+bold><muted+bg:customMessageBg>│  Binaries  │  Footer  </muted+bg:customMessageBg><bg:customMessageBg>                                         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> PgUp/PgDn inspect • 1/3                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Pretty</dim+bg:customMessageBg><bg:customMessageBg>                                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>icons           </accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>unicode</success+bg:customMessageBg><bg:customMessageBg>                                                  </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>ls style        </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>grid</dim+bg:customMessageBg><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>max modal width </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>65%</dim+bg:customMessageBg><bg:customMessageBg>                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>max modal height</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>80%</dim+bg:customMessageBg><bg:customMessageBg>                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Collapse</dim+bg:customMessageBg><bg:customMessageBg>                                                                   </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>enabled         </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>false</success+bg:customMessageBg><bg:customMessageBg>                                                    </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>delay (sec)     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>10</dim+bg:customMessageBg><bg:customMessageBg>                                                       </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Network</dim+bg:customMessageBg><bg:customMessageBg>                                                                    </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>timeout (sec)   </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>30</dim+bg:customMessageBg><bg:customMessageBg>                                                       </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>←→</text+bg:customMessageBg><muted+bg:customMessageBg> change · </muted+bg:customMessageBg><text+bg:customMessageBg>↑↓</text+bg:customMessageBg><muted+bg:customMessageBg> move · </muted+bg:customMessageBg><text+bg:customMessageBg>PgUp/PgDn</text+bg:customMessageBg><muted+bg:customMessageBg> inspect · </muted+bg:customMessageBg><text+bg:customMessageBg>tab</text+bg:customMessageBg><muted+bg:customMessageBg> switch tab · </muted+bg:customMessageBg><text+bg:customMessageBg>esc</text+bg:customMessageBg><muted+bg:customMessageBg> close</muted+bg:customMessageBg><bg:customMessageBg>         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`Settings and Footer actual overlay captures: page 1`] = `
+[
+  "<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Pix Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>  Settings  </accent+bg:customMessageBg+bold><muted+bg:customMessageBg>│  Binaries  │  Footer  </muted+bg:customMessageBg><bg:customMessageBg>                                         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> PgUp/PgDn inspect • 2/3                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Collapse</dim+bg:customMessageBg><bg:customMessageBg>                                                                   </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>enabled         </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>false</success+bg:customMessageBg><bg:customMessageBg>                                                    </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>delay (sec)     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>10</dim+bg:customMessageBg><bg:customMessageBg>                                                       </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Network</dim+bg:customMessageBg><bg:customMessageBg>                                                                    </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>timeout (sec)   </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>30</dim+bg:customMessageBg><bg:customMessageBg>                                                       </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Compaction</dim+bg:customMessageBg><bg:customMessageBg>                                                                 </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>Trigger (% ctx) </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>60</dim+bg:customMessageBg><bg:customMessageBg>                                                       </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>Minimum tokens  </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>100k</dim+bg:customMessageBg><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Gate</dim+bg:customMessageBg><bg:customMessageBg>                                                                       </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>←→</text+bg:customMessageBg><muted+bg:customMessageBg> change · </muted+bg:customMessageBg><text+bg:customMessageBg>↑↓</text+bg:customMessageBg><muted+bg:customMessageBg> move · </muted+bg:customMessageBg><text+bg:customMessageBg>PgUp/PgDn</text+bg:customMessageBg><muted+bg:customMessageBg> inspect · </muted+bg:customMessageBg><text+bg:customMessageBg>tab</text+bg:customMessageBg><muted+bg:customMessageBg> switch tab · </muted+bg:customMessageBg><text+bg:customMessageBg>esc</text+bg:customMessageBg><muted+bg:customMessageBg> close</muted+bg:customMessageBg><bg:customMessageBg>         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`Settings and Footer actual overlay captures: footer changed 1`] = `
+[
+  "<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Pix Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>  Settings  │  Binaries  │</muted+bg:customMessageBg><accent+bg:customMessageBg+bold>  Footer  </accent+bg:customMessageBg+bold><bg:customMessageBg>                                         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Footer</dim+bg:customMessageBg><bg:customMessageBg>                                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>mode    </accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>cwd     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>git     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>context </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>model   </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>hide</success+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>thinking</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>price   </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>score   </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>statuses</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>tokens  </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>cost    </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>tps     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>show</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>←→</text+bg:customMessageBg><muted+bg:customMessageBg> change · </muted+bg:customMessageBg><text+bg:customMessageBg>↑↓</text+bg:customMessageBg><muted+bg:customMessageBg> move · </muted+bg:customMessageBg><text+bg:customMessageBg>PgUp/PgDn</text+bg:customMessageBg><muted+bg:customMessageBg> inspect · </muted+bg:customMessageBg><text+bg:customMessageBg>tab</text+bg:customMessageBg><muted+bg:customMessageBg> switch tab · </muted+bg:customMessageBg><text+bg:customMessageBg>esc</text+bg:customMessageBg><muted+bg:customMessageBg> close</muted+bg:customMessageBg><bg:customMessageBg>         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`Settings and Footer actual overlay captures: short terminal 1`] = `
+[
+  "<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Pix Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> Terminal too short — resize or press esc to cancel                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`binary tab captures isolate lookup and version probes: states 1`] = `
+[
+  "<muted>paths: /fixture/agent/binary.json · unset = automatic</muted>                           ",
+  "<accent>good</accent> <muted>· used by pix-test</muted>                                                         ",
+  "                                                                                ",
+  "<accent>→</accent> <success>✓︎</success> <accent>good    </accent>  <dim>/fixture/bin/good</dim><muted> · path · 1.2.3</muted>                                  ",
+  "  <error>✗︎</error> <text>required</text>  <warning>missing</warning> <muted>· install fixture</muted>                                         ",
+  "  <muted>○︎</muted> <text>optional</text>  <muted>not installed (optional) · install fixture</muted>                        ",
+  "  <warning>⚠︎</warning> <text>broken  </text>  <warning>/fixture/gone (not found)</warning> <muted>· binary.json</muted>                           ",
+  "                                                                                ",
+  "<dim>  Other platforms</dim>                                                               ",
+  "  <muted>○︎</muted> <muted>other   </muted>  <muted>not used on this OS · install fixture</muted>                             ",
+]
+`;
+
+exports[`binary tab captures isolate lookup and version probes: path editor 1`] = `
+[
+  "<muted>paths: /fixture/agent/binary.json · unset = automatic</muted>                           ",
+  "good path: /fixture/bin/good<cursor/><inverse> </inverse>                                                   ",
+  "                                                                                ",
+  "<accent>→</accent> <success>✓︎</success> <accent>good    </accent>  <dim>/fixture/bin/good</dim><muted> · path · 1.2.3</muted>                                  ",
+  "  <error>✗︎</error> <text>required</text>  <warning>missing</warning> <muted>· install fixture</muted>                                         ",
+  "  <muted>○︎</muted> <text>optional</text>  <muted>not installed (optional) · install fixture</muted>                        ",
+  "  <warning>⚠︎</warning> <text>broken  </text>  <warning>/fixture/gone (not found)</warning> <muted>· binary.json</muted>                           ",
+  "                                                                                ",
+  "<dim>  Other platforms</dim>                                                               ",
+  "  <muted>○︎</muted> <muted>other   </muted>  <muted>not used on this OS · install fixture</muted>                             ",
+]
+`;
+
+exports[`binary tab captures isolate lookup and version probes: empty filter 1`] = `
+[
+  "<muted>paths: /fixture/agent/binary.json · unset = automatic</muted>                           ",
+  "filter: nomatch<cursor/><inverse> </inverse>                                                                ",
+  "                                                                                ",
+  "<muted>  no binary matches "nomatch"</muted>                                                   ",
+]
+`;
+
+exports[`binary tab captures isolate lookup and version probes: invalid store 1`] = `
+[
+  "<error>binary.json is invalid: fixture invalid JSON — fix /fixture/agent/binary.json</error>   ",
+  "<accent>blocked</accent> <muted>· used by pix-test</muted>                                                      ",
+  "                                                                                ",
+  "<accent>→</accent> <warning>⚠︎</warning> <accent>blocked</accent>  <warning>blocked: binary.json is invalid</warning>                                    ",
+]
+`;

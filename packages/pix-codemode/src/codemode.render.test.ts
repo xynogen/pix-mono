@@ -1,56 +1,11 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from "bun:test";
-import { Text, visibleWidth } from "@earendil-works/pi-tui";
-import { getIconMode, setIconMode } from "@xynogen/pix-pretty/icon-catalog";
-import { makeTheme } from "@xynogen/pix-pretty/test-utils";
-import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
-import { collapseSection, prettySection } from "@xynogen/pix-runtime/sections";
-import { createIsolatedRuntime } from "@xynogen/pix-runtime/testing";
+import type { TextComponentLike } from "@xynogen/pix-pretty/types";
+import { collapseSection } from "@xynogen/pix-runtime/sections";
+import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 
-const fixture = createIsolatedRuntime();
-const singleton = Symbol.for("@xynogen/pix-runtime");
-const globals = globalThis as unknown as Record<symbol, unknown>;
-const previousRuntime = globals[singleton];
-const previousIcons = getIconMode();
-const fixedEnv = {
-	PRETTY_MAX_PREVIEW_LINES: "80",
-	PRETTY_MAX_HL_CHARS: "80000",
-	PRETTY_MAX_HL_LINE_CHARS: "2000",
-	PRETTY_CACHE_LIMIT: "128",
-};
-const previousEnv = Object.fromEntries(Object.keys(fixedEnv).map((key) => [key, process.env[key]]));
-const stdoutColumns = Object.getOwnPropertyDescriptor(process.stdout, "columns");
-const stderrColumns = Object.getOwnPropertyDescriptor(process.stderr, "columns");
-function terminal(width: 80 | 120) {
-	Object.defineProperty(process.stdout, "columns", { configurable: true, value: width });
-	Object.defineProperty(process.stderr, "columns", { configurable: true, value: width });
-	process.stdout.emit("resize");
-}
-const roles = [
-	"toolTitle",
-	"toolOutput",
-	"success",
-	"error",
-	"dim",
-	"muted",
-	"warning",
-	"syntaxComment",
-	"syntaxKeyword",
-	"syntaxFunction",
-	"syntaxVariable",
-	"syntaxString",
-	"syntaxNumber",
-	"syntaxType",
-	"syntaxOperator",
-	"syntaxPunctuation",
-];
-const theme: ThemeLike = {
-	...makeTheme(),
-	fg: (role, text) => {
-		const index = roles.indexOf(role);
-		if (index < 0) throw new Error(`Unknown fixture role: ${role}`);
-		return `\u001b[38;5;${100 + index}m${text}\u001b[39m`;
-	},
-};
+let fixture: Awaited<ReturnType<typeof withUiFixture>>;
+const theme = roleTheme();
+const terminal = (width: number) => fixture.setWidth(width);
 const options = { expanded: false, isPartial: false };
 const context = (state = {}) => ({ state, expanded: false, invalidate: () => {} });
 const result = (text = '{"ok":true}', failed = false) => ({
@@ -67,59 +22,29 @@ let renderCall: typeof import("./codemode.ts").renderCall;
 let renderResult: typeof import("./codemode.ts").renderResult;
 
 beforeAll(async () => {
-	Object.assign(process.env, fixedEnv);
-	globals[singleton] = fixture.runtime;
-	await fixture.runtime.init();
-	await fixture.runtime.update(prettySection, { icons: "ascii", maxPreviewLines: 80 });
-	setIconMode("ascii");
-	({ renderCall, renderResult } = await import("./codemode.ts"));
+	fixture = await withUiFixture();
+	try {
+		({ renderCall, renderResult } = await import("./codemode.ts"));
+	} catch (error) {
+		await fixture.restore();
+		throw error;
+	}
 });
 beforeEach(async () => {
 	terminal(80);
-	await fixture.runtime.update(collapseSection, { enabled: false, tools: {} });
+	await fixture.runtime.update(collapseSection, (current) => ({
+		...current,
+		enabled: false,
+		tools: {},
+	}));
 });
 afterAll(async () => {
-	await fixture.runtime.shutdown();
-	globals[singleton] = previousRuntime;
-	setIconMode(previousIcons);
-	for (const [key, value] of Object.entries(previousEnv)) {
-		if (value === undefined) delete process.env[key];
-		else process.env[key] = value;
-	}
-	if (stdoutColumns) Object.defineProperty(process.stdout, "columns", stdoutColumns);
-	else Reflect.deleteProperty(process.stdout, "columns");
-	if (stderrColumns) Object.defineProperty(process.stderr, "columns", stderrColumns);
-	else Reflect.deleteProperty(process.stderr, "columns");
-	process.stdout.emit("resize");
-	fixture.cleanup();
+	await fixture?.restore();
 });
 
-// ponytail: local pilot capture avoids a public test API. Share it only after a wider migration needs it.
 function capture(component: TextComponentLike, width: 80 | 120): string[] {
 	if (!component.render) throw new Error("The fixture needs a renderable component");
-	return component.render(width).map((line) => {
-		expect(visibleWidth(line)).toBeLessThanOrEqual(width);
-		let role: string | undefined;
-		let output = "";
-		let offset = 0;
-		for (const match of line.matchAll(/\u001b\[([\d;]*)m/g)) {
-			output += line.slice(offset, match.index);
-			if (role) output += `</${role}>`;
-			role = undefined;
-			const color = /^38;5;(\d+)$/.exec(match[1] ?? "");
-			if (color) {
-				role = roles[Number(color[1]) - 100];
-				if (!role) throw new Error(`Unknown fixture ANSI: ${match[0]}`);
-				output += `<${role}>`;
-			} else if (!["0", "39", "49"].includes(match[1] ?? "")) {
-				throw new Error(`Unexpected fixture ANSI: ${match[0]}`);
-			}
-			offset = match.index + match[0].length;
-		}
-		output += line.slice(offset);
-		if (role) output += `</${role}>`;
-		return output;
-	});
+	return captureRows({ render: (w) => component.render!(w) }, { width, surface: "component" });
 }
 function close(lines: string[], role: "success" | "error", width: number) {
 	expect(lines.at(-1)).toBe(`<${role}>${"- ".repeat(width / 2)}</${role}>`);
@@ -136,14 +61,6 @@ async function call(code: string, width: 80 | 120, expanded = false) {
 	return capture(renderCall({ code }, theme, ctx), width);
 }
 
-test("capture preserves real Text padding, blank rows and semantic roles", () => {
-	const lines = capture(new Text(theme.fg("dim", "a\n\nb"), 1, 1), 80);
-	expect(lines.length).toBe(5);
-	expect(lines[0]).toBe(" ".repeat(80));
-	expect(lines.at(-1)).toBe(" ".repeat(80));
-	expect(lines[1]).toMatch(/^ <dim>a +<\/dim>$/);
-	expect(lines).toMatchSnapshot();
-});
 test("normal call at 80 columns", async () => {
 	expect(await call("return 1;", 80)).toMatchSnapshot();
 });
@@ -224,6 +141,36 @@ test("partial output shows the latest eight calls without a completed frame", ()
 	expect(lines.length).toBe(9);
 	expect(lines.join("\n")).not.toContain("<success>");
 	expect(lines).toMatchSnapshot();
+});
+test("mixed call status, empty output and image placeholder", () => {
+	const calls = ["ok", "error", "cancelled"].map((status, i) => ({
+		id: `${i}`,
+		name: "read",
+		args: `file${i}`,
+		status: status as "ok" | "error" | "cancelled",
+		durationMs: 100,
+		cost: 0.01,
+	}));
+	expect(
+		capture(
+			renderResult({ ...result("plain"), details: { calls } }, options, theme, context()),
+			80,
+		),
+	).toMatchSnapshot("statuses");
+	expect(
+		capture(renderResult({ content: [], details: {} }, options, theme, context()), 80),
+	).toMatchSnapshot("empty");
+	expect(
+		capture(
+			renderResult(
+				{ content: [{ type: "image", mimeType: "image/png", data: "fixture" }], details: {} },
+				options,
+				theme,
+				context(),
+			),
+			80,
+		),
+	).toMatchSnapshot("image");
 });
 test("unknown host output and full-output path remain intact", () => {
 	const lines = capture(

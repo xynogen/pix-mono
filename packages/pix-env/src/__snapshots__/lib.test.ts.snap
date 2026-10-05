@@ -1,0 +1,76 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`W1 capture: read_env component and default Box results: typed component 1`] = `
+[
+  "◆︎ <accent>ENABLED</accent> <muted>boolean</muted>                                                               ",
+  "# <accent>PORT</accent> <muted>int</muted>                                                                      ",
+  "≈︎ <accent>RATE</accent> <muted>float</muted>                                                                    ",
+  "“︎ <accent>TOKEN</accent> <muted>string</muted>                                                                  ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`W1 capture: read_env component and default Box results: typed Box 1`] = `
+[
+  "",
+  "                                                                                ",
+  " ◆︎ <accent>ENABLED</accent> <muted>boolean</muted>                                                              ",
+  " # <accent>PORT</accent> <muted>int</muted>                                                                     ",
+  " ≈︎ <accent>RATE</accent> <muted>float</muted>                                                                   ",
+  " “︎ <accent>TOKEN</accent> <muted>string</muted>                                                                 ",
+  " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
+  "                                                                                ",
+]
+`;
+
+exports[`W1 capture: read_env component and default Box results: partial keeps current close 1`] = `
+[
+  "",
+  "                                                                                ",
+  " ◆︎ <accent>ENABLED</accent> <muted>boolean</muted>                                                              ",
+  " # <accent>PORT</accent> <muted>int</muted>                                                                     ",
+  " ≈︎ <accent>RATE</accent> <muted>float</muted>                                                                   ",
+  " “︎ <accent>TOKEN</accent> <muted>string</muted>                                                                 ",
+  " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
+  "                                                                                ",
+]
+`;
+
+exports[`W1 capture: read_env component and default Box results: names fallback 1`] = `
+[
+  "",
+  "                                                                                ",
+  " TOKEN = string                                                                 ",
+  " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
+  "                                                                                ",
+]
+`;
+
+exports[`W1 capture: read_env component and default Box results: synthetic read 1`] = `
+[
+  "",
+  "                                                                                ",
+  " TOKEN=fixture-value                                                            ",
+  " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
+  "                                                                                ",
+]
+`;
+
+exports[`W1 capture: read_env component and default Box results: error 1`] = `
+[
+  "",
+  "                                                                                ",
+  " read_env requires interactive user approval.                                   ",
+  " <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error> ",
+  "                                                                                ",
+]
+`;
+
+exports[`W1 capture: read_env component and default Box results: empty typed body 1`] = `
+[
+  "",
+  "                                                                                ",
+  " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
+  "                                                                                ",
+]
+`;

@@ -1,0 +1,79 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures BTW card and widget with fixed settings, clock, and spinner 1`] = `
+"card:markdown-hidden
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><success+bg:selectedBg>✓︎</success+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>BTW</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· Selected model · high · 2.1s · 2 tools</muted+bg:selectedBg><bg:selectedBg>                                 </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>Why does this file need a lock?</dim+bg:selectedBg><bg:selectedBg>                                              </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>› reasoning hidden — expand to view</muted+bg:selectedBg><bg:selectedBg>                                            </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdHeading+bg:selectedBg+bold>Answer</mdHeading+bg:selectedBg+bold><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdListBullet+bg:selectedBg>- </mdListBullet+bg:selectedBg><customMessageText+bg:selectedBg+bold>Read</customMessageText+bg:selectedBg+bold><customMessageText+bg:selectedBg> the file.</customMessageText+bg:selectedBg><bg:selectedBg>                                                               </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdListBullet+bg:selectedBg>- </mdListBullet+bg:selectedBg><customMessageText+bg:selectedBg>Use </customMessageText+bg:selectedBg><mdCode+bg:selectedBg>mutex</mdCode+bg:selectedBg><customMessageText+bg:selectedBg>.</customMessageText+bg:selectedBg><bg:selectedBg>                                                                   </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+card:reasoning-expanded
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><success+bg:selectedBg>✓︎</success+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>BTW</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· Selected model · high · 2.1s · 2 tools</muted+bg:selectedBg><bg:selectedBg>                                 </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>Why does this file need a lock?</dim+bg:selectedBg><bg:selectedBg>                                              </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg+bold>Reasoning</dim+bg:selectedBg+bold><bg:selectedBg>                                                                      </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><thinkingText+bg:selectedBg>The writer and reader share the file.</thinkingText+bg:selectedBg><bg:selectedBg>                                          </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdHeading+bg:selectedBg+bold>Answer</mdHeading+bg:selectedBg+bold><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdListBullet+bg:selectedBg>- </mdListBullet+bg:selectedBg><customMessageText+bg:selectedBg+bold>Read</customMessageText+bg:selectedBg+bold><customMessageText+bg:selectedBg> the file.</customMessageText+bg:selectedBg><bg:selectedBg>                                                               </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdListBullet+bg:selectedBg>- </mdListBullet+bg:selectedBg><customMessageText+bg:selectedBg>Use </customMessageText+bg:selectedBg><mdCode+bg:selectedBg>mutex</mdCode+bg:selectedBg><customMessageText+bg:selectedBg>.</customMessageText+bg:selectedBg><bg:selectedBg>                                                                   </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+card:error
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><error+bg:selectedBg>✗︎</error+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>BTW</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· Selected model · high · 2.1s · 2 tools</muted+bg:selectedBg><bg:selectedBg>                                 </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>Why does this file need a lock?</dim+bg:selectedBg><bg:selectedBg>                                              </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><error+bg:selectedBg>Provider unavailable</error+bg:selectedBg><bg:selectedBg>                                                           </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+card:long-question
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><success+bg:selectedBg>✓︎</success+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>BTW</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· Selected model · high · 2.1s · 2 tools</muted+bg:selectedBg><bg:selectedBg>                                 </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>Explain the lock and the write order. Explain the lock and the write order.  </dim+bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>Explain the lock and the write order. Explain the lock and the write order.    </dim+bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>Explain the lock and the write order. </dim+bg:selectedBg><bg:selectedBg>                                         </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>Because.</customMessageText+bg:selectedBg><bg:selectedBg>                                                                       </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+widget:empty
+widget:running
+<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<accent>○︎</accent> <accent>BTW</accent><muted> (1)</muted>                                                                       
+  <accent>⠋</accent> <toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>reading, searching…</dim>       
+widget:mixed
+<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<accent>○︎</accent> <accent>BTW</accent><muted> (1)</muted>                                                                       
+  <accent>⠋</accent> <toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <success>✓</success> <dim>#8</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>                             
+  <error>✗</error> <dim>#9</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted><error> offline</error>                     
+  <muted>■</muted> <dim>#10</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s stopped</muted>                    
+widget:finished
+<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<dim>●︎</dim> <dim>BTW</dim><muted> (0)</muted>                                                                       
+  <success>✓</success> <dim>#7</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>                             
+widget:expired
+widget:overflow
+<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<accent>○︎</accent> <accent>BTW</accent><muted> (20)</muted>                                                                      
+  <accent>⠋</accent> <toolTitle+bold>#1</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#2</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#3</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#4</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#5</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#6</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#8</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <accent>⠋</accent> <toolTitle+bold>#9</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
+  <muted>+11 more</muted>                                                                      "
+`;

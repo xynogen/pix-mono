@@ -1,0 +1,83 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures actual graph calls, progress, trees and terminal result states 1`] = `
+{
+  "bfs": [
+    "",
+    "<toolTitle+bold>graph</toolTitle+bold> <muted>query · bfs</muted> <dim>“What calls authenticate?”</dim>                                    ",
+  ],
+  "build": [
+    "",
+    "<toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <dim>src</dim>                                                                 ",
+  ],
+  "built": [
+    "",
+    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/     ",
+    "(view: /graph) · parsed 3 · reused 0                                            ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "collapsed": [
+    "",
+    "<success>✓ </success> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>done</muted>                                                           ",
+  ],
+  "collapsedError": [
+    "",
+    "<error>✗ </error> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>failed</muted>                                                         ",
+  ],
+  "dfs": [
+    "",
+    "<toolTitle+bold>graph</toolTitle+bold> <muted>query · dfs</muted> <dim>“Trace authenticate to the token cache and show each          </dim>",
+    "<dim>dependency across the request path.”</dim>                                            ",
+  ],
+  "empty": [
+    "",
+    "<muted>dfs · 0 nodes</muted>                                                                   ",
+    "  <muted>no matching nodes</muted>                                                             ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "error": [
+    "",
+    "<error>✗︎</error> <error>Build failed: Operation aborted</error>                                               ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "expanded": [
+    "",
+    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/     ",
+    "(view: /graph) · parsed 3 · reused 0                                            ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "fallback": [
+    "",
+    "one                                                                             ",
+    "                                                                                ",
+    "two                                                                             ",
+  ],
+  "hiddenCall": [],
+  "partial": [
+    "",
+    "<success>●︎</success> Extracting 3 files…                                                           ",
+  ],
+  "running": [
+    "",
+    "<accent>⠹</accent> <toolTitle+bold>graph</toolTitle+bold> <accent>██████████░░░░░░░░░░</accent> <toolTitle> 50%</toolTitle>  <muted>Extracting 3 files · 2.0s</muted>                    ",
+  ],
+  "runningFallback": [
+    "",
+    "<muted>building graph…</muted>                                                                 ",
+  ],
+  "tree": [
+    "",
+    "<muted>bfs · 4 nodes</muted>                                                                   ",
+    "  <accent>authenticate</accent>  <muted>src/auth.ts</muted>                                                     ",
+    "  <muted>├─ </muted><toolTitle>loadToken</toolTitle> <muted>(calls)</muted>  <muted>src/token.ts</muted>                                            ",
+    "  <muted>│  └─ </muted><toolTitle>cache</toolTitle> <muted>(reads)</muted>                                                           ",
+    "  <muted>└─ </muted><toolTitle>request</toolTitle> <muted>(called by)</muted>                                                        ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "wide": [
+    "",
+    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/ (view: /graph) · parsed 3 · reused 0        ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+}
+`;

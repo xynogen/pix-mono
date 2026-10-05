@@ -1,0 +1,208 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures registered fetch and search Markdown without links or external execution 1`] = `
+"fetch:call
+
+<toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim>                                                
+fetch:markdown
+
+  <mdHeading+bold+underline>Guide</mdHeading+bold+underline>                                                                         
+                                                                                
+  <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                              
+  <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                    
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+fetch:partial
+
+   <dim>Loading...</dim>                                                                   
+fetch:error
+
+   <dim>offline</dim>                                                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+fetch:collapsed-success
+
+<success>✓ </success> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
+fetch:collapsed-error
+
+<error>✗ </error> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
+fetch:collapsed-cancelled
+
+<warning>⚠ </warning> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
+fetch:hidden-call
+fetch:expanded
+
+  <mdHeading+bold+underline>Guide</mdHeading+bold+underline>                                                                         
+                                                                                
+  <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                              
+  <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                    
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+search:call
+
+<toolTitle+bold>search</toolTitle+bold> <dim>code guide</dim>                                                               
+search:markdown
+
+  <mdHeading+bold+underline>Guide</mdHeading+bold+underline>                                                                         
+                                                                                
+  <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                              
+  <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                    
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+search:partial
+
+   <dim>Loading...</dim>                                                                   
+search:error
+
+   <dim>offline</dim>                                                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+search:collapsed-success
+
+<success>✓ </success> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
+search:collapsed-error
+
+<error>✗ </error> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
+search:collapsed-cancelled
+
+<warning>⚠ </warning> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
+search:hidden-call
+search:expanded
+
+  <mdHeading+bold+underline>Guide</mdHeading+bold+underline>                                                                         
+                                                                                
+  <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                              
+  <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                    
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+fetch:preview32
+
+  <dim>… 1 more lines</dim>                                                                
+                                                                                
+  <dim>row 1</dim>                                                                         
+  <dim>row 2</dim>                                                                         
+  <dim>row 3</dim>                                                                         
+  <dim>row 4</dim>                                                                         
+  <dim>row 5</dim>                                                                         
+  <dim>row 6</dim>                                                                         
+  <dim>row 7</dim>                                                                         
+  <dim>row 8</dim>                                                                         
+  <dim>row 9</dim>                                                                         
+  <dim>row 10</dim>                                                                        
+  <dim>row 11</dim>                                                                        
+  <dim>row 12</dim>                                                                        
+  <dim>row 13</dim>                                                                        
+  <dim>row 14</dim>                                                                        
+  <dim>row 15</dim>                                                                        
+  <dim>row 16</dim>                                                                        
+  <dim>row 17</dim>                                                                        
+  <dim>row 18</dim>                                                                        
+  <dim>row 19</dim>                                                                        
+  <dim>row 20</dim>                                                                        
+  <dim>row 21</dim>                                                                        
+  <dim>row 22</dim>                                                                        
+  <dim>row 23</dim>                                                                        
+  <dim>row 24</dim>                                                                        
+  <dim>row 25</dim>                                                                        
+  <dim>row 26</dim>                                                                        
+  <dim>row 27</dim>                                                                        
+  <dim>row 28</dim>                                                                        
+  <dim>row 29</dim>                                                                        
+  <dim>row 30</dim>                                                                        
+  <dim>row 31</dim>                                                                        
+  <dim>row 32</dim>                                                                        
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+fetch:full
+
+  <dim>row 1</dim>                                                                         
+  <dim>row 2</dim>                                                                         
+  <dim>row 3</dim>                                                                         
+  <dim>row 4</dim>                                                                         
+  <dim>row 5</dim>                                                                         
+  <dim>row 6</dim>                                                                         
+  <dim>row 7</dim>                                                                         
+  <dim>row 8</dim>                                                                         
+  <dim>row 9</dim>                                                                         
+  <dim>row 10</dim>                                                                        
+  <dim>row 11</dim>                                                                        
+  <dim>row 12</dim>                                                                        
+  <dim>row 13</dim>                                                                        
+  <dim>row 14</dim>                                                                        
+  <dim>row 15</dim>                                                                        
+  <dim>row 16</dim>                                                                        
+  <dim>row 17</dim>                                                                        
+  <dim>row 18</dim>                                                                        
+  <dim>row 19</dim>                                                                        
+  <dim>row 20</dim>                                                                        
+  <dim>row 21</dim>                                                                        
+  <dim>row 22</dim>                                                                        
+  <dim>row 23</dim>                                                                        
+  <dim>row 24</dim>                                                                        
+  <dim>row 25</dim>                                                                        
+  <dim>row 26</dim>                                                                        
+  <dim>row 27</dim>                                                                        
+  <dim>row 28</dim>                                                                        
+  <dim>row 29</dim>                                                                        
+  <dim>row 30</dim>                                                                        
+  <dim>row 31</dim>                                                                        
+  <dim>row 32</dim>                                                                        
+  <dim>row 33</dim>                                                                        
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+fetch:empty
+
+   <muted>(empty)</muted>                                                                      
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+fetch:host-error
+
+   <error>host failed</error>                                                                  
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"
+`;
+
+exports[`captures actual web command rows with fixed provider maps and no saves 1`] = `
+"web:auto
+<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Web Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web search</dim+bg:customMessageBg><bg:customMessageBg>                                                                 </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>provider     </accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>auto · first configured</success+bg:customMessageBg><bg:customMessageBg>                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>selected-search</muted+bg:customMessageBg><bg:customMessageBg>                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web fetch</dim+bg:customMessageBg><bg:customMessageBg>                                                                  </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>provider     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>auto · first configured</success+bg:customMessageBg><bg:customMessageBg>                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>selected-fetch</muted+bg:customMessageBg><bg:customMessageBg>                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ move · enter change · esc close</muted+bg:customMessageBg><bg:customMessageBg>                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+web:unknown
+<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Web Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web search</dim+bg:customMessageBg><bg:customMessageBg>                                                                 </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>provider     </accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><warning+bg:customMessageBg>absent · not registered</warning+bg:customMessageBg><bg:customMessageBg>                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>selected-search</muted+bg:customMessageBg><bg:customMessageBg>                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web fetch</dim+bg:customMessageBg><bg:customMessageBg>                                                                  </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>provider     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><warning+bg:customMessageBg>absent · not registered</warning+bg:customMessageBg><bg:customMessageBg>                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>selected-fetch</muted+bg:customMessageBg><bg:customMessageBg>                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ move · enter change · esc close</muted+bg:customMessageBg><bg:customMessageBg>                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+web:missing
+<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Web Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web search</dim+bg:customMessageBg><bg:customMessageBg>                                                                 </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>provider     </accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><warning+bg:customMessageBg>9router · set FIXTURE_API_KEY</warning+bg:customMessageBg><bg:customMessageBg>                               </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>selected-search</success+bg:customMessageBg><bg:customMessageBg>                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web fetch</dim+bg:customMessageBg><bg:customMessageBg>                                                                  </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>provider     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><warning+bg:customMessageBg>9router · set FIXTURE_API_KEY</warning+bg:customMessageBg><bg:customMessageBg>                               </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>selected-fetch</success+bg:customMessageBg><bg:customMessageBg>                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ move · enter change · esc close</muted+bg:customMessageBg><bg:customMessageBg>                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+web:connected
+<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Web Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ─────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web search</dim+bg:customMessageBg><bg:customMessageBg>                                                                 </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>provider     </accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>9router · connected</success+bg:customMessageBg><bg:customMessageBg>                                         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>selected-search</success+bg:customMessageBg><bg:customMessageBg>                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Web fetch</dim+bg:customMessageBg><bg:customMessageBg>                                                                  </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>provider     </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>9router · connected</success+bg:customMessageBg><bg:customMessageBg>                                         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>selected-fetch</success+bg:customMessageBg><bg:customMessageBg>                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ move · enter change · esc close</muted+bg:customMessageBg><bg:customMessageBg>                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>"
+`;

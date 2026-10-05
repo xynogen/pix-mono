@@ -1,0 +1,47 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures actual STT widget and voice settings through safe runtime spies 1`] = `
+"stt:unknown-level
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<error>●</error> <toolTitle>recording</toolTitle> <dim>default                         </dim> <success>░░░░░░░░░░░░░░░░</success><muted> · alt+z stop · esc cancel</muted>
+stt:device-label
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<error>●</error> <toolTitle>recording</toolTitle> <dim>Fixture microphone with a long </dim>… <success>░░░░░░░░░░░░░░░░</success><muted> · alt+z stop · esc cancel</muted>
+stt:normal-level
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<error>●</error> <toolTitle>recording</toolTitle> <dim>Fixture microphone with a long </dim>… <success>████████░░░░░░░░</success><muted> -30 dB · alt+z stop · esc cancel</muted>
+stt:loud-level
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<error>●</error> <toolTitle>recording</toolTitle> <dim>Fixture microphone with a long </dim>… <warning>██████████████░░</warning><muted> -6 dB · alt+z stop · esc cancel</muted>
+stt:transcribing
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<warning>…</warning> <toolTitle>transcribing</toolTitle><muted> · esc cancel</muted>
+stt:cleanup
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<warning>…</warning> <toolTitle>cleaning up · fixture/selected-model</toolTitle><muted> · esc cancel</muted>
+stt:hold
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<error>●</error> <toolTitle>recording</toolTitle> <dim>default                         </dim> <success>░░░░░░░░░░░░░░░░</success><muted> · release to stop · esc cancel</muted>
+stt:tap
+<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<error>●</error> <toolTitle>recording</toolTitle> <dim>default                         </dim> <success>░░░░░░░░░░░░░░░░</success><muted> · alt+z stop · esc cancel</muted>
+voice:settings
+<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Voice Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ───────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Speech to text</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>provider             </accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><warning+bg:customMessageBg>absent · not configured</warning+bg:customMessageBg><bg:customMessageBg>                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model        </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>dg/nova-3</muted+bg:customMessageBg><bg:customMessageBg>                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>microphone           </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>Fixture microphone with a long device label</success+bg:customMessageBg><bg:customMessageBg>         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>test microphone      </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>off · enter start</muted+bg:customMessageBg><bg:customMessageBg>                                   </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>language             </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>auto</muted+bg:customMessageBg><bg:customMessageBg>                                                </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>cleanup model        </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>off</muted+bg:customMessageBg><bg:customMessageBg>                                                 </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>dictation key        </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>alt+z</success+bg:customMessageBg><bg:customMessageBg>                                               </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  Text to speech</dim+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>provider             </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><warning+bg:customMessageBg>absent · not configured</warning+bg:customMessageBg><bg:customMessageBg>                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>9router model        </text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><muted+bg:customMessageBg>edge-tts/en-US-AriaNeural</muted+bg:customMessageBg><bg:customMessageBg>                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>   </bg:customMessageBg><text+bg:customMessageBg>play after generation</text+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>on</success+bg:customMessageBg><bg:customMessageBg>                                                  </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ move · enter change · esc close</muted+bg:customMessageBg><bg:customMessageBg>                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>"
+`;

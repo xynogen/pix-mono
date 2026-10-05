@@ -1,0 +1,59 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures graph query and analysis CLI streams in process without a runner 1`] = `
+{
+  "analysis": {
+    "code": 0,
+    "stderr": "",
+    "stdout": 
+"Graph analyzed: 0 repeated structures, 0 semantic patterns, 0 unreliable links removed.
+Outputs: <fixture>
+"
+,
+  },
+  "bfs": {
+    "code": 0,
+    "stderr": "",
+    "stdout": 
+"authenticate — src/auth.ts
+  loadToken (via calls) — src/token.ts
+    cache (via reads) — src/cache.ts
+"
+,
+  },
+  "dfs": {
+    "code": 0,
+    "stderr": "",
+    "stdout": 
+"authenticate — src/auth.ts
+  loadToken (via calls) — src/token.ts
+    cache (via reads) — src/cache.ts
+"
+,
+  },
+  "empty": {
+    "code": 0,
+    "stderr": "",
+    "stdout": 
+"No matching nodes.
+"
+,
+  },
+  "invalid": {
+    "code": 1,
+    "stderr": 
+"query requires a question, e.g. query "how does auth work"
+"
+,
+    "stdout": "",
+  },
+  "path": {
+    "code": 0,
+    "stderr": "",
+    "stdout": 
+"authenticate → loadToken → cache
+"
+,
+  },
+}
+`;

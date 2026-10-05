@@ -1,0 +1,122 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures registered write/create completion and the configured diff split threshold 1`] = `
+{
+  "belowSplit": [
+    "",
+    "<raw.rule>─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<toolDiffRemoved+bg:toolErrorBg>▌ 1</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><syntaxKeyword+bg:toolErrorBg>const</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> count = </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                                                                                              </bg:toolErrorBg>",
+    "<toolDiffAdded+bg:toolSuccessBg>▌ 1</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><syntaxKeyword+bg:toolSuccessBg>const</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> count = </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>3</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                                                                                              </bg:toolSuccessBg>",
+    "<raw.rule>─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</success>",
+  ],
+  "belowSplitPending": [
+    "",
+    "<muted>  rendering diff…</muted>                                                                                                                                    ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</success>",
+  ],
+  "collapsed": [
+    "",
+    "<success>✓ </success> <toolTitle+bold>write</toolTitle+bold> <dim>created.ts</dim> <muted>·</muted> <muted>new file · 2 lines</muted>                                        ",
+  ],
+  "collapsedError": [
+    "",
+    "<error>✗ </error> <toolTitle+bold>write</toolTitle+bold> <dim>created.ts</dim> <muted>·</muted> <muted>failed</muted>                                                    ",
+  ],
+  "create": [
+    "",
+    "<warning>◐︎ </warning> <toolTitle+bold>create</toolTitle+bold> <dim>created.ts</dim>                                                            ",
+    "                                                                                ",
+    "<syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                                ",
+    "<syntaxComment>// preserved trailing spaces  </syntaxComment>                                                  ",
+  ],
+  "createExpanded": [
+    "",
+    "<warning>◐︎ </warning> <toolTitle+bold>create</toolTitle+bold> <dim>created.ts</dim>                                                            ",
+    "                                                                                ",
+    "<syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                                ",
+    "<syntaxComment>// preserved trailing spaces  </syntaxComment>                                                  ",
+  ],
+  "createExpandedPending": [
+    "",
+    "<warning>◐︎ </warning> <toolTitle+bold>create</toolTitle+bold> <dim>created.ts</dim>                                                            ",
+  ],
+  "createPending": [
+    "",
+    "<warning>◐︎ </warning> <toolTitle+bold>create</toolTitle+bold> <dim>created.ts</dim>                                                            ",
+  ],
+  "error": [
+    "",
+    "<error>EACCES: created.ts</error>                                                              ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "expandedError": [
+    "",
+    "<error>EACCES: created.ts</error>                                                              ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "hiddenCall": [],
+  "new": [
+    "",
+    "   <success>✓ new file (2 lines)</success>                                                         ",
+    "<syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                                ",
+    "<syntaxComment>// preserved trailing spaces  </syntaxComment>                                                  ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "newExpanded": [
+    "",
+    "   <success>✓ new file (2 lines)</success>                                                         ",
+    "<syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                                ",
+    "<syntaxComment>// preserved trailing spaces  </syntaxComment>                                                  ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "newExpandedPending": [
+    "",
+    "   <success>✓ new file (2 lines)</success>                                                         ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "newPending": [
+    "",
+    "   <success>✓ new file (2 lines)</success>                                                         ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "noChange": [
+    "",
+    "   <muted>✓ no changes</muted>                                                                 ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "partialError": [
+    "",
+    "<error>EACCES: created.ts</error>                                                              ",
+  ],
+  "split": [
+    "",
+    "<raw.rule>──────────────────────────────────────────────────────────────────────────┊──────────────────────────────────────────────────────────────────────────</raw.rule> ",
+    "<toolDiffRemoved+bg:toolErrorBg>▌ 1</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><syntaxKeyword+bg:toolErrorBg>const</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> count = </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                   </bg:toolErrorBg><raw.rule>│</raw.rule><toolDiffAdded+bg:toolSuccessBg>▌ 1</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><syntaxKeyword+bg:toolSuccessBg>const</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> count = </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>3</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                   </bg:toolSuccessBg> ",
+    "<raw.rule>──────────────────────────────────────────────────────────────────────────┊──────────────────────────────────────────────────────────────────────────</raw.rule> ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "splitPending": [
+    "",
+    "<muted>  rendering diff…</muted>                                                                                                                                     ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "unified": [
+    "",
+    "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<toolDiffRemoved+bg:toolErrorBg>▌ 1</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><syntaxKeyword+bg:toolErrorBg>const</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> count = </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                         </bg:toolErrorBg>",
+    "<toolDiffAdded+bg:toolSuccessBg>▌ 1</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><syntaxKeyword+bg:toolSuccessBg>const</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> count = </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>3</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                         </bg:toolSuccessBg>",
+    "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "unifiedPending": [
+    "",
+    "<muted>  rendering diff…</muted>                                                               ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "writeCall": [
+    "",
+    "<warning>◐︎ </warning> <toolTitle+bold>write</toolTitle+bold> <dim>existing.ts</dim>                                                            ",
+  ],
+}
+`;

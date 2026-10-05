@@ -1,0 +1,56 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`W1 capture: registered download call and self results: call 1`] = `
+[
+  "<toolTitle+bold>download</toolTitle+bold> <dim>add</dim> <muted>https://example.test/file.iso</muted>                                      ",
+]
+`;
+
+exports[`W1 capture: registered download call and self results: compact success 1`] = `
+[
+  "",
+  "<accent>↓︎</accent> <dim>dl-fixed-otter-42 queued https://example.test/file.iso</dim>                        ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`W1 capture: registered download call and self results: compact error 1`] = `
+[
+  "",
+  "<error>✗</error> <error>aria2c not found</error>                                                              ",
+  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+]
+`;
+
+exports[`W1 capture: registered download call and self results: expanded success 1`] = `
+[
+  "",
+  "dl-fixed-otter-42 queued                                                        ",
+  "second line                                                                     ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`W1 capture: registered download call and self results: expanded error 1`] = `
+[
+  "",
+  "aria2c not found                                                                ",
+  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+]
+`;
+
+exports[`W1 capture: registered download call and self results: partial 1`] = `
+[
+  "",
+  "Waiting for RPC                                                                 ",
+  "Still connecting                                                                ",
+]
+`;
+
+exports[`W1 capture: registered download call and self results: fallback 1`] = `
+[
+  "",
+  "<accent>↓︎</accent> <dim>no active downloads</dim>                                                           ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;

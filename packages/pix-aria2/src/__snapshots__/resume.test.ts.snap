@@ -1,0 +1,35 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`W1 capture: resume restarts progress polling after paused downloads clear it: single active widget 1`] = `
+[
+  "<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  "<accent>○</accent> <accent>Downloads</accent>",
+  "  <accent>↓︎</accent> <dim>dl-fixed-otter-42 file.iso · 50% · 50 B/100 B · 10 B/s · eta 5s</dim>",
+]
+`;
+
+exports[`W1 capture: resume restarts progress polling after paused downloads clear it: active widget 1`] = `
+[
+  "<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  "<accent>○</accent> <accent>Downloads</accent>",
+  "  <accent>↓︎</accent> <dim>dl-fixed-otter-42 file.iso · 50% · 50 B/100 B · 10 B/s · eta 5s</dim>",
+  "  <accent>↓︎</accent> <dim>dl-fixed-otter-43 a-long-download-name-for-width-sensitive-progress.iso ·</dim>...",
+]
+`;
+
+exports[`W1 capture: resume restarts progress polling after paused downloads clear it: wide widget 1`] = `
+[
+  "<borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  "<accent>○</accent> <accent>Downloads</accent>",
+  "  <accent>↓︎</accent> <dim>dl-fixed-otter-42 file.iso · 50% · 50 B/100 B · 10 B/s · eta 5s</dim>",
+  "  <accent>↓︎</accent> <dim>dl-fixed-otter-43 a-long-download-name-for-width-sensitive-progress.iso · 25% · 250 B/1000 B · 100 B/s · eta 8s</dim>",
+]
+`;
+
+exports[`W1 capture: resume restarts progress polling after paused downloads clear it: retained completion 1`] = `
+[
+  "<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  "<accent>○</accent> <accent>Downloads</accent>",
+  "  <accent>↓︎</accent> <dim>dl-fixed-otter-42 file.iso · 100% · 100 B/100 B</dim>",
+]
+`;

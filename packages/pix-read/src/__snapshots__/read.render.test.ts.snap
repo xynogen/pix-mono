@@ -1,0 +1,91 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures registered read pending, completed, expanded and non-text states 1`] = `
+{
+  "batch": [
+    "",
+    "   <dim>3 files</dim>                                                                      ",
+    "   <muted>──── one.txt ────────────────────────────────────────────────────────────────</muted>",
+    "   <dim>one</dim>                                                                          ",
+    "                                                                                ",
+    "   <muted>──── image.png ──────────────────────────────────────────────────────────────</muted>",
+    "   <dim>image/png</dim>                                                                    ",
+    "                                                                                ",
+    "   <muted>──── missing.txt ────────────────────────────────────────────────────────────</muted>",
+    "   <dim>ENOENT: missing.txt</dim>                                                          ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "call": [
+    "",
+    "<toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>from line 7</muted> <muted>(4 lines)</muted>                                            ",
+  ],
+  "collapsed": [
+    "",
+    "<success>✓ </success> <toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>·</muted> <muted>4 lines</muted>                                                     ",
+  ],
+  "collapsedError": [
+    "",
+    "<error>✗ </error> <toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>·</muted> <muted>failed</muted>                                                      ",
+  ],
+  "collapsedImage": [
+    "",
+    "<success>✓ </success> <toolTitle+bold>read</toolTitle+bold> <dim>image.png</dim> <muted>·</muted> <muted>image/png · 3 B</muted>                                             ",
+  ],
+  "completed": [
+    "",
+    "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<raw.lineNumber>  7</raw.lineNumber> <raw.rule>│</raw.rule> <syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                          ",
+    "<raw.lineNumber>  8</raw.lineNumber> <raw.rule>│</raw.rule>    <syntaxComment>// tab and trailing spaces  </syntaxComment>                                           ",
+    "<raw.lineNumber>  9</raw.lineNumber> <raw.rule>│</raw.rule>                                                                           ",
+    "<raw.lineNumber> 10</raw.lineNumber> <raw.rule>│</raw.rule> <syntaxKeyword>const</syntaxKeyword> text = <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString><raw.dim>›</raw.dim>",
+    "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "error": [
+    "",
+    "<error>ENOENT: sample.ts</error>                                                               ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "expanded": [
+    "",
+    "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<raw.lineNumber>  7</raw.lineNumber> <raw.rule>│</raw.rule> <syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                          ",
+    "<raw.lineNumber>  8</raw.lineNumber> <raw.rule>│</raw.rule>    <syntaxComment>// tab and trailing spaces  </syntaxComment>                                           ",
+    "<raw.lineNumber>  9</raw.lineNumber> <raw.rule>│</raw.rule>                                                                           ",
+    "<raw.lineNumber> 10</raw.lineNumber> <raw.rule>│</raw.rule> <syntaxKeyword>const</syntaxKeyword> text =                                                              ",
+    "<raw.lineNumber>   </raw.lineNumber> <raw.rule>│</raw.rule> <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString>",
+    "<raw.lineNumber>   </raw.lineNumber> <raw.rule>│</raw.rule> <syntaxString>xxxxxxxxxxxxxxxxxEND"</syntaxString>;                                                    ",
+    "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "expandedError": [
+    "",
+    "<error>ENOENT: sample.ts</error>                                                               ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "expandedPending": [
+    "",
+    "   <muted>reading…</muted>                                                                     ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "fallback": [
+    "",
+    "   <dim>read complete</dim>                                                                ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "image": [
+    "",
+    "   <syntaxType></syntaxType> <dim>image/png · 3 B</dim>                                                            ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "partial": [
+    "",
+    "   <dim>read complete</dim>                                                                ",
+  ],
+  "pending": [
+    "",
+    "   <muted>reading…</muted>                                                                     ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+}
+`;

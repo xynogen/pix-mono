@@ -1,0 +1,150 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`AST captures six default host-box tools without executing the engine: ast_grep_search call 1`] = `
+"
+                                                                                
+ <toolTitle+bold>ast_grep_search</toolTitle+bold> <dim>greet($A)</dim><muted> · typescript</muted>                                         
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: ast_grep_search body 1`] = `
+"
+                                                                                
+ <success>●︎</success> src/a.ts:12:3  greet(user)                                                   
+ <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: ast_grep_replace call 1`] = `
+"
+                                                                                
+ <toolTitle+bold>ast_grep_replace</toolTitle+bold> <dim>greet($A) → welcome($A)</dim><muted> · preview</muted>                             
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: ast_grep_replace body 1`] = `
+"
+                                                                                
+ <success>●︎</success> Preview: 1 edit(s) in 1 file(s). Set apply=true to write.                    
+ --- src/a.ts                                                                   
+ +++ src/a.ts                                                                   
+ -12: greet(user)                                                               
+ +12: welcome(user)                                                             
+ <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: ast_grep_outline call 1`] = `
+"
+                                                                                
+ <toolTitle+bold>ast_grep_outline</toolTitle+bold> <dim>src</dim>                                                           
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: ast_grep_outline body 1`] = `
+"
+                                                                                
+ <success>●︎</success> src/a.ts                                                                     
+   1: function_declaration  greet                                               
+   8: class_declaration  Widget                                                 
+ <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: read_symbol call 1`] = `
+"
+                                                                                
+ <toolTitle+bold>read_symbol</toolTitle+bold> <dim>greet</dim><muted> · src/a.ts</muted>                                                   
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: read_symbol body 1`] = `
+"
+                                                                                
+ <success>●︎</success> src/a.ts:1  greet                                                            
+ function greet(user: string) {                                                 
+   return user;                                                                 
+ }                                                                              
+                                                                                
+ <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: read_enclosing call 1`] = `
+"
+                                                                                
+ <toolTitle+bold>read_enclosing</toolTitle+bold> <dim>src/a.ts:12</dim>                                                     
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: read_enclosing body 1`] = `
+"
+                                                                                
+ <success>●︎</success> src/a.ts:1  greet                                                            
+ function greet(user: string) {                                                 
+   return user;                                                                 
+ }                                                                              
+ <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: symbol_search call 1`] = `
+"
+                                                                                
+ <toolTitle+bold>symbol_search</toolTitle+bold> <dim>“greet user”</dim>                                                     
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: symbol_search body 1`] = `
+"
+                                                                                
+ <success>●︎</success> src/a.ts  (3)                                                                
+ src/b.ts  (1)                                                                  
+ <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: replace apply 1`] = `
+"
+                                                                                
+ <toolTitle+bold>ast_grep_replace</toolTitle+bold> <dim>greet($A) → welcome($A)</dim><muted> · apply</muted>                               
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: empty 1`] = `
+"
+                                                                                
+ <success>●︎</success> No matches in 2 file(s).                                                     
+ <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: context error 1`] = `
+"
+                                                                                
+ <error>✗︎</error> Cannot read src/a.ts.                                                        
+ <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: detail error 1`] = `
+"
+                                                                                
+ <error>✗︎</error> ast-grep engine unavailable                                                  
+ <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error> 
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: partial 1`] = `
+"
+                                                                                
+ <success>●︎</success> src/a.ts:12:3  greet(user)                                                   
+                                                                                "
+`;
+
+exports[`AST captures six default host-box tools without executing the engine: no details 1`] = `
+"
+                                                                                
+ <success>●︎</success> No matches.                                                                  
+                                                                                "
+`;

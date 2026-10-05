@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { collapseSection } from "@xynogen/pix-runtime/sections";
+import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerTodo, { renderTodoLines, renderTodoSummaryLine, type TodoItem } from "./todo.ts";
 
 // registerTodo wraps its body in once(pi, "pix-todo") — a per-instance
@@ -1049,4 +1051,70 @@ describe("renderTodoSummaryLine (collapsed one-liner)", () => {
 			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [dim]#2 b[/] [muted]·[/] [muted]1/2 done[/]",
 		);
 	});
+});
+
+test("W1 capture: registered todo boards and self shell", async () => {
+	const fixture = await withUiFixture();
+	try {
+		const host = makeHost();
+		registerTodo(host.pi);
+		const theme = roleTheme();
+		const call = (collapsed: boolean) =>
+			host.renderCall({ action: "set" }, theme, { state: { collapsed }, expanded: false });
+		expect(captureRows(call(false), { width: 80, surface: "component" })).toMatchSnapshot(
+			"open call",
+		);
+		expect(captureRows(call(true), { width: 80, surface: "host-self" })).toMatchSnapshot(
+			"hidden call",
+		);
+		const empty = await run(host.execute, { action: "list" });
+		await run(host.execute, {
+			action: "set",
+			items: "Pending card with a long description\nSecond pending\nActive\nDone\nBlocked",
+			ordered: false,
+		});
+		const mixed = await run(host.execute, {
+			action: "update",
+			updates: "3:in_progress,4:done,5:blocked",
+		});
+		const failed = await run(host.execute, { action: "update", id: 99, status: "done" });
+		for (const [name, result, expanded, isPartial] of [
+			["empty", empty, false, false],
+			["mixed", mixed, false, false],
+			["expanded", mixed, true, false],
+			["partial", mixed, false, true],
+			["error", failed, false, false],
+		] as const) {
+			const component = host.render(result, { expanded, isPartial }, theme, {
+				state: {},
+				invalidate() {},
+			});
+			expect(captureRows(component, { width: 80, surface: "host-self" })).toMatchSnapshot(name);
+		}
+		fixture.setWidth(120);
+		expect(
+			captureRows(host.render(mixed, { expanded: true }, theme, { state: {}, invalidate() {} }), {
+				width: 120,
+				surface: "host-self",
+			}),
+		).toMatchSnapshot("wide board");
+		await fixture.runtime.update(collapseSection, { enabled: true });
+		for (const [name, result] of [
+			["empty summary", empty],
+			["active summary", mixed],
+			[
+				"blocked summary",
+				await run(host.execute, { action: "update", updates: "1:done,2:done,3:done" }),
+			],
+			["complete summary", await run(host.execute, { action: "update", id: 5, status: "done" })],
+		] as const) {
+			const component = host.render(result, { expanded: false }, theme, {
+				state: { collapsed: true },
+				invalidate() {},
+			});
+			expect(captureRows(component, { width: 80, surface: "host-self" })).toMatchSnapshot(name);
+		}
+	} finally {
+		await fixture.restore();
+	}
 });

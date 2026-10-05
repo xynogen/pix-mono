@@ -1,0 +1,80 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures registered ls calls, grid, tree, batch and result states 1`] = `
+{
+  "batch": [
+    "",
+    "===== src =====                                                                 ",
+    "alpha.txt                                                                       ",
+    "                                                                                ",
+    "===== lib =====                                                                 ",
+    "beta.txt                                                                        ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "batchCall": [
+    "",
+    "<toolTitle+bold>ls</toolTitle+bold> <dim>4 dirs</dim>                                                                       ",
+  ],
+  "call": [
+    "",
+    "<toolTitle+bold>ls</toolTitle+bold> <dim>src</dim>                                                                          ",
+  ],
+  "collapsed": [
+    "",
+    "<success>✓ </success> <toolTitle+bold>ls</toolTitle+bold> <dim>src</dim> <muted>·</muted> <muted>4 entries</muted>                                                           ",
+  ],
+  "collapsedError": [
+    "",
+    "<error>✗ </error> <toolTitle+bold>ls</toolTitle+bold> <dim>src</dim> <muted>·</muted> <muted>failed</muted>                                                              ",
+  ],
+  "error": [
+    "",
+    "<error>ENOENT: cannot list src</error>                                                         ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "expanded": [
+    "",
+    "<raw.rule>├── </raw.rule><syntaxNumber></syntaxNumber> <syntaxNumber>.env</syntaxNumber>                                                                      ",
+    "<raw.rule>├── </raw.rule><accent></accent> <accent>folder</accent>                                                                    ",
+    "<raw.rule>├── </raw.rule><muted></muted> <text>alpha.txt</text>                                                                 ",
+    "<raw.rule>└── </raw.rule><muted></muted> <text>name with spaces.txt</text>                                                      ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "expandedError": [
+    "",
+    "<error>ENOENT: cannot list src</error>                                                         ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "fallback": [
+    "",
+    "   <dim>listed</dim>                                                                       ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "grid": [
+    "",
+    "<syntaxNumber></syntaxNumber> <syntaxNumber>.env</syntaxNumber>   <accent></accent> <accent>folder</accent>   <muted></muted> <text>alpha.txt</text>   <muted></muted> <text>name with spaces.txt</text>                        ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "hiddenCall": [],
+  "partial": [
+    "",
+    "<raw.rule>├── </raw.rule><syntaxNumber></syntaxNumber> <syntaxNumber>.env</syntaxNumber>                                                                      ",
+    "<raw.rule>├── </raw.rule><accent></accent> <accent>folder</accent>                                                                    ",
+    "<raw.rule>├── </raw.rule><muted></muted> <text>alpha.txt</text>                                                                 ",
+    "<raw.rule>└── </raw.rule><muted></muted> <text>name with spaces.txt</text>                                                      ",
+  ],
+  "single": [
+    "",
+    "<muted></muted> <text>alpha.txt</text>                                                                     ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "tree": [
+    "",
+    "<raw.rule>├── </raw.rule><syntaxNumber></syntaxNumber> <syntaxNumber>.env</syntaxNumber>                                                                      ",
+    "<raw.rule>├── </raw.rule><accent></accent> <accent>folder</accent>                                                                    ",
+    "<raw.rule>├── </raw.rule><muted></muted> <text>alpha.txt</text>                                                                 ",
+    "<raw.rule>└── </raw.rule><muted></muted> <text>name with spaces.txt</text>                                                      ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+}
+`;

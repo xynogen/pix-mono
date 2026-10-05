@@ -1,0 +1,177 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`shared shell completed, error, partial, collapsed and expanded captures: success 1`] = `
+[
+  "   one                                                                          ",
+  "                                                                                ",
+  "   two                                                                          ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`shared shell completed, error, partial, collapsed and expanded captures: error 1`] = `
+[
+  "<error>one                                                                             </error>",
+  "                                                                                ",
+  "two                                                                             ",
+  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+]
+`;
+
+exports[`shared shell completed, error, partial, collapsed and expanded captures: partial 1`] = `
+[
+  "   one                                                                          ",
+  "                                                                                ",
+  "   two                                                                          ",
+]
+`;
+
+exports[`shared shell completed, error, partial, collapsed and expanded captures: collapsed 1`] = `
+[
+  "<success>✓ </success> <toolTitle+bold>bash</toolTitle+bold> <muted>·</muted> <muted>3 lines · 100ms · </muted><dim>printf fixture</dim>",
+]
+`;
+
+exports[`shared shell completed, error, partial, collapsed and expanded captures: expanded 1`] = `
+[
+  "   one                                                                          ",
+  "                                                                                ",
+  "   two                                                                          ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`shared shell completed, error, partial, collapsed and expanded captures: generic 1`] = `
+[
+  "   <dim>one                                                                          </dim>",
+  "                                                                                ",
+  "two                                                                             ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`frame, result close and unified/split diff actual captures: modal frame 1`] = `
+[
+  "<accent+bg:customMessageBg>╭─ Fixture ────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>body</text+bg:customMessageBg><bg:customMessageBg>                                                                         </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`frame, result close and unified/split diff actual captures: success close 1`] = `
+[
+  "body                                                                            ",
+  "                                                                                ",
+  "last                                                                            ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`frame, result close and unified/split diff actual captures: error close 1`] = `
+[
+  "body                                                                            ",
+  "                                                                                ",
+  "last                                                                            ",
+  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+]
+`;
+
+exports[`frame, result close and unified/split diff actual captures: unified 1`] = `
+[
+  "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+  "<raw.red+bg:diff.remove>▌ 1</raw.red+bg:diff.remove><raw.red+bg:diff.remove+bold>- </raw.red+bg:diff.remove+bold><raw.rule+bg:diff.remove+bold>│ </raw.rule+bg:diff.remove+bold><bg:diff.remove>alpha </bg:diff.remove><bg:diff.removeHighlight>old</bg:diff.removeHighlight><bg:diff.remove>                                                                </bg:diff.remove>",
+  "<raw.green+bg:diff.add>▌ 1</raw.green+bg:diff.add><raw.green+bg:diff.add+bold>+ </raw.green+bg:diff.add+bold><raw.rule+bg:diff.add+bold>│ </raw.rule+bg:diff.add+bold><bg:diff.add>alpha </bg:diff.add><bg:diff.addHighlight>new</bg:diff.addHighlight><bg:diff.add>                                                                </bg:diff.add>",
+  " <raw.lineNumber> 2</raw.lineNumber><raw.dim>  </raw.dim><raw.rule>│ </raw.rule><faint>context                                                                  </faint>",
+  "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
+]
+`;
+
+exports[`frame, result close and unified/split diff actual captures: split 160 1`] = `
+[
+  "<raw.rule>───────────────────────────────────────────────────────────────────────────────┊───────────────────────────────────────────────────────────────────────────────</raw.rule> ",
+  "<raw.red+bg:diff.remove>▌ 1</raw.red+bg:diff.remove><raw.red+bg:diff.remove+bold>- </raw.red+bg:diff.remove+bold><raw.rule+bg:diff.remove+bold>│ </raw.rule+bg:diff.remove+bold><bg:diff.remove>alpha </bg:diff.remove><bg:diff.removeHighlight>old</bg:diff.removeHighlight><bg:diff.remove>                                                               </bg:diff.remove><raw.rule>│</raw.rule><raw.green+bg:diff.add>▌ 1</raw.green+bg:diff.add><raw.green+bg:diff.add+bold>+ </raw.green+bg:diff.add+bold><raw.rule+bg:diff.add+bold>│ </raw.rule+bg:diff.add+bold><bg:diff.add>alpha </bg:diff.add><bg:diff.addHighlight>new</bg:diff.addHighlight><bg:diff.add>                                                               </bg:diff.add> ",
+  " <raw.lineNumber> 2</raw.lineNumber><raw.dim+bold>  </raw.dim+bold><raw.rule+bold>│ </raw.rule+bold><faint>context                                                                 </faint><raw.rule>│</raw.rule> <raw.lineNumber> 2</raw.lineNumber><raw.dim+bold>  </raw.dim+bold><raw.rule+bold>│ </raw.rule+bold><faint>context                                                                 </faint> ",
+  "<raw.rule>───────────────────────────────────────────────────────────────────────────────┊───────────────────────────────────────────────────────────────────────────────</raw.rule> ",
+]
+`;
+
+exports[`picker, gate, confirm and progress actual component captures: picker overview 1`] = `
+[
+  "<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>Fixture settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ───────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  STT</dim+bg:customMessageBg><bg:customMessageBg>                                                                        </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>language</accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>auto</success+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ move · enter change · esc close</muted+bg:customMessageBg><bg:customMessageBg>                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`picker, gate, confirm and progress actual component captures: picker filtered choices 1`] = `
+[
+  "<accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>Fixture settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ───────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>  STT</dim+bg:customMessageBg><bg:customMessageBg>                                                                        </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>language</accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><success+bg:customMessageBg>auto</success+bg:customMessageBg><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>             </bg:customMessageBg><muted+bg:customMessageBg>filter:</muted+bg:customMessageBg><bg:customMessageBg> en</bg:customMessageBg><accent+bg:customMessageBg>█</accent+bg:customMessageBg><bg:customMessageBg>                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>             </bg:customMessageBg><accent+bg:customMessageBg>▸</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>en</accent+bg:customMessageBg><muted+bg:customMessageBg>  English</muted+bg:customMessageBg><bg:customMessageBg>                                                    </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>               </bg:customMessageBg><dim+bg:customMessageBg>type a value…</dim+bg:customMessageBg><bg:customMessageBg>                                                  </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>type to filter · ↑↓ move · enter pick · esc cancel</muted+bg:customMessageBg><bg:customMessageBg>                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`picker, gate, confirm and progress actual component captures: gate approval 1`] = `
+[
+  "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Root request</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                 </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Intent:</dim+bg:customMessageBg><text+bg:customMessageBg> inspect fixture                                                      </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Command:</dim+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><dim+bg:customMessageBg>printf fixture</dim+bg:customMessageBg><text+bg:customMessageBg>                                                      </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Allow                           Proceed</accent+bg:customMessageBg><text+bg:customMessageBg>                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  Deny</text+bg:customMessageBg><dim+bg:customMessageBg>                            Block</dim+bg:customMessageBg><text+bg:customMessageBg>                                      </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>                                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc deny</muted+bg:customMessageBg><text+bg:customMessageBg>                   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`picker, gate, confirm and progress actual component captures: gate masked password 1`] = `
+[
+  "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Root request</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                 </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Intent:</dim+bg:customMessageBg><text+bg:customMessageBg> inspect fixture                                                      </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Command:</dim+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><dim+bg:customMessageBg>printf fixture</dim+bg:customMessageBg><text+bg:customMessageBg>                                                      </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Sudo password:</dim+bg:customMessageBg><text+bg:customMessageBg>                                                               </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>> ●●●</text+bg:customMessageBg><text+bg:customMessageBg+inverse> </text+bg:customMessageBg+inverse><text+bg:customMessageBg>                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>                                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>←→/PgUp/PgDn inspect • enter confirm • esc cancel</muted+bg:customMessageBg><text+bg:customMessageBg>                            </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`picker, gate, confirm and progress actual component captures: confirm 1`] = `
+[
+  "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Apply fixture?</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                               </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>A fixed change                                                               </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Yes                             Proceed</accent+bg:customMessageBg><text+bg:customMessageBg>                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  No</text+bg:customMessageBg><dim+bg:customMessageBg>                              Cancel</dim+bg:customMessageBg><text+bg:customMessageBg>                                     </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>                                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc cancel</muted+bg:customMessageBg><text+bg:customMessageBg>                 </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;
+
+exports[`picker, gate, confirm and progress actual component captures: progress 1`] = `
+[
+  "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Fixture progress</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                             </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Checking fixture</dim+bg:customMessageBg><bg:customMessageBg>                                                           </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+  "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+]
+`;

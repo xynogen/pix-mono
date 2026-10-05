@@ -1,0 +1,20 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures active and hidden tool warnings through the actual host notification renderer 1`] = `
+{
+  "active": [
+    "",
+    " <warning>Warning: Reading a file via bash cat/head/tail. Use \`read\` instead — it's in   </warning>",
+    " <warning>the function definitions, call it directly. (Fires once per category; bash     </warning>",
+    " <warning>stays available for pipes & compound commands.)</warning>                                ",
+  ],
+  "hidden": [
+    "",
+    " <warning>Warning: Reading a file via bash cat/head/tail. \`read\` is prompt-hidden —      </warning>",
+    " <warning>enable it via toolbox(action:"enable", name:"read") to make it known, then     </warning>",
+    " <warning>call it; bash is fine until then. (All tools are always callable via function  </warning>",
+    " <warning>definitions.) (Fires once per category; bash stays available for pipes &       </warning>",
+    " <warning>compound commands.)</warning>                                                            ",
+  ],
+}
+`;

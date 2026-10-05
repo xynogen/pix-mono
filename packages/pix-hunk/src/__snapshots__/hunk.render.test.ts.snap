@@ -1,0 +1,48 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`hunk captures local self-shell states without running commands: call 1`] = `
+"
+<toolTitle+bold>hunk</toolTitle+bold> <dim>navigate +1</dim>                                                                "
+`;
+
+exports[`hunk captures local self-shell states without running commands: collapsed 1`] = `
+"
+<success>✓ </success> <toolTitle+bold>hunk</toolTitle+bold> <dim>navigate +1</dim> <muted>·</muted> <muted>2 ops · 1 comment</muted>                                         "
+`;
+
+exports[`hunk captures local self-shell states without running commands: expanded 1`] = `
+"
+<dim>src/a.ts:h1</dim> <muted>· 1 comment</muted>                                                         
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+`;
+
+exports[`hunk captures local self-shell states without running commands: partial 1`] = `
+"
+<dim>src/a.ts:h1</dim> <muted>· 1 comment</muted>                                                         "
+`;
+
+exports[`hunk captures local self-shell states without running commands: collapsed error 1`] = `
+"
+<error>✗ </error> <toolTitle+bold>hunk</toolTitle+bold> <dim>list</dim> <muted>·</muted> <muted>1 ops</muted>                                                            "
+`;
+
+exports[`hunk captures local self-shell states without running commands: expanded error 1`] = `
+"
+<dim>complete</dim>                                                                        
+<error>list: session gone</error>                                                              
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"
+`;
+
+exports[`hunk captures local self-shell states without running commands: long error 1`] = `
+"
+<dim>complete</dim>                                                                                                                
+<error>list: session gone: detail detail detail detail detail detail detail detail detail detail detail detail detail detail   </error>
+<error>detail detail detail detail detail detail END</error>                                                                           
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"
+`;
+
+exports[`hunk captures local self-shell states without running commands: no details 1`] = `
+"
+raw fallback                                                                    
+  detail                                                                        "
+`;

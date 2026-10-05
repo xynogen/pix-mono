@@ -1,0 +1,19 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`real editor captures plain tokens and both picker/chip adapter orders: plain token 1`] = `
+"<border>────────────────────────────────────────────────────────────────────────────────</border>
+<path>a b/c.ts</path> <inverse> </inverse>                                                         
+<border>────────────────────────────────────────────────────────────────────────────────</border>"
+`;
+
+exports[`real editor captures plain tokens and both picker/chip adapter orders: chips picker first false 1`] = `
+"<border>────────────────────────────────────────────────────────────────────────────────</border>
+<raw.green+bold>▤︎ text</raw.green+bold><raw.dim> 1k chars</raw.dim> <raw.blue+bold> @my folder/</raw.blue+bold> <inverse> </inverse>                                     
+<border>────────────────────────────────────────────────────────────────────────────────</border>"
+`;
+
+exports[`real editor captures plain tokens and both picker/chip adapter orders: chips picker first true 1`] = `
+"<border>────────────────────────────────────────────────────────────────────────────────</border>
+<raw.green+bold>▤︎ text</raw.green+bold><raw.dim> 1k chars</raw.dim> <raw.blue+bold> @my folder/</raw.blue+bold> <inverse> </inverse>                                     
+<border>────────────────────────────────────────────────────────────────────────────────</border>"
+`;

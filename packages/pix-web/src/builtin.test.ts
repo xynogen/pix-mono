@@ -1,10 +1,16 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, spyOn, test } from "bun:test";
+import { promises as dns } from "node:dns";
 import { registerBuiltinProviders } from "./builtin.ts";
 import { fetchConfig } from "./config.ts";
 import { getFetchProvider } from "./providers.ts";
 import { fetchPublic } from "./public-url.ts";
 import { htmlToText } from "./text.ts";
 
+// ponytail: fixed public DNS keeps provider contract checks offline.
+const lookup = spyOn(dns, "lookup").mockImplementation(
+	async () => [{ address: "93.184.216.34", family: 4 }] as never,
+);
+afterAll(() => lookup.mockRestore());
 const originalFetch = globalThis.fetch;
 const originalTavilyKey = process.env.TAVILY_API_KEY;
 const originalFirecrawlKey = process.env.FIRECRAWL_API_KEY;

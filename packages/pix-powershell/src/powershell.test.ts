@@ -38,9 +38,11 @@ describe("summarizePowerShellCommand", () => {
 });
 
 describe("registerPowerShellTool", () => {
-	it("renders the powershell label and a collapsed summary row", () => {
+	it("renders the powershell label and a collapsed summary row", async () => {
 		const { pi, tool, names } = capturePi();
 		registerPowerShellTool(pi, okFactory, makeToolContext({ terminalWidth: () => 120 }));
+		// ponytail: shared shell captures own layout. Keep the package label and self-shell wiring here.
+		expect(tool.renderShell).toBe("self");
 		const theme = makeTheme({ tag: true });
 		const collapsed = tool.renderResult?.(
 			{
@@ -58,6 +60,15 @@ describe("registerPowerShellTool", () => {
 			makeRenderCtx({ state: { collapsed: true } }),
 		);
 
+		let invalidated!: () => void;
+		const ready = new Promise<void>((resolve) => {
+			invalidated = resolve;
+		});
+		const callCtx = makeRenderCtx({ invalidate: invalidated });
+		const call = tool.renderCall?.({ command: "Get-Date" }, theme, callCtx);
+		await ready;
+		expect(callCtx.state.commandPreview).toMatchObject({ language: "powershell" });
+		expect(call?.render(120).join("\n")).toMatch(/powershell.*Get-Date/);
 		expect(names).toEqual(["powershell"]);
 		expect(collapsed?.getText()).toContain("<dim>Get-ChildItem -Force; Get-Date</dim>");
 		expect(collapsed?.getText()).toMatch(/<muted>2 lines · [\d.]+s<\/muted>/);

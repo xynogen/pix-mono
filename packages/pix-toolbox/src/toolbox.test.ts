@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pixRuntime } from "@xynogen/pix-runtime/config";
-import { tempDir } from "@xynogen/pix-runtime/paths";
+import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerToolbox, {
 	buildRows,
 	disabledFromState,
@@ -211,16 +211,16 @@ describe("nextState", () => {
 
 // Isolate unified settings from the user's config.
 let tmpAgentDir: string;
-beforeAll(() => {
-	tmpAgentDir = mkdtempSync(join(tempDir(), "toolbox-test-"));
-	process.env.PI_CODING_AGENT_DIR = tmpAgentDir;
+let fixture: Awaited<ReturnType<typeof withUiFixture>>;
+beforeAll(async () => {
+	fixture = await withUiFixture();
+	tmpAgentDir = fixture.agentDir;
 });
-afterAll(() => {
-	delete process.env.PI_CODING_AGENT_DIR;
+afterAll(async () => {
 	try {
-		rmSync(tmpAgentDir, { recursive: true });
-	} catch {
-		// temp dir may already be gone — safe to ignore
+		await fixture.runtime.flush();
+	} finally {
+		await fixture.restore();
 	}
 });
 
@@ -395,6 +395,72 @@ describe("/toolbox command", () => {
 		await host.command("toolbox")?.handler("", ctx);
 		expect(customCalled).toBe(1);
 		expect(notes.length).toBe(0);
+	});
+
+	test("W1 capture: real picker states, tabs, filter and completed save", async () => {
+		const host = await boot([...ALL, "hunk", "ctx_docs"], ["hunk"], ["ctx_docs"]);
+		await host.command("toolbox")?.handler("disable grep", makeCtx().ctx);
+		await fixture.runtime.flush();
+		let renders = 0;
+		let completed = false;
+		try {
+			await host.command("toolbox")?.handler("", {
+				ui: {
+					notify() {},
+					custom: (
+						build: (...args: any[]) => {
+							render(w: number): string[];
+							handleInput(d: string): void;
+						},
+					) =>
+						new Promise<null>((resolve, reject) => {
+							const view = build(
+								{
+									terminal: { rows: 24 },
+									requestRender() {
+										renders++;
+									},
+								},
+								roleTheme(),
+								undefined,
+								(value: null) => {
+									completed = true;
+									resolve(value);
+								},
+							);
+							try {
+								const screen = (name: string) =>
+									expect(captureRows(view, { width: 80, surface: "component" })).toMatchSnapshot(
+										name,
+									);
+								screen("tools three states");
+								expect(captureRows(view, { width: 120, surface: "component" })).toMatchSnapshot(
+									"wide tools",
+								);
+								view.handleInput("\t");
+								screen("MCP tab");
+								view.handleInput("\x04");
+								expect(host.getActive()).not.toContain("ctx_docs");
+								screen("disabled status");
+								view.handleInput("zzzz");
+								screen("no match search");
+								view.handleInput("\r");
+							} catch (error) {
+								reject(error);
+							}
+						}),
+				},
+			});
+			expect(completed).toBe(true);
+			expect(renders).toBeGreaterThan(0);
+			await fixture.runtime.flush();
+			expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox.disabledTools).toEqual([
+				"ctx_docs",
+				"grep",
+			]);
+		} finally {
+			await fixture.runtime.flush();
+		}
 	});
 
 	test("picker: tabs split tools and MCP, ctrl keys set state, selection stays", async () => {

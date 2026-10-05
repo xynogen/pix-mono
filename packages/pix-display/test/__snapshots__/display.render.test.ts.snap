@@ -1,0 +1,65 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`native assistant thinking hooks and code frames 1`] = `
+{
+  "hidden / 80": [
+    "<osc133:A/>",
+    " <thinkingText+italic>Thinking...</thinkingText+italic>                                                                    ",
+    "",
+    " <mdHeading+bold+underline>Answer</mdHeading+bold+underline>                                                                         ",
+    "                                                                                ",
+    "<borderMuted>──</borderMuted><accent+bold> python </accent+bold><borderMuted>──────────────────────────────────────────────────────────────────────</borderMuted>",
+    "<mdCodeBlock>def greet(name):</mdCodeBlock>",
+    "<mdCodeBlock>    print(name)</mdCodeBlock>",
+    "<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+    "                                                                                ",
+    "<borderMuted>──</borderMuted><accent+bold> json </accent+bold><borderMuted>────────────────────────────────────────────────────────────────────────</borderMuted>",
+    "{<syntaxVariable>"ok"</syntaxVariable>: <syntaxNumber>true</syntaxNumber>}",
+    "<osc133:B/><osc133:C/><borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  ],
+  "long code / 80": [
+    "<osc133:A/>",
+    "<borderMuted>──</borderMuted><accent+bold> custom-language </accent+bold><borderMuted>─────────────────────────────────────────────────────────────</borderMuted>",
+    "  <mdCodeBlock>long source long source long source long source long source long source long</mdCodeBlock>",
+    "<mdCodeBlock>source long source long source long source </mdCodeBlock>",
+    "<osc133:B/><osc133:C/><borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  ],
+  "native narrow bypass / 11": [
+    "<osc133:A/>",
+    " <mdCodeBlockBorder>\`\`\`text</mdCodeBlockBorder>   ",
+    "   <mdCodeBlock>x</mdCodeBlock>       ",
+    "<osc133:B/><osc133:C/> <mdCodeBlockBorder>\`\`\`</mdCodeBlockBorder>       ",
+  ],
+  "signed / 80": [
+    "<osc133:A/>",
+    " <thinkingText+italic>Signed reason</thinkingText+italic>                                                                  ",
+    "",
+    "<osc133:B/><osc133:C/> Answer                                                                         ",
+  ],
+  "stream fence / 80": [
+    "<osc133:A/>",
+    "<borderMuted>──</borderMuted><accent+bold> python </accent+bold><borderMuted>──────────────────────────────────────────────────────────────────────</borderMuted>",
+    "<syntaxType>print</syntaxType>(<syntaxNumber>1</syntaxNumber>)",
+    "<osc133:B/><osc133:C/><borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  ],
+  "stream thinking / 80": [
+    "<osc133:A/>",
+    "<osc133:B/><osc133:C/> <thinkingText+italic>Still checking</thinkingText+italic>                                                                 ",
+  ],
+  "visible / 80": [
+    "<osc133:A/>",
+    " <thinkingText+italic>Check </thinkingText+italic><thinkingText+bold+italic>source</thinkingText+bold+italic><thinkingText+italic> first.</thinkingText+italic>                                                            ",
+    "",
+    " <mdHeading+bold+underline>Answer</mdHeading+bold+underline>                                                                         ",
+    "                                                                                ",
+    "<borderMuted>──</borderMuted><accent+bold> python </accent+bold><borderMuted>──────────────────────────────────────────────────────────────────────</borderMuted>",
+    "<mdCodeBlock>def greet(name):</mdCodeBlock>",
+    "<mdCodeBlock>    print(name)</mdCodeBlock>",
+    "<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+    "                                                                                ",
+    "<borderMuted>──</borderMuted><accent+bold> json </accent+bold><borderMuted>────────────────────────────────────────────────────────────────────────</borderMuted>",
+    "{<syntaxVariable>"ok"</syntaxVariable>: <syntaxNumber>true</syntaxNumber>}",
+    "<osc133:B/><osc133:C/><borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
+  ],
+}
+`;

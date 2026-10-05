@@ -1,0 +1,85 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures registered find scopes, highlights, batch and result states 1`] = `
+{
+  "batch": [
+    "",
+    "   <muted>──── *.ts ───────────────────────────────────────────────────────────────────</muted>",
+    "   <dim>src/alpha.ts</dim>                                                                 ",
+    "                                                                                ",
+    "   <muted>──── *.txt ──────────────────────────────────────────────────────────────────</muted>",
+    "   <dim>notes.txt</dim>                                                                    ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "batchCall": [
+    "",
+    "<toolTitle+bold>find</toolTitle+bold> <dim>4 patterns</dim>                                                                 ",
+  ],
+  "call": [
+    "",
+    "<toolTitle+bold>find</toolTitle+bold> <dim>*.ts</dim> <muted>in src</muted>                                                                ",
+  ],
+  "collapsed": [
+    "",
+    "<success>✓ </success> <toolTitle+bold>find</toolTitle+bold> <dim>*.ts in src</dim> <muted>·</muted> <muted>4 files</muted>                                                   ",
+  ],
+  "collapsedError": [
+    "",
+    "<error>✗ </error> <toolTitle+bold>find</toolTitle+bold> <dim>[ in src</dim> <muted>·</muted> <muted>failed</muted>                                                       ",
+  ],
+  "empty": [
+    "",
+    "   <dim>found</dim>                                                                        ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "error": [
+    "",
+    "<error>Invalid glob pattern: [</error>                                                         ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "expanded": [
+    "",
+    "   <dim>src/alpha</dim><success+bold>.ts</success+bold>                                                                 ",
+    "   <dim>src/BETA</dim><success+bold>.TS</success+bold>                                                                  ",
+    "                                                                                ",
+    "   <dim>[200 limit reached]</dim>                                                          ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "expandedError": [
+    "",
+    "<error>Invalid glob pattern: [</error>                                                         ",
+    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  ],
+  "hiddenCall": [],
+  "long120": [
+    "",
+    "   <dim>src/detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-d</dim>",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "long80": [
+    "",
+    "   <dim>src/detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-det</dim>",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "matches": [
+    "",
+    "   <dim>src/alpha</dim><success+bold>.ts</success+bold>                                                                 ",
+    "   <dim>src/BETA</dim><success+bold>.TS</success+bold>                                                                  ",
+    "                                                                                ",
+    "   <dim>[200 limit reached]</dim>                                                          ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+  "partial": [
+    "",
+    "   <dim>src/alpha</dim><success+bold>.ts</success+bold>                                                                 ",
+    "   <dim>src/BETA</dim><success+bold>.TS</success+bold>                                                                  ",
+    "                                                                                ",
+    "   <dim>[200 limit reached]</dim>                                                          ",
+  ],
+  "single": [
+    "",
+    "   <dim>src/alpha</dim><success+bold>.ts</success+bold>                                                                 ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  ],
+}
+`;

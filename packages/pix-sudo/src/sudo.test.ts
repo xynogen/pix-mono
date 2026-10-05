@@ -337,32 +337,51 @@ function makeCtx(
 		ui: {
 			custom: async <T>(cb: CustomCb<T>): Promise<T | undefined> => {
 				let completed: T | undefined;
-				const comp = cb(stubTui, stubTheme, undefined, (value: T) => {
-					completed = value;
-				});
-				const lines = comp.render(80);
-				opts.onCustom?.(lines);
+				let validationFinished: (() => void) | undefined;
+				const comp = cb(
+					{
+						requestRender: () => {
+							if (comp.render(80).join("\n").includes("Incorrect password")) validationFinished?.();
+						},
+					},
+					stubTheme,
+					undefined,
+					(value: T) => {
+						completed = value;
+						validationFinished?.();
+					},
+				);
+				try {
+					const lines = comp.render(80);
+					opts.onCustom?.(lines);
 
-				// Multi-result tests drive the real two-stage overlay so validation and
-				// retries occur while this single custom component remains mounted.
-				if (
-					opts.overlayResults ||
-					(overlayResults[0]?.action === "approved" && Boolean(overlayResults[0].password?.trim()))
-				) {
-					comp.handleInput("\r");
-					for (const result of overlayResults) {
-						if (result.action !== "approved") return result as T;
-						comp.handleInput(result.password ?? "");
+					// Multi-result tests drive the real two-stage overlay so validation and
+					// retries occur while this single custom component remains mounted.
+					if (
+						opts.overlayResults ||
+						(overlayResults[0]?.action === "approved" &&
+							Boolean(overlayResults[0].password?.trim()))
+					) {
 						comp.handleInput("\r");
-						await new Promise((resolve) => setTimeout(resolve, 0));
-						if (completed) return completed;
+						for (const result of overlayResults) {
+							if (result.action !== "approved") return result as T;
+							comp.handleInput(result.password ?? "");
+							const validated = new Promise<void>((resolve) => {
+								validationFinished = resolve;
+							});
+							comp.handleInput("\r");
+							await validated;
+							if (completed) return completed;
+						}
+						return completed;
 					}
-					return completed;
-				}
 
-				const result = overlayResults[Math.min(overlayIndex, overlayResults.length - 1)];
-				overlayIndex += 1;
-				return result as T;
+					const result = overlayResults[Math.min(overlayIndex, overlayResults.length - 1)];
+					overlayIndex += 1;
+					return result as T;
+				} finally {
+					comp.handleInput("\x1b");
+				}
 			},
 			notify: (_msg: string, _level: string) => {},
 			theme: stubTheme,

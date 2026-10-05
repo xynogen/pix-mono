@@ -42,6 +42,10 @@ const local: SkillItem[] = [
 test("local skills filter by fuzzy name, remote results follow after the debounce", async () => {
 	let chosen: SkillItem | null = null;
 	const queries: string[] = [];
+	let complete!: () => void;
+	const completion = new Promise<void>((resolve) => {
+		complete = resolve;
+	});
 	const picker = new SkillPicker({
 		local,
 		theme,
@@ -53,19 +57,23 @@ test("local skills filter by fuzzy name, remote results follow after the debounc
 		done: (item) => {
 			chosen = item;
 		},
-		onChange: () => {},
+		onChange: complete,
 	});
-	for (const ch of "td") picker.handleInput(ch);
-	expect(picker.results().map((s) => s.name)).toEqual(["tdd"]);
-	await new Promise((r) => setTimeout(r, 5));
-	expect(queries).toEqual(["td"]);
-	expect(picker.results().map((s) => s.name)).toEqual(["tdd", "tdd-pro"]);
-	expect(picker.render(100).join("\n")).toMatch(/tdd-pro skills\.sh acme\/skills/);
-	picker.handleInput("\x1b[B");
-	picker.handleInput("\r");
-	expect(chosen).toMatchObject({ name: "tdd-pro", source: "acme/skills" });
-	expect(skillToken(chosen!)).toBe("<skill>acme/skills@tdd-pro</skill> ");
-	expect(skillToken(local[0]!)).toBe("<skill>commit</skill> ");
+	try {
+		for (const ch of "td") picker.handleInput(ch);
+		expect(picker.results().map((s) => s.name)).toEqual(["tdd"]);
+		await completion;
+		expect(queries).toEqual(["td"]);
+		expect(picker.results().map((s) => s.name)).toEqual(["tdd", "tdd-pro"]);
+		expect(picker.render(100).join("\n")).toMatch(/tdd-pro skills\.sh acme\/skills/);
+		picker.handleInput("\x1b[B");
+		picker.handleInput("\r");
+		expect(chosen).toMatchObject({ name: "tdd-pro", source: "acme/skills" });
+		expect(skillToken(chosen!)).toBe("<skill>acme/skills@tdd-pro</skill> ");
+		expect(skillToken(local[0]!)).toBe("<skill>commit</skill> ");
+	} finally {
+		picker.dispose();
+	}
 });
 
 test("boundary $ opens the picker, mid-word $ and cancel keep a literal $", async () => {

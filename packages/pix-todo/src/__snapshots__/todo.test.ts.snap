@@ -1,0 +1,92 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`W1 capture: registered todo boards and self shell: open call 1`] = `
+[
+  "<toolTitle+bold>todo</toolTitle+bold> <dim>set</dim>                                                                        ",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: hidden call 1`] = `[]`;
+
+exports[`W1 capture: registered todo boards and self shell: empty 1`] = `
+[
+  "",
+  "<muted>(no todos)</muted>                                                                      ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: mixed 1`] = `
+[
+  "",
+  "<text>To Do (2)        </text><muted> │ </muted><accent>In Progress (1)</accent><muted> │ </muted><success>Done (1)</success><muted> │ </muted><error>Blocked (1)</error>                    ",
+  "<text>○︎ Pending card …</text><muted> │ </muted><accent+bold>◐︎ Active      </accent+bold><muted> │ </muted><success>●︎ Done </success><muted> │ </muted><error>⊘︎ Blocked </error>                        ",
+  "<text>○︎ Second pending</text><muted> │ </muted>               <muted> │ </muted>        <muted> │ </muted>                                ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: expanded 1`] = `
+[
+  "",
+  "<text>To Do (2)        </text><muted> │ </muted><accent>In Progress (1)</accent><muted> │ </muted><success>Done (1)</success><muted> │ </muted><error>Blocked (1)</error>                    ",
+  "<text>○︎ Pending card …</text><muted> │ </muted><accent+bold>◐︎ Active      </accent+bold><muted> │ </muted><success>●︎ Done </success><muted> │ </muted><error>⊘︎ Blocked </error>                        ",
+  "<text>○︎ Second pending</text><muted> │ </muted>               <muted> │ </muted>        <muted> │ </muted>                                ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: partial 1`] = `
+[
+  "",
+  "<text>To Do (2)        </text><muted> │ </muted><accent>In Progress (1)</accent><muted> │ </muted><success>Done (1)</success><muted> │ </muted><error>Blocked (1)</error>                    ",
+  "<text>○︎ Pending card …</text><muted> │ </muted><accent+bold>◐︎ Active      </accent+bold><muted> │ </muted><success>●︎ Done </success><muted> │ </muted><error>⊘︎ Blocked </error>                        ",
+  "<text>○︎ Second pending</text><muted> │ </muted>               <muted> │ </muted>        <muted> │ </muted>                                ",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: error 1`] = `
+[
+  "",
+  "No todo with id 99.                                                             ",
+  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: wide board 1`] = `
+[
+  "",
+  "<text>To Do (2)                  </text><muted> │ </muted><accent>In Progress (1)</accent><muted> │ </muted><success>Done (1)</success><muted> │ </muted><error>Blocked (1)</error>                                                  ",
+  "<text>○︎ Pending card with a lon…</text><muted> │ </muted><accent+bold>◐︎ Active      </accent+bold><muted> │ </muted><success>●︎ Done </success><muted> │ </muted><error>⊘︎ Blocked </error>                                                      ",
+  "<text>○︎ Second pending          </text><muted> │ </muted>               <muted> │ </muted>        <muted> │ </muted>                                                              ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: empty summary 1`] = `
+[
+  "",
+  "<success>✓ </success> <toolTitle+bold>todo</toolTitle+bold> <dim>empty</dim>                                                                   ",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: active summary 1`] = `
+[
+  "",
+  "<success>✓ </success> <toolTitle+bold>todo</toolTitle+bold> <dim>#3 Active</dim> <muted>·</muted> <muted>1/5 done · 1 blocked</muted>                                        ",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: blocked summary 1`] = `
+[
+  "",
+  "<warning>⚠ </warning> <toolTitle+bold>todo</toolTitle+bold> <dim>checklist</dim> <muted>·</muted> <muted>4/5 done · 1 blocked</muted>                                        ",
+]
+`;
+
+exports[`W1 capture: registered todo boards and self shell: complete summary 1`] = `
+[
+  "",
+  "<success>✓ </success> <toolTitle+bold>todo</toolTitle+bold> <dim>complete</dim> <muted>·</muted> <muted>5/5 done</muted>                                                     ",
+]
+`;

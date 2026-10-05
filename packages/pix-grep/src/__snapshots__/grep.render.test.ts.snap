@@ -58,6 +58,24 @@ exports[`grep UI captures a partial result without a completed close 1`] = `
 ]
 `;
 
+exports[`grep UI captures no matches and batch sections: no matches 1`] = `
+[
+  "   <dim>No matches found</dim>                                                             ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
+exports[`grep UI captures no matches and batch sections: batch 1`] = `
+[
+  "   <muted>──── foo ────────────────────────────────────────────────────────────────────</muted>",
+  "   <dim>src/a.ts:1:foo</dim>                                                               ",
+  "                                                                                ",
+  "   <muted>──── bar ────────────────────────────────────────────────────────────────────</muted>",
+  "   <dim>src/b.ts:2:bar</dim>                                                               ",
+  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+]
+`;
+
 exports[`grep UI captures long output at 80 columns without a mock wrapping shortcut 1`] = `
 [
   "   <dim>src/long.ts:42:</dim><success+bold>TODO</success+bold><dim> detail detail detail detail detail detail detail detail d</dim>",

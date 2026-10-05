@@ -1,0 +1,114 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`proc registered self shell, modal, and widget with a fake manager 1`] = `
+"wrapped call
+
+<toolTitle+bold>proc</toolTitle+bold> <dim>start</dim><muted> · </muted>
+  <dim>serve --port 5173 --host localhost --config fixture/config.ts --watch</dim>
+  <dim>fixture/source</dim>
+partial
+
+ready                                                                           
+listening                                                                       
+compact success
+
+<accent>▸︎</accent> <dim>proc-dev started ready</dim>                                                        
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+expanded
+
+proc-dev started                                                                
+ready                                                                           
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+compact error
+
+<error>✗</error> <error>start requires a command</error>                                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+expanded error
+
+start requires a command                                                        
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+fallback
+
+<accent>▸︎</accent> <dim>ready listening</dim>                                                               
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+running capped and recent widget
+<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
+<accent>▸︎</accent> <accent>Processes</accent>
+  <dim>proc-dev · serve · 5s · running · capped</dim>
+  <dim>proc-old · compile · 10s · exited(1)</dim>
+list
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Processes</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>1 running · 2 total</muted+bg:customMessageBg><text+bg:customMessageBg>                                                          </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ proc-dev                        serve · 5s · running · capped</accent+bg:customMessageBg><text+bg:customMessageBg>              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  proc-old</text+bg:customMessageBg><dim+bg:customMessageBg>                        compile · 10s · exited(1)</dim+bg:customMessageBg><text+bg:customMessageBg>                  </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • enter open • s stop • r remove finished • esc close</muted+bg:customMessageBg><text+bg:customMessageBg>              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+loading
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>proc-dev</accent+bg:customMessageBg+bold><text+bg:customMessageBg> </text+bg:customMessageBg><success+bg:customMessageBg>running</success+bg:customMessageBg><text+bg:customMessageBg>                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>serve</dim+bg:customMessageBg><text+bg:customMessageBg>                                                                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>/fixture · pid 42 · 5s · capped</muted+bg:customMessageBg><text+bg:customMessageBg>                                              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>(loading…)                                                                   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Stop</accent+bg:customMessageBg><text+bg:customMessageBg>                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  Back                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn scroll • enter select • esc back · last 200 lines</muted+bg:customMessageBg><text+bg:customMessageBg>   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+running detail
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>proc-dev</accent+bg:customMessageBg+bold><text+bg:customMessageBg> </text+bg:customMessageBg><success+bg:customMessageBg>running</success+bg:customMessageBg><text+bg:customMessageBg>                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>serve</dim+bg:customMessageBg><text+bg:customMessageBg>                                                                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>/fixture · pid 42 · 5s · capped</muted+bg:customMessageBg><text+bg:customMessageBg>                                              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>ready on :5173                                                               </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Stop</accent+bg:customMessageBg><text+bg:customMessageBg>                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  Back                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn scroll • enter select • esc back · last 200 lines</muted+bg:customMessageBg><text+bg:customMessageBg>   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+finished paged detail
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>proc-dev</accent+bg:customMessageBg+bold><text+bg:customMessageBg> </text+bg:customMessageBg><warning+bg:customMessageBg>exited(0)</warning+bg:customMessageBg><text+bg:customMessageBg>                                                           </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>serve</dim+bg:customMessageBg><text+bg:customMessageBg>                                                                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>/fixture · pid 42 · 5s · capped</muted+bg:customMessageBg><text+bg:customMessageBg>                                              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>←→/PgUp/PgDn scroll • 2/29</muted+bg:customMessageBg><text+bg:customMessageBg>                                                   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>log 2                                                                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>log 3                                                                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Remove</accent+bg:customMessageBg><text+bg:customMessageBg>                                                                     </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  Back                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn scroll • enter select • esc back · last 200 lines</muted+bg:customMessageBg><text+bg:customMessageBg>   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+failed read
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>proc-dev</accent+bg:customMessageBg+bold><text+bg:customMessageBg> </text+bg:customMessageBg><success+bg:customMessageBg>running</success+bg:customMessageBg><text+bg:customMessageBg>                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>serve</dim+bg:customMessageBg><text+bg:customMessageBg>                                                                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>/fixture · pid 42 · 5s · capped</muted+bg:customMessageBg><text+bg:customMessageBg>                                              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>log read failed: fixture read                                                </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Stop</accent+bg:customMessageBg><text+bg:customMessageBg>                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  Back                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn scroll • enter select • esc back · last 200 lines</muted+bg:customMessageBg><text+bg:customMessageBg>   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+empty log
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>proc-dev</accent+bg:customMessageBg+bold><text+bg:customMessageBg> </text+bg:customMessageBg><success+bg:customMessageBg>running</success+bg:customMessageBg><text+bg:customMessageBg>                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>serve</dim+bg:customMessageBg><text+bg:customMessageBg>                                                                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>/fixture · pid 42 · 5s · capped</muted+bg:customMessageBg><text+bg:customMessageBg>                                              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>(no output)                                                                  </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Stop</accent+bg:customMessageBg><text+bg:customMessageBg>                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  Back                                                                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn scroll • enter select • esc back · last 200 lines</muted+bg:customMessageBg><text+bg:customMessageBg>   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+empty list
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Processes</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>0 running · 0 total</muted+bg:customMessageBg><text+bg:customMessageBg>                                                          </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>no processes — the model starts one with the proc tool</muted+bg:customMessageBg><text+bg:customMessageBg>                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • enter open • s stop • r remove finished • esc close</muted+bg:customMessageBg><text+bg:customMessageBg>              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
+cleared widget"
+`;

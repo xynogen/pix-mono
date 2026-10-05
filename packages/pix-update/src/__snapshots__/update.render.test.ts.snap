@@ -1,0 +1,96 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures actual update confirmation and fixed spinner footer statuses without a runner 1`] = `
+{
+  "cancelled": [
+    "",
+    " <dim>Update cancelled.</dim>                                                              ",
+  ],
+  "confirm": [
+    "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>↓︎ Update Pi & Extensions?</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>Pi will close when the update finishes — relaunch to apply.                  </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Yes                             Proceed</accent+bg:customMessageBg><text+bg:customMessageBg>                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  No</text+bg:customMessageBg><dim+bg:customMessageBg>                              Cancel</dim+bg:customMessageBg><text+bg:customMessageBg>                                     </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>                                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc cancel</muted+bg:customMessageBg><text+bg:customMessageBg>                 </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+  ],
+  "status": [
+    "<dim>/fixture</dim>",
+    "<dim>0.0%/128k                                                               no-model</dim>",
+    "⠋ Checking Pi version",
+  ],
+  "statusFailure": [
+    "<dim>/fixture</dim>",
+    "<dim>0.0%/128k                                                               no-model</dim>",
+    "⠋ Checking Pi version",
+  ],
+}
+`;
+
+exports[`captures registered update progress and completion with a guarded runner spy 1`] = `
+{
+  "failureInitial": [
+    "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Working…</dim+bg:customMessageBg><bg:customMessageBg>                                                                   </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+  ],
+  "failureNotice1": [
+    "",
+    " <error>Error: Pi update failed after 1 attempt(s). permission denied</error>                  ",
+  ],
+  "failureNotice2": [
+    "",
+    " <error>Error: Pi package update failed. permission denied</error>                             ",
+  ],
+  "failureNotice3": [
+    "",
+    " <warning>Warning: Update complete. Closing Pi — relaunch to apply.</warning>                      ",
+  ],
+  "failurePackages": [
+    "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating pi packages…</dim+bg:customMessageBg><bg:customMessageBg>                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+  ],
+  "failurePi": [
+    "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating Pi (pi update --self)…</dim+bg:customMessageBg><bg:customMessageBg>                                            </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+  ],
+  "successInitial": [
+    "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Working…</dim+bg:customMessageBg><bg:customMessageBg>                                                                   </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+  ],
+  "successNotice1": [
+    "",
+    " <dim>Pi updated: 0.99.1 → 0.99.2</dim>                                                    ",
+  ],
+  "successNotice2": [
+    "",
+    " <dim>Pi packages updated.</dim>                                                           ",
+  ],
+  "successNotice3": [
+    "",
+    " <warning>Warning: Update complete. Closing Pi — relaunch to apply.</warning>                      ",
+  ],
+  "successPackages": [
+    "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating pi packages…</dim+bg:customMessageBg><bg:customMessageBg>                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+  ],
+  "successPi": [
+    "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating Pi (pi update --self)…</dim+bg:customMessageBg><bg:customMessageBg>                                            </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
+  ],
+}
+`;

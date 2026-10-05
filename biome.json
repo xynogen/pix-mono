@@ -11,6 +11,7 @@
 			"packages/**/*.ts",
 			"packages/**/*.json",
 			"scripts/check-versions*.ts",
+			"scripts/ui-capture*.ts",
 			"scripts/deps.test.ts",
 			"scripts/publish-all.ts",
 			"scripts/static-analysis*.ts",

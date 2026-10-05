@@ -1,0 +1,73 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: call 1`] = `
+"
+<toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> · <muted>1 operations</muted>                                                    "
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: call 2`] = `
+"
+<toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim><muted> · 2 edits · estimate · </muted><toolDiffAdded>+2</toolDiffAdded> <toolDiffRemoved>-2</toolDiffRemoved>                                      "
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: single pending 1`] = `
+"
+   <muted>rendering diff…</muted>                                                              
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: single completed 1`] = `
+"
+<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>
+<toolDiffRemoved+bg:toolErrorBg>▌12</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><bg:toolErrorBg>  </bg:toolErrorBg><syntaxKeyword+bg:toolErrorBg>return</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                              </bg:toolErrorBg>
+<toolDiffAdded+bg:toolSuccessBg>▌12</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><bg:toolSuccessBg>  </bg:toolSuccessBg><syntaxKeyword+bg:toolSuccessBg>return</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>2</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                              </bg:toolSuccessBg>
+<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: stacked pending 1`] = `
+"
+   <muted>rendering diff…</muted>                                                              
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: stacked completed 1`] = `
+"
+<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>
+<toolDiffRemoved+bg:toolErrorBg>▌12</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><bg:toolErrorBg>  </bg:toolErrorBg><syntaxKeyword+bg:toolErrorBg>return</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                              </bg:toolErrorBg>
+<toolDiffAdded+bg:toolSuccessBg>▌12</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><bg:toolSuccessBg>  </bg:toolSuccessBg><syntaxKeyword+bg:toolSuccessBg>return</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>2</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                              </bg:toolSuccessBg>
+<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>
+   <muted>···</muted>                                                                          
+<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>
+<toolDiffRemoved+bg:toolErrorBg>▌24</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><bg:toolErrorBg>  </bg:toolErrorBg><syntaxKeyword+bg:toolErrorBg>return</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                              </bg:toolErrorBg>
+<toolDiffAdded+bg:toolSuccessBg>▌24</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><bg:toolSuccessBg>  </bg:toolSuccessBg><syntaxKeyword+bg:toolSuccessBg>return</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>2</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                              </bg:toolSuccessBg>
+<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: collapsed 1`] = `
+"
+<success>✓ </success> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> <muted>·</muted> <muted>+1 -1</muted>                                                        "
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: error expanded 1`] = `
+"
+<error>Stale anchor: 12#ABC. Read the file again.</error>                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: error collapsed 1`] = `
+"
+<error>✗ </error> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> <muted>·</muted> <muted>failed</muted>                                                       "
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: error partial 1`] = `
+"
+<error>Stale anchor: 12#ABC. Read the file again.</error>                                      "
+`;
+
+exports[`edit captures anchored/exact calls, pending/completed diffs and result states: fallback 1`] = `
+"
+   <dim>edited without details</dim>                                                       
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+`;

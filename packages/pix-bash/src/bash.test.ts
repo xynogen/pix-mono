@@ -56,19 +56,28 @@ describe("collapseProgressFrames", () => {
 });
 
 describe("registerBashTool", () => {
-	it("clamps renderCall to small terminal widths", () => {
+	it("clamps renderCall to small terminal widths", async () => {
 		const { pi, tool } = capturePi();
 		registerBashTool(pi, okFactory, makeToolContext({ terminalWidth: () => 24 }));
+		// ponytail: shared shell captures own layout. Keep the package self-shell wiring here.
+		expect(tool.renderShell).toBe("self");
 
+		let invalidated!: () => void;
+		const ready = new Promise<void>((resolve) => {
+			invalidated = resolve;
+		});
+		const callCtx = makeRenderCtx({ invalidate: invalidated });
 		const text = tool.renderCall?.(
 			{
 				command: 'printf "very very very long line"\necho second\necho third',
 				timeout: 30,
 			},
 			makeTheme(),
-			makeRenderCtx(),
+			callCtx,
 		);
 
+		await ready;
+		expect(callCtx.state.commandPreview).toMatchObject({ language: "bash" });
 		expect(text).toBeDefined();
 		const rendered = text?.render(24).join("\n") ?? "";
 		for (const line of rendered.split("\n")) {

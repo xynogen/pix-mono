@@ -1,0 +1,165 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures registered voice self shells without audio or provider execution 1`] = `
+"transcribe:call
+
+<toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim>                                                          
+transcribe:partial
+
+   <dim>processing...</dim>                                                                
+transcribe:success
+
+   <dim>first</dim>                                                                        
+   <dim>second</dim>                                                                       
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+transcribe:empty
+
+   <muted>(empty)</muted>                                                                      
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+transcribe:error
+
+   <dim>offline</dim>                                                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+transcribe:collapsed-success
+
+<success>✓ </success> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>12.4K chars · 9router/dg/nova-3</muted>                     
+transcribe:collapsed-error
+
+<error>✗ </error> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>failed</muted>                                              
+transcribe:collapsed-cancelled
+
+<warning>⚠ </warning> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>cancelled</muted>                                           
+transcribe:hidden-call
+transcribe:expanded-result
+
+   <dim>first</dim>                                                                        
+   <dim>second</dim>                                                                       
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+transcribe:expanded-call
+
+<toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim>                                                          
+speak:call
+
+<toolTitle+bold>speak</toolTitle+bold> <dim>Read the file. Read the file. Read the file. Read the file. </dim>              
+speak:partial
+
+   <dim>processing...</dim>                                                                
+speak:success
+
+   <dim>first</dim>                                                                        
+   <dim>second</dim>                                                                       
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+speak:empty
+
+   <muted>(empty)</muted>                                                                      
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+speak:error
+
+   <error>offline</error>                                                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+speak:collapsed-success
+
+<success>✓ </success> <toolTitle+bold>speak</toolTitle+bold> <dim>speech.mp3</dim> <muted>·</muted> <muted>20.7 KiB · openai/gpt-4o-mini-tts/alloy</muted>                   
+speak:collapsed-error
+
+   <error>first                                                                        </error>
+<error>second</error>                                                                          
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+speak:collapsed-cancelled
+
+   <error>first                                                                        </error>
+<error>second</error>                                                                          
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+speak:hidden-call
+speak:expanded-result
+
+   <dim>first</dim>                                                                        
+   <dim>second</dim>                                                                       
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+speak:expanded-call
+
+<toolTitle+bold>speak</toolTitle+bold> <dim>Read the file. Read the file. Read the file. Read the file. </dim>              
+transcribe:recovery-collapsed
+
+<error>✗ </error> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>write failed · transcript preserved inline</muted>          
+transcribe:recovery-expanded
+
+   <error>Writing failed: permission denied                                            </error>
+<error>recovered transcript</error>                                                            
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+transcribe:written
+
+<success>✓ </success> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>12.4K chars · wrote notes.md</muted>                        
+transcribe:preview-32
+
+   <dim>line 1</dim>                                                                       
+   <dim>line 2</dim>                                                                       
+   <dim>line 3</dim>                                                                       
+   <dim>line 4</dim>                                                                       
+   <dim>line 5</dim>                                                                       
+   <dim>line 6</dim>                                                                       
+   <dim>line 7</dim>                                                                       
+   <dim>line 8</dim>                                                                       
+   <dim>line 9</dim>                                                                       
+   <dim>line 10</dim>                                                                      
+   <dim>line 11</dim>                                                                      
+   <dim>line 12</dim>                                                                      
+   <dim>line 13</dim>                                                                      
+   <dim>line 14</dim>                                                                      
+   <dim>line 15</dim>                                                                      
+   <dim>line 16</dim>                                                                      
+   <dim>line 17</dim>                                                                      
+   <dim>line 18</dim>                                                                      
+   <dim>line 19</dim>                                                                      
+   <dim>line 20</dim>                                                                      
+   <dim>line 21</dim>                                                                      
+   <dim>line 22</dim>                                                                      
+   <dim>line 23</dim>                                                                      
+   <dim>line 24</dim>                                                                      
+   <dim>line 25</dim>                                                                      
+   <dim>line 26</dim>                                                                      
+   <dim>line 27</dim>                                                                      
+   <dim>line 28</dim>                                                                      
+   <dim>line 29</dim>                                                                      
+   <dim>line 30</dim>                                                                      
+   <dim>line 31</dim>                                                                      
+   <dim>line 32</dim>                                                                      
+   <muted>… 1 more line</muted>                                                                
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+transcribe:preview-full
+
+   <dim>line 1</dim>                                                                       
+   <dim>line 2</dim>                                                                       
+   <dim>line 3</dim>                                                                       
+   <dim>line 4</dim>                                                                       
+   <dim>line 5</dim>                                                                       
+   <dim>line 6</dim>                                                                       
+   <dim>line 7</dim>                                                                       
+   <dim>line 8</dim>                                                                       
+   <dim>line 9</dim>                                                                       
+   <dim>line 10</dim>                                                                      
+   <dim>line 11</dim>                                                                      
+   <dim>line 12</dim>                                                                      
+   <dim>line 13</dim>                                                                      
+   <dim>line 14</dim>                                                                      
+   <dim>line 15</dim>                                                                      
+   <dim>line 16</dim>                                                                      
+   <dim>line 17</dim>                                                                      
+   <dim>line 18</dim>                                                                      
+   <dim>line 19</dim>                                                                      
+   <dim>line 20</dim>                                                                      
+   <dim>line 21</dim>                                                                      
+   <dim>line 22</dim>                                                                      
+   <dim>line 23</dim>                                                                      
+   <dim>line 24</dim>                                                                      
+   <dim>line 25</dim>                                                                      
+   <dim>line 26</dim>                                                                      
+   <dim>line 27</dim>                                                                      
+   <dim>line 28</dim>                                                                      
+   <dim>line 29</dim>                                                                      
+   <dim>line 30</dim>                                                                      
+   <dim>line 31</dim>                                                                      
+   <dim>line 32</dim>                                                                      
+   <dim>line 33</dim>                                                                      
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+`;
