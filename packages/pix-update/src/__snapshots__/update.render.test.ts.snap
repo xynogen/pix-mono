@@ -53,7 +53,7 @@ exports[`captures registered update progress and completion with a guarded runne
   "failurePackages": [
     "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
     "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
-    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating pi packages…</dim+bg:customMessageBg><bg:customMessageBg>                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating extensions (pi update --extensions)…</dim+bg:customMessageBg><bg:customMessageBg>                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
     "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
   ],
   "failurePi": [
@@ -83,7 +83,7 @@ exports[`captures registered update progress and completion with a guarded runne
   "successPackages": [
     "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
     "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Updating Pi & extensions</accent+bg:customMessageBg+bold><bg:customMessageBg>                                                     </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
-    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating pi packages…</dim+bg:customMessageBg><bg:customMessageBg>                                                      </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
+    "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>⠋</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><dim+bg:customMessageBg>Updating extensions (pi update --extensions)…</dim+bg:customMessageBg><bg:customMessageBg>                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
     "<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>",
   ],
   "successPi": [

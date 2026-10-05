@@ -175,7 +175,7 @@ async function updatePi(ctx: ExtensionCommandContext, progress?: ProgressHandle)
 }
 
 async function updatePackages(ctx: ExtensionCommandContext, progress?: ProgressHandle) {
-	progress?.setLabel("Updating pi packages…");
+	progress?.setLabel("Updating extensions (pi update --extensions)…");
 	const result = await runtimeExec("pi", ["update", "--extensions"], {
 		timeout: ioTimeoutMs(),
 	}).catch((err: unknown) => ({
