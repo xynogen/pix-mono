@@ -1,8 +1,6 @@
 /**
- * Live daemon test — spawns a real aria2c and downloads a real file over loopback
- * through an HTTP server we host. Skips automatically when aria2c is not installed
- * so CI stays green on machines without it (the daemon path is exercised locally
- * and on any runner that has aria2).
+ * Test the live daemon when pix-runtime resolves aria2c.
+ * Otherwise, test the missing-binary error without a network download.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -14,7 +12,7 @@ import { tempDir } from "@xynogen/pix-runtime/paths";
 import { aria2 } from "maria2";
 import { type DaemonHandle, startDaemon } from "./daemon.ts";
 
-const hasAria2 = Boolean(resolveTool("aria2c"));
+const binary = resolveTool("aria2c");
 const PAYLOAD = Buffer.from("pix-aria2 e2e payload ".repeat(1000)); // ~25 KiB
 
 let fileServer: Server;
@@ -41,41 +39,54 @@ afterAll(() => {
 	if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
-describe.if(hasAria2)("startDaemon (live)", () => {
-	let daemon: DaemonHandle;
+if (binary)
+	describe("startDaemon (live)", () => {
+		let daemon: DaemonHandle;
 
-	afterAll(async () => {
-		await daemon?.shutdown();
+		afterAll(async () => {
+			await daemon?.shutdown();
+		});
+
+		test("spawns, connects, and reports a version", async () => {
+			daemon = await startDaemon({ dir });
+			expect(daemon.port).toBeGreaterThan(0);
+			expect(daemon.secret).toHaveLength(32);
+			const version = await aria2.getVersion(daemon.conn);
+			expect(version.version).toBeTruthy();
+		});
+
+		test("downloads a file end to end", async () => {
+			const gid = (await aria2.addUri(daemon.conn, [fileUrl])) as string;
+			expect(gid).toBeTruthy();
+			// Poll until aria2 reports the download complete.
+			let done = false;
+			for (let i = 0; i < 50 && !done; i++) {
+				const s = await aria2.tellStatus(daemon.conn, gid, [
+					"status",
+					"completedLength",
+					"totalLength",
+				]);
+				done = s.status === "complete";
+				if (!done) await new Promise((r) => setTimeout(r, 100));
+			}
+			expect(done).toBe(true);
+			const written = readFileSync(join(dir, "payload.bin"));
+			expect(written.length).toBe(PAYLOAD.length);
+		});
 	});
-
-	test("spawns, connects, and reports a version", async () => {
-		daemon = await startDaemon({ dir });
-		expect(daemon.port).toBeGreaterThan(0);
-		expect(daemon.secret).toHaveLength(32);
-		const version = await aria2.getVersion(daemon.conn);
-		expect(version.version).toBeTruthy();
-	});
-
-	test("downloads a file end to end", async () => {
-		const gid = (await aria2.addUri(daemon.conn, [fileUrl])) as string;
-		expect(gid).toBeTruthy();
-		// Poll until aria2 reports the download complete.
-		let done = false;
-		for (let i = 0; i < 50 && !done; i++) {
-			const s = await aria2.tellStatus(daemon.conn, gid, [
-				"status",
-				"completedLength",
-				"totalLength",
-			]);
-			done = s.status === "complete";
-			if (!done) await new Promise((r) => setTimeout(r, 100));
+else
+	test("reports the install hint when aria2c is unavailable", async () => {
+		const offline = process.env.PI_OFFLINE;
+		process.env.PI_OFFLINE = "1";
+		try {
+			await expect(startDaemon({ dir })).rejects.toMatchObject({
+				name: "BinaryMissingError",
+				tool: "aria2c",
+				state: "missing",
+				hint: expect.any(String),
+			});
+		} finally {
+			if (offline === undefined) delete process.env.PI_OFFLINE;
+			else process.env.PI_OFFLINE = offline;
 		}
-		expect(done).toBe(true);
-		const written = readFileSync(join(dir, "payload.bin"));
-		expect(written.length).toBe(PAYLOAD.length);
 	});
-});
-
-test.skipIf(hasAria2)("aria2c absent — daemon path skipped", () => {
-	expect(hasAria2).toBe(false);
-});
