@@ -65,6 +65,8 @@ export type RenderContextLike<
 	state: TState;
 	expanded: boolean;
 	isError: boolean;
+	/** Pi sets this to false when the tool returns its final result. */
+	isPartial?: boolean;
 	invalidate: () => void;
 	/** Stable id for this tool execution — used to key resize invalidators. */
 	toolCallId?: string;

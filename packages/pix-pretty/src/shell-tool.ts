@@ -149,7 +149,11 @@ export function registerShellTool(
 			resolveBaseBackground(theme);
 			const displayCmdRaw = (args.command ?? "").trim();
 			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
-			const label = `${theme.fg("warning", padIcon(icon("status.running")))} ${theme.fg("toolTitle", theme.bold(name))}`;
+			const status =
+				renderCtx.isPartial !== false ? "warning" : renderCtx.isError ? "error" : "success";
+			const statusIcon =
+				status === "warning" ? "status.running" : status === "error" ? "status.error" : "status.ok";
+			const label = `${theme.fg(status, padIcon(icon(statusIcon)))} ${theme.fg("toolTitle", theme.bold(name))}`;
 			const collapseState = renderCtx.state as CollapseState;
 			if (hideCollapsedToolCall(collapseState, renderCtx.expanded, (value) => text.setText(value)))
 				return text;

@@ -44,6 +44,34 @@ describe("collapseProgressFrames", () => {
 });
 
 describe("registerShellTool", () => {
+	it.each([
+		"bash",
+		"powershell",
+	])("updates %s status before collapse and keeps it when expanded", (name) => {
+		const { pi, tool } = capturePi();
+		registerShellTool(pi, okFactory, makeToolContext(), { ...bashOpts, name });
+		const render = (isPartial: boolean, isError: boolean, expanded = false) =>
+			tool
+				.renderCall?.({ command: "echo ok" }, keyedTheme, {
+					...makeRenderCtx({ isError, expanded, state: { collapsed: false } }),
+					isPartial,
+				})
+				?.render(120)
+				.join("\n") ?? "";
+		for (const expanded of [false, true]) {
+			for (const [isPartial, isError, role, key] of [
+				[true, false, "warning", "status.running"],
+				[true, true, "warning", "status.running"],
+				[false, false, "success", "status.ok"],
+				[false, true, "error", "status.error"],
+			] as const) {
+				const text = render(isPartial, isError, expanded);
+				expect(text).toStartWith(`[${role}]${icon(key)}`);
+				expect(text).toContain(`[toolTitle]${name}[/]`);
+				expect(text).toContain("echo ok");
+			}
+		}
+	});
 	it.each(["bash", "powershell"])("aligns %s running and collapsed titles", (name) => {
 		const { pi, tool } = capturePi();
 		registerShellTool(pi, okFactory, makeToolContext(), { ...bashOpts, name });
