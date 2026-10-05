@@ -91,12 +91,12 @@ test("reuses a framed custom component and updates its body", () => {
 	expect(inner.value).toBe("plain");
 });
 
-test("replaces a previous Text preview with a viewport and uses Text for expansion", () => {
+test("reuses Text for wrapping previews and uses Text for expansion", () => {
 	const theme = makeTheme();
 	const previous = frameToolResult(new Text("old", 0, 0), theme, false);
 	const context = { state: {}, expanded: false, invalidate: () => {}, lastComponent: previous };
 	const preview = renderResult(result("plain"), options, theme, context);
-	expect(unframeToolResult(preview)).not.toBe(unframeToolResult(previous));
+	expect(unframeToolResult(preview)).toBe(unframeToolResult(previous));
 	expect(preview.render?.(80)[0]).toMatch(/^plain +$/);
 	const expanded = renderResult(result("plain"), { ...options, expanded: true }, theme, context);
 	expect(unframeToolResult(expanded)).toBeInstanceOf(Text);

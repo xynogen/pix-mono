@@ -64,18 +64,19 @@ exports[`long call wraps at 80 columns 1`] = `
 ]
 `;
 
-exports[`long result clips preview and wraps expansion at 80 columns: preview 1`] = `
+exports[`long result wraps preview and expansion at 80 columns: preview 1`] = `
 [
   "<toolOutput>first</toolOutput>                                                                           ",
   "                                                                                ",
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>",
+  "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>          ",
   "<toolOutput>last</toolOutput>                                                                            ",
   "<muted>0.3s</muted>                                                                            ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;
 
-exports[`long result clips preview and wraps expansion at 80 columns: expanded 1`] = `
+exports[`long result wraps preview and expansion at 80 columns: expanded 1`] = `
 [
   "<toolOutput>first</toolOutput>                                                                           ",
   "                                                                                ",
@@ -96,18 +97,19 @@ exports[`long call wraps at 120 columns 1`] = `
 ]
 `;
 
-exports[`long result clips preview and wraps expansion at 120 columns: preview 1`] = `
+exports[`long result wraps preview and expansion at 120 columns: preview 1`] = `
 [
   "<toolOutput>first</toolOutput>                                                                                                                   ",
   "                                                                                                                        ",
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>",
+  "<toolOutput>abcdefghijabcdefghijabcdefghij</toolOutput>                                                                                          ",
   "<toolOutput>last</toolOutput>                                                                                                                    ",
   "<muted>0.3s</muted>                                                                                                                    ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;
 
-exports[`long result clips preview and wraps expansion at 120 columns: expanded 1`] = `
+exports[`long result wraps preview and expansion at 120 columns: expanded 1`] = `
 [
   "<toolOutput>first</toolOutput>                                                                                                                   ",
   "                                                                                                                        ",
@@ -121,9 +123,9 @@ exports[`long result clips preview and wraps expansion at 120 columns: expanded 
 
 exports[`JSON output omits host header and closes with success 1`] = `
 [
-  "{                                                                               ",
-  "  <syntaxVariable>"ok"</syntaxVariable>: <syntaxKeyword>true</syntaxKeyword>                                                                    ",
-  "}                                                                               ",
+  "<syntaxPunctuation>{</syntaxPunctuation>                                                                               ",
+  "  <syntaxVariable>"ok"</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> <syntaxKeyword>true</syntaxKeyword>                                                                    ",
+  "<syntaxPunctuation>}</syntaxPunctuation>                                                                               ",
   "<muted>0.3s</muted>                                                                            ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]

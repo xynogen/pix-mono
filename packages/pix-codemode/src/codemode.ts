@@ -3,7 +3,6 @@ import { Text } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
-import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
 import {
@@ -30,8 +29,7 @@ type Call = {
 	cost?: number;
 };
 type Details = { calls?: Call[]; fullOutputPath?: string };
-type Slot = { key: string; theme: ThemeLike; text?: string };
-type State = CollapseState & Record<string, unknown> & { highlights?: Record<string, Slot> };
+type State = CollapseState & Record<string, unknown>;
 type Context = {
 	state: State;
 	expanded: boolean;
@@ -42,36 +40,24 @@ type Context = {
 const PreviewText = viewportTextConstructor(Text);
 const costText = (cost: number) => `$${cost >= 0.01 ? cost.toFixed(2) : cost.toPrecision(2)}`;
 
-// ponytail: cache stays local until another package needs the same surface cache.
-function highlight(
-	code: string,
-	language: string,
-	surface: string,
-	theme: ThemeLike,
-	ctx: Context,
-) {
-	ctx.state.highlights ??= {};
-	const cache = ctx.state.highlights;
-	const key = `${language}:${code}`;
-	let slot = cache[surface];
-	if (slot?.key !== key || slot.theme !== theme) {
-		slot = { key, theme };
-		cache[surface] = slot;
-		const pending = slot;
-		void hlBlock(code, language, theme).then(
-			(lines) => {
-				if (cache[surface] !== pending) return;
-				pending.text = lines.join("\n");
-				ctx.invalidate();
-			},
-			() => {
-				if (cache[surface] !== pending) return;
-				pending.text = code;
-				ctx.invalidate();
-			},
-		);
-	}
-	return slot.text ?? theme.fg("toolOutput", code);
+// ponytail: JSON.parse validates the block first. Color JSON tokens directly,
+// so long strings do not need the general highlighter's backtracking guard.
+function highlightJson(text: string, theme: ThemeLike): string {
+	return text.replace(
+		/"(?:\\[\s\S]|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\b(?:true|false|null)\b|[{}[\],:]/g,
+		(token, offset: number) => {
+			const role = token.startsWith('"')
+				? /^\s*:/.test(text.slice(offset + token.length))
+					? "syntaxVariable"
+					: "syntaxString"
+				: /^[\d-]/.test(token)
+					? "syntaxNumber"
+					: /^(true|false|null)$/.test(token)
+						? "syntaxKeyword"
+						: "syntaxPunctuation";
+			return theme.fg(role, token);
+		},
+	);
 }
 
 export function renderCall(args: { code?: string }, theme: ThemeLike, ctx: Context) {
@@ -194,10 +180,9 @@ export function renderResult(
 		if (call.error) rows.push(theme.fg("error", call.error));
 	}
 	if (!options.isPartial) {
-		for (const [index, block] of display.blocks.entries()) {
+		for (const block of display.blocks) {
 			if (!block.text) continue;
-			if (block.json)
-				rows.push(...highlight(block.text, "json", `result:${index}`, theme, ctx).split("\n"));
+			if (block.json) rows.push(...highlightJson(block.text, theme).split("\n"));
 			else {
 				let errorBlock = false;
 				for (const line of block.text.split("\n")) {
@@ -218,11 +203,9 @@ export function renderResult(
 	if (result.details?.fullOutputPath)
 		preview.push(theme.fg("muted", `Full output: ${result.details.fullOutputPath}`));
 	const prior = ctx.lastComponent ? unframeToolResult(ctx.lastComponent) : undefined;
-	const text = options.expanded
-		? new Text("", 0, 0)
-		: prior instanceof Text
-			? new PreviewText()
-			: (prior ?? new PreviewText());
+	// ponytail: the preview cap counts logical lines. Long values wrap in full.
+	// Add a visual-line viewport if wrapped payloads need a separate height limit.
+	const text = options.expanded ? new Text("", 0, 0) : (prior ?? new Text("", 0, 0));
 	text.setText(
 		preview.join("\n") ||
 			theme.fg("muted", options.isPartial ? "Running script..." : "(empty output)"),

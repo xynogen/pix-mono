@@ -5,6 +5,15 @@ import { renderCall, renderResult } from "./codemode.ts";
 
 export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 	once(pi, "pix-codemode", () => {
+		const rendererApi = pi as ExtensionAPI & {
+			registerToolRenderer?: (resolver: (name: string, next: () => unknown) => unknown) => void;
+		};
+		if (typeof rendererApi.registerToolRenderer === "function") {
+			rendererApi.registerToolRenderer((name, next) =>
+				name === "codemode" ? { renderCall, renderResult, renderShell: "self" } : next(),
+			);
+			return;
+		}
 		if (typeof host.createCodemodeExtension !== "function") {
 			pi.on("session_start", (_event, ctx) => {
 				ctx.ui.notify("pix-codemode requires a Pi host with createCodemodeExtension.", "warning");
@@ -27,8 +36,7 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 				return typeof value === "function" ? value.bind(target) : value;
 			},
 		});
-		// ponytail: Pi has no renderer-only hook. Wrap after load so the builtin stays loaded.
-		// Replace this registration with a renderer hook when Pi exposes one.
+		// ponytail: older hosts lack the renderer hook. Keep their existing tool wrapper.
 		pi.on("session_start", () => {
 			if (!pi.getAllTools().some((tool) => tool.name === "codemode")) return;
 			host.createCodemodeExtension()(proxy);

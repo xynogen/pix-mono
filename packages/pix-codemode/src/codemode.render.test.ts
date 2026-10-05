@@ -61,6 +61,35 @@ async function call(code: string, width: 80 | 120, expanded = false) {
 	return capture(renderCall({ code }, theme, ctx), width);
 }
 
+test("highlights long JSON values and wraps the normal output without losing text", () => {
+	const value = `${"abcdefghij".repeat(250)} END-OF-VALUE`;
+	const payload = JSON.stringify({ status: "fulfilled", value, count: 1, ok: true, empty: null });
+	const lines = capture(renderResult(result(payload), options, theme, context()), 80);
+	const text = lines.join("\n");
+	expect(text).toContain('<syntaxVariable>"status"</syntaxVariable>');
+	expect(text).toContain("<syntaxString>");
+	expect(text).toContain("END-OF-VALUE");
+	expect(text).toContain("<syntaxNumber>1</syntaxNumber>");
+	expect(text).toContain("<syntaxKeyword>true</syntaxKeyword>");
+	close(lines, "success", 80);
+});
+
+test("preserves escaped strings and colors JSON arrays and scalar values", () => {
+	const payload = JSON.stringify({
+		'key"name': 'quote" slash\\ newline\n',
+		values: [-1.25e30, false, null],
+	});
+	const lines = capture(renderResult(result(payload), options, theme, context()), 80);
+	const text = lines.join("\n");
+	expect(text).toContain('<syntaxVariable>"key\\"name"</syntaxVariable>');
+	expect(text).toContain('<syntaxString>"quote\\" slash\\\\ newline\\n"</syntaxString>');
+	expect(text).toContain("<syntaxNumber>-1.25e+30</syntaxNumber>");
+	expect(text).toContain("<syntaxKeyword>false</syntaxKeyword>");
+	expect(text).toContain("<syntaxKeyword>null</syntaxKeyword>");
+	expect(text).toContain("<syntaxPunctuation>[</syntaxPunctuation>");
+	close(lines, "success", 80);
+});
+
 test("normal call at 80 columns", async () => {
 	expect(await call("return 1;", 80)).toMatchSnapshot();
 });
@@ -73,7 +102,7 @@ for (const width of [80, 120] as const) {
 	test(`long call wraps at ${width} columns`, async () => {
 		expect(await call(`return "${"abcdefghij".repeat(13)}";`, width)).toMatchSnapshot();
 	});
-	test(`long result clips preview and wraps expansion at ${width} columns`, () => {
+	test(`long result wraps preview and expansion at ${width} columns`, () => {
 		terminal(width);
 		const output = result(`first\n\n${"abcdefghij".repeat(15)}\nlast`);
 		const preview = capture(renderResult(output, options, theme, context()), width);
@@ -87,12 +116,8 @@ for (const width of [80, 120] as const) {
 		expect(expanded).toMatchSnapshot("expanded");
 	});
 }
-test("JSON output omits host header and closes with success", async () => {
-	const ready = Promise.withResolvers<void>();
-	const ctx = { ...context(), invalidate: () => ready.resolve() };
-	renderResult(result(), options, theme, ctx);
-	await ready.promise;
-	const lines = capture(renderResult(result(), options, theme, ctx), 80);
+test("JSON output omits host header and closes with success", () => {
+	const lines = capture(renderResult(result(), options, theme, context()), 80);
 	close(lines, "success", 80);
 	expect(lines.join("\n")).not.toContain("Script completed");
 	expect(lines).toMatchSnapshot();
