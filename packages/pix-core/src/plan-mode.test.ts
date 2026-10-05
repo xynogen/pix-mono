@@ -1,11 +1,116 @@
 import { describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CustomEditor, type KeybindingsManager } from "@earendil-works/pi-coding-agent";
+import {
+	CustomEditor,
+	type ExtensionAPI,
+	type ExtensionContext,
+	type KeybindingsManager,
+	type ToolCallEvent,
+	type ToolCallEventResult,
+} from "@earendil-works/pi-coding-agent";
 import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
 import { setIconMode } from "@xynogen/pix-pretty/icon-catalog";
 import { tempDir } from "@xynogen/pix-runtime/paths";
-import { attachModeKeys, isPlanPath, listPlans, modeStatus, parsePlan } from "./plan-mode.ts";
+import { canSymlink } from "@xynogen/pix-runtime/testing";
+import registerPlanMode, {
+	attachModeKeys,
+	isPlanPath,
+	listPlans,
+	modeStatus,
+	parsePlan,
+} from "./plan-mode.ts";
+
+it("keeps tools available and guards edit/write inside this project's plan directory", async () => {
+	const cwd = mkdtempSync(join(tempDir(), "plan-guard-"));
+	const active = ["read", "write", "edit", "bash", "codemode", "tool_search"];
+	const selections: string[][] = [];
+	const entries: Array<{ type: string; customType: string; data: unknown }> = [];
+	const starts: Array<(event: never, ctx: ExtensionContext) => unknown> = [];
+	let toggle!: (ctx: ExtensionContext) => unknown;
+	let guard!: (
+		event: ToolCallEvent,
+		ctx: ExtensionContext,
+	) => Promise<ToolCallEventResult | undefined>;
+	const pi = {
+		getActiveTools: () => [...active],
+		setActiveTools: (names: string[]) => selections.push(names),
+		appendEntry: (customType: string, data: unknown) =>
+			entries.push({ type: "custom", customType, data }),
+		registerCommand() {},
+		registerShortcut: (_key: unknown, shortcut: { handler: typeof toggle }) => {
+			toggle = shortcut.handler;
+		},
+		on: (name: string, handler: unknown) => {
+			if (name === "tool_call") guard = handler as typeof guard;
+			if (name === "session_start") starts.push(handler as (typeof starts)[number]);
+		},
+	} as unknown as ExtensionAPI;
+	const ctx = {
+		cwd,
+		mode: "print",
+		ui: { setStatus() {}, notify() {}, theme: { fg: (_role: string, text: string) => text } },
+		sessionManager: { getEntries: () => entries },
+	} as unknown as ExtensionContext;
+	const call = (toolName: string, path?: string) =>
+		guard(
+			{ type: "tool_call", toolCallId: "test", toolName, input: { path } } as ToolCallEvent,
+			ctx,
+		);
+	try {
+		registerPlanMode(pi);
+		toggle(ctx);
+		for (const toolName of [...active, "grep", "ask_user", "subagent", "mcp_tool"]) {
+			if (toolName === "edit" || toolName === "write") continue;
+			expect(await call(toolName)).toBeUndefined();
+		}
+		expect(selections).toEqual([]);
+		for (const toolName of ["edit", "write"]) {
+			for (const path of [".pi/plans/new.md", join(cwd, ".pi/plans/new.md")]) {
+				expect(await call(toolName, path)).toBeUndefined();
+			}
+			for (const path of [
+				"src/code.ts",
+				".pi/plans",
+				".pi/plans/../outside.md",
+				".pi/plans-other/plan.md",
+				join(cwd, "other-project/.pi/plans/plan.md"),
+				join(cwd, "../other-project/.pi/plans/plan.md"),
+			]) {
+				expect(await call(toolName, path)).toMatchObject({
+					block: true,
+					reason: expect.any(String),
+				});
+			}
+		}
+		if (canSymlink()) {
+			const outside = join(cwd, "outside");
+			mkdirSync(outside);
+			writeFileSync(join(outside, "plan.md"), "Do not edit");
+			symlinkSync(outside, join(cwd, ".pi/plans/linked"), "dir");
+			symlinkSync(join(outside, "plan.md"), join(cwd, ".pi/plans/linked.md"), "file");
+			for (const toolName of ["edit", "write"]) {
+				for (const path of [".pi/plans/linked/new.md", ".pi/plans/linked.md"]) {
+					expect(await call(toolName, path)).toMatchObject({
+						block: true,
+						reason: expect.any(String),
+					});
+				}
+			}
+		}
+		registerPlanMode(pi);
+		for (const start of starts) await start({} as never, ctx);
+		expect(await call("edit", "src/code.ts")).toMatchObject({ block: true });
+		expect(await call("codemode")).toBeUndefined();
+		expect(selections).toEqual([]);
+		toggle(ctx);
+		for (const toolName of ["edit", "write"])
+			expect(await call(toolName, "src/code.ts")).toBeUndefined();
+		expect(selections).toEqual([]);
+	} finally {
+		rmSync(cwd, { recursive: true, force: true });
+	}
+});
 
 describe("listPlans", () => {
 	it("sorts by modification time, newest first, then by file name", () => {

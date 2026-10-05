@@ -51,6 +51,21 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 | `pix-subagent` | `agent` / `agent_control` — planner-driven sub-agents with live widget |
 | `compaction` | Built into pix-core: replaces pi's built-in context compaction with two levers. **Summary prompt is always pix's** — every compaction (manual `/compact`, threshold, overflow) generates the summary with the current conversation model (no silent routing) from an editable source prompt. **Trigger is pix's when `compaction.triggerPercent > 0`** — after each settled turn pix reads live context usage and compacts at `max(contextWindow × triggerPercent, compaction.minimumTokens)`. The default 100K floor prevents low percentages from compacting too early (for example, 10% of a 300K model waits for 100K rather than 30K); `0` disables pix's trigger and lets pi decide, while pix's summary prompt still applies. After a pix-triggered compaction pix sends a short, visible "resume" user message so the agent continues on its own. Every trigger, resume, and summary run emits a notify line (reason, model, token counts). |
 
+## Plan mode
+
+Use `/plan` to create, edit, execute, or delete saved plans in `<project>/.pi/plans/`.
+Use `Shift+Tab` or `Ctrl+Alt+P` to toggle plan mode.
+Use `Tab` in an empty prompt to cycle the thinking level.
+
+Plan mode keeps the available tools unchanged.
+Only `edit` and `write` are restricted to files inside the current project's `.pi/plans/`.
+The guard rejects other project paths, path traversal outside this directory, and symlink targets or parents.
+The same restrictions apply when a session restores plan mode.
+
+Other tools, including shell commands, are not sandboxed by plan mode.
+The visible plan guide asks the agent to explore without changing project files.
+Use `pix-gate` for command restrictions.
+
 ## Install
 
 ```bash

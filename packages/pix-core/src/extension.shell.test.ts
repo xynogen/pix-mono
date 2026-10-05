@@ -1,5 +1,6 @@
 import { expect, mock, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { tempDir } from "@xynogen/pix-runtime/paths";
 import { withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerPlanMode from "./plan-mode.ts";
 
@@ -109,7 +110,7 @@ test("core awaits member factories in order and stops on failure", async () => {
 	}
 });
 
-test("restored plan mode keeps tool and path guards and restores active tools", async () => {
+test("restored plan mode keeps tools available and guards edit/write paths", async () => {
 	const handlers = new Map<string, Array<(event: unknown, ctx: unknown) => unknown>>();
 	let active = ["read", "grep", "bash"];
 	let toggle!: (ctx: unknown) => void;
@@ -128,32 +129,29 @@ test("restored plan mode keeps tool and path guards and restores active tools", 
 	} as never);
 	const ctx = {
 		mode: "rpc",
-		cwd: "/fixture-project",
+		cwd: tempDir(),
 		sessionManager: {
 			getEntries: () => [
 				{
 					type: "custom",
 					customType: "pix-plan-mode",
-					data: { enabled: true, toolsBefore: ["read", "grep", "bash"] },
+					data: { enabled: true },
 				},
 			],
 		},
 		ui: { setStatus() {}, theme: { fg: (_role: string, value: string) => value }, notify() {} },
 	};
 	for (const handler of handlers.get("session_start") ?? []) await handler({}, ctx);
-	expect(active).toEqual(["read", "write", "bash"]);
+	expect(active).toEqual(["read", "grep", "bash"]);
 	const guard = handlers.get("tool_call")?.[0];
 	if (!guard) throw new Error("Plan tool guard is missing");
-	for (const toolName of ["edit", "speak", "agent"])
-		expect(await guard({ toolName, input: {} }, ctx)).toMatchObject({
-			block: true,
-			reason: expect.stringContaining("only read, bash, and write"),
-		});
-	for (const path of ["src/index.ts", ".pi/plans/../outside.md"])
-		expect(await guard({ toolName: "write", input: { path } }, ctx)).toMatchObject({ block: true });
-	expect(
-		await guard({ toolName: "write", input: { path: ".pi/plans/auth.md" } }, ctx),
-	).toBeUndefined();
+	for (const toolName of ["speak", "agent", "codemode", "tool_search"])
+		expect(await guard({ toolName, input: {} }, ctx)).toBeUndefined();
+	for (const toolName of ["edit", "write"]) {
+		for (const path of ["src/index.ts", ".pi/plans/../outside.md"])
+			expect(await guard({ toolName, input: { path } }, ctx)).toMatchObject({ block: true });
+		expect(await guard({ toolName, input: { path: ".pi/plans/auth.md" } }, ctx)).toBeUndefined();
+	}
 	expect(await guard({ toolName: "read", input: { path: "src/index.ts" } }, ctx)).toBeUndefined();
 	toggle(ctx);
 	expect(active).toEqual(["read", "grep", "bash"]);

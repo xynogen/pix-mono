@@ -5,8 +5,8 @@
  * Tab in an empty prompt cycles the thinking level (Pi's default Shift+Tab action).
  *
  * While plan mode is on:
- *   - active tools shrink to `read` + `write` + `bash` (previous set restored on exit);
- *   - `write` may only target `.pi/plans/` (tool_call guard, visible block);
+ *   - available tools stay unchanged;
+ *   - `edit` and `write` may only target this project's `.pi/plans/`;
  *   - no hidden prompt: "+ New plan" pastes PLAN_GUIDE into the prompt bar as a chip (sent as <paste>).
  *
  * Plan file format: YAML-ish frontmatter (`title`, `description`) + markdown
@@ -23,19 +23,19 @@ import { chipTag } from "@xynogen/pix-pretty/chips";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import { projectDir } from "@xynogen/pix-runtime/paths";
+import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { PlanModal, type PlanModalResult } from "./plan-modal.ts";
 
-// ponytail: bash is not sandboxed here; PLAN_GUIDE asks for read-only use and pix-gate
-// still guards destructive commands. Add an allowlist guard if the model abuses it.
-const PLAN_TOOLS = ["read", "write", "bash"];
+// ponytail: only edit/write paths are guarded here. Other tools are not sandboxed.
+// PLAN_GUIDE asks for read-only use. Use pix-gate for command restrictions.
 const PLAN_DIR = `${projectDir()}/plans`; // "/" so prompts and hints read the same on Windows
 const STATE_ENTRY = "pix-plan-mode";
 
 // Visible guide: /plan → "+ New plan" pastes this into the prompt bar as a chip for the user
 // to read, edit, and send. Nothing is injected into the system prompt.
 export const PLAN_GUIDE = `[PLAN MODE] Write an implementation plan. Do not change project code.
-Explore with \`read\` and read-only \`bash\` (git log/status/diff, ls, rg, --help). Never use bash to edit, install, commit, or delete.
-Save ONE plan with \`write\` to \`.pi/plans/YYYY-MM-DD-<feature-name>.md\` (writes elsewhere are blocked).
+Use any available tool to explore without changing project files. Never use tools to edit project code, install, commit, or delete.
+Save ONE plan with \`write\` to \`.pi/plans/YYYY-MM-DD-<feature-name>.md\`. Use \`edit\` or \`write\` to revise it. Both tools are restricted to this project's \`.pi/plans/\`.
 
 Format:
 ---
@@ -132,16 +132,10 @@ export function modeStatus(
 
 export default function registerPlanMode(pi: ExtensionAPI): void {
 	let enabled = false;
-	let toolsBefore: string[] | undefined;
 
 	function apply(ctx: ExtensionContext, on: boolean): void {
 		if (on && !enabled) {
-			toolsBefore = pi.getActiveTools();
-			pi.setActiveTools(PLAN_TOOLS);
 			mkdirSync(resolve(ctx.cwd, PLAN_DIR), { recursive: true });
-		} else if (!on && enabled) {
-			if (toolsBefore) pi.setActiveTools(toolsBefore);
-			toolsBefore = undefined;
 		}
 		const changed = enabled !== on;
 		enabled = on;
@@ -149,12 +143,12 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 			"plan",
 			modeStatus(on, (r, t) => ctx.ui.theme.fg(r, t)),
 		);
-		pi.appendEntry(STATE_ENTRY, { enabled, toolsBefore });
+		pi.appendEntry(STATE_ENTRY, { enabled });
 		if (changed) {
 			ctx.ui.notify(
 				on
-					? "Plan mode on: read + bash + write (.pi/plans only)."
-					: "Plan mode off: tools restored.",
+					? "Plan mode on: all tools available. Edit/write only inside this project's .pi/plans/."
+					: "Plan mode off: edit/write restrictions removed.",
 			);
 		}
 	}
@@ -233,19 +227,16 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 
 	pi.on("tool_call", async (event, ctx) => {
 		if (!enabled) return;
-		if (!PLAN_TOOLS.includes(event.toolName)) {
+		if (!isToolCallEventType("edit", event) && !isToolCallEventType("write", event)) return;
+		const path = event.input.path;
+		if (typeof path !== "string" || !isPlanPath(ctx.cwd, path)) {
 			return {
 				block: true,
-				reason:
-					"Plan mode: only read, bash, and write are allowed. Toggle off with Shift+Tab or ctrl+alt+p.",
+				reason: `Plan mode: ${event.toolName} only inside ${resolve(ctx.cwd, PLAN_DIR)}/. Got: ${path}`,
 			};
 		}
-		if (isToolCallEventType("write", event) && !isPlanPath(ctx.cwd, event.input.path)) {
-			return {
-				block: true,
-				reason: `Plan mode: write only inside ${PLAN_DIR}/. Got: ${event.input.path}`,
-			};
-		}
+		const checked = await validateOutputPath(resolve(ctx.cwd, path));
+		if (!checked.ok) return { block: true, reason: `Plan mode: ${checked.reason}` };
 	});
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -255,12 +246,8 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 				(e: { type: string; customType?: string }) =>
 					e.type === "custom" && e.customType === STATE_ENTRY,
 			)
-			.pop() as { data?: { enabled?: boolean; toolsBefore?: string[] } } | undefined;
-		if (entry?.data?.enabled) {
-			toolsBefore = entry.data.toolsBefore;
-			enabled = true;
-			pi.setActiveTools(PLAN_TOOLS);
-		}
+			.pop() as { data?: { enabled?: boolean } } | undefined;
+		enabled = entry?.data?.enabled === true;
 		ctx.ui.setStatus(
 			"plan",
 			modeStatus(enabled, (r, t) => ctx.ui.theme.fg(r, t)),
