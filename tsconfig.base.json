@@ -10,6 +10,7 @@
 			"@xynogen/pix-runtime/config": ["packages/pix-runtime/src/runtime.ts"],
 			"@xynogen/pix-runtime/sections": ["packages/pix-runtime/src/sections/index.ts"],
 			"@xynogen/pix-runtime/collapse": ["packages/pix-runtime/src/collapse.ts"],
+			"@xynogen/pix-runtime/icon-catalog": ["packages/pix-runtime/src/icon-catalog.ts"],
 			"@xynogen/pix-runtime/once": ["packages/pix-runtime/src/once.ts"],
 			"@xynogen/pix-runtime/testing": ["packages/pix-runtime/src/testing.ts"],
 			"@xynogen/pix-skills": ["packages/pix-skills/src/index.ts"],
