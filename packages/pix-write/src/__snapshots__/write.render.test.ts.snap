@@ -17,11 +17,11 @@ exports[`captures registered write/create completion and the configured diff spl
   ],
   "collapsed": [
     "",
-    "<success>✓ </success> <toolTitle+bold>write</toolTitle+bold> <dim>created.ts</dim> <muted>·</muted> <muted>new file · 2 lines</muted>                                        ",
+    "<success>✓︎ </success> <toolTitle+bold>write</toolTitle+bold> <dim>created.ts</dim> <muted>·</muted> <muted>new file · 2 lines</muted>                                        ",
   ],
   "collapsedError": [
     "",
-    "<error>✗ </error> <toolTitle+bold>write</toolTitle+bold> <dim>created.ts</dim> <muted>·</muted> <muted>failed</muted>                                                    ",
+    "<error>✗︎ </error> <toolTitle+bold>write</toolTitle+bold> <dim>created.ts</dim> <muted>·</muted> <muted>failed</muted>                                                    ",
   ],
   "create": [
     "",

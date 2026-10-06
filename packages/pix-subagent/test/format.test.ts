@@ -451,7 +451,7 @@ test("all foreground terminal states use one identity-first row", () => {
 	}
 });
 
-test("expanded foreground terminal result keeps summary first and bounded detail below", () => {
+test("expanded foreground terminal result keeps summary first and complete detail below", () => {
 	const tool = createAgentTool({} as never, {} as never, new Map(), () => {});
 	const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text };
 	const component = tool.renderResult?.(
@@ -470,7 +470,7 @@ test("expanded foreground terminal result keeps summary first and bounded detail
 		},
 		{ expanded: true, isPartial: false },
 		theme as never,
-		{} as never,
+		{ state: { collapsed: true }, expanded: true, isError: true, invalidate() {} } as never,
 	);
 	const lines = component?.render(120) ?? [];
 	const rendered = lines.join("\n");

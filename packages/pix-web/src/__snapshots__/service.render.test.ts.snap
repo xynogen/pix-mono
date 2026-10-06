@@ -3,7 +3,7 @@
 exports[`captures registered fetch and search Markdown without links or external execution 1`] = `
 "fetch:call
 
-<toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim>                                                
+<warning>◐︎ </warning> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim>                                             
 fetch:markdown
 
   <mdHeading+bold+underline>Guide</mdHeading+bold+underline>                                                                         
@@ -20,13 +20,13 @@ fetch:error
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 fetch:collapsed-success
 
-<success>✓ </success> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
+<success>✓︎ </success> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
 fetch:collapsed-error
 
-<error>✗ </error> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
+<error>✗︎ </error> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
 fetch:collapsed-cancelled
 
-<warning>⚠ </warning> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
+<warning>⚠︎ </warning> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
 fetch:hidden-call
 fetch:expanded
 
@@ -37,7 +37,7 @@ fetch:expanded
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 search:call
 
-<toolTitle+bold>search</toolTitle+bold> <dim>code guide</dim>                                                               
+<warning>◐︎ </warning> <toolTitle+bold>search</toolTitle+bold> <dim>code guide</dim>                                                            
 search:markdown
 
   <mdHeading+bold+underline>Guide</mdHeading+bold+underline>                                                                         
@@ -54,13 +54,13 @@ search:error
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 search:collapsed-success
 
-<success>✓ </success> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
+<success>✓︎ </success> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
 search:collapsed-error
 
-<error>✗ </error> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
+<error>✗︎ </error> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
 search:collapsed-cancelled
 
-<warning>⚠ </warning> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
+<warning>⚠︎ </warning> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
 search:hidden-call
 search:expanded
 

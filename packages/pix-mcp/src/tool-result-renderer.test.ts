@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { collapseSection } from "@xynogen/pix-runtime/sections";
+import { withUiFixture } from "../../../scripts/ui-capture.ts";
 import {
 	colorizeToon,
 	detectHighlightLang,
@@ -48,6 +51,39 @@ test("expanded MCP results use the same status-colored dashed close", () => {
 	expect(failed.at(-1)).toBe("«error»- - - - ");
 });
 
+test("failed MCP results collapse with an error marker and expand the full diagnostic", async () => {
+	const fixture = await withUiFixture();
+	await fixture.runtime.update(collapseSection, (current) => ({
+		...current,
+		enabled: true,
+		tools: {},
+	}));
+	try {
+		const theme = { ...tagTheme, bold: (text: string) => text };
+		const result = {
+			content: [{ type: "text" as const, text: "upstream failed\nretry later" }],
+			details: { error: "failed" },
+		};
+		const context = { state: { collapsed: true }, invalidate() {}, expanded: false, isError: true };
+		const rows = renderMcpToolResult(
+			result,
+			{ expanded: false, isPartial: false },
+			theme,
+			context,
+		).render(120);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toContain(icon("status.error"));
+		expect(rows[0]).toContain("upstream failed");
+		const expanded = renderMcpToolResult(result, { expanded: true, isPartial: false }, theme, {
+			...context,
+			expanded: true,
+		}).render(120);
+		expect(expanded.join("\n")).toContain("retry later");
+		expect(expanded.at(-1)).toBe(`«error»${"- ".repeat(60)}`);
+	} finally {
+		await fixture.restore();
+	}
+});
 test("detectHighlightLang: JSON object/array → json", () => {
 	expect(detectHighlightLang('{"a":1}')).toBe("json");
 	expect(detectHighlightLang("  [1,2,3]")).toBe("json");

@@ -93,6 +93,9 @@ export function makeRenderCtx(
 	return {
 		expanded: false,
 		isError: false,
+		executionStarted: true,
+		argsComplete: true,
+		isPartial: true,
 		invalidate: () => {},
 		state: {},
 		...overrides,

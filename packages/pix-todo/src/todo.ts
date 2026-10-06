@@ -12,7 +12,13 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { dotJoin, formatCollapsedToolRow, frameToolResult, termW } from "@xynogen/pix-pretty/utils";
+import {
+	dotJoin,
+	formatCollapsedToolRow,
+	formatToolCallTitle,
+	frameToolResult,
+	termW,
+} from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
@@ -315,7 +321,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				if (state?.collapsed && !context.expanded) return new Text("", 0, 0);
 				const t = theme as TodoTheme;
 				const action = (args as { action?: string })?.action ?? "";
-				const title = t.fg("toolTitle", t.bold("todo"));
+				const title = formatToolCallTitle(t, "todo", context);
 				return new Text(action ? `${title} ${t.fg("dim", action)}` : title, 0, 0);
 			},
 			renderResult(result, options, theme, context) {
@@ -328,15 +334,38 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				if (context.isError || details?.outcome === "error" || !details) {
 					const component = new Text(resultText, 0, 0);
 					if (isPartial) return component;
-					return frameToolResult(component, theme, true);
+					const isError = context.isError || details?.outcome === "error";
+					if (
+						tickCollapse(
+							"todo",
+							context.state as CollapseState,
+							context.invalidate,
+							options.expanded,
+						)
+					) {
+						return new Text(
+							formatCollapsedToolRow(
+								theme as TodoTheme,
+								"todo",
+								resultText.split("\n")[0] ?? "",
+								"",
+								isError ? "error" : "success",
+							),
+							0,
+							0,
+						);
+					}
+					return frameToolResult(component, theme, isError);
 				}
 
-				const collapsed = tickCollapse(
-					"todo",
-					context.state as CollapseState,
-					context.invalidate,
-					options.expanded,
-				);
+				const collapsed =
+					!isPartial &&
+					tickCollapse(
+						"todo",
+						context.state as CollapseState,
+						context.invalidate,
+						options.expanded,
+					);
 				// An open card claims focus, collapsing any earlier open board.
 				if (!collapsed) focusCard(context.state as CollapseState, context.invalidate);
 				const render = collapsed ? renderTodoSummaryLine : renderTodoLines;

@@ -21,6 +21,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
@@ -221,7 +222,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 					return new Text("", 0, 0);
 				const a = args as { action?: string; question?: string; path?: string; dfs?: boolean };
-				const title = t.fg("toolTitle", t.bold("graph"));
+				const title = formatToolCallTitle(t, "graph", context);
 				if (a.action === "query") {
 					const trav = a.dfs ? "dfs" : "bfs";
 					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
@@ -253,7 +254,8 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				} else {
 					component = new Text(text, 0, 0);
 				}
-				if (options.isPartial || !details) return component;
+				if (options.isPartial) return component;
+				if (!details) return frameToolResult(component, theme, isError);
 				if (
 					tickCollapse(
 						"graph",

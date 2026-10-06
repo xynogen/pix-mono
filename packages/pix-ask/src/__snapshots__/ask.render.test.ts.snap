@@ -3,13 +3,12 @@
 exports[`ask self shell, questionnaire, preview, paging, and real chips 1`] = `
 "call @80
 
-<toolTitle+bold>ask_user</toolTitle+bold> <dim>Pick an API?</dim><muted> · 1 question</muted>                                              
+<muted>○︎ </muted> <toolTitle+bold>ask_user</toolTitle+bold> <dim>Pick an API?</dim><muted> · 1 question</muted>                                           
 waiting @80
 
 <muted>Waiting for user input…</muted>                                                         
 answered @80
 
-<success>✓</success> <toolTitle+bold>ask_user</toolTitle+bold>                                                                      
 <muted>1:</muted> <success>REST</success>                                                                         
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 error @80
@@ -18,10 +17,10 @@ At least one question is required.
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 cancelled @80
 
-<warning>⚠ </warning> <toolTitle+bold>ask_user</toolTitle+bold> <muted>·</muted> <muted>cancelled</muted>                                                         
+<warning>⚠︎ </warning> <toolTitle+bold>ask_user</toolTitle+bold> <muted>·</muted> <muted>cancelled</muted>                                                         
 collapsed @80
 
-<success>✓ </success> <toolTitle+bold>ask_user</toolTitle+bold> <dim>REST</dim> <muted>·</muted> <muted>1 answer</muted>                                                     
+<success>✓︎ </success> <toolTitle+bold>ask_user</toolTitle+bold> <dim>REST</dim> <muted>·</muted> <muted>1 answer</muted>                                                     
 hidden call @80
 narrow preview @80
 <accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>

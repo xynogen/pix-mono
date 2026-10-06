@@ -419,7 +419,7 @@ describe("MCP tool result renderer", () => {
 		expect(out).toContain("3");
 	});
 
-	it("never collapses an error result even with a collapsed state", () => {
+	it("keeps the failure in a collapsed error row", () => {
 		const output = renderMcpToolResult(
 			result([{ type: "text", text: "Error: boom\nline 2" }], { error: "tool_error" }),
 			collapsedOptions,
@@ -429,6 +429,7 @@ describe("MCP tool result renderer", () => {
 			.render(80)
 			.join("\n");
 
-		expect(output).toContain("line 2"); // full error stays visible
+		expect(output).toContain("Error: boom");
+		expect(output).toContain("2 lines");
 	});
 });

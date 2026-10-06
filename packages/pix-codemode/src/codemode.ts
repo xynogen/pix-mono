@@ -8,6 +8,7 @@ import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
 	formatJson,
+	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
 	padIcon,
@@ -34,6 +35,8 @@ type Context = {
 	state: State;
 	expanded: boolean;
 	isError?: boolean;
+	isPartial?: boolean;
+	executionStarted?: boolean;
 	invalidate: () => void;
 	lastComponent?: TextComponentLike;
 };
@@ -66,7 +69,7 @@ export function renderCall(args: { code?: string }, theme: ThemeLike, ctx: Conte
 	if (hideCollapsedToolCall(ctx.state, ctx.expanded, (value) => text.setText(value))) return text;
 	const code = typeof args.code === "string" ? args.code : "[invalid arg]";
 	return commandPreview(
-		`${theme.fg("warning", padIcon(icon("status.running")))} ${theme.fg("toolTitle", theme.bold("codemode"))}`,
+		`${formatToolCallTitle(theme, "codemode", ctx)}`,
 		code,
 		"javascript",
 		theme,
@@ -158,7 +161,7 @@ export function renderResult(
 	const rows: string[] = [];
 	const shown = options.expanded ? calls : calls.slice(-8);
 	if (shown.length < calls.length)
-		rows.push(theme.fg("muted", `… +${calls.length - shown.length} earlier calls`));
+		rows.push(`  ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
 	for (const call of shown) {
 		const status = {
 			ok: ["status.ok", "success"],
@@ -168,16 +171,20 @@ export function renderResult(
 		} as const;
 		const [key, role] = status[call.status];
 		rows.push(
-			dotJoin(
+			`  ${dotJoin(
 				[
-					`${theme.fg(role, icon(key))} ${theme.fg("toolTitle", call.name)} ${theme.fg("dim", call.args)}`,
+					`${theme.fg(role, padIcon(icon(key)))} ${theme.fg("toolTitle", call.name)} ${theme.fg("dim", call.args)}`,
 					call.durationMs === undefined ? "" : theme.fg("muted", formatMs(call.durationMs)),
 					call.cost ? theme.fg("muted", costText(call.cost)) : "",
 				],
 				(s) => theme.fg("muted", s),
-			),
+			)}`,
 		);
-		if (call.error) rows.push(theme.fg("error", call.error));
+		if (call.error) {
+			for (const errLine of call.error.split("\n")) {
+				rows.push(`    ${theme.fg("error", errLine)}`);
+			}
+		}
 	}
 	if (!options.isPartial) {
 		for (const block of display.blocks) {

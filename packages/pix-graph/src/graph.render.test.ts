@@ -96,6 +96,7 @@ test("captures actual graph calls, progress, trees and terminal result states", 
 		await result("collapsedError", "Build failed", failure, { collapsed: true, isError: true });
 		await result("expanded", text, build, { collapsed: true, expanded: true });
 		await result("wide", text, build, { width: 120 });
+		expect(captures.fallback?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
 		expect(captures.built?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
 		expect(captures.error?.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
 		expect(captures).toMatchSnapshot();

@@ -27,6 +27,7 @@ import {
 	COLLAPSED_TOOL_GLYPH,
 	dotJoin,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
@@ -688,7 +689,7 @@ export function createAgentInfoTool(reloadCustomAgents: () => void, manager?: Ag
 				return text;
 			const kind = String(args.kind ?? "types");
 			const query = typeof args.query === "string" && args.query ? ` “${args.query}”` : "";
-			text.setText(`${theme.fg("toolTitle", theme.bold("agent_info"))} ${kind}${query}`);
+			text.setText(`${formatToolCallTitle(theme, "agent_info", renderCtx)} ${kind}${query}`);
 			return text;
 		},
 
@@ -801,7 +802,7 @@ export function createAgentControlTool(
 			const target =
 				action === "info" ? String(args.kind ?? "active") : String(args.agent_id ?? "");
 			text.setText(
-				`${theme.fg("toolTitle", theme.bold("agent_control"))} ${theme.fg("dim", action)}${target ? ` ${theme.fg("accent", target)}` : ""}`,
+				`${formatToolCallTitle(theme, "agent_control", renderCtx)} ${theme.fg("dim", action)}${target ? ` ${theme.fg("accent", target)}` : ""}`,
 			);
 			return text;
 		},
@@ -894,16 +895,14 @@ export function createAgentTool(
 		}),
 
 		renderCall(args, theme, renderCtx) {
-			const collapsed = tickCollapse(
-				SUBAGENT_TOOL_NAMES.AGENT,
-				renderCtx.state as CollapseState,
-				renderCtx.invalidate,
-				renderCtx.expanded,
-			);
+			if ((renderCtx.state as CollapseState).collapsed && !renderCtx.expanded)
+				return new Text("", 0, 0);
 			const input = args as Record<string, unknown>;
-			const header = formatAgentCall(input, theme, false);
-			if (collapsed || typeof input.prompt !== "string" || !input.prompt)
-				return new Text(header, 0, 0);
+			const header = formatAgentCall(input, theme, false).replace(
+				theme.fg("toolTitle", theme.bold("agent")),
+				formatToolCallTitle(theme, "agent", renderCtx),
+			);
+			if (typeof input.prompt !== "string" || !input.prompt) return new Text(header, 0, 0);
 			return commandPreview(
 				header,
 				input.prompt,
@@ -920,9 +919,7 @@ export function createAgentTool(
 			if (!details) {
 				const text = result.content[0]?.type === "text" ? result.content[0].text : "";
 				const component = new Text(text, 0, 0);
-				if (expanded && !isPartial && renderCtx.isError === true)
-					return frameToolResult(component, theme, true);
-				return component;
+				return isPartial ? component : frameToolResult(component, theme, renderCtx.isError);
 			}
 
 			// Streaming / running — show a compact live status line so the model
@@ -966,26 +963,28 @@ export function createAgentTool(
 				};
 			}
 
-			// Every terminal branch uses the same one-line identity and stats order.
-			// Expansion appends the existing bounded model-visible result beneath it.
+			// Collapse only terminal results. Expansion keeps all model-visible output.
+			const collapsed = tickCollapse(
+				SUBAGENT_TOOL_NAMES.AGENT,
+				renderCtx.state as CollapseState,
+				renderCtx.invalidate,
+				expanded,
+			);
 			let line = formatAgentFinishedLine(details, theme);
-			if (expanded) {
+			if (!collapsed) {
 				const resultText = result.content
 					.filter((block) => block.type === "text")
 					.map((block) => block.text)
 					.join("\n");
 				if (resultText) {
 					const resultLines = resultText.split("\n");
-					for (const resultLine of resultLines.slice(0, 50)) {
+					for (const resultLine of resultLines) {
 						line += `\n${theme.fg("dim", `  ${resultLine}`)}`;
-					}
-					if (resultLines.length > 50) {
-						line += `\n${theme.fg("muted", "  … (use agent_control action=result with verbose for full output)")}`;
 					}
 				}
 			}
 			const component = new Text(line, 0, 0);
-			if (!expanded) return component;
+			if (collapsed) return component;
 			if (details.status === "completed" || details.status === "steered")
 				return frameToolResult(component, theme, false);
 			if (
@@ -1366,7 +1365,8 @@ export function createAgentResultTool(
 			)
 				return text;
 			text.setText(
-				theme.fg("toolTitle", theme.bold("agent_result ")) +
+				formatToolCallTitle(theme, "agent_result", renderCtx) +
+					" " +
 					theme.fg("accent", args.agent_id as string),
 			);
 			return text;
@@ -1486,7 +1486,8 @@ export function createAgentSteerTool(manager: AgentManager) {
 			const action = (args.action as string) || "steer";
 			const label = action === "stop" ? "agent_stop" : "agent_steer";
 			text.setText(
-				theme.fg("toolTitle", theme.bold(`${label} `)) +
+				formatToolCallTitle(theme, label, renderCtx) +
+					" " +
 					theme.fg(action === "stop" ? "error" : "accent", args.agent_id as string),
 			);
 			return text;

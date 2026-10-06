@@ -19,6 +19,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
@@ -146,7 +147,7 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { operation?: string; path?: string; query?: string };
-			const title = t.fg("toolTitle", t.bold("lsp_navigation"));
+			const title = formatToolCallTitle(t, "lsp_navigation", context);
 			const op = t.fg("muted", a.operation ?? "");
 			const target = a.path ? t.fg("dim", a.path) : a.query ? t.fg("dim", `“${a.query}”`) : "";
 			return new Text(`${title} ${op} ${target}`.trimEnd(), 0, 0);
@@ -160,7 +161,8 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 			const glyph = isError ? icon("status.error") : icon("status.done");
 			const role = isError ? "error" : "success";
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial || !details) return body;
+			if (options.isPartial) return body;
+			if (!details) return frameToolResult(body, theme, isError);
 			if (
 				tickCollapse(
 					"lsp_navigation",

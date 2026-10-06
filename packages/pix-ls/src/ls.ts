@@ -28,6 +28,7 @@ import type {
 import {
 	BODY_PAD,
 	fillToolBackground,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -176,7 +177,9 @@ export function registerLsTool(
 			)
 				return text;
 			text.setText(
-				fillToolBackground(`${theme.fg("toolTitle", theme.bold("ls"))} ${theme.fg("dim", sp(fp))}`),
+				fillToolBackground(
+					`${formatToolCallTitle(theme, "ls", renderCtx)} ${theme.fg("dim", sp(fp))}`,
+				),
 			);
 			return text;
 		},

@@ -13,6 +13,7 @@ import {
 	RST,
 } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
+import { icon } from "./icon-catalog.ts";
 import type {
 	FgTheme,
 	TextComponentCtor,
@@ -304,6 +305,33 @@ type CollapsedToolTheme = {
 	bold: (text: string) => string;
 };
 
+/** Use the host lifecycle fields so every call has the same status marker. */
+export function formatToolCallTitle(
+	theme: {
+		fg: (role: "muted" | "warning" | "error" | "success" | "toolTitle", text: string) => string;
+		bold?: (text: string) => string;
+	},
+	tool: string,
+	context: { executionStarted?: boolean; isPartial?: boolean; isError?: boolean } = {},
+): string {
+	const complete = context.isPartial === false;
+	const role = complete
+		? context.isError
+			? "error"
+			: "success"
+		: context.executionStarted
+			? "warning"
+			: "muted";
+	const marker = complete
+		? context.isError
+			? "status.error"
+			: "status.ok"
+		: context.executionStarted
+			? "status.running"
+			: "status.pending";
+	return `${theme.fg(role, padIcon(icon(marker)))} ${theme.fg("toolTitle", theme.bold?.(tool) ?? tool)}`;
+}
+
 /** Format the shared one-row content without assuming a render shell. */
 export function formatCollapsedToolRow(
 	theme: CollapsedToolTheme,
@@ -312,9 +340,11 @@ export function formatCollapsedToolRow(
 	meta = "",
 	status: CollapsedToolStatus = "success",
 ): string {
-	const icon = padIcon(COLLAPSED_TOOL_GLYPH[status]);
+	const marker = padIcon(
+		icon(status === "success" ? "status.ok" : status === "error" ? "status.error" : "status.warn"),
+	);
 	const parts = [
-		`${theme.fg(status, icon)} ${theme.fg("toolTitle", theme.bold(tool))}`,
+		`${theme.fg(status, marker)} ${theme.fg("toolTitle", theme.bold(tool))}`,
 		target ? theme.fg("dim", target) : "",
 		meta ? `${theme.fg("muted", "·")} ${theme.fg("muted", meta)}` : "",
 	].filter(Boolean);

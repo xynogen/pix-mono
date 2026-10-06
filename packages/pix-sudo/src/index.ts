@@ -36,6 +36,7 @@ import {
 	dotJoin,
 	fillToolBackground,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -454,7 +455,7 @@ export default function (pi: ExtensionAPI): void {
 				return text;
 
 			return commandPreview(
-				theme.fg("toolTitle", theme.bold("sudo")),
+				formatToolCallTitle(theme, "sudo", renderCtx),
 				args.command || "(empty command)",
 				"bash",
 				theme,

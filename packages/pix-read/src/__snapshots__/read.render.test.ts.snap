@@ -17,19 +17,19 @@ exports[`captures registered read pending, completed, expanded and non-text stat
   ],
   "call": [
     "",
-    "<toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>from line 7</muted> <muted>(4 lines)</muted>                                            ",
+    "<warning>◐︎ </warning> <toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>from line 7</muted> <muted>(4 lines)</muted>                                         ",
   ],
   "collapsed": [
     "",
-    "<success>✓ </success> <toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>·</muted> <muted>4 lines</muted>                                                     ",
+    "<success>✓︎ </success> <toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>·</muted> <muted>4 lines</muted>                                                     ",
   ],
   "collapsedError": [
     "",
-    "<error>✗ </error> <toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>·</muted> <muted>failed</muted>                                                      ",
+    "<error>✗︎ </error> <toolTitle+bold>read</toolTitle+bold> <dim>sample.ts</dim> <muted>·</muted> <muted>failed</muted>                                                      ",
   ],
   "collapsedImage": [
     "",
-    "<success>✓ </success> <toolTitle+bold>read</toolTitle+bold> <dim>image.png</dim> <muted>·</muted> <muted>image/png · 3 B</muted>                                             ",
+    "<success>✓︎ </success> <toolTitle+bold>read</toolTitle+bold> <dim>image.png</dim> <muted>·</muted> <muted>image/png · 3 B</muted>                                             ",
   ],
   "completed": [
     "",

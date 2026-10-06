@@ -3,7 +3,7 @@
 exports[`captures registered voice self shells without audio or provider execution 1`] = `
 "transcribe:call
 
-<toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim>                                                          
+<warning>◐︎ </warning> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim>                                                       
 transcribe:partial
 
    <dim>processing...</dim>                                                                
@@ -22,13 +22,13 @@ transcribe:error
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 transcribe:collapsed-success
 
-<success>✓ </success> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>12.4K chars · 9router/dg/nova-3</muted>                     
+<success>✓︎ </success> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>12.4K chars · 9router/dg/nova-3</muted>                     
 transcribe:collapsed-error
 
-<error>✗ </error> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>failed</muted>                                              
+<error>✗︎ </error> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>failed</muted>                                              
 transcribe:collapsed-cancelled
 
-<warning>⚠ </warning> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>cancelled</muted>                                           
+<warning>⚠︎ </warning> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>cancelled</muted>                                           
 transcribe:hidden-call
 transcribe:expanded-result
 
@@ -37,10 +37,10 @@ transcribe:expanded-result
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 transcribe:expanded-call
 
-<toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim>                                                          
+<warning>◐︎ </warning> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim>                                                       
 speak:call
 
-<toolTitle+bold>speak</toolTitle+bold> <dim>Read the file. Read the file. Read the file. Read the file. </dim>              
+<warning>◐︎ </warning> <toolTitle+bold>speak</toolTitle+bold> <dim>Read the file. Read the file. Read the file. Read the file. </dim>           
 speak:partial
 
    <dim>processing...</dim>                                                                
@@ -59,7 +59,7 @@ speak:error
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 speak:collapsed-success
 
-<success>✓ </success> <toolTitle+bold>speak</toolTitle+bold> <dim>speech.mp3</dim> <muted>·</muted> <muted>20.7 KiB · openai/gpt-4o-mini-tts/alloy</muted>                   
+<success>✓︎ </success> <toolTitle+bold>speak</toolTitle+bold> <dim>speech.mp3</dim> <muted>·</muted> <muted>20.7 KiB · openai/gpt-4o-mini-tts/alloy</muted>                   
 speak:collapsed-error
 
    <error>first                                                                        </error>
@@ -78,10 +78,10 @@ speak:expanded-result
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 speak:expanded-call
 
-<toolTitle+bold>speak</toolTitle+bold> <dim>Read the file. Read the file. Read the file. Read the file. </dim>              
+<warning>◐︎ </warning> <toolTitle+bold>speak</toolTitle+bold> <dim>Read the file. Read the file. Read the file. Read the file. </dim>           
 transcribe:recovery-collapsed
 
-<error>✗ </error> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>write failed · transcript preserved inline</muted>          
+<error>✗︎ </error> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>write failed · transcript preserved inline</muted>          
 transcribe:recovery-expanded
 
    <error>Writing failed: permission denied                                            </error>
@@ -89,7 +89,7 @@ transcribe:recovery-expanded
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 transcribe:written
 
-<success>✓ </success> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>12.4K chars · wrote notes.md</muted>                        
+<success>✓︎ </success> <toolTitle+bold>transcribe</toolTitle+bold> <dim>meeting.wav</dim> <muted>·</muted> <muted>12.4K chars · wrote notes.md</muted>                        
 transcribe:preview-32
 
    <dim>line 1</dim>                                                                       

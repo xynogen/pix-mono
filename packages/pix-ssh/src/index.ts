@@ -40,6 +40,7 @@ import {
 	dotJoin,
 	fillToolBackground,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -887,7 +888,7 @@ export default function (pi: ExtensionAPI): void {
 			if (args.action === "info") {
 				text.setText(
 					fillToolBackground(
-						`${theme.fg("toolTitle", theme.bold("ssh info"))} ${theme.fg("dim", host || "list aliases")}`,
+						`${formatToolCallTitle(theme, "ssh info", renderCtx)} ${theme.fg("dim", host || "list aliases")}`,
 					),
 				);
 				return text;
@@ -896,7 +897,7 @@ export default function (pi: ExtensionAPI): void {
 			const command = operation.command || "(empty command)";
 			const prefix = operation.sudo ? "sudo " : "";
 			return commandPreview(
-				`${theme.fg("toolTitle", theme.bold(operation.action === "file" ? "ssh file" : "ssh"))} ${theme.fg("dim", host)}`,
+				`${formatToolCallTitle(theme, operation.action === "file" ? "ssh file" : "ssh", renderCtx)} ${theme.fg("dim", host)}`,
 				prefix + command,
 				"bash",
 				theme,

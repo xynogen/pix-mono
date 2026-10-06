@@ -13,7 +13,13 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { frameToolResult } from "@xynogen/pix-pretty/utils";
+import {
+	formatCollapsedToolRow,
+	formatToolCallTitle,
+	frameToolResult,
+	hideCollapsedToolCall,
+} from "@xynogen/pix-pretty/utils";
+import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import { type ExecuteCtx, grammarConsent } from "../consent.ts";
 import { ALL_LANGUAGES, type AnyLanguage, languageForFile } from "../engine.ts";
@@ -100,10 +106,12 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 			),
 		}),
 
-		renderCall(args, theme) {
+		renderCall(args, theme, context) {
+			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
+				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { pattern?: string; lang?: string };
-			const title = t.fg("toolTitle", t.bold("ast_grep_search"));
+			const title = formatToolCallTitle(t, "ast_grep_search", context);
 			const pat = t.fg("dim", a.pattern ?? "");
 			const lang = a.lang ? t.fg("muted", ` · ${a.lang}`) : "";
 			return new Text(`${title} ${pat}${lang}`.trimEnd(), 0, 0);
@@ -114,10 +122,30 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 			const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
 			const details = result.details as { outcome?: string } | undefined;
 			const isError = context.isError || details?.outcome === "error";
-			const glyph = isError ? icon("status.error") : icon("status.done");
+			if (
+				!options.isPartial &&
+				tickCollapse(
+					"ast_grep_search",
+					context.state as CollapseState,
+					context.invalidate,
+					options.expanded,
+				)
+			)
+				return new Text(
+					formatCollapsedToolRow(
+						theme,
+						"ast_grep_search",
+						"",
+						`${text.split("\n").length} lines`,
+						isError ? "error" : "success",
+					),
+					0,
+					0,
+				);
+			const glyph = isError ? icon("status.error") : icon("status.ok");
 			const role = isError ? "error" : "success";
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial || !details) return body;
+			if (options.isPartial) return body;
 			return frameToolResult(body, theme, isError);
 		},
 

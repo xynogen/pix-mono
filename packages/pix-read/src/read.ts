@@ -36,6 +36,7 @@ import {
 	BODY_PAD,
 	dotJoin,
 	fillToolBackground,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -347,7 +348,7 @@ export function registerReadTool(
 			const limit = args.limit ? ` ${theme.fg("muted", `(${args.limit} lines)`)}` : "";
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("read"))} ${theme.fg("dim", sp(fp))}${offset}${limit}`,
+					`${formatToolCallTitle(theme, "read", renderCtx)} ${theme.fg("dim", sp(fp))}${offset}${limit}`,
 				),
 			);
 			return text;

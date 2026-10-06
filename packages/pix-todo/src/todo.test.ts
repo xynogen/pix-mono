@@ -975,7 +975,8 @@ describe("todo card layout", () => {
 			.trimEnd();
 
 		expect(rendered.split("\n")[0]).toContain("No todo with id 99.");
-		expect(rendered.split("\n").at(-1)).toBe(`[error]${"- ".repeat(40)}[/]`);
+		expect(rendered.split("\n")).toHaveLength(1);
+		expect(rendered).toContain("[error]");
 		expect(rendered).toContain("No todo with id 99.");
 	});
 

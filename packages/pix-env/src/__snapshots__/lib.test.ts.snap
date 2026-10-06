@@ -31,7 +31,6 @@ exports[`W1 capture: read_env component and default Box results: partial keeps c
   " # <accent>PORT</accent> <muted>int</muted>                                                                     ",
   " ≈︎ <accent>RATE</accent> <muted>float</muted>                                                                   ",
   " “︎ <accent>TOKEN</accent> <muted>string</muted>                                                                 ",
-  " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
   "                                                                                ",
 ]
 `;

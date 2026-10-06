@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
+import { makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerEnv from "./extension.ts";
@@ -149,7 +150,7 @@ describe("read_env tool", () => {
 			},
 		};
 		const lines = tool
-			.renderResult(result, { isPartial: false }, theme, { isError: false })
+			.renderResult(result, { isPartial: false }, theme, makeRenderCtx())
 			.render(80);
 		const body = lines.slice(0, -1).join("\n");
 
@@ -165,8 +166,13 @@ describe("read_env tool", () => {
 		const tool = captureEnvRead();
 		const theme = { fg: (color: string, text: string) => `[${color}]${text}[/]` };
 		const result = { content: [{ type: "text", text: "HOST = string" }] };
-		const success = tool.renderResult(result, { isPartial: false }, theme, { isError: false });
-		const failure = tool.renderResult(result, { isPartial: false }, theme, { isError: true });
+		const success = tool.renderResult(result, { isPartial: false }, theme, makeRenderCtx());
+		const failure = tool.renderResult(
+			result,
+			{ isPartial: false },
+			theme,
+			makeRenderCtx({ isError: true }),
+		);
 
 		const successLines = success.render(20);
 		const failureLines = failure.render(20);

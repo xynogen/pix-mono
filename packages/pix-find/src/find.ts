@@ -28,6 +28,7 @@ import type {
 import {
 	appendNotices,
 	fillToolBackground,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -253,7 +254,7 @@ export function registerFindTool(
 				return text;
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("find"))} ${theme.fg("dim", pattern)}${path}`,
+					`${formatToolCallTitle(theme, "find", renderCtx)} ${theme.fg("dim", pattern)}${path}`,
 				),
 			);
 			return text;

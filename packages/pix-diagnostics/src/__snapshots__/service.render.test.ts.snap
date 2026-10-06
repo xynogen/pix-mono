@@ -3,7 +3,7 @@
 exports[`captures registered diagnostics tools and the subscribed widget without a server 1`] = `
 "lens_diagnostics:call
 
-<toolTitle+bold>lens_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                    
+<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                 
 lens_diagnostics:success
 
 <success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
@@ -18,23 +18,25 @@ lens_diagnostics:error
 lens_diagnostics:no-details
 
 <success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lens_diagnostics:no-details-error
 
 <error>✗︎</error> src/a.ts:3:4 error ts(2304) Missing name                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 lens_diagnostics:hidden-call
 lens_diagnostics:collapsed
 
-<success>✓ </success> <toolTitle+bold>lens_diagnostics</toolTitle+bold> <dim>1 files</dim> <muted>·</muted> <muted>1 findings</muted>                                        
+<success>✓︎ </success> <toolTitle+bold>lens_diagnostics</toolTitle+bold> <dim>1 files</dim> <muted>·</muted> <muted>1 findings</muted>                                        
 lens_diagnostics:expanded
 
-<toolTitle+bold>lens_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                    
+<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                 
 lens_diagnostics:expanded-result
 
 <success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lsp_navigation:call
 
-<toolTitle+bold>lsp_navigation</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                              
+<warning>◐︎ </warning> <toolTitle+bold>lsp_navigation</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                           
 lsp_navigation:success
 
 <success>●︎</success> src/a.ts:3:4                                                                  
@@ -53,17 +55,19 @@ lsp_navigation:no-details
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lsp_navigation:no-details-error
 
 <error>✗︎</error> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 lsp_navigation:hidden-call
 lsp_navigation:collapsed
 
-<success>✓ </success> <toolTitle+bold>lsp_navigation</toolTitle+bold> <dim>references</dim> <muted>·</muted> <muted>2 results</muted>                                        
+<success>✓︎ </success> <toolTitle+bold>lsp_navigation</toolTitle+bold> <dim>references</dim> <muted>·</muted> <muted>2 results</muted>                                        
 lsp_navigation:expanded
 
-<toolTitle+bold>lsp_navigation</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                              
+<warning>◐︎ </warning> <toolTitle+bold>lsp_navigation</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                           
 lsp_navigation:expanded-result
 
 <success>●︎</success> src/a.ts:3:4                                                                  
@@ -71,7 +75,7 @@ src/b.ts:9:2
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lens_diagnostic_mark:call
 
-<toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                                  
+<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                               
 lens_diagnostic_mark:success
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
@@ -86,16 +90,18 @@ lens_diagnostic_mark:error
 lens_diagnostic_mark:no-details
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lens_diagnostic_mark:no-details-error
 
 <error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 lens_diagnostic_mark:hidden-call
 lens_diagnostic_mark:collapsed
 
-<success>✓ </success> <toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>·</muted> <muted>1 marks</muted>                                               
+<success>✓︎ </success> <toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>·</muted> <muted>1 marks</muted>                                               
 lens_diagnostic_mark:expanded
 
-<toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                                  
+<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                               
 lens_diagnostic_mark:expanded-result
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              

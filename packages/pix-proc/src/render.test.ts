@@ -54,12 +54,12 @@ describe("proc renderer", () => {
 				result(true, ["proc-swift-otter-42 started — npm run dev (pid 1234)"]),
 				{ expanded: false, isPartial: false },
 				plainTheme,
-				{ expanded: false, isError: false },
+				{ state: { collapsed: true }, invalidate() {}, expanded: false, isError: false },
 			)
 			.render(160);
-		expect(rendered[0]).toContain(icon("process"));
+		expect(rendered[0]).toContain(icon("status.ok"));
 		expect(rendered[0]).toContain("proc-swift-otter-42 started");
-		expect(rendered.at(-1)).toBe("- ".repeat(80));
+		expect(rendered).toHaveLength(1);
 	});
 
 	test("collapsed error shows the error glyph and the message", () => {
@@ -68,7 +68,7 @@ describe("proc renderer", () => {
 				result(false, [], "start requires a command"),
 				{ expanded: false, isPartial: false },
 				plainTheme,
-				{ expanded: false, isError: true },
+				{ state: { collapsed: true }, invalidate() {}, expanded: false, isError: true },
 			)
 			.render(80)
 			.join("\n");
@@ -84,12 +84,16 @@ describe("proc renderer", () => {
 		const host = tool();
 		const success = host
 			.renderResult(result(true, ["started"]), { expanded: true, isPartial: false }, theme, {
+				state: { collapsed: true },
+				invalidate() {},
 				expanded: true,
 				isError: false,
 			})
 			.render(20);
 		const error = host
 			.renderResult(result(false, [], "failed"), { expanded: true, isPartial: false }, theme, {
+				state: { collapsed: true },
+				invalidate() {},
 				expanded: true,
 				isError: true,
 			})

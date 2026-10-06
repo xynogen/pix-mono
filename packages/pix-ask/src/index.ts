@@ -4,6 +4,7 @@ import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
 	pluralize,
@@ -117,7 +118,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 				const questions = Array.isArray(args.questions) ? args.questions : [];
 				const count = questions.length;
 				const firstQ = questions[0]?.question ?? "";
-				const head = `${theme.fg("toolTitle", theme.bold("ask_user"))} ${theme.fg("dim", firstQ)}`;
+				const head = `${formatToolCallTitle(theme, "ask_user", renderCtx)} ${theme.fg("dim", firstQ)}`;
 				text.setText(
 					dotJoin([head, theme.fg("muted", pluralize(count, "question"))], (s) =>
 						theme.fg("muted", s),
@@ -141,6 +142,25 @@ export default function registerAsk(pi: ExtensionAPI): void {
 						.filter((part) => part.type === "text")
 						.map((part) => part.text)
 						.join("\n");
+					if (
+						tickCollapse(
+							"ask_user",
+							renderCtx.state as CollapseState,
+							renderCtx.invalidate,
+							options.expanded,
+						)
+					) {
+						text.setText(
+							formatCollapsedToolRow(
+								theme,
+								"ask_user",
+								error.split("\n")[0] || "Error",
+								"failed",
+								"error",
+							),
+						);
+						return text;
+					}
 					text.setText(error || "Error");
 					return frameToolResult(text, theme, true);
 				}
@@ -176,8 +196,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					(a, i) =>
 						`${theme.fg("muted", `${a.questionIndex + 1}:`)} ${theme.fg("success", values[i] ?? "")}`,
 				);
-				const header = `${theme.fg("success", "✓")} ${theme.fg("toolTitle", theme.bold("ask_user"))}`;
-				text.setText([header, ...lines].join("\n"));
+				text.setText(lines.join("\n"));
 				return frameToolResult(text, theme, false);
 			},
 		});

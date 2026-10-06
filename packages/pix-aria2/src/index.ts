@@ -16,8 +16,14 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
-import { COLLAPSED_TOOL_GLYPH, frameToolResult, rule } from "@xynogen/pix-pretty/utils";
-import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
+import {
+	formatCollapsedToolRow,
+	formatToolCallTitle,
+	frameToolResult,
+	hideCollapsedToolCall,
+	rule,
+} from "@xynogen/pix-pretty/utils";
+import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
 import { aria2 } from "maria2/dist/index.js";
 import { Type } from "typebox";
@@ -261,12 +267,14 @@ export default function registerDownload(pi: ExtensionAPI): void {
 				Type.String({ description: "For add: destination directory. Default cwd." }),
 			),
 		}),
-		renderCall(args, theme) {
+		renderCall(args, theme, context) {
+			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
+				return new Text("", 0, 0);
 			const a = args as { action?: string; url?: string; handle?: string };
 			const target = a.url ?? a.handle ?? "";
 			const text = new Text("", 0, 0);
 			text.setText(
-				`${theme.fg("toolTitle", theme.bold("download"))} ${theme.fg("dim", a.action ?? "")}${target ? ` ${theme.fg("muted", target)}` : ""}`,
+				`${formatToolCallTitle(theme, "download", context)} ${theme.fg("dim", a.action ?? "")}${target ? ` ${theme.fg("muted", target)}` : ""}`,
 			);
 			return text;
 		},
@@ -282,20 +290,27 @@ export default function registerDownload(pi: ExtensionAPI): void {
 				: fallback;
 			const text = new Text(body, 0, 0);
 			if (options.isPartial) return text;
-			if (options.expanded) {
-				return frameToolResult(text, theme, context.isError || details?.ok === false);
-			}
-
 			const failed = context.isError || details?.ok === false;
-			const marker = failed
-				? theme.fg("error", COLLAPSED_TOOL_GLYPH.error)
-				: theme.fg("accent", icon("update"));
-			const summary = body.replace(/\s+/g, " ").trim();
-			return frameToolResult(
-				new Text(`${marker} ${theme.fg(failed ? "error" : "dim", summary)}`, 0, 0),
-				theme,
-				failed,
-			);
+			if (
+				tickCollapse(
+					"download",
+					context.state as CollapseState,
+					context.invalidate,
+					options.expanded,
+				)
+			)
+				return new Text(
+					formatCollapsedToolRow(
+						theme,
+						"download",
+						body.replace(/\s+/g, " ").trim(),
+						"",
+						failed ? "error" : "success",
+					),
+					0,
+					0,
+				);
+			return frameToolResult(text, theme, failed);
 		},
 		async execute(_id, params, _signal, _onUpdate, ctx) {
 			const p = params as { action: string; url?: string; handle?: string; dir?: string };

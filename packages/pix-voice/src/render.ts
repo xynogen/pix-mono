@@ -21,6 +21,7 @@ import {
 	bodyLine,
 	type CollapsedToolStatus,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
 	moreLines,
@@ -35,6 +36,8 @@ interface TextLike extends Component {
 // ToolRenderContext is not re-exported by pi-coding-agent; model the fields the
 // renderers actually read. Structurally compatible with the SDK context.
 interface RenderCtx {
+	executionStarted?: boolean;
+	isPartial?: boolean;
 	lastComponent: Component | undefined;
 	isError: boolean;
 	state: Record<string, unknown>;
@@ -88,7 +91,7 @@ export function makeRenderCall<TArgs>(title: string, pickArg: (args: TArgs) => s
 		)
 			return text;
 		const arg = pickArg(args);
-		text.setText(`${theme.fg("toolTitle", theme.bold(title))} ${theme.fg("dim", arg)}`);
+		text.setText(`${formatToolCallTitle(theme, title, ctx)} ${theme.fg("dim", arg)}`);
 		return text;
 	};
 }

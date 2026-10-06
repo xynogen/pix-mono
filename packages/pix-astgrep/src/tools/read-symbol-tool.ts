@@ -14,7 +14,13 @@ import { relative, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { frameToolResult } from "@xynogen/pix-pretty/utils";
+import {
+	formatCollapsedToolRow,
+	formatToolCallTitle,
+	frameToolResult,
+	hideCollapsedToolCall,
+} from "@xynogen/pix-pretty/utils";
+import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import { type ExecuteCtx, grammarConsent } from "../consent.ts";
 import { languageForFile, type SgNode } from "../engine.ts";
@@ -78,10 +84,12 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 			symbol: Type.String({ description: "Exact symbol name to read." }),
 		}),
 
-		renderCall(args, theme) {
+		renderCall(args, theme, context) {
+			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
+				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string; symbol?: string };
-			const title = t.fg("toolTitle", t.bold("read_symbol"));
+			const title = formatToolCallTitle(t, "read_symbol", context);
 			const sym = t.fg("dim", a.symbol ?? "");
 			const path = a.path ? t.fg("muted", ` · ${a.path}`) : "";
 			return new Text(`${title} ${sym}${path}`.trimEnd(), 0, 0);
@@ -92,10 +100,30 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 			const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
 			const details = result.details as { outcome?: string } | undefined;
 			const isError = context.isError || details?.outcome === "error";
-			const glyph = isError ? icon("status.error") : icon("status.done");
+			if (
+				!options.isPartial &&
+				tickCollapse(
+					"read_symbol",
+					context.state as CollapseState,
+					context.invalidate,
+					options.expanded,
+				)
+			)
+				return new Text(
+					formatCollapsedToolRow(
+						theme,
+						"read_symbol",
+						"",
+						`${text.split("\n").length} lines`,
+						isError ? "error" : "success",
+					),
+					0,
+					0,
+				);
+			const glyph = isError ? icon("status.error") : icon("status.ok");
 			const role = isError ? "error" : "success";
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial || !details) return body;
+			if (options.isPartial) return body;
 			return frameToolResult(body, theme, isError);
 		},
 

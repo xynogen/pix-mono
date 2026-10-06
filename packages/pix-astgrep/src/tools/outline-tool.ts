@@ -11,7 +11,13 @@ import { extname, join, relative, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { frameToolResult } from "@xynogen/pix-pretty/utils";
+import {
+	formatCollapsedToolRow,
+	formatToolCallTitle,
+	frameToolResult,
+	hideCollapsedToolCall,
+} from "@xynogen/pix-pretty/utils";
+import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import { type ExecuteCtx, grammarConsent } from "../consent.ts";
 import { languageForFile, type SgNode } from "../engine.ts";
@@ -117,10 +123,12 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 			path: Type.String({ description: "File or directory to outline." }),
 		}),
 
-		renderCall(args, theme) {
+		renderCall(args, theme, context) {
+			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
+				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string };
-			const title = t.fg("toolTitle", t.bold("ast_grep_outline"));
+			const title = formatToolCallTitle(t, "ast_grep_outline", context);
 			return new Text(`${title} ${t.fg("dim", a.path ?? "")}`.trimEnd(), 0, 0);
 		},
 
@@ -129,10 +137,30 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 			const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
 			const details = result.details as { outcome?: string } | undefined;
 			const isError = context.isError || details?.outcome === "error";
-			const glyph = isError ? icon("status.error") : icon("status.done");
+			if (
+				!options.isPartial &&
+				tickCollapse(
+					"ast_grep_outline",
+					context.state as CollapseState,
+					context.invalidate,
+					options.expanded,
+				)
+			)
+				return new Text(
+					formatCollapsedToolRow(
+						theme,
+						"ast_grep_outline",
+						"",
+						`${text.split("\n").length} lines`,
+						isError ? "error" : "success",
+					),
+					0,
+					0,
+				);
+			const glyph = isError ? icon("status.error") : icon("status.ok");
 			const role = isError ? "error" : "success";
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial || !details) return body;
+			if (options.isPartial) return body;
 			return frameToolResult(body, theme, isError);
 		},
 

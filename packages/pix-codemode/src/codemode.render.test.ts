@@ -147,6 +147,29 @@ test("failed output remains visible with an error close", () => {
 	close(lines, "error", 80);
 	expect(lines).toMatchSnapshot();
 });
+test("child calls use the parent icon column with two spaces of indentation", async () => {
+	const parent = (await call("return 1;", 80))[0]!.replace(/<[^>]+>/g, "");
+	const calls = (["running", "ok", "error", "cancelled"] as const).map((status) => ({
+		id: status,
+		name: "read",
+		args: "file.ts",
+		status,
+	}));
+	const lines = capture(
+		renderResult(
+			{ ...result(), details: { calls } },
+			{ ...options, isPartial: true },
+			theme,
+			context(),
+		),
+		80,
+	);
+	for (const line of lines) {
+		const plain = line.replace(/<[^>]+>/g, "");
+		expect(plain.indexOf("read")).toBe(parent.indexOf("codemode") + 2);
+	}
+});
+
 test("partial output shows the latest eight calls without a completed frame", () => {
 	const calls = Array.from({ length: 10 }, (_, i) => ({
 		id: `${i}`,

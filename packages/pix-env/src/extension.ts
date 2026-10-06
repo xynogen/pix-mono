@@ -20,8 +20,15 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { frameToolResult, getTextContent } from "@xynogen/pix-pretty/utils";
+import {
+	formatCollapsedToolRow,
+	formatToolCallTitle,
+	frameToolResult,
+	getTextContent,
+	hideCollapsedToolCall,
+} from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
+import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
 import {
@@ -78,6 +85,16 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 					}),
 				),
 			}),
+			renderShell: "self",
+			renderCall(args, theme, context) {
+				if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
+					return new Text("", 0, 0);
+				return new Text(
+					`${formatToolCallTitle(theme, "read_env", context)} ${theme.fg("dim", args.action)}`,
+					0,
+					0,
+				);
+			},
 			renderResult(result, _options, theme, renderCtx) {
 				const details = result.details as
 					| { action?: string; types?: Record<string, "boolean" | "int" | "float" | "string"> }
@@ -91,7 +108,28 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 								)
 								.join("\n")
 						: getTextContent(result) || "No env variables loaded.";
-				return frameToolResult(new Text(body, 0, 0), theme, renderCtx.isError);
+				if (
+					!_options.isPartial &&
+					tickCollapse(
+						"read_env",
+						renderCtx.state as CollapseState,
+						renderCtx.invalidate,
+						_options.expanded,
+					)
+				)
+					return new Text(
+						formatCollapsedToolRow(
+							theme,
+							"read_env",
+							details?.action ?? "",
+							"",
+							renderCtx.isError ? "error" : "success",
+						),
+						0,
+						0,
+					);
+				const text = new Text(body, 0, 0);
+				return _options.isPartial ? text : frameToolResult(text, theme, renderCtx.isError);
 			},
 			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 				const reg = params.path ? loadPath(params.path) : loadRegistry(ctx.cwd);

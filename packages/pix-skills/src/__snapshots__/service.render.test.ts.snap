@@ -1,89 +1,5 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`captures registered skill Text output and its 100-character expanded instruction limit 1`] = `
-"list:call
-
-<toolTitle+bold>read_skills</toolTitle+bold> <dim>list</dim>                                                                
-list
-
-<muted>Available skills (2): lint · test</muted>                                               
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-list:collapsed
-
-<success>✓ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>list</dim> <muted>·</muted> <muted>2 skills</muted>                                                  
-description:call
-
-<toolTitle+bold>read_skills</toolTitle+bold> <dim>description · test</dim>                                                  
-description
-
-<muted>DESCRIPTION · test</muted>                                                              
-<muted>Test the code.</muted>                                                                  
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-description:collapsed
-
-<success>✓ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>description · test</dim>                                               
-instructions:call
-
-<toolTitle+bold>read_skills</toolTitle+bold> <dim>instructions · test</dim>                                                 
-instructions
-
-<muted>INSTRUCTIONS · test · 1 lines</muted>                                                   
-<muted>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</muted>
-<muted>xxxxxxxxxxxxxxxxxxxx...</muted>                                                         
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-instructions:collapsed
-
-<success>✓ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>instructions · test</dim> <muted>·</muted> <muted>1 lines</muted>                                    
-reference:call
-
-<toolTitle+bold>read_skills</toolTitle+bold> <dim>reference · test/references/rules.md</dim>                                
-reference
-
-<muted>REFERENCE · test</muted>                                                                
-<muted>references/rules.md · 22 B</muted>                                                      
-<muted># Rules</muted>                                                                         
-<muted>Keep raw bytes.</muted>                                                                 
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-reference:collapsed
-
-<success>✓ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>reference · test</dim> <muted>·</muted> <muted>22 B</muted>                                          
-copy:call
-
-<toolTitle+bold>read_skills</toolTitle+bold> <dim>copy · test/scripts/test.ts → .pi/tools/test.ts</dim>                     
-copy
-
-<muted>COPIED · test</muted>                                                                   
-<muted>scripts/test.ts → .pi/tools/test.ts · 2.0 KiB</muted>                                   
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-copy:collapsed
-
-<success>✓ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>copy · .pi/tools/test.ts</dim> <muted>·</muted> <muted>2.0 KiB</muted>                               
-search:call
-
-<toolTitle+bold>read_skills</toolTitle+bold> <dim>search · code</dim>                                                       
-search
-
-<accent+bold>skills.sh</accent+bold> <muted>2 matches for “code” · installs descending</muted>                            
-<dim> 1</dim>  <accent+bold>lint</accent+bold>  <dim>acme/tools</dim>  <muted>3.0K installs</muted>                                             
-<dim> 2</dim>  <accent+bold>test</accent+bold>  <dim>acme/skills</dim>  <muted>1.2K installs</muted>                                            
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-search:collapsed
-
-<success>✓ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>search “code”</dim> <muted>·</muted> <muted>2 matches</muted>                                        
-hidden-call
-error
-
-<muted>Skill not found</muted>                                                                 
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
-partial
-
-<muted>Skill not found</muted>                                                                 
-no-details
-
-<muted>Skill not found</muted>                                                                 
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
-`;
-
 exports[`captures the real skill picker with observed search completion and disposal 1`] = `
 "picker:local
 <accent+bg:customMessageBg>╭──────────────────────────────────────────────╮</accent+bg:customMessageBg>
@@ -171,4 +87,88 @@ picker:scroll
 <accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
 <accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ move · ⏎ insert · esc cancel</muted+bg:customMessageBg><text+bg:customMessageBg>              </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
 <accent+bg:customMessageBg>╰──────────────────────────────────────────────╯</accent+bg:customMessageBg>"
+`;
+
+exports[`captures registered skill Text output and complete expanded instructions 1`] = `
+"list:call
+
+<warning>◐︎ </warning> <toolTitle+bold>read_skills</toolTitle+bold> <dim>list</dim>                                                             
+list
+
+<muted>Available skills (2): lint · test</muted>                                               
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+list:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>list</dim> <muted>·</muted> <muted>2 skills</muted>                                                  
+description:call
+
+<warning>◐︎ </warning> <toolTitle+bold>read_skills</toolTitle+bold> <dim>description · test</dim>                                               
+description
+
+<muted>DESCRIPTION · test</muted>                                                              
+<muted>Test the code.</muted>                                                                  
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+description:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>description · test</dim>                                               
+instructions:call
+
+<warning>◐︎ </warning> <toolTitle+bold>read_skills</toolTitle+bold> <dim>instructions · test</dim>                                              
+instructions
+
+<muted>INSTRUCTIONS · test · 1 lines</muted>                                                   
+<muted>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</muted>
+<muted>xxxxxxxxxxxxxxxxxxxxx</muted>                                                           
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+instructions:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>instructions · test</dim> <muted>·</muted> <muted>1 lines</muted>                                    
+reference:call
+
+<warning>◐︎ </warning> <toolTitle+bold>read_skills</toolTitle+bold> <dim>reference · test/references/rules.md</dim>                             
+reference
+
+<muted>REFERENCE · test</muted>                                                                
+<muted>references/rules.md · 22 B</muted>                                                      
+<muted># Rules</muted>                                                                         
+<muted>Keep raw bytes.</muted>                                                                 
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+reference:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>reference · test</dim> <muted>·</muted> <muted>22 B</muted>                                          
+copy:call
+
+<warning>◐︎ </warning> <toolTitle+bold>read_skills</toolTitle+bold> <dim>copy · test/scripts/test.ts → .pi/tools/test.ts</dim>                  
+copy
+
+<muted>COPIED · test</muted>                                                                   
+<muted>scripts/test.ts → .pi/tools/test.ts · 2.0 KiB</muted>                                   
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+copy:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>copy · .pi/tools/test.ts</dim> <muted>·</muted> <muted>2.0 KiB</muted>                               
+search:call
+
+<warning>◐︎ </warning> <toolTitle+bold>read_skills</toolTitle+bold> <dim>search · code</dim>                                                    
+search
+
+<accent+bold>skills.sh</accent+bold> <muted>2 matches for “code” · installs descending</muted>                            
+<dim> 1</dim>  <accent+bold>lint</accent+bold>  <dim>acme/tools</dim>  <muted>3.0K installs</muted>                                             
+<dim> 2</dim>  <accent+bold>test</accent+bold>  <dim>acme/skills</dim>  <muted>1.2K installs</muted>                                            
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+search:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>read_skills</toolTitle+bold> <dim>search “code”</dim> <muted>·</muted> <muted>2 matches</muted>                                        
+hidden-call
+error
+
+<muted>Skill not found</muted>                                                                 
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+partial
+
+<muted>Skill not found</muted>                                                                 
+no-details
+
+<muted>Skill not found</muted>                                                                 
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
 `;

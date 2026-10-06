@@ -2,12 +2,12 @@
 
 exports[`edit captures anchored/exact calls, pending/completed diffs and result states: call 1`] = `
 "
-<toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> · <muted>1 operations</muted>                                                    "
+<warning>◐︎ </warning> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> · <muted>1 operations</muted>                                                 "
 `;
 
 exports[`edit captures anchored/exact calls, pending/completed diffs and result states: call 2`] = `
 "
-<toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim><muted> · 2 edits · estimate · </muted><toolDiffAdded>+2</toolDiffAdded> <toolDiffRemoved>-2</toolDiffRemoved>                                      "
+<warning>◐︎ </warning> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim><muted> · 2 edits · estimate · </muted><toolDiffAdded>+2</toolDiffAdded> <toolDiffRemoved>-2</toolDiffRemoved>                                   "
 `;
 
 exports[`edit captures anchored/exact calls, pending/completed diffs and result states: single pending 1`] = `
@@ -47,7 +47,7 @@ exports[`edit captures anchored/exact calls, pending/completed diffs and result 
 
 exports[`edit captures anchored/exact calls, pending/completed diffs and result states: collapsed 1`] = `
 "
-<success>✓ </success> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> <muted>·</muted> <muted>+1 -1</muted>                                                        "
+<success>✓︎ </success> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> <muted>·</muted> <muted>+1 -1</muted>                                                        "
 `;
 
 exports[`edit captures anchored/exact calls, pending/completed diffs and result states: error expanded 1`] = `
@@ -58,7 +58,7 @@ exports[`edit captures anchored/exact calls, pending/completed diffs and result 
 
 exports[`edit captures anchored/exact calls, pending/completed diffs and result states: error collapsed 1`] = `
 "
-<error>✗ </error> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> <muted>·</muted> <muted>failed</muted>                                                       "
+<error>✗︎ </error> <toolTitle+bold>edit</toolTitle+bold> <dim>src/a.ts</dim> <muted>·</muted> <muted>failed</muted>                                                       "
 `;
 
 exports[`edit captures anchored/exact calls, pending/completed diffs and result states: error partial 1`] = `

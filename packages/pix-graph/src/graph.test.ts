@@ -161,7 +161,7 @@ describe("graph tool", () => {
 		expect(render("success", false, true)).toContain("[success]- - - - - - - - - - [/success]");
 		expect(render("running")).not.toContain("- -");
 		expect(render("success", true)).not.toContain("- -");
-		expect(render(undefined)).not.toContain("- -");
+		expect(render(undefined)).toContain("[success]- - - - - - - - - - [/success]");
 	});
 
 	test("build mode writes the graph and reports counts", async () => {

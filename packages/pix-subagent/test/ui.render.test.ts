@@ -114,6 +114,38 @@ test("captures registered agent, control and utility render states", async () =>
 		expect([...tools.keys()]).toEqual(["agent", "agent_control"]);
 		const agent = tools.get("agent")!;
 		const control = tools.get("agent_control")!;
+		const lifecycleState: { collapsed?: boolean; timer?: ReturnType<typeof setTimeout> } = {};
+		for (const [executionStarted, isPartial, isError, role] of [
+			[false, true, false, "muted"],
+			[true, true, false, "warning"],
+			[true, false, false, "success"],
+			[true, false, true, "error"],
+		] as const) {
+			const lines = captureRows(
+				agent.renderCall!(
+					{ type: "Explore" },
+					theme as never,
+					{
+						state: lifecycleState,
+						executionStarted,
+						isPartial,
+						isError,
+						expanded: false,
+						invalidate() {},
+					} as never,
+				),
+				{ width: 80, surface: "component" },
+			);
+			expect(lines[0]).toStartWith(`<${role}>`);
+		}
+		expect(lifecycleState.timer).toBeUndefined();
+		expect(
+			agent.renderCall!(
+				{},
+				theme as never,
+				{ state: { collapsed: true }, isPartial: false, expanded: false, invalidate() {} } as never,
+			).render(80),
+		).toEqual([]);
 		const captures: string[] = [];
 		const state = { collapsed: false };
 		const ctx = (expanded = false, isError = false) =>
@@ -210,8 +242,7 @@ test("captures registered agent, control and utility render states", async () =>
 		)!;
 		const overflowRows = captureRows(overflow, { width: 80, surface: "host-self" });
 		expect(overflowRows).toHaveLength(55);
-		// Two summary rows precede the 50 retained detail rows and the overflow hint.
-		expect(overflowRows[52]).toMatch(/^<dim> {2}line 49 {2}<\/dim> *$/);
+		expect(overflowRows[53]?.trimEnd()).toBe("<dim>  line 50  </dim>");
 		captures.push(
 			JSON.stringify({
 				label: "agent detail cap",

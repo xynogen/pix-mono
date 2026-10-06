@@ -13,19 +13,19 @@ exports[`captures registered ls calls, grid, tree, batch and result states 1`] =
   ],
   "batchCall": [
     "",
-    "<toolTitle+bold>ls</toolTitle+bold> <dim>4 dirs</dim>                                                                       ",
+    "<warning>◐︎ </warning> <toolTitle+bold>ls</toolTitle+bold> <dim>4 dirs</dim>                                                                    ",
   ],
   "call": [
     "",
-    "<toolTitle+bold>ls</toolTitle+bold> <dim>src</dim>                                                                          ",
+    "<warning>◐︎ </warning> <toolTitle+bold>ls</toolTitle+bold> <dim>src</dim>                                                                       ",
   ],
   "collapsed": [
     "",
-    "<success>✓ </success> <toolTitle+bold>ls</toolTitle+bold> <dim>src</dim> <muted>·</muted> <muted>4 entries</muted>                                                           ",
+    "<success>✓︎ </success> <toolTitle+bold>ls</toolTitle+bold> <dim>src</dim> <muted>·</muted> <muted>4 entries</muted>                                                           ",
   ],
   "collapsedError": [
     "",
-    "<error>✗ </error> <toolTitle+bold>ls</toolTitle+bold> <dim>src</dim> <muted>·</muted> <muted>failed</muted>                                                              ",
+    "<error>✗︎ </error> <toolTitle+bold>ls</toolTitle+bold> <dim>src</dim> <muted>·</muted> <muted>failed</muted>                                                              ",
   ],
   "error": [
     "",

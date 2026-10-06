@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, formatToolCallTitle } from "@xynogen/pix-pretty/utils";
 import { makeRenderCall, makeRenderResult } from "./render.ts";
 
 const theme = {
@@ -40,8 +40,8 @@ test("renderCall shows title + dim arg", () => {
 	const stub = stubComponent();
 	const rc = makeRenderCall<{ url: string }>("fetch", (a) => a.url);
 	rc({ url: "https://x.com" }, theme, context(stub));
-	// Only the tool name is accent/toolTitle-colored; the arg is secondary.
-	expect(stub.get()).toBe("[toolTitle]*fetch* [dim]https://x.com");
+	// The tool name is primary. The target is secondary.
+	expect(stub.get()).toBe(`${formatToolCallTitle(theme, "fetch")} [dim]https://x.com`);
 });
 
 test("renderCall hides only an effectively collapsed call row", () => {
@@ -55,7 +55,7 @@ test("renderCall hides only an effectively collapsed call row", () => {
 		theme,
 		context(stub, { state: { collapsed: true }, expanded: true }),
 	);
-	expect(stub.get()).toBe("[toolTitle]*fetch* [dim]https://x.com");
+	expect(stub.get()).toBe(`${formatToolCallTitle(theme, "fetch")} [dim]https://x.com`);
 });
 
 test("renderResult renders structured compact details after collapse", () => {

@@ -4,11 +4,11 @@ exports[`captures actual graph calls, progress, trees and terminal result states
 {
   "bfs": [
     "",
-    "<toolTitle+bold>graph</toolTitle+bold> <muted>query · bfs</muted> <dim>“What calls authenticate?”</dim>                                    ",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph</toolTitle+bold> <muted>query · bfs</muted> <dim>“What calls authenticate?”</dim>                                 ",
   ],
   "build": [
     "",
-    "<toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <dim>src</dim>                                                                 ",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <dim>src</dim>                                                              ",
   ],
   "built": [
     "",
@@ -18,15 +18,15 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   ],
   "collapsed": [
     "",
-    "<success>✓ </success> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>done</muted>                                                           ",
+    "<success>✓︎ </success> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>done</muted>                                                           ",
   ],
   "collapsedError": [
     "",
-    "<error>✗ </error> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>failed</muted>                                                         ",
+    "<error>✗︎ </error> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>failed</muted>                                                         ",
   ],
   "dfs": [
     "",
-    "<toolTitle+bold>graph</toolTitle+bold> <muted>query · dfs</muted> <dim>“Trace authenticate to the token cache and show each          </dim>",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph</toolTitle+bold> <muted>query · dfs</muted> <dim>“Trace authenticate to the token cache and show each       </dim>",
     "<dim>dependency across the request path.”</dim>                                            ",
   ],
   "empty": [
@@ -51,6 +51,7 @@ exports[`captures actual graph calls, progress, trees and terminal result states
     "one                                                                             ",
     "                                                                                ",
     "two                                                                             ",
+    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
   ],
   "hiddenCall": [],
   "partial": [

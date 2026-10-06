@@ -34,7 +34,11 @@ test("W1 capture: registered download call and self results", async () => {
 		const theme = roleTheme();
 		expect(
 			captureRows(
-				registered.renderCall({ action: "add", url: "https://example.test/file.iso" }, theme, {}),
+				registered.renderCall({ action: "add", url: "https://example.test/file.iso" }, theme, {
+					state: {},
+					invalidate() {},
+					expanded: false,
+				}),
 				{ width: 80, surface: "component" },
 			),
 		).toMatchSnapshot("call");
@@ -65,6 +69,8 @@ test("W1 capture: registered download call and self results", async () => {
 			],
 		] as const) {
 			const component = registered.renderResult(value, { expanded, isPartial }, theme, {
+				state: { collapsed: name.startsWith("compact") },
+				invalidate() {},
 				expanded,
 				isError,
 			});
@@ -90,13 +96,13 @@ describe("download renderer", () => {
 				result(true, ["dl-sleek-pika-63 queued — https://example.com/archlinux.iso"]),
 				{ expanded: false, isPartial: false },
 				plainTheme,
-				{ expanded: false, isError: false },
+				{ state: { collapsed: true }, invalidate() {}, expanded: false, isError: false },
 			)
 			.render(160);
 
-		expect(rendered[0]).toContain(icon("update"));
+		expect(rendered[0]).toContain(icon("status.ok"));
 		expect(rendered[0]).toContain("dl-sleek-pika-63 queued");
-		expect(rendered.at(-1)).toBe("- ".repeat(80));
+		expect(rendered).toHaveLength(1);
 	});
 
 	test("shows errors in the compact row", () => {
@@ -105,7 +111,7 @@ describe("download renderer", () => {
 				result(false, [], "aria2c not found"),
 				{ expanded: false, isPartial: false },
 				plainTheme,
-				{ expanded: false, isError: true },
+				{ state: { collapsed: true }, invalidate() {}, expanded: false, isError: true },
 			)
 			.render(80)
 			.join("\n");
@@ -122,12 +128,16 @@ describe("download renderer", () => {
 		const host = tool();
 		const success = host
 			.renderResult(result(true, ["queued"]), { expanded: true, isPartial: false }, theme, {
+				state: { collapsed: true },
+				invalidate() {},
 				expanded: true,
 				isError: false,
 			})
 			.render(20);
 		const error = host
 			.renderResult(result(false, [], "failed"), { expanded: true, isPartial: false }, theme, {
+				state: { collapsed: true },
+				invalidate() {},
 				expanded: true,
 				isError: true,
 			})

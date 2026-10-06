@@ -2,14 +2,15 @@
 
 exports[`W1 capture: registered download call and self results: call 1`] = `
 [
-  "<toolTitle+bold>download</toolTitle+bold> <dim>add</dim> <muted>https://example.test/file.iso</muted>                                      ",
+  "<muted>○︎ </muted> <toolTitle+bold>download</toolTitle+bold> <dim>add</dim> <muted>https://example.test/file.iso</muted>                                   ",
 ]
 `;
 
 exports[`W1 capture: registered download call and self results: compact success 1`] = `
 [
   "",
-  "<accent>↓︎</accent> <dim>dl-fixed-otter-42 queued https://example.test/file.iso</dim>                        ",
+  "dl-fixed-otter-42 queued                                                        ",
+  "https://example.test/file.iso                                                   ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;
@@ -17,7 +18,7 @@ exports[`W1 capture: registered download call and self results: compact success 
 exports[`W1 capture: registered download call and self results: compact error 1`] = `
 [
   "",
-  "<error>✗</error> <error>aria2c not found</error>                                                              ",
+  "aria2c not found                                                                ",
   "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
 ]
 `;
@@ -50,7 +51,7 @@ exports[`W1 capture: registered download call and self results: partial 1`] = `
 exports[`W1 capture: registered download call and self results: fallback 1`] = `
 [
   "",
-  "<accent>↓︎</accent> <dim>no active downloads</dim>                                                           ",
+  "no active downloads                                                             ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;

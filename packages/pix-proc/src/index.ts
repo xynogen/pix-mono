@@ -18,12 +18,14 @@ import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
-	COLLAPSED_TOOL_GLYPH,
+	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
+	hideCollapsedToolCall,
 	rule,
 } from "@xynogen/pix-pretty/utils";
-import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
+import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import { MAX_LOG_LINES, statusLine, statusWord } from "./format.ts";
 import { ProcManager } from "./manager.ts";
@@ -183,10 +185,12 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			),
 		}),
 		renderCall(args, theme, context) {
+			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
+				return new Text("", 0, 0);
 			const a = args as { action?: string; command?: string; handle?: string };
 			const target = a.command ?? a.handle ?? "";
 			return commandPreview(
-				`${theme.fg("toolTitle", theme.bold("proc"))} ${theme.fg("dim", a.action ?? "")}`,
+				`${formatToolCallTitle(theme, "proc", context)} ${theme.fg("dim", a.action ?? "")}`,
 				target,
 				a.command ? "bash" : undefined,
 				theme as unknown as { fg: (key: string, text: string) => string },
@@ -208,16 +212,21 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			const text = new Text(body, 0, 0);
 			if (options.isPartial) return text;
 			const failed = context.isError || details?.ok === false;
-			if (options.expanded) return frameToolResult(text, theme, failed);
-			const marker = failed
-				? theme.fg("error", COLLAPSED_TOOL_GLYPH.error)
-				: theme.fg("accent", icon("process"));
-			const summary = body.replace(/\s+/g, " ").trim();
-			return frameToolResult(
-				new Text(`${marker} ${theme.fg(failed ? "error" : "dim", summary)}`, 0, 0),
-				theme,
-				failed,
-			);
+			if (
+				tickCollapse("proc", context.state as CollapseState, context.invalidate, options.expanded)
+			)
+				return new Text(
+					formatCollapsedToolRow(
+						theme,
+						"proc",
+						body.replace(/\s+/g, " ").trim(),
+						"",
+						failed ? "error" : "success",
+					),
+					0,
+					0,
+				);
+			return frameToolResult(text, theme, failed);
 		},
 		async execute(_id, params, _signal, _onUpdate, ctx) {
 			const p = params as {

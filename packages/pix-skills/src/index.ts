@@ -19,6 +19,7 @@ import { Text } from "@earendil-works/pi-tui";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
@@ -451,8 +452,7 @@ export function formatExpandedSkillResult(details: SkillResultDetails, text: str
 			return `${dotJoin(["DESCRIPTION", details.name])}\n${description}`;
 		}
 		case "instructions": {
-			const preview = text.length > 100 ? `${text.slice(0, 100)}...` : text;
-			return `${dotJoin(["INSTRUCTIONS", details.name, `${details.lines} lines`])}\n${preview}`;
+			return `${dotJoin(["INSTRUCTIONS", details.name, `${details.lines} lines`])}\n${text}`;
 		}
 		case "reference":
 			return `${dotJoin(["REFERENCE", details.name])}\n${dotJoin([details.resource, humanSize(details.bytes)])}\n${text}`;
@@ -690,7 +690,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 				return component;
 			const label = formatSkillCallLabel(args as SkillCallArgs);
 			component.setText(
-				`${theme.fg("toolTitle", theme.bold("read_skills"))} ${theme.fg("dim", label)}`,
+				`${formatToolCallTitle(theme, "read_skills", renderCtx)} ${theme.fg("dim", label)}`,
 			);
 			return component;
 		},
@@ -703,7 +703,28 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 			const component =
 				renderCtx.lastComponent instanceof Text ? renderCtx.lastComponent : new Text("", 0, 0);
 			const details = result.details as SkillResultDetails | undefined;
-			if (!renderCtx.isError && details) {
+			if (
+				!options.isPartial &&
+				renderCtx.isError &&
+				tickCollapse(
+					"read_skills",
+					renderCtx.state as CollapseState,
+					renderCtx.invalidate,
+					options.expanded,
+				)
+			) {
+				component.setText(
+					formatCollapsedToolRow(
+						theme,
+						"read_skills",
+						text?.split("\n")[0] ?? "failed",
+						"",
+						"error",
+					),
+				);
+				return component;
+			}
+			if (!options.isPartial && !renderCtx.isError && details) {
 				const state = renderCtx.state as CollapseState;
 				if (tickCollapse("read_skills", state, renderCtx.invalidate, renderCtx.expanded)) {
 					// Collapsed row mirrors the call label: `<action> <target> · <meta>` so

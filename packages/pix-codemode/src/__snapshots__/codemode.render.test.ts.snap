@@ -2,13 +2,13 @@
 
 exports[`normal call at 80 columns 1`] = `
 [
-  "<warning>◐︎ </warning> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted><syntaxKeyword>return</syntaxKeyword> <syntaxNumber>1</syntaxNumber>;                                                         ",
+  "<muted>○︎ </muted> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted><syntaxKeyword>return</syntaxKeyword> <syntaxNumber>1</syntaxNumber>;                                                         ",
 ]
 `;
 
 exports[`truncated and expanded call at 80 columns: preview 1`] = `
 [
-  "<warning>◐︎ </warning> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
+  "<muted>○︎ </muted> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
   "   <syntaxKeyword>const</syntaxKeyword> n0 = <syntaxNumber>0</syntaxNumber>;",
   "   <syntaxKeyword>const</syntaxKeyword> n1 = <syntaxNumber>1</syntaxNumber>;",
   "   <syntaxKeyword>const</syntaxKeyword> n2 = <syntaxNumber>2</syntaxNumber>;",
@@ -31,7 +31,7 @@ exports[`truncated and expanded call at 80 columns: preview 1`] = `
 
 exports[`truncated and expanded call at 80 columns: expanded 1`] = `
 [
-  "<warning>◐︎ </warning> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
+  "<muted>○︎ </muted> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
   "   <syntaxKeyword>const</syntaxKeyword> n0 = <syntaxNumber>0</syntaxNumber>;",
   "   <syntaxKeyword>const</syntaxKeyword> n1 = <syntaxNumber>1</syntaxNumber>;",
   "   <syntaxKeyword>const</syntaxKeyword> n2 = <syntaxNumber>2</syntaxNumber>;",
@@ -57,7 +57,7 @@ exports[`truncated and expanded call at 80 columns: expanded 1`] = `
 
 exports[`long call wraps at 80 columns 1`] = `
 [
-  "<warning>◐︎ </warning> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
+  "<muted>○︎ </muted> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
   "   <syntaxKeyword>return</syntaxKeyword>",
   "   <syntaxString>"abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdef</syntaxString>",
   "   <syntaxString>ghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij"</syntaxString>;",
@@ -90,7 +90,7 @@ exports[`long result wraps preview and expansion at 80 columns: expanded 1`] = `
 
 exports[`long call wraps at 120 columns 1`] = `
 [
-  "<warning>◐︎ </warning> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
+  "<muted>○︎ </muted> <toolTitle+bold>codemode</toolTitle+bold><muted> · </muted>",
   "   <syntaxKeyword>return</syntaxKeyword>",
   "   <syntaxString>"abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdef</syntaxString>",
   "   <syntaxString>ghijabcdefghij"</syntaxString>;",
@@ -133,7 +133,7 @@ exports[`JSON output omits host header and closes with success 1`] = `
 
 exports[`collapsed success hides the call and expansion restores the body: collapsed 1`] = `
 [
-  "<success>✓ </success> <toolTitle+bold>codemode</toolTitle+bold> <muted>·</muted> <muted>0 calls · 3 lines · 0.3s</muted>                                          ",
+  "<success>✓︎ </success> <toolTitle+bold>codemode</toolTitle+bold> <muted>·</muted> <muted>0 calls · 3 lines · 0.3s</muted>                                          ",
 ]
 `;
 
@@ -156,23 +156,23 @@ exports[`failed output remains visible with an error close 1`] = `
 
 exports[`partial output shows the latest eight calls without a completed frame 1`] = `
 [
-  "<muted>… +2 earlier calls</muted>                                                              ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file2</dim>                                                                    ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file3</dim>                                                                    ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file4</dim>                                                                    ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file5</dim>                                                                    ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file6</dim>                                                                    ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file7</dim>                                                                    ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file8</dim>                                                                    ",
-  "<warning>◐︎</warning> <toolTitle>read</toolTitle> <dim>file9</dim>                                                                    ",
+  "  <muted>… +2 earlier calls</muted>                                                            ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file2</dim>                                                                 ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file3</dim>                                                                 ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file4</dim>                                                                 ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file5</dim>                                                                 ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file6</dim>                                                                 ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file7</dim>                                                                 ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file8</dim>                                                                 ",
+  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file9</dim>                                                                 ",
 ]
 `;
 
 exports[`mixed call status, empty output and image placeholder: statuses 1`] = `
 [
-  "<success>✓︎</success> <toolTitle>read</toolTitle> <dim>file0</dim><muted> · 0.1s · $0.01</muted>                                                     ",
-  "<error>✗︎</error> <toolTitle>read</toolTitle> <dim>file1</dim><muted> · 0.1s · $0.01</muted>                                                     ",
-  "<muted>⊘︎</muted> <toolTitle>read</toolTitle> <dim>file2</dim><muted> · 0.1s · $0.01</muted>                                                     ",
+  "  <success>✓︎ </success> <toolTitle>read</toolTitle> <dim>file0</dim><muted> · 0.1s · $0.01</muted>                                                  ",
+  "  <error>✗︎ </error> <toolTitle>read</toolTitle> <dim>file1</dim><muted> · 0.1s · $0.01</muted>                                                  ",
+  "  <muted>⊘︎ </muted> <toolTitle>read</toolTitle> <dim>file2</dim><muted> · 0.1s · $0.01</muted>                                                  ",
   "<toolOutput>plain</toolOutput>                                                                           ",
   "<muted>0.3s · $0.03</muted>                                                                    ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",

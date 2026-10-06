@@ -5,7 +5,7 @@ import { collapseSection, gateSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 
 // Snapshot budget exception: 174 lines retain six modes and seven real picker states, including ten visible scroll rows.
-test("captures registered skill Text output and its 100-character expanded instruction limit", async () => {
+test("captures registered skill Text output and complete expanded instructions", async () => {
 	const fixture = await withUiFixture();
 	const agent = process.env.PI_CODING_AGENT_DIR;
 	try {
@@ -101,7 +101,7 @@ test("captures registered skill Text output and its 100-character expanded instr
 						.slice(2, -1)
 						.map((row) => row.match(/<muted>(.*?)<\/muted>/)?.[1] ?? "")
 						.join(""),
-				).toBe(`${"x".repeat(100)}...`);
+				).toBe(`${"x".repeat(101)}`);
 			await fixture.runtime.update(collapseSection, (current) => ({
 				...current,
 				enabled: true,
@@ -141,6 +141,17 @@ test("captures registered skill Text output and its 100-character expanded instr
 			);
 			if (isError) expect(rendered.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
 		}
+		const collapsedError = tool.renderResult!(
+			error,
+			{ expanded: false, isPartial: false },
+			theme as never,
+			makeRenderCtx({ state: { collapsed: true }, isError: true }) as never,
+		).render(80);
+		expect(collapsedError).toHaveLength(1);
+		expect(collapsedError[0]).toContain("Skill not found");
+		expect(
+			captureRows({ render: () => collapsedError }, { width: 80, surface: "component" })[0],
+		).toContain("<error>");
 		expect(output.join("\n")).toMatchSnapshot();
 	} finally {
 		if (agent === undefined) delete process.env.PI_CODING_AGENT_DIR;

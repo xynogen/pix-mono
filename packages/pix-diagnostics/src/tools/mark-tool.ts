@@ -13,6 +13,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
@@ -56,7 +57,7 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { action?: string; disposition?: string; path?: string };
-			const title = t.fg("toolTitle", t.bold("lens_diagnostic_mark"));
+			const title = formatToolCallTitle(t, "lens_diagnostic_mark", context);
 			const act = t.fg("muted", a.action ?? "");
 			const extra = a.disposition ? t.fg("dim", ` ${a.disposition}`) : "";
 			return new Text(`${title} ${act}${extra}`.trimEnd(), 0, 0);
@@ -77,7 +78,8 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 			const glyph = isError ? icon("status.error") : icon("status.done");
 			const role = isError ? "error" : "success";
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial || !details) return body;
+			if (options.isPartial) return body;
+			if (!details) return frameToolResult(body, theme, isError);
 			if (
 				tickCollapse(
 					"lens_diagnostic_mark",

@@ -1,12 +1,12 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`sudo self-shell calls and all result states 1`] = `
-"call: ["","<toolTitle+bold>sudo</toolTitle+bold><muted> · </muted><syntaxType>printf</syntaxType> <syntaxString>'fixture'</syntaxString>                                                         "]
-wrap80: ["","<toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","  <syntaxType>printf</syntaxType> <syntaxString>'a quoted fixture value that stays intact across command wrapping'</syntaxString> &&","  <syntaxType>printf</syntaxType> <syntaxString>'done'</syntaxString>"]
-wrap120: ["","<toolTitle+bold>sudo</toolTitle+bold><muted> · </muted><syntaxType>printf</syntaxType> <syntaxString>'a quoted fixture value that stays intact across command wrapping'</syntaxString> && <syntaxType>printf</syntaxType> <syntaxString>'done'</syntaxString>                       "]
-multiline: ["","<toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","  <syntaxType>printf</syntaxType> <syntaxString>'first'</syntaxString>","  <syntaxType>printf</syntaxType> <syntaxString>'second'</syntaxString>"]
+"call: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted><syntaxType>printf</syntaxType> <syntaxString>'fixture'</syntaxString>                                                      "]
+wrap80: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","  <syntaxType>printf</syntaxType> <syntaxString>'a quoted fixture value that stays intact across command wrapping'</syntaxString> &&","  <syntaxType>printf</syntaxType> <syntaxString>'done'</syntaxString>"]
+wrap120: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted><syntaxType>printf</syntaxType> <syntaxString>'a quoted fixture value that stays intact across command wrapping'</syntaxString> && <syntaxType>printf</syntaxType> <syntaxString>'done'</syntaxString>                    "]
+multiline: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","  <syntaxType>printf</syntaxType> <syntaxString>'first'</syntaxString>","  <syntaxType>printf</syntaxType> <syntaxString>'second'</syntaxString>"]
 hiddenCall: []
-expandedCall: ["","<toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>id                                                                       "]
+expandedCall: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>id                                                                    "]
 success: ["","   done                                                                         ","<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"]
 preview: ["","   first                                                                        ","                                                                                ","<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>","   <muted>… 1 more line</muted>                                                                "]
 error: ["","   failed                                                                       ","<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"]
@@ -21,8 +21,8 @@ cancelled: ["","   <warning>cancelled</warning>                                 
 authentication: ["","<error>Authentication failed</error>                                                           ","<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"]
 generic: ["","   <muted>done</muted>                                                                         ","<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"]
 genericError: ["","<error>failed</error>                                                                          ","<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"]
-collapsed: ["","<success>✓ </success> <toolTitle+bold>sudo</toolTitle+bold> <muted>·</muted> <muted>exit 0 · 3 lines · </muted><dim>printf fixture</dim>"]
-collapsedError: ["","<error>✗ </error> <toolTitle+bold>sudo</toolTitle+bold> <muted>·</muted> <muted>denied · </muted><dim>printf fixture</dim>"]
+collapsed: ["","<success>✓︎ </success> <toolTitle+bold>sudo</toolTitle+bold> <muted>·</muted> <muted>exit 0 · 3 lines · </muted><dim>printf fixture</dim>"]
+collapsedError: ["","<error>✗︎ </error> <toolTitle+bold>sudo</toolTitle+bold> <muted>·</muted> <muted>denied · </muted><dim>printf fixture</dim>"]
 reopened: ["","   first                                                                        ","                                                                                ","   last                                                                         ","<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"]"
 `;
 

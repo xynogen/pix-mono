@@ -5,7 +5,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "describe": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp describe demo_search</toolTitle+bold>                                                       ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp describe demo_search</toolTitle+bold>                                                    ",
     " demo_search                                                                    ",
     " <syntaxVariable>Server</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> demo                                                                   ",
     "                                                                                ",
@@ -19,14 +19,14 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "direct-collapsed": [
     "",
     "                                                                                ",
-    " <success>✓ </success> <toolTitle+bold>demo_search</toolTitle+bold> <muted>·</muted> <muted>2 lines                                                       </muted>",
+    " <success>✓︎ </success> <toolTitle+bold>demo_search</toolTitle+bold> <muted>·</muted> <muted>2 lines                                                       </muted>",
     "                                                                                ",
     "                                                                                ",
   ],
   "direct-error": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>demo_search</toolTitle+bold>                                                                    ",
+    " <muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                 ",
     " <syntaxVariable>Error</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> upstream failed                                                         ",
     " retry later                                                                    ",
     "                                                                                ",
@@ -38,7 +38,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "direct-reexpanded": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>demo_search</toolTitle+bold>                                                                    ",
+    " <muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                 ",
     " <toolOutput>one</toolOutput>                                                                            ",
     " <toolOutput>two</toolOutput>                                                                            ",
     " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
@@ -47,7 +47,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "direct-success": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>demo_search</toolTitle+bold>                                                                    ",
+    " <muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                 ",
     " <toolOutput>done</toolOutput>                                                                           ",
     " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
     "                                                                                ",
@@ -55,7 +55,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "empty": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp status</toolTitle+bold>                                                                     ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                  ",
     " <toolOutput>(empty result)</toolOutput>                                                                 ",
     " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
     "                                                                                ",
@@ -69,7 +69,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "image": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp status</toolTitle+bold>                                                                     ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                  ",
     " [image: image/png]                                                             ",
     " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
     "                                                                                ",
@@ -77,7 +77,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "list": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp list demo</toolTitle+bold>                                                                  ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp list demo</toolTitle+bold>                                                               ",
     " <syntaxVariable>demo</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> 1 tools                                                                  ",
     " - demo_search - Find records                                                   ",
     " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",
@@ -86,7 +86,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "long-expanded": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>demo_search</toolTitle+bold>                                                                    ",
+    " <muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                 ",
     " {                                                                              ",
     "   <syntaxVariable>"value"</syntaxVariable>:                                                                     ",
     " <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx </syntaxString>",
@@ -98,7 +98,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "long-preview": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>demo_search</toolTitle+bold>                                                                    ",
+    " <muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                 ",
     " {                                                                              ",
     "   <syntaxVariable>"value"</syntaxVariable>: <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString>›    ",
     " }                                                                              ",
@@ -108,21 +108,21 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "partial": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp call demo_search</toolTitle+bold>                                                           ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp call demo_search</toolTitle+bold>                                                        ",
     " <warning>Running MCP tool...</warning>                                                            ",
     "                                                                                ",
   ],
   "proxy-collapsed": [
     "",
     "                                                                                ",
-    " <success>✓ </success> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim> <muted>·</muted> <muted>2 lines                                                 </muted>",
+    " <success>✓︎ </success> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim> <muted>·</muted> <muted>2 lines                                                 </muted>",
     "                                                                                ",
     "                                                                                ",
   ],
   "proxy-error-expanded": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp status</toolTitle+bold>                                                                     ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                  ",
     " <syntaxVariable>Error</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> upstream failed                                                         ",
     " retry later                                                                    ",
     "                                                                                ",
@@ -134,7 +134,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "proxy-success": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp call demo_search</toolTitle+bold>                                                           ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp call demo_search</toolTitle+bold>                                                        ",
     " {                                                                              ",
     "   <syntaxVariable>"query"</syntaxVariable>: <syntaxString>"records"</syntaxString>                                                           ",
     " }                                                                              ",
@@ -145,7 +145,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "search": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp search records</toolTitle+bold>                                                             ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp search records</toolTitle+bold>                                                          ",
     " <toolOutput>1 match for "records":</toolOutput>                                                         ",
     " <toolOutput>- demo_search - Find records</toolOutput>                                                   ",
     "                                                                                ",
@@ -156,7 +156,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "status": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp status</toolTitle+bold>                                                                     ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                  ",
     " <syntaxVariable>MCP</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> 1/1 servers, 1 tools                                                      ",
     "                                                                                ",
     " ✓︎  demo (1 tools)                                                              ",
@@ -168,7 +168,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "toon-json": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>demo_search</toolTitle+bold>                                                                    ",
+    " <muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                 ",
     " {                                                                              ",
     "   <syntaxVariable>"ok"</syntaxVariable>: <syntaxKeyword>true</syntaxKeyword>,                                                                  ",
     "   <syntaxVariable>"rows"</syntaxVariable>: [                                                                    ",
@@ -184,7 +184,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "truncated-preview-with-hint": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>mcp status</toolTitle+bold>                                                                     ",
+    " <muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                  ",
     " <toolOutput>row 1</toolOutput>                                                                          ",
     " <toolOutput>row 2</toolOutput>                                                                          ",
     " <toolOutput>row 3</toolOutput>                                                                          ",
@@ -273,7 +273,7 @@ exports[`registered MCP gateway and direct tools use the host Box 1`] = `
   "unsupported-toon": [
     "",
     "                                                                                ",
-    " <toolTitle+bold>demo_search</toolTitle+bold>                                                                    ",
+    " <muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                 ",
     " <syntaxVariable>nested</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation>                                                                        ",
     "   <syntaxVariable>child</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> <syntaxKeyword>true</syntaxKeyword>                                                                  ",
     " <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> ",

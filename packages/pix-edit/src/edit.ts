@@ -35,6 +35,7 @@ import {
 	BODY_PAD,
 	dotJoin,
 	fillToolBackground,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -455,7 +456,7 @@ export function registerEditTool(
 				)
 			)
 				return text;
-			const hdr = `${theme.fg("toolTitle", theme.bold("edit"))} ${theme.fg("dim", sp(fp))}`;
+			const hdr = `${formatToolCallTitle(theme, "edit", renderCtx)} ${theme.fg("dim", sp(fp))}`;
 
 			if (Array.isArray(args.edits) && args.edits.some((edit) => "pos" in edit)) {
 				text.setText(

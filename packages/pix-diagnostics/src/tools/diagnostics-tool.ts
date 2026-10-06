@@ -17,6 +17,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
@@ -136,7 +137,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { source?: string; paths?: string[] };
-			const title = t.fg("toolTitle", t.bold("lens_diagnostics"));
+			const title = formatToolCallTitle(t, "lens_diagnostics", context);
 			const src = t.fg("muted", a.source ?? "session");
 			const count = a.paths?.length ? t.fg("dim", `${a.paths.length} paths`) : "";
 			return new Text(`${title} ${src} ${count}`.trimEnd(), 0, 0);
@@ -150,7 +151,8 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			const glyph = isError ? icon("status.error") : icon("status.done");
 			const role = isError ? "error" : "success";
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial || !details) return body;
+			if (options.isPartial) return body;
+			if (!details) return frameToolResult(body, theme, isError);
 			if (
 				tickCollapse(
 					"lens_diagnostics",

@@ -98,6 +98,15 @@ test("hunk captures local self-shell states without running commands", async () 
 			expect(output).not.toContain("Hidden body");
 			expect(output).toMatchSnapshot(name);
 		}
+		const fallback = rows(
+			tool.renderResult?.(
+				{ content: [{ type: "text", text: "raw fallback\n  detail" }], details: undefined },
+				{ expanded: false, isPartial: false },
+				theme as never,
+				makeRenderCtx() as never,
+			),
+		);
+		expect(fallback.split("\n").at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
 		expect(
 			rows(
 				tool.renderResult?.(

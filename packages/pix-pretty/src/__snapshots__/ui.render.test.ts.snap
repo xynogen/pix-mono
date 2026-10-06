@@ -28,7 +28,7 @@ exports[`shared shell completed, error, partial, collapsed and expanded captures
 
 exports[`shared shell completed, error, partial, collapsed and expanded captures: collapsed 1`] = `
 [
-  "<success>✓ </success> <toolTitle+bold>bash</toolTitle+bold> <muted>·</muted> <muted>3 lines · 100ms · </muted><dim>printf fixture</dim>",
+  "<success>✓︎ </success> <toolTitle+bold>bash</toolTitle+bold> <muted>·</muted> <muted>3 lines · 100ms · </muted><dim>printf fixture</dim>",
 ]
 `;
 

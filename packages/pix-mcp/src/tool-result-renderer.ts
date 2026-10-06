@@ -2,7 +2,12 @@ import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/p
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
-import { formatJson, frameToolResult, renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
+import {
+	formatJson,
+	formatToolCallTitle,
+	frameToolResult,
+	renderCollapsedToolRow,
+} from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
@@ -16,6 +21,8 @@ interface RenderTheme {
 /** The render context Pi passes as renderResult's 4th arg. */
 interface McpRenderCtx {
 	isError?: boolean;
+	isPartial?: boolean;
+	executionStarted?: boolean;
 	expanded?: boolean;
 	// CollapseState plus async-highlight cache slots for each rendered surface.
 	state?: CollapseState & HlState;
@@ -308,7 +315,7 @@ function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRende
 	if (ctx?.state?.collapsed && !ctx.expanded) return new Text("", 0, 0);
 
 	const [title = "mcp", ...rest] = lines;
-	const styledTitle = theme.fg("toolTitle", theme.bold ? theme.bold(title) : title);
+	const styledTitle = formatToolCallTitle(theme, title, ctx);
 
 	// The trailing lines are a pretty-printed args block (JSON); highlight it.
 	if (ctx?.state && ctx.invalidate) {
@@ -408,17 +415,20 @@ function collapsedRow(
 	// Direct tools pass their registered name so the collapsed row keeps the same
 	// identity the call row showed; the proxy tool omits it and stays "mcp".
 	displayName?: string,
+	isError = false,
 ): string {
 	const d = result.details as Record<string, unknown>;
 	const tool = typeof d.tool === "string" ? d.tool : "";
 	const server = typeof d.server === "string" ? d.server : "";
 	const lineCount = result.content.flatMap(blockToLines).length;
 	const meta = lineCount > 0 ? `${lineCount} ${lineCount === 1 ? "line" : "lines"}` : "";
-	if (displayName) return renderCollapsedToolRow(theme, displayName, "", meta);
+	const status = isError ? "error" : "success";
+	const diagnostic = isError ? (result.content.flatMap(blockToLines)[0] ?? "failed") : "";
+	if (displayName) return renderCollapsedToolRow(theme, displayName, diagnostic, meta, status);
 	let target = tool;
 	if (tool && server) target = `${tool} @ ${server}`;
 	else if (!tool) target = server;
-	return renderCollapsedToolRow(theme, "mcp", target, meta);
+	return renderCollapsedToolRow(theme, "mcp", diagnostic || target, meta, status);
 }
 
 export function renderMcpToolResult(
@@ -435,12 +445,11 @@ export function renderMcpToolResult(
 	const hasErrorDetails = Boolean(result.details.error);
 	const isError = context?.isError === true || hasErrorDetails;
 
-	// Auto-collapse to a summary row after the delay, like bash/read. Errors are
-	// never collapsed (the timer is skipped so the failure stays visible).
-	if (!isError && context?.state && context.invalidate && theme.bold) {
+	// Keep the diagnostic in the collapsed row. Expansion restores the complete result.
+	if (context?.state && context.invalidate && theme.bold) {
 		const withBold = theme as RenderTheme & { bold: (text: string) => string };
 		if (tickCollapse(displayName ?? "mcp", context.state, context.invalidate, options.expanded)) {
-			return new Text(collapsedRow(result, withBold, displayName), 0, 0);
+			return new Text(collapsedRow(result, withBold, displayName, isError), 0, 0);
 		}
 	}
 

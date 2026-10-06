@@ -30,6 +30,7 @@ import {
 	appendNotices,
 	countRipgrepMatches,
 	fillToolBackground,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -278,7 +279,7 @@ export function registerGrepTool(
 				return text;
 			text.setText(
 				fillToolBackground(
-					`${theme.fg("toolTitle", theme.bold("grep"))} ${theme.fg("dim", pattern)}${path}${glob}`,
+					`${formatToolCallTitle(theme, "grep", renderCtx)} ${theme.fg("dim", pattern)}${path}${glob}`,
 				),
 			);
 			return text;

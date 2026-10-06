@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { join } from "node:path";
 import { MAX_PREVIEW_LINES } from "./config.ts";
+import { icon } from "./icon-catalog.ts";
 import type { FgTheme } from "./types.ts";
 import {
 	BODY_PAD,
@@ -10,6 +11,7 @@ import {
 	fillToolBackground,
 	formatCollapsedToolRow,
 	formatJson,
+	formatToolCallTitle,
 	frameToolResult,
 	frameToolSection,
 	hideCollapsedToolCall,
@@ -62,6 +64,25 @@ class CountingTextComponent {
 	}
 	invalidate(): void {}
 }
+
+describe("tool call lifecycle", () => {
+	it("uses pending, running, success, and error markers in order", () => {
+		const theme = {
+			fg: (role: string, text: string) => `<${role}>${text}</${role}>`,
+			bold: (text: string) => text,
+		};
+		for (const [context, role, key] of [
+			[{ executionStarted: false, isPartial: true }, "muted", "status.pending"],
+			[{ executionStarted: true, isPartial: true }, "warning", "status.running"],
+			[{ executionStarted: true, isPartial: false }, "success", "status.ok"],
+			[{ executionStarted: true, isPartial: false, isError: true }, "error", "status.error"],
+		] as const) {
+			expect(formatToolCallTitle(theme, "edit", context)).toBe(
+				`<${role}>${padIcon(icon(key))}</${role}> <toolTitle>edit</toolTitle>`,
+			);
+		}
+	});
+});
 
 describe("viewportText", () => {
 	it("trims a pre-filled row to Pi's narrower fullscreen viewport", () => {

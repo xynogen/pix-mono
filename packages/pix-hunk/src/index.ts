@@ -4,6 +4,7 @@ import { reportToolStatus, type ToolStatusUI } from "@xynogen/pix-pretty/tool-st
 import {
 	dotJoin,
 	formatCollapsedToolRow,
+	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
@@ -479,7 +480,7 @@ export default function registerHunk(pi: ExtensionAPI, runner: HunkRunner = runH
 				return text;
 			const actions = ((args as { ops?: ToolOp[] }).ops ?? []).map((op) => op.action);
 			text.setText(
-				`${theme.fg("toolTitle", theme.bold("hunk"))} ${theme.fg("dim", actionSummary(actions))}`,
+				`${formatToolCallTitle(theme, "hunk", context)} ${theme.fg("dim", actionSummary(actions))}`,
 			);
 			return text;
 		},
@@ -490,14 +491,11 @@ export default function registerHunk(pi: ExtensionAPI, runner: HunkRunner = runH
 				text.setText(
 					result.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n"),
 				);
-				return text;
+				return options.isPartial ? text : frameToolResult(text, theme, context.isError);
 			}
-			const collapsed = tickCollapse(
-				"hunk",
-				context.state as CollapseState,
-				context.invalidate,
-				options.expanded,
-			);
+			const collapsed =
+				!options.isPartial &&
+				tickCollapse("hunk", context.state as CollapseState, context.invalidate, options.expanded);
 			if (collapsed) {
 				text.setText(renderSummary(details, theme as HunkTheme));
 				return text;

@@ -9,6 +9,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+import { collapseSection } from "@xynogen/pix-runtime/sections";
+import { withUiFixture } from "../../../scripts/ui-capture.ts";
 import {
 	buildResponseText,
 	formatAnswerScalar,
@@ -290,7 +292,7 @@ describe("registerAsk", () => {
 			.join("\n")
 			.trimEnd();
 		expect(tool.renderShell).toBe("self");
-		expect(call).toBe("ask_user Which approach? · 1 question");
+		expect(call).toMatch(/^.+ ask_user Which approach\? · 1 question$/);
 
 		state.collapsed = true;
 		const result = tool
@@ -328,7 +330,7 @@ describe("registerAsk", () => {
 				{ expanded: true, state, invalidate: () => {}, isError: false },
 			)
 			.render(40);
-		expect(expanded[0]?.trimEnd()).toBe("✓ ask_user");
+		expect(expanded[0]?.trimEnd()).toBe("1: REST");
 		expect(expanded.at(-1)).toBe("- ".repeat(20));
 
 		const partial = tool
@@ -381,6 +383,27 @@ describe("registerAsk", () => {
 		expect(completed[0]?.trimEnd()).toBe("At least one question is required.");
 		expect(completed.at(-1)).toBe(`[error]${"- ".repeat(20)}[/error]`);
 
+		const fixture = await withUiFixture();
+		try {
+			await fixture.runtime.update(collapseSection, (current) => ({
+				...current,
+				enabled: true,
+				tools: {},
+			}));
+			const collapsedError = tool
+				.renderResult(
+					{ content: [{ type: "text", text: "At least one question is required." }] },
+					{ expanded: false, isPartial: false },
+					theme,
+					{ expanded: false, state: { collapsed: true }, invalidate() {}, isError: true },
+				)
+				.render(240);
+			expect(collapsedError).toHaveLength(1);
+			expect(collapsedError[0]).toContain("At least one question is required.");
+			expect(collapsedError[0]).toContain("[error]");
+		} finally {
+			await fixture.restore();
+		}
 		const noColorTheme = {
 			fg: (_color: string, text: string) => text,
 			bold: (text: string) => text,
