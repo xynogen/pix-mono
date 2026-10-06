@@ -3,7 +3,7 @@
  *
  * Pix twist vs tintinweb: model name is ALWAYS shown inline in the header line
  * (e.g. "Explore [haiku]") even when it matches the parent model. Types and
- * formatting helpers are re-exported from tools.ts to avoid circular deps.
+ * Formatting helpers come from the shared display layer.
  *
  * Ported from tintinweb/pi-subagents (MIT), adapted for pix-mono.
  */
@@ -11,10 +11,6 @@
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon, rule } from "@xynogen/pix-pretty/utils";
-import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
-import type { AgentManager } from "../agent-manager.ts";
-import { getConfig } from "../agent-types.ts";
-import type { AgentActivity, AgentDetails, Theme } from "../tools.ts";
 import {
 	describeActivity,
 	formatContext,
@@ -24,8 +20,17 @@ import {
 	formatToolUses,
 	formatTurns,
 	SPINNER,
-} from "../tools.ts";
-import type { AgentInvocation, SubagentType } from "../types.ts";
+} from "@xynogen/pix-pretty/widget-format";
+import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
+import type { AgentManager } from "../agent-manager.ts";
+import { getConfig } from "../agent-types.ts";
+import type {
+	AgentActivity,
+	AgentDetails,
+	AgentInvocation,
+	SubagentType,
+	Theme,
+} from "../types.ts";
 import { type ContextUsageLike, getSessionContextUsage, type SessionLike } from "../usage.ts";
 
 export type { AgentActivity, AgentDetails, Theme };

@@ -11,6 +11,55 @@ import type { LifetimeUsage } from "./usage.ts";
 
 export type { LifetimeUsage, ThinkingLevel };
 
+import type { ThemeLike } from "@xynogen/pix-pretty/types";
+export type Theme = {
+	fg(color: Parameters<ThemeLike["fg"]>[0], text: string): string;
+	bold(text: string): string;
+};
+
+export interface AgentActivity {
+	activeTools: Map<string, string>;
+	toolUses: number;
+	responseText: string;
+	session?: unknown;
+	turnCount: number;
+	maxTurns?: number;
+	lifetimeUsage: LifetimeUsage;
+	/** Cumulative milliseconds spent streaming output (not idle/tool time). */
+	streamingMs: number;
+}
+
+export interface AgentDetails {
+	displayName: string;
+	description: string;
+	subagentType: string;
+	toolUses: number;
+	/** Context-window utilization as a pre-formatted string (e.g. "30.1K/1.00M (3%)"), or "" when unavailable. */
+	context: string;
+	/** Raw output tokens — for t/s = outputTokens / streamingMs. */
+	outputTokens?: number;
+	durationMs: number;
+	/** Cumulative streaming-only milliseconds (for accurate t/s). */
+	streamingMs?: number;
+	status:
+		| "queued"
+		| "running"
+		| "completed"
+		| "steered"
+		| "aborted"
+		| "stopped"
+		| "error"
+		| "background";
+	activity?: string;
+	spinnerFrame?: number;
+	modelName?: string;
+	tags?: string[];
+	turnCount?: number;
+	maxTurns?: number;
+	agentId?: string;
+	error?: string;
+}
+
 /** Agent type: any string name (built-in defaults or user-defined). */
 export type SubagentType = string;
 
@@ -109,6 +158,14 @@ export interface AgentInfoResultDetails {
 	kind: "types" | "models" | "active";
 	query?: string;
 	count: number;
+	rows?: {
+		id: string;
+		status: AgentRecord["status"];
+		type: string;
+		modelName?: string;
+		description: string;
+	}[];
+	guidance?: string;
 }
 
 export interface AgentResultDetails {

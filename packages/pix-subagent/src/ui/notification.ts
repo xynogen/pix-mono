@@ -8,7 +8,13 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
-import { formatContext, formatMs, formatSpeed, formatToolUses, formatTurns } from "../tools.ts";
+import {
+	formatContext,
+	formatMs,
+	formatSpeed,
+	formatToolUses,
+	formatTurns,
+} from "@xynogen/pix-pretty/widget-format";
 import type { NotificationDetails } from "../types.ts";
 
 type NotificationTheme = {

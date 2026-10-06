@@ -256,7 +256,28 @@ test("captures registered agent, control and utility render states", async () =>
 					: kind === "models"
 						? "Current parent: test/model-one\n\nAvailable models:\ntest/model-one  — 100k ctx\n\nOmit model to inherit."
 						: "Agents:\nagent-one  — running · Explore [test/model-one] · Check\n\nPass an ID to agent_control.";
-			const value = result({ _type: "agent-info", kind, count: 1 }, text);
+			const value = result(
+				{
+					_type: "agent-info",
+					kind,
+					count: 1,
+					...(kind === "active"
+						? {
+								rows: [
+									{
+										id: "agent-one",
+										status: "running",
+										type: "Explore",
+										modelName: "test/model-one",
+										description: "Check",
+									},
+								],
+								guidance: "Pass an ID to agent_control.",
+							}
+						: {}),
+				},
+				text,
+			);
 			captures.push(capture(`info ${kind} compact`, render(control, value)));
 			captures.push(capture(`info ${kind} expanded`, render(control, value, true)));
 		}

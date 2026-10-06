@@ -293,6 +293,15 @@ describe("subagent utility compact renderers", () => {
 		};
 		const tool = createAgentControlTool(manager as never, new Map(), () => {});
 		const result = await execute(tool, { action: "info", kind: "active" }, ctx);
+		const structured = result as {
+			content: { type: string; text: string }[];
+			details: { rows: { id: string; status: string; modelName?: string }[] };
+		};
+		expect(structured.details.rows).toEqual([
+			expect.objectContaining({ id: "agent-def", status: "running", modelName: "sonnet" }),
+			expect.objectContaining({ id: "agent-abc", status: "completed", modelName: "opus 4.8" }),
+		]);
+		structured.content = [{ type: "text", text: "The display text changed." }];
 		const expanded = render(tool, result, true);
 		expect(expanded).toContain("Agents · 2");
 		// Each row: <mark> <id> <type> [model] · <desc>
