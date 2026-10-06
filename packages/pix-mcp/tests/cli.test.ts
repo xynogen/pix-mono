@@ -54,8 +54,7 @@ describe("cli init helper", () => {
 		if (originalAgentDir === undefined) {
 			delete process.env.PI_CODING_AGENT_DIR;
 		} else {
-			if (originalAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
-			else process.env.PI_CODING_AGENT_DIR = originalAgentDir;
+			process.env.PI_CODING_AGENT_DIR = originalAgentDir;
 		}
 		process.chdir(originalCwd);
 	});
@@ -124,6 +123,38 @@ describe("cli init helper", () => {
 		const config = readJson(piConfigPath);
 		expect(config.imports).toContain("claude-code");
 		expect(logs.join("\n")).toContain(piConfigPath);
+	});
+
+	it("preserves the old config when its atomic replacement fails", async () => {
+		const agentDir = mkdtempSync(join(tempDir(), "pi-mcp-cli-agent-"));
+		process.env.PI_CODING_AGENT_DIR = agentDir;
+		const piConfigPath = join(agentDir, "mcp.json");
+		const original = `${JSON.stringify({ mcpServers: {}, marker: "keep" })}\n`;
+		writeFileSync(piConfigPath, original);
+		writeJson(join(process.env.HOME ?? systemHomedir, ".claude", "mcp.json"), {
+			mcpServers: {},
+		});
+		const originalRename = (await import("node:fs")).renameSync;
+		const { spyOn } = await import("bun:test");
+		const fsModule = await import("node:fs");
+		const rename = spyOn(fsModule, "renameSync").mockImplementation((...args) => {
+			if (args[1] === piConfigPath) throw new Error("replacement failed");
+			return originalRename(...args);
+		});
+		try {
+			const { main } = await importCli();
+			const errors: string[] = [];
+			await expect(
+				main(
+					["init"],
+					() => {},
+					(line) => errors.push(line),
+				),
+			).rejects.toThrow("replacement failed");
+			expect(readFileSync(piConfigPath, "utf8")).toBe(original);
+		} finally {
+			rename.mockRestore();
+		}
 	});
 
 	// Windows without Developer Mode cannot create symlinks. CI (Linux) runs this.

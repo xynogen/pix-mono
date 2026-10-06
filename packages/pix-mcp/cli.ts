@@ -1,33 +1,14 @@
 #!/usr/bin/env bun
 
 import fs from "node:fs";
-import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { agentDir, homeDir, projectDir } from "@xynogen/pix-runtime/paths";
-
-const HOME = homeDir();
-
-const AGENT_DIR = agentDir();
-const PI_CONFIG_PATH = path.join(AGENT_DIR, "mcp.json");
-const GENERIC_GLOBAL_CONFIG_PATH = path.join(HOME, ".config", "mcp", "mcp.json");
-const PROJECT_CONFIG_PATH = path.resolve(process.cwd(), ".mcp.json");
-const PROJECT_PI_CONFIG_PATH = path.join(projectDir(process.cwd()), "mcp.json");
-
-const IMPORT_PATHS: Record<string, string[]> = {
-	cursor: [path.join(HOME, ".cursor", "mcp.json")],
-	"claude-code": [
-		path.join(HOME, ".claude", "mcp.json"),
-		path.join(HOME, ".claude.json"),
-		path.join(HOME, ".claude", "claude_desktop_config.json"),
-	],
-	"claude-desktop": [
-		path.join(HOME, "Library", "Application Support", "Claude", "claude_desktop_config.json"),
-	],
-	codex: [path.join(HOME, ".codex", "config.json")],
-	windsurf: [path.join(HOME, ".windsurf", "mcp.json")],
-	vscode: [path.resolve(process.cwd(), ".vscode", "mcp.json")],
-};
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import {
+	findAvailableImportConfigs,
+	getConfigDiscoveryPaths,
+	getPiGlobalConfigPath,
+} from "./src/config.ts";
 
 type Log = (message: string) => void;
 
@@ -55,6 +36,7 @@ function readJsonFile(filePath: string): Record<string, unknown> {
 }
 
 function loadPiConfig(): PiConfig {
+	const PI_CONFIG_PATH = getPiGlobalConfigPath();
 	if (!fs.existsSync(PI_CONFIG_PATH)) {
 		return { mcpServers: {} };
 	}
@@ -80,32 +62,11 @@ function loadPiConfig(): PiConfig {
 	};
 }
 
-function findAvailableImports(): Array<{ kind: string; path: string }> {
-	const found: Array<{ kind: string; path: string }> = [];
-
-	for (const [kind, candidates] of Object.entries(IMPORT_PATHS)) {
-		const existing = candidates.find((candidate) => fs.existsSync(candidate));
-		if (existing) {
-			found.push({ kind, path: existing });
-		}
-	}
-
-	return found;
-}
-
 function printDiscovery(log: Log, imports: Array<{ kind: string; path: string }>): void {
 	log("Config discovery:\n");
 
-	const paths: Array<[string, string]> = [
-		["User-global standard MCP", GENERIC_GLOBAL_CONFIG_PATH],
-		["Pi global override", PI_CONFIG_PATH],
-		["Project standard MCP", PROJECT_CONFIG_PATH],
-		["Project Pi override", PROJECT_PI_CONFIG_PATH],
-	];
-
-	for (const [label, filePath] of paths) {
-		const prefix = fs.existsSync(filePath) ? "✓" : "-";
-		log(`${prefix} ${label}: ${filePath}`);
+	for (const { label, path: filePath, exists } of getConfigDiscoveryPaths()) {
+		log(`${exists ? "✓" : "-"} ${label}: ${filePath}`);
 	}
 
 	log("\nCompatibility imports:\n");
@@ -120,13 +81,13 @@ function printDiscovery(log: Log, imports: Array<{ kind: string; path: string }>
 }
 
 function writePiConfig(config: PiConfig): void {
-	fs.mkdirSync(path.dirname(PI_CONFIG_PATH), { recursive: true });
-	fs.writeFileSync(PI_CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
+	writeFileAtomicSync(getPiGlobalConfigPath(), `${JSON.stringify(config, null, 2)}\n`);
 }
 
 async function runInit(argv: string[], log: Log = console.log): Promise<number> {
 	const dryRun = argv.includes("--dry-run");
-	const foundImports = findAvailableImports();
+	const PI_CONFIG_PATH = getPiGlobalConfigPath();
+	const foundImports = findAvailableImportConfigs();
 	const existingConfig = loadPiConfig();
 	const existingImports = new Set(existingConfig.imports ?? []);
 	const importsToAdd = foundImports
