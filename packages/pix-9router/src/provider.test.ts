@@ -183,6 +183,15 @@ describe("getMaxTokens", () => {
 // ── getReasoning ──────────────────────────────────────────────────────────────
 
 describe("getReasoning", () => {
+	it("keeps the project thinking default available for cached GPT reasoning models", () => {
+		const mapper = toModelConfig(new Map());
+		for (const id of ["cx/gpt-6.1-sol", "cx/gpt-5.4", "gpt-5"]) {
+			expect(mapper({ id }).reasoning).toBe(true);
+		}
+		expect(getReasoning({ id: "cx/gpt-4.1" })).toBe(false);
+		expect(getReasoning({ id: "cx/gpt-6.1-sol" }, { id: "gpt-6.1", reasoning: false })).toBe(false);
+	});
+
 	it("uses devModel.reasoning when boolean true", () => {
 		expect(getReasoning({ id: "x" }, { id: "x", reasoning: true })).toBe(true);
 	});

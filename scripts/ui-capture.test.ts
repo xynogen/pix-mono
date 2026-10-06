@@ -6,7 +6,15 @@ import {
 	getMarkdownTheme,
 	VERSION,
 } from "@earendil-works/pi-coding-agent";
-import { Box, CURSOR_MARKER, Markdown, Text, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	Box,
+	CURSOR_MARKER,
+	getCapabilities,
+	Markdown,
+	setCapabilities,
+	Text,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import { getIconMode } from "@xynogen/pix-runtime/icon-catalog";
 import * as testing from "@xynogen/pix-runtime/testing";
 import { captureRows, roleTheme, semanticRow, withUiFixture } from "./ui-capture.ts";
@@ -197,13 +205,24 @@ test("opt-in fixture checks installed host reads and real Markdown semantic role
 		expect(raw.every((row) => visibleWidth(row) <= 32)).toBe(true);
 		const rows = captureRows(component, { width: 32, surface: "component" });
 		expect(rows).toEqual(raw.map(semanticRow));
-		expect(() =>
-			captureRows(new Markdown("[link](https://example.com)", 0, 0, markdown), {
-				width: 32,
-				surface: "component",
-				osc133: true,
-			}),
-		).toThrow("Unsupported fixture escape or control");
+		const capabilities = getCapabilities();
+		try {
+			setCapabilities({ ...capabilities, hyperlinks: false });
+			const link = new Markdown("[link](https://example.com)", 0, 0, markdown);
+			expect(captureRows(link, { width: 32, surface: "component" }).join("\n")).toContain(
+				"<mdLink+underline>link</mdLink+underline>",
+			);
+			setCapabilities({ ...capabilities, hyperlinks: true });
+			expect(() =>
+				captureRows(new Markdown("[link](https://example.com)", 0, 0, markdown), {
+					width: 32,
+					surface: "component",
+					osc133: true,
+				}),
+			).toThrow("Unsupported fixture escape or control");
+		} finally {
+			setCapabilities(capabilities);
+		}
 		const rendered = rows.join("\n");
 		for (const role of [
 			"mdHeading",

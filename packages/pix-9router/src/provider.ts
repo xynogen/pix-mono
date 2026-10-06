@@ -129,7 +129,10 @@ export function getMaxTokens(model: RouterModel, devModel?: ModelsDevModel): num
 
 export function getReasoning(model: RouterModel, devModel?: ModelsDevModel): boolean {
 	if (typeof devModel?.reasoning === "boolean") return devModel.reasoning;
-	return /reasoner|thinking|xhigh|high|max|pro|codex|opus|sonnet/i.test(model.id ?? "");
+	// ponytail: Detect GPT-5/6 offline. Add metadata for new families instead of a network wait.
+	return /reasoner|thinking|xhigh|high|max|pro|codex|opus|sonnet|(?:^|\/)gpt-[56](?:[.-]|$)/i.test(
+		model.id ?? "",
+	);
 }
 
 export default async function registerProvider(pi: ExtensionAPI): Promise<void> {
