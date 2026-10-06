@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-codemode",
-	"version": "0.1.1",
+	"version": "0.0.1",
 	"description": "Pi codemode tool with highlighted scripts and Pix result rendering",
 	"type": "module",
 	"main": "src/index.ts",
