@@ -50,6 +50,42 @@ describe("registerReadTool", () => {
 		);
 		expect(result.details).toMatchObject({ content: "a\nb", lineCount: 2 });
 	});
+	it("keeps codemode structured text equal to anchored content for single and batch reads", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-structured-"));
+		await writeFile(join(cwd, "source.ts"), "a\nb\nc\n");
+		await writeFile(join(cwd, "other.ts"), "d\ne\nf\n");
+		const structuredFactory: typeof piReadDefinition = (base, options) => {
+			const definition = piReadDefinition(base, options);
+			return {
+				...definition,
+				execute: async (...args) => {
+					const result = await definition.execute(...args);
+					return {
+						...result,
+						structuredContent: (result.content[0] as { text: string }).text,
+					};
+				},
+			};
+		};
+		const { pi, tool } = capturePi();
+		registerReadTool(pi, structuredFactory as unknown as typeof createReadToolDefinition, {
+			...makeToolContext(),
+			cwd,
+		});
+		const execute = tool.execute as (
+			...args: unknown[]
+		) => Promise<ToolResultLike & { structuredContent?: unknown }>;
+		for (const params of [
+			{ path: "source.ts", offset: 2, limit: 2 },
+			{ paths: ["source.ts"], offset: 2, limit: 2 },
+			{ paths: ["source.ts", "other.ts"], offset: 2, limit: 4 },
+		]) {
+			const result = await execute("id", params, undefined, undefined, { cwd });
+			const text = (result.content?.[0] as { text: string }).text;
+			expect(text).toMatch(/(?:^|\n)2#[0-9A-F]{3}\|b\n3#[0-9A-F]{3}\|c/);
+			expect(result.structuredContent).toBe(text);
+		}
+	});
 	it("keeps pagination anchors stable and caps complete batch lines including annotation bytes", async () => {
 		const cwd = await mkdtemp(join(tempDir(), "hashline-pages-"));
 		await writeFile(join(cwd, "small.ts"), "a\nb\n");

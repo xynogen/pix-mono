@@ -230,6 +230,7 @@ export function registerReadTool(
 				result.content = [
 					{ type: "text", text: [capped.content, notice].filter(Boolean).join("\n\n") },
 				];
+				Object.assign(result, { structuredContent: getTextContent(result) });
 				setResultDetails(result, {
 					_type: "readFile",
 					filePath: path,
@@ -329,6 +330,7 @@ export function registerReadTool(
 					})),
 				],
 				details,
+				...(images.length ? {} : { structuredContent: text }),
 			};
 		},
 
