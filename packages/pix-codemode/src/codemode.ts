@@ -28,6 +28,7 @@ type Call = {
 	durationMs?: number;
 	error?: string;
 	cost?: number;
+	result?: AgentToolResult<unknown> & { isError?: boolean; structuredContent?: unknown };
 };
 type Details = { calls?: Call[]; fullOutputPath?: string };
 type State = CollapseState & Record<string, unknown>;
@@ -98,7 +99,36 @@ function output(result: AgentToolResult<Details>) {
 		let json = false;
 		if (/^[[{]/.test(text.trimStart())) {
 			try {
-				JSON.parse(text);
+				const value = JSON.parse(text);
+				// ponytail: unwrap only the native command envelope. Unknown fields and batch wrappers stay JSON.
+				if (
+					value !== null &&
+					!Array.isArray(value) &&
+					typeof value.output === "string" &&
+					typeof value.truncated === "boolean" &&
+					Number.isSafeInteger(value.exit_code) &&
+					typeof value.wall_time_seconds === "number" &&
+					Number.isFinite(value.wall_time_seconds) &&
+					value.wall_time_seconds >= 0 &&
+					(value.full_output_path === undefined || typeof value.full_output_path === "string") &&
+					Object.keys(value).every((key) =>
+						["output", "truncated", "exit_code", "wall_time_seconds", "full_output_path"].includes(
+							key,
+						),
+					)
+				) {
+					failed ||= value.exit_code !== 0;
+					return {
+						text: value.output,
+						json: false,
+						metadata: dotJoin([
+							`exit ${value.exit_code}`,
+							`command ${formatMs(value.wall_time_seconds * 1000)}`,
+							`truncated: ${value.truncated}`,
+						]),
+						fullOutputPath: value.full_output_path as string | undefined,
+					};
+				}
 				json = true;
 				text = formatJson(text, { maxLines: Number.MAX_SAFE_INTEGER });
 			} catch {
@@ -159,9 +189,10 @@ export function renderResult(
 		);
 	}
 	const rows: string[] = [];
+	const nestedTexts: { text: string; metadata?: string; fullOutputPath?: string }[] = [];
 	const shown = options.expanded ? calls : calls.slice(-8);
 	if (shown.length < calls.length)
-		rows.push(`  ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
+		rows.push(`    ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
 	for (const call of shown) {
 		const status = {
 			ok: ["status.ok", "success"],
@@ -171,7 +202,7 @@ export function renderResult(
 		} as const;
 		const [key, role] = status[call.status];
 		rows.push(
-			`  ${dotJoin(
+			`    ${dotJoin(
 				[
 					`${theme.fg(role, padIcon(icon(key)))} ${theme.fg("toolTitle", call.name)} ${theme.fg("dim", call.args)}`,
 					call.durationMs === undefined ? "" : theme.fg("muted", formatMs(call.durationMs)),
@@ -180,15 +211,48 @@ export function renderResult(
 				(s) => theme.fg("muted", s),
 			)}`,
 		);
-		if (call.error) {
+		if (call.result) {
+			const nestedOutput = output(
+				(call.name === "bash" || call.name === "powershell") && call.result.structuredContent
+					? {
+							content: [{ type: "text", text: JSON.stringify(call.result.structuredContent) }],
+							details: {},
+						}
+					: (call.result as AgentToolResult<Details>),
+			);
+			for (const block of nestedOutput.blocks) {
+				nestedTexts.push(block);
+				for (const line of block.text.split("\n")) {
+					rows.push(`       ${theme.fg(call.result.isError ? "error" : "toolOutput", line)}`);
+				}
+				if (block.metadata) rows.push(`       ${theme.fg("muted", block.metadata)}`);
+				if (block.fullOutputPath)
+					rows.push(`       ${theme.fg("muted", `Full output: ${block.fullOutputPath}`)}`);
+			}
+		}
+		if (call.error && !call.result) {
 			for (const errLine of call.error.split("\n")) {
-				rows.push(`    ${theme.fg("error", errLine)}`);
+				rows.push(`      ${theme.fg("error", errLine)}`);
 			}
 		}
 	}
+	const outputStart = rows.length;
+	const scriptBlocks = display.blocks.filter((block) => {
+		const index = nestedTexts.findIndex(
+			(nested) =>
+				nested.text === block.text &&
+				nested.metadata === block.metadata &&
+				nested.fullOutputPath === block.fullOutputPath,
+		);
+		if (!block.text || index < 0) return true;
+		nestedTexts.splice(index, 1);
+		return false;
+	});
 	if (!options.isPartial) {
-		for (const block of display.blocks) {
-			if (!block.text) continue;
+		if (calls.some((call) => call.result) && scriptBlocks.some((block) => block.text))
+			rows.push(theme.fg("muted", "Script output"));
+		for (const block of scriptBlocks) {
+			if (!block.text && !block.metadata) continue;
 			if (block.json) rows.push(...highlightJson(block.text, theme).split("\n"));
 			else {
 				let errorBlock = false;
@@ -197,6 +261,9 @@ export function renderResult(
 					rows.push(theme.fg(errorBlock ? "error" : "toolOutput", line));
 				}
 			}
+			if (block.metadata) rows.push(theme.fg("muted", block.metadata));
+			if (block.fullOutputPath)
+				rows.push(theme.fg("muted", `Full output: ${block.fullOutputPath}`));
 		}
 		if (wall || cost) rows.push(theme.fg("muted", dotJoin([wall, cost ? costText(cost) : ""])));
 	}
@@ -209,6 +276,10 @@ export function renderResult(
 			: rows;
 	if (result.details?.fullOutputPath)
 		preview.push(theme.fg("muted", `Full output: ${result.details.fullOutputPath}`));
+	// ponytail: script output stays in one section. Do not guess which nested call produced it.
+	if (calls.length > 0) {
+		for (let i = outputStart; i < preview.length; i++) preview[i] = `       ${preview[i]}`;
+	}
 	const prior = ctx.lastComponent ? unframeToolResult(ctx.lastComponent) : undefined;
 	// ponytail: the preview cap counts logical lines. Long values wrap in full.
 	// Add a visual-line viewport if wrapped payloads need a separate height limit.

@@ -156,25 +156,25 @@ exports[`failed output remains visible with an error close 1`] = `
 
 exports[`partial output shows the latest eight calls without a completed frame 1`] = `
 [
-  "  <muted>… +2 earlier calls</muted>                                                            ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file2</dim>                                                                 ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file3</dim>                                                                 ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file4</dim>                                                                 ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file5</dim>                                                                 ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file6</dim>                                                                 ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file7</dim>                                                                 ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file8</dim>                                                                 ",
-  "  <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file9</dim>                                                                 ",
+  "    <muted>… +2 earlier calls</muted>                                                          ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file2</dim>                                                               ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file3</dim>                                                               ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file4</dim>                                                               ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file5</dim>                                                               ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file6</dim>                                                               ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file7</dim>                                                               ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file8</dim>                                                               ",
+  "    <warning>◐︎ </warning> <toolTitle>read</toolTitle> <dim>file9</dim>                                                               ",
 ]
 `;
 
 exports[`mixed call status, empty output and image placeholder: statuses 1`] = `
 [
-  "  <success>✓︎ </success> <toolTitle>read</toolTitle> <dim>file0</dim><muted> · 0.1s · $0.01</muted>                                                  ",
-  "  <error>✗︎ </error> <toolTitle>read</toolTitle> <dim>file1</dim><muted> · 0.1s · $0.01</muted>                                                  ",
-  "  <muted>⊘︎ </muted> <toolTitle>read</toolTitle> <dim>file2</dim><muted> · 0.1s · $0.01</muted>                                                  ",
-  "<toolOutput>plain</toolOutput>                                                                           ",
-  "<muted>0.3s · $0.03</muted>                                                                    ",
+  "    <success>✓︎ </success> <toolTitle>read</toolTitle> <dim>file0</dim><muted> · 0.1s · $0.01</muted>                                                ",
+  "    <error>✗︎ </error> <toolTitle>read</toolTitle> <dim>file1</dim><muted> · 0.1s · $0.01</muted>                                                ",
+  "    <muted>⊘︎ </muted> <toolTitle>read</toolTitle> <dim>file2</dim><muted> · 0.1s · $0.01</muted>                                                ",
+  "       <toolOutput>plain</toolOutput>                                                                    ",
+  "       <muted>0.3s · $0.03</muted>                                                             ",
   "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
 ]
 `;

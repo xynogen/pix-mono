@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from "bun:test";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import type { TextComponentLike } from "@xynogen/pix-pretty/types";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
@@ -90,6 +91,85 @@ test("preserves escaped strings and colors JSON arrays and scalar values", () =>
 	close(lines, "success", 80);
 });
 
+test("command-result JSON renders raw output and preserves its metadata", () => {
+	for (const expanded of [false, true]) {
+		for (const exit_code of [0, 2]) {
+			const envelope = {
+				output: 'first\n  second\n{"raw":true}',
+				truncated: exit_code !== 0,
+				exit_code,
+				wall_time_seconds: 1.25,
+				full_output_path: "fixtures/full.txt",
+			};
+			const payload = result(JSON.stringify(envelope));
+			const before = JSON.stringify(payload);
+			const lines = capture(renderResult(payload, { ...options, expanded }, theme, context()), 80);
+			expect(lines.slice(0, 3).map((line) => line.trimEnd())).toEqual([
+				"<toolOutput>first</toolOutput>",
+				"<toolOutput>  second</toolOutput>",
+				'<toolOutput>{"raw":true}</toolOutput>',
+			]);
+			const text = lines.join("\n");
+			expect(text).toContain(`exit ${exit_code}`);
+			expect(text).toContain("command 1.3s");
+			expect(text).toContain(`truncated: ${envelope.truncated}`);
+			expect(text).toContain("Full output: fixtures/full.txt");
+			close(lines, exit_code === 0 ? "success" : "error", 80);
+			expect(JSON.stringify(payload)).toBe(before);
+		}
+	}
+});
+
+test("nested command output and metadata align with the child tool name", () => {
+	for (const expanded of [false, true]) {
+		const calls = [{ id: "1", name: "bash", args: "{}", status: "ok" as const }];
+		const payload = result(
+			JSON.stringify({
+				output: "first\n  second",
+				truncated: false,
+				exit_code: 0,
+				wall_time_seconds: 1,
+				full_output_path: "fixtures/command.txt",
+			}),
+		);
+		const lines = capture(
+			renderResult(
+				{ ...payload, details: { calls, fullOutputPath: "fixtures/script.txt" } },
+				{ ...options, expanded },
+				theme,
+				context(),
+			),
+			80,
+		).map((line) => line.replace(/<[^>]+>/g, "").trimEnd());
+		const column = visibleWidth(lines[0]!.slice(0, lines[0]!.indexOf("bash")));
+		expect(lines[1]).toBe(`${" ".repeat(column)}first`);
+		expect(lines[2]).toBe(`${" ".repeat(column + 2)}second`);
+		for (const line of lines.slice(3, -1)) {
+			expect(line.match(/^ */)?.[0].length).toBe(column);
+		}
+	}
+});
+
+test("unknown or malformed command envelopes keep all JSON fields", () => {
+	for (const extra of [{ extra: "keep-me" }, { truncated: "invalid" }, { wall_time_seconds: -1 }]) {
+		const envelope = {
+			output: "first\nsecond",
+			truncated: false,
+			exit_code: 0,
+			wall_time_seconds: 1,
+			...extra,
+		};
+		const lines = capture(
+			renderResult(result(JSON.stringify(envelope)), options, theme, context()),
+			80,
+		);
+		expect(lines.join("\n")).toContain('<syntaxVariable>"output"</syntaxVariable>');
+		for (const key of Object.keys(extra)) {
+			expect(lines.join("\n")).toContain(`<syntaxVariable>"${key}"</syntaxVariable>`);
+		}
+	}
+});
+
 test("normal call at 80 columns", async () => {
 	expect(await call("return 1;", 80)).toMatchSnapshot();
 });
@@ -147,7 +227,7 @@ test("failed output remains visible with an error close", () => {
 	close(lines, "error", 80);
 	expect(lines).toMatchSnapshot();
 });
-test("child calls use the parent icon column with two spaces of indentation", async () => {
+test("child calls use the parent icon column with four spaces of indentation", async () => {
 	const parent = (await call("return 1;", 80))[0]!.replace(/<[^>]+>/g, "");
 	const calls = (["running", "ok", "error", "cancelled"] as const).map((status) => ({
 		id: status,
@@ -166,7 +246,7 @@ test("child calls use the parent icon column with two spaces of indentation", as
 	);
 	for (const line of lines) {
 		const plain = line.replace(/<[^>]+>/g, "");
-		expect(plain.indexOf("read")).toBe(parent.indexOf("codemode") + 2);
+		expect(plain.indexOf("read")).toBe(parent.indexOf("codemode") + 4);
 	}
 });
 
