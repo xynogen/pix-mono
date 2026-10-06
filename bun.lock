@@ -11,6 +11,7 @@
         "@earendil-works/pi-tui": "latest",
         "@types/bun": "latest",
         "@types/node": "^22",
+        "@xynogen/pix-runtime": "^0.13.0",
         "typebox": "^1.1.38",
         "typescript": "^5.7.0",
         "typescript-language-server": "^6.0.1",
@@ -85,7 +86,7 @@
     },
     "packages/pix-codemode": {
       "name": "@xynogen/pix-codemode",
-      "version": "0.1.1",
+      "version": "0.0.1",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
