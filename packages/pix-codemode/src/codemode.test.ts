@@ -91,9 +91,10 @@ test("uses the renderer hook without replacing native tool execution", () => {
 		renderShell: "self",
 	});
 	const other = { renderCall: () => "native" };
-	const wrapped = resolver("read", () => other) as { renderCall: unknown; renderResult: unknown };
-	expect(typeof wrapped.renderCall).toBe("function");
-	expect(typeof wrapped.renderResult).toBe("function");
+	for (const name of ["bash", "read", "tool_search", "graph"]) {
+		expect(resolver(name, () => other)).toBe(other);
+		expect(resolver(name, () => undefined)).toBeUndefined();
+	}
 });
 
 test("nested results follow their call IDs, not completion or script output order", async () => {
@@ -261,9 +262,9 @@ test("tool_search uses a compact row and restores full details on expansion", as
 			},
 		});
 		extension(captured.pi as unknown as ExtensionAPI);
-		const renderer = resolver("tool_search", () => undefined) as Parameters<
-			typeof compactRenderers
-		>[1];
+		const native = compactRenderers("tool_search", undefined, () => undefined);
+		const renderer = resolver("tool_search", () => native) as typeof native;
+		expect(renderer).toBe(native);
 		const { ToolExecutionComponent } = await import("@earendil-works/pi-coding-agent");
 		for (const isError of [false, true]) {
 			const card = new ToolExecutionComponent(

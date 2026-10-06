@@ -1,23 +1,16 @@
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import * as host from "@earendil-works/pi-coding-agent";
 import { once } from "@xynogen/pix-runtime/once";
-import { compactRenderers, renderCall, renderResult } from "./codemode.ts";
+import { renderCall, renderResult } from "./codemode.ts";
 
 export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 	once(pi, "pix-codemode", () => {
 		const nested = new Map<string, Map<string, AgentToolResult<unknown>>>();
-		const started = new Map<string, number>();
-		const durations = new Map<string, number>();
+
 		pi.on("tool_execution_start", (event) => {
-			started.set(event.toolCallId, performance.now());
 			if (event.toolName === "codemode") nested.set(event.toolCallId, new Map());
 		});
 		pi.on("tool_execution_end", (event) => {
-			const start = started.get(event.toolCallId);
-			started.delete(event.toolCallId);
-			if (start !== undefined) durations.set(event.toolCallId, performance.now() - start);
-			// ponytail: retain timings for 512 recent calls. Renderer state keeps older visible timings.
-			if (durations.size > 512) durations.delete(durations.keys().next().value!);
 			if (event.parentToolCallId) {
 				nested.get(event.parentToolCallId)?.set(event.toolCallId, {
 					...event.result,
@@ -47,19 +40,13 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 		});
 		pi.on("session_shutdown", () => {
 			nested.clear();
-			started.clear();
-			durations.clear();
 		});
 		const rendererApi = pi as ExtensionAPI & {
 			registerToolRenderer?: (resolver: (name: string, next: () => unknown) => unknown) => void;
 		};
 		if (typeof rendererApi.registerToolRenderer === "function") {
 			rendererApi.registerToolRenderer((name, next) =>
-				name === "codemode"
-					? { renderCall, renderResult, renderShell: "self" }
-					: compactRenderers(name, next() as Parameters<typeof compactRenderers>[1], (id) =>
-							durations.get(id),
-						),
+				name === "codemode" ? { renderCall, renderResult, renderShell: "self" } : next(),
 			);
 			return;
 		}
@@ -75,8 +62,8 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 					return (tool: Parameters<ExtensionAPI["registerTool"]>[0]) =>
 						pi.registerTool({
 							...tool,
-							...(tool.name === "tool_search"
-								? compactRenderers(tool.name, tool, (id) => durations.get(id))
+							...(tool.name !== "codemode"
+								? {}
 								: {
 										renderCall: renderCall as unknown as NonNullable<typeof tool.renderCall>,
 										renderResult: renderResult as unknown as NonNullable<typeof tool.renderResult>,
@@ -91,8 +78,6 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 		// ponytail: older hosts lack the renderer hook. Keep their existing tool wrapper.
 		pi.on("session_start", () => {
 			const tools = pi.getAllTools();
-			if (tools.some((tool) => tool.name === "tool_search"))
-				host.createToolSearchExtension()(proxy);
 			if (tools.some((tool) => tool.name === "codemode")) host.createCodemodeExtension()(proxy);
 		});
 	});
