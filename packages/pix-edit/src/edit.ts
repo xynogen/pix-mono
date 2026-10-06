@@ -98,37 +98,67 @@ type HashParams = { path: string; edits: HashEdit[] };
 type ExactParams = { path: string; edits: EditOperation[] };
 type EditInput = HashParams | ExactParams;
 
+const hashFields = {
+	pos: Type.String({
+		pattern: "^[1-9][0-9]*#[0-9A-F]{3}$",
+		description: "Original LINE#HASH anchor from read",
+	}),
+	lines: Type.Array(
+		Type.String({
+			description:
+				"One literal source line per item. No newline or LINE#HASH| prefix. Empty array deletes.",
+		}),
+	),
+};
 const editSchema = Type.Object(
 	{
-		path: Type.String(),
-		edits: Type.Array(
-			Type.Union([
-				Type.Object(
-					{
-						op: Type.Union([
-							Type.Literal("replace"),
-							Type.Literal("insert_before"),
-							Type.Literal("insert_after"),
-						]),
-						pos: Type.String({ description: "Original LINE#HASH anchor from read" }),
-						end: Type.Optional(Type.String({ description: "Inclusive end anchor, replace only" })),
-						lines: Type.Array(
-							Type.String({
-								description: "Literal source line without a delimiter or anchor prefix",
-							}),
+		path: Type.String({ minLength: 1 }),
+		// ponytail: union whole arrays so the schema rejects mixed formats before execution.
+		edits: Type.Union(
+			[
+				Type.Array(
+					Type.Union([
+						Type.Object(
+							{
+								op: Type.Literal("replace"),
+								...hashFields,
+								end: Type.Optional(
+									Type.String({
+										pattern: "^[1-9][0-9]*#[0-9A-F]{3}$",
+										description: "Inclusive end anchor. Omit for one line.",
+									}),
+								),
+							},
+							{ additionalProperties: false },
 						),
-					},
-					{ additionalProperties: false },
+						Type.Object(
+							{
+								op: Type.Union([Type.Literal("insert_before"), Type.Literal("insert_after")]),
+								...hashFields,
+							},
+							{ additionalProperties: false },
+						),
+					]),
+					{ minItems: 1 },
 				),
-				Type.Object(
-					{
-						oldText: Type.String({ minLength: 1, description: "Exact text, must match once" }),
-						newText: Type.String({ description: "Replacement text, empty deletes" }),
-					},
-					{ additionalProperties: false },
+				Type.Array(
+					Type.Object(
+						{
+							oldText: Type.String({
+								minLength: 1,
+								description: "Exact source text. Include enough context to match once.",
+							}),
+							newText: Type.String({ description: "Replacement text. Empty string deletes." }),
+						},
+						{ additionalProperties: false },
+					),
+					{ minItems: 1 },
 				),
-			]),
-			{ minItems: 1 },
+			],
+			{
+				description:
+					"Use only hash edits or only exact-text edits in this array. Never mix formats.",
+			},
 		),
 	},
 	{ additionalProperties: false },

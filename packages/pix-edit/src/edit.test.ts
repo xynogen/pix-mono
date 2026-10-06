@@ -3,6 +3,7 @@ import { link, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { anchor, hashLine, initHashline } from "@xynogen/pix-runtime/hashline";
 import { tempDir } from "@xynogen/pix-runtime/paths";
+import { Check } from "typebox/value";
 
 beforeAll(initHashline);
 
@@ -36,6 +37,35 @@ const keyedTheme: ThemeLike = {
 };
 
 describe("registerEditTool", () => {
+	it("schema accepts one edit format and rejects malformed hash operations", () => {
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, makeToolContext(), noopTrack);
+		const schema = tool.parameters as Parameters<typeof Check>[0];
+		const hashEdit = { op: "replace", pos: "1#ABC", lines: ["\tconst value = 1;"] };
+		const exactEdit = { oldText: "old", newText: "new" };
+		for (const edits of [
+			[hashEdit],
+			[hashEdit, { op: "insert_after", pos: "2#DEF", lines: [] }],
+			[exactEdit],
+			[exactEdit, { oldText: "other", newText: "" }],
+		]) {
+			expect(Check(schema, { path: "source.ts", edits })).toBe(true);
+		}
+		for (const edits of [
+			[],
+			[hashEdit, exactEdit],
+			[exactEdit, hashEdit],
+			[{ ...hashEdit, oldText: "old" }],
+			[{ ...exactEdit, op: "replace" }],
+			[{ ...hashEdit, pos: "1#abc" }],
+			[{ ...hashEdit, end: "bad" }],
+			[{ ...hashEdit, op: "insert_after", end: "2#DEF" }],
+			[{ ...hashEdit, op: "insert_before", end: "2#DEF" }],
+		]) {
+			expect(Check(schema, { path: "source.ts", edits })).toBe(false);
+		}
+		expect(Check(schema, { path: "", edits: [hashEdit] })).toBe(false);
+	});
 	it("applies original gaps in input order outside deleted ranges", async () => {
 		const cwd = await mkdtemp(join(tempDir(), "hashline-edit-"));
 		const path = join(cwd, "source.ts");
