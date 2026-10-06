@@ -1,24 +1,23 @@
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import * as host from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
-import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
-	frameToolResult,
-	hideCollapsedToolCall,
-	pluralize,
-} from "@xynogen/pix-pretty/utils";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
-import { renderCall, renderResult } from "./codemode.ts";
+import { compactRenderers, renderCall, renderResult } from "./codemode.ts";
 
 export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 	once(pi, "pix-codemode", () => {
 		const nested = new Map<string, Map<string, AgentToolResult<unknown>>>();
+		const started = new Map<string, number>();
+		const durations = new Map<string, number>();
 		pi.on("tool_execution_start", (event) => {
+			started.set(event.toolCallId, performance.now());
 			if (event.toolName === "codemode") nested.set(event.toolCallId, new Map());
 		});
 		pi.on("tool_execution_end", (event) => {
+			const start = started.get(event.toolCallId);
+			started.delete(event.toolCallId);
+			if (start !== undefined) durations.set(event.toolCallId, performance.now() - start);
+			// ponytail: retain timings for 512 recent calls. Renderer state keeps older visible timings.
+			if (durations.size > 512) durations.delete(durations.keys().next().value!);
 			if (event.parentToolCallId) {
 				nested.get(event.parentToolCallId)?.set(event.toolCallId, {
 					...event.result,
@@ -46,49 +45,11 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 				},
 			};
 		});
-		pi.on("session_shutdown", () => nested.clear());
-		const searchRenderers = {
-			renderShell: "self" as const,
-			renderCall: ((args, theme, ctx) => {
-				const text = new Text("", 0, 0);
-				if (
-					hideCollapsedToolCall(ctx.state as CollapseState, ctx.expanded, (value) =>
-						text.setText(value),
-					)
-				)
-					return text;
-				text.setText(
-					`${formatToolCallTitle(theme, "tool_search", ctx)} ${theme.fg("dim", String((args as { query?: string }).query ?? ""))}`,
-				);
-				return text;
-			}) as NonNullable<Parameters<ExtensionAPI["registerTool"]>[0]["renderCall"]>,
-			renderResult: ((result, options, theme, ctx) => {
-				const state = ctx.state as CollapseState;
-				const loaded = (result.details as { loaded?: string[] } | undefined)?.loaded ?? [];
-				if (
-					!options.isPartial &&
-					tickCollapse("tool_search", state, ctx.invalidate, options.expanded)
-				) {
-					return new Text(
-						formatCollapsedToolRow(
-							theme,
-							"tool_search",
-							loaded.join(", "),
-							pluralize(loaded.length, "tool"),
-							ctx.isError ? "error" : "success",
-						),
-						0,
-						0,
-					);
-				}
-				const body = result.content
-					.filter((part) => part.type === "text")
-					.map((part) => part.text)
-					.join("\n");
-				const text = new Text(body, 0, 0);
-				return options.isPartial ? text : frameToolResult(text, theme, ctx.isError);
-			}) as NonNullable<Parameters<ExtensionAPI["registerTool"]>[0]["renderResult"]>,
-		};
+		pi.on("session_shutdown", () => {
+			nested.clear();
+			started.clear();
+			durations.clear();
+		});
 		const rendererApi = pi as ExtensionAPI & {
 			registerToolRenderer?: (resolver: (name: string, next: () => unknown) => unknown) => void;
 		};
@@ -96,9 +57,9 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 			rendererApi.registerToolRenderer((name, next) =>
 				name === "codemode"
 					? { renderCall, renderResult, renderShell: "self" }
-					: name === "tool_search"
-						? searchRenderers
-						: next(),
+					: compactRenderers(name, next() as Parameters<typeof compactRenderers>[1], (id) =>
+							durations.get(id),
+						),
 			);
 			return;
 		}
@@ -115,7 +76,7 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 						pi.registerTool({
 							...tool,
 							...(tool.name === "tool_search"
-								? searchRenderers
+								? compactRenderers(tool.name, tool, (id) => durations.get(id))
 								: {
 										renderCall: renderCall as unknown as NonNullable<typeof tool.renderCall>,
 										renderResult: renderResult as unknown as NonNullable<typeof tool.renderResult>,

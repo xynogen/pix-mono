@@ -1,4 +1,8 @@
-import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
+import type {
+	AgentToolResult,
+	ToolDefinition,
+	ToolRenderResultOptions,
+} from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
@@ -31,6 +35,101 @@ type Call = {
 	result?: AgentToolResult<unknown> & { isError?: boolean; structuredContent?: unknown };
 };
 type Details = { calls?: Call[]; fullOutputPath?: string };
+type Renderers = Pick<ToolDefinition, "renderCall" | "renderResult" | "renderShell">;
+
+export function compactRow(
+	call: Pick<Call, "name" | "args" | "status" | "durationMs" | "cost">,
+	theme: Pick<ThemeLike, "fg"> | Parameters<NonNullable<ToolDefinition["renderCall"]>>[1],
+	expanded = false,
+) {
+	const [key, role] = {
+		ok: ["status.ok", "success"],
+		error: ["status.error", "error"],
+		running: ["status.running", "warning"],
+		cancelled: ["status.blocked", "muted"],
+	}[call.status] as [Parameters<typeof icon>[0], "success" | "error" | "warning" | "muted"];
+	const args = !expanded && call.args.length > 80 ? `${call.args.slice(0, 77)}...` : call.args;
+	return dotJoin(
+		[
+			`${theme.fg(role, padIcon(icon(key)))} ${theme.fg("toolTitle", call.name)} ${theme.fg("dim", args)}`,
+			call.durationMs === undefined ? "" : theme.fg("muted", formatMs(call.durationMs)),
+			call.cost ? theme.fg("muted", costText(call.cost)) : "",
+		],
+		(text) => theme.fg("muted", text),
+	);
+}
+
+export function compactRenderers(
+	name: string,
+	native: Renderers | undefined,
+	duration: (id: string) => number | undefined,
+): Renderers {
+	return {
+		renderShell: "self",
+		renderCall(args, theme, ctx) {
+			if (ctx.expanded && native?.renderCall) {
+				const component = native.renderCall(args, theme, {
+					...ctx,
+					lastComponent: ctx.state.compactCall,
+				});
+				ctx.state.compactCall = component;
+				return component;
+			}
+			return new Text(
+				ctx.isPartial || ctx.expanded
+					? compactRow(
+							{
+								name,
+								args: JSON.stringify(args) ?? "",
+								status: ctx.isPartial ? "running" : ctx.isError ? "error" : "ok",
+							},
+							theme,
+							ctx.expanded,
+						)
+					: "",
+				0,
+				0,
+			);
+		},
+		renderResult(result, options, theme, ctx) {
+			if (options.expanded) {
+				if (native?.renderResult) {
+					const component = native.renderResult(result, options, theme, {
+						...ctx,
+						lastComponent: ctx.state.compactResult,
+					});
+					ctx.state.compactResult = component;
+					return component;
+				}
+				const text = new Text(
+					result.content
+						.filter((block) => block.type === "text")
+						.map((block) => block.text)
+						.join("\n"),
+					0,
+					0,
+				);
+				return options.isPartial ? text : frameToolResult(text, theme, ctx.isError);
+			}
+			ctx.state.compactDuration = duration(ctx.toolCallId) ?? ctx.state.compactDuration;
+			return new Text(
+				options.isPartial
+					? ""
+					: compactRow(
+							{
+								name,
+								args: JSON.stringify(ctx.args) ?? "",
+								status: ctx.isError ? "error" : "ok",
+								durationMs: ctx.state.compactDuration,
+							},
+							theme,
+						),
+				0,
+				0,
+			);
+		},
+	};
+}
 type State = CollapseState & Record<string, unknown>;
 type Context = {
 	state: State;
@@ -194,24 +293,8 @@ export function renderResult(
 	if (shown.length < calls.length)
 		rows.push(`    ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
 	for (const call of shown) {
-		const status = {
-			ok: ["status.ok", "success"],
-			error: ["status.error", "error"],
-			running: ["status.running", "warning"],
-			cancelled: ["status.blocked", "muted"],
-		} as const;
-		const [key, role] = status[call.status];
-		rows.push(
-			`    ${dotJoin(
-				[
-					`${theme.fg(role, padIcon(icon(key)))} ${theme.fg("toolTitle", call.name)} ${theme.fg("dim", call.args)}`,
-					call.durationMs === undefined ? "" : theme.fg("muted", formatMs(call.durationMs)),
-					call.cost ? theme.fg("muted", costText(call.cost)) : "",
-				],
-				(s) => theme.fg("muted", s),
-			)}`,
-		);
-		if (call.result) {
+		rows.push(`    ${compactRow(call, theme, options.expanded)}`);
+		if (options.expanded && call.result) {
 			const nestedOutput = output(
 				(call.name === "bash" || call.name === "powershell") && call.result.structuredContent
 					? {
@@ -230,7 +313,7 @@ export function renderResult(
 					rows.push(`       ${theme.fg("muted", `Full output: ${block.fullOutputPath}`)}`);
 			}
 		}
-		if (call.error && !call.result) {
+		if (options.expanded && call.error && !call.result) {
 			for (const errLine of call.error.split("\n")) {
 				rows.push(`      ${theme.fg("error", errLine)}`);
 			}
