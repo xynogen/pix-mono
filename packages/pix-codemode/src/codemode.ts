@@ -287,7 +287,15 @@ export function renderResult(
 			0,
 		);
 	}
+	const compactPreview = !options.expanded && !isError && calls.some((call) => call.result);
 	const rows: string[] = [];
+	if (!options.isPartial && compactPreview && (wall || cost))
+		rows.push(
+			dotJoin([
+				formatToolCallTitle(theme, "codemode", ctx),
+				theme.fg("muted", dotJoin([wall, cost ? costText(cost) : ""])),
+			]),
+		);
 	const nestedTexts: { text: string; metadata?: string; fullOutputPath?: string }[] = [];
 	const shown = options.expanded ? calls : calls.slice(-8);
 	if (shown.length < calls.length)
@@ -320,7 +328,9 @@ export function renderResult(
 		}
 	}
 	const outputStart = rows.length;
+	// ponytail: hide duplicate script output only in successful child-result previews. Expansion keeps every block.
 	const scriptBlocks = display.blocks.filter((block) => {
+		if (compactPreview) return false;
 		const index = nestedTexts.findIndex(
 			(nested) =>
 				nested.text === block.text &&
@@ -348,7 +358,8 @@ export function renderResult(
 			if (block.fullOutputPath)
 				rows.push(theme.fg("muted", `Full output: ${block.fullOutputPath}`));
 		}
-		if (wall || cost) rows.push(theme.fg("muted", dotJoin([wall, cost ? costText(cost) : ""])));
+		if (!compactPreview && (wall || cost))
+			rows.push(theme.fg("muted", dotJoin([wall, cost ? costText(cost) : ""])));
 	}
 	const preview =
 		!options.expanded && rows.length > MAX_PREVIEW_LINES

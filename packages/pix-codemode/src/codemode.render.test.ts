@@ -316,3 +316,42 @@ test("unknown host output and full-output path remain intact", () => {
 	close(lines, "success", 80);
 	expect(lines).toMatchSnapshot();
 });
+
+test("child results hide script output in preview and preserve expansion and errors", () => {
+	const payload = {
+		...result("script-only-value"),
+		details: {
+			calls: [
+				{
+					id: "1",
+					name: "bash",
+					args: "{}",
+					status: "ok" as const,
+					result: { content: [{ type: "text" as const, text: "child-value" }], details: {} },
+				},
+			],
+		},
+	};
+	const before = JSON.stringify(payload);
+	const preview = capture(renderResult(payload, options, theme, context()), 80);
+	expect(preview.join("\n")).toContain("bash");
+	expect(preview[0]).toMatch(/codemode.*0\.3s/);
+	expect(preview.filter((line) => line.includes("0.3s"))).toHaveLength(1);
+	expect(preview.join("\n")).not.toContain("script-only-value");
+	expect(preview.join("\n")).not.toContain("Script output");
+	close(preview, "success", 80);
+	const expanded = capture(
+		renderResult(payload, { ...options, expanded: true }, theme, context()),
+		80,
+	);
+	expect(expanded.join("\n")).toContain("child-value");
+	expect(expanded.join("\n")).toContain("script-only-value");
+	close(expanded, "success", 80);
+	const failed = capture(
+		renderResult(payload, options, theme, { ...context(), isError: true }),
+		80,
+	);
+	expect(failed.join("\n")).toContain("script-only-value");
+	close(failed, "error", 80);
+	expect(JSON.stringify(payload)).toBe(before);
+});
