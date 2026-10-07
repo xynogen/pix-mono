@@ -124,9 +124,34 @@ describe("pix-prompts host-aware injection", () => {
 		const result = await getHandler()({ systemPrompt: "BASE" });
 
 		expect(result?.systemPrompt).toContain(
-			"ask whether the user wants it installed instead of stopping at installation instructions",
+			"ask unless the user already authorized that installation",
 		);
-		expect(result?.systemPrompt).toContain("isolated user- or project-scoped installation");
+		expect(result?.systemPrompt).toContain(
+			"Prefer a user- or project-scoped installation over system changes",
+		);
+	});
+
+	it("injects context-aware permission with safety boundaries and proportionate process", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+
+		for (const rule of [
+			"a clear request authorizes the named action and the necessary steps within its scope",
+			"Do not request the same approval twice",
+			"Ask before acting if approval is absent or the effect exceeds the understood scope",
+			"Follow any stricter platform or repo confirmation rule",
+			"Never bypass a tool approval gate",
+			"Interpret the request through the current conversation, not isolated words",
+			"Use only the steps that reduce risk or help finish the task",
+			"Use an available fallback if the preferred tool fails or is absent",
+			"Before a bash workaround, use `tool_search` to find the needed capability",
+			"Reuse a loaded tool without another search",
+			"If discovery finds no suitable tool, use bash and state the reason briefly",
+			"An explicit shell request needs no discovery",
+		]) {
+			expect(result?.systemPrompt).toContain(rule);
+		}
 	});
 
 	it("bundled SOP names lens_diagnostics and drops lsp_diagnostics", () => {
