@@ -173,51 +173,31 @@ describe("buildPrompt", () => {
 		expect(buildPrompt("off")).toBe("");
 	});
 
-	it("returns MICRO_PROMPT for micro (no BASE)", () => {
-		const p = buildPrompt("micro");
-		expect(p).toContain("STE output");
-		expect(p).not.toContain("LAYER 1");
-	});
-
-	it("includes BASE for all standard levels", () => {
-		const standard = ["lite", "full", "ultra"] as Level[];
-		for (const l of standard) {
-			expect(buildPrompt(l)).toContain("Simplified Technical English");
+	it("keeps every active prompt focused on reply length", () => {
+		for (const level of ["micro", "lite", "full", "ultra"] as const) {
+			const prompt = buildPrompt(level);
+			expect(prompt.length).toBeGreaterThan(0);
+			expect(prompt.length).toBeLessThanOrEqual(300);
+			for (const rule of [
+				"# Reply length",
+				"without losing meaning, required detail, or safety checks",
+				"Explain fully when asked",
+				'"stop caveman" or "normal mode"',
+			]) {
+				expect(prompt).toContain(rule);
+			}
+			// Regression: the optimizer must not duplicate SOP's STE rules.
+			expect(prompt).not.toContain("STE");
 		}
 	});
 
-	it("includes both STE layers for full and ultra", () => {
-		const standard = ["full", "ultra"] as Level[];
-		for (const l of standard) {
-			expect(buildPrompt(l)).toContain("LAYER 1");
-			expect(buildPrompt(l)).toContain("LAYER 2");
+	it("adds distinct intensity instructions to the compact base", () => {
+		const base = buildPrompt("micro");
+		for (const level of ["lite", "full", "ultra"] as const) {
+			expect(buildPrompt(level).startsWith(`${base}\n`)).toBe(true);
 		}
-	});
-
-	it("includes SAFETY clause for all standard levels", () => {
-		const standard = ["lite", "full", "ultra"] as Level[];
-		for (const l of standard) {
-			expect(buildPrompt(l)).toContain("When to break Layer 2");
-		}
-	});
-
-	it("lite ships the short rule set, not the full BASE", () => {
-		const lite = buildPrompt("lite");
-		expect(lite).toContain("STE output");
-		expect(lite.length).toBeLessThan(buildPrompt("full").length / 2);
-	});
-
-	it("keeps articles (STE 4.5) instead of dropping them", () => {
-		for (const l of ["lite", "full", "ultra"] as Level[]) {
-			expect(buildPrompt(l)).toContain("Keep the article");
-		}
-	});
-
-	it("each level has distinct intensity instructions", () => {
-		const lite = buildPrompt("lite");
-		const ultra = buildPrompt("ultra");
-		expect(lite).toContain("Relax the strict dictionary");
-		expect(ultra).toContain("Strict STE");
-		expect(lite).not.toContain("Strict STE");
+		expect(buildPrompt("lite")).toContain("Keep useful context");
+		expect(buildPrompt("full")).toContain("Avoid repetition");
+		expect(buildPrompt("ultra")).toContain("shortest complete answer");
 	});
 });

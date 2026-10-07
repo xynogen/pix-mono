@@ -154,6 +154,29 @@ describe("pix-prompts host-aware injection", () => {
 		}
 	});
 
+	it("injects compact multilingual style rules with clarity and safety guards", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+		const sop = readFileSync(resolveOwnSopMd(), "utf8");
+		const style = sop.split("## 6. Communication\n")[1]?.split("## 7. Code Style")[0];
+
+		expect(style).toBeDefined();
+		expect(style?.length).toBeLessThanOrEqual(900);
+		for (const rule of [
+			"STE100-inspired, not strict STE100",
+			"Reply in the user's language unless asked otherwise",
+			"natural grammar and punctuation",
+			"Explain fully when asked",
+			"Clarity beats brevity",
+			"facts, numbers, units, conditions, scope, code, identifiers, commands, and error strings",
+			"Style never overrides safety or approval rules",
+		]) {
+			expect(style).toContain(rule);
+			expect(result?.systemPrompt).toContain(rule);
+		}
+	});
+
 	it("bundled SOP names lens_diagnostics and drops lsp_diagnostics", () => {
 		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
 		expect(sop).toContain("lens_diagnostics");

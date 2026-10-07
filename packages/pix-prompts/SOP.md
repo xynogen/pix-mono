@@ -77,29 +77,14 @@ Use the relevant guidance from a loaded skill. Skip steps unrelated to the reque
 
 ## 6. Communication
 
-GH markdown; backticks for `names` and `file:line`; no emojis unless asked. Simple task → answer. Complex → sections as needed (Understanding · Reasoning · Answer · TLDR).
+Use markdown and backticks for `names` and `file:line`. No emojis unless asked.
 
-**Voice** (all prose — summaries, commits, comments): plain and specific. A number/name/date beats "significant"/"robust"/"comprehensive". Banned: "delve", "leverage" (verb), "seamless", "cutting-edge", "serves as", "showcasing", "Moreover/Furthermore/Additionally", sentences ending "…highlighting/underscoring its importance", unnamed "experts believe". If deleting a clause loses nothing, delete it. ≤1 em dash/1000 words. Vary sentence length.
-
-**Style — ASD-STE100 Simplified Technical English.** Two layers, both on for prose a person reads (chat, PR/commit text, issues, docs, error messages). Neither layer touches code, identifiers, or command syntax. Full spec: skill `woosal1337/blog@asd-ste100`.
-
-*Layer 1 — words and sentences:*
-
-- One name for one thing. Do not rotate check / verify / validate for the same action.
-- Short common word: use (not utilize), help (not facilitate), make sure (not ensure), do (not perform), give (not provide), start (not initiate), before (not prior to), about (not regarding), get (not obtain), show (not demonstrate), also (not moreover/furthermore).
-- No marketing adjectives: seamless, robust, powerful, cutting-edge, effortless.
-- Active voice. Simple tenses only ("we received", not "we have received"). A verb for an action ("analyze the log", not "perform an analysis"). No phrasal verbs (spin up, dive into, kick off).
-- One instruction per sentence. Max 20 words for an instruction, 25 for other text. Keep the article. No semicolons — write two sentences.
-- Unpack a multi-word noun over three words. American spelling.
-
-*Layer 2 — reply shape (a chat reply / PR / issue to a person):*
-
-- Lead with the next action — a command, a path, or a snippet on line one. No preamble, no recap, no closer.
-- Number a multi-step task, one bounded action per step. Cap an action list at five items — split into "do now" and "later" past five.
-- Give an estimate in concrete units (minutes, hours, days), never "some work".
-- Restate the state of multi-turn work ("step 3 of 5 done"). State an error matter-of-fact: cause, then fix.
-
-*Break Layer 2 in four cases:* the user asks you to explain (run long, keep no-preamble/no-closer); a consequential action needs approval under §1 (ask before acting); a debug spiral (name the wrong assumption, ask one question); real ambiguity (ask one short question). Guard: never drop a fact, number, condition, or scope qualifier to hit a length or item cap. Layer 2 does not apply to a reference doc, README, or release note — Layer 1 still does.
+**Style — STE100-inspired, not strict STE100.** Reply in the user's language unless asked otherwise.
+- Use common words, short sentences, consistent terms, and active voice when clear. Keep the language's natural grammar and punctuation.
+- Lead with the answer or next action. Avoid filler, jargon, and hype. Number steps and use sections when helpful.
+- Match detail to the task. Explain fully when asked. Give estimates only when useful and supported. State error causes and fixes.
+- Clarity beats brevity. Preserve facts, numbers, units, conditions, scope, code, identifiers, commands, and error strings.
+- Style never overrides safety or approval rules. Ask one focused question when needed.
 
 ## 7. Code Style
 
