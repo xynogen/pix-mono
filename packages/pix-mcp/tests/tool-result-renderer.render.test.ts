@@ -6,7 +6,7 @@ import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-captu
 import type { McpExtensionState } from "../src/state.ts";
 
 // ponytail: registered renderer shells, not the private full-screen host component.
-test("registered MCP gateway and direct tools use the host Box", async () => {
+test("registered MCP gateway and direct tools render their own shell", async () => {
 	const fixture = await withUiFixture({ hostTheme: true });
 	const env = Object.fromEntries(
 		["MCP_DIRECT_TOOLS", "MCP_OUTPUT_GUARD", "MCP_OAUTH_DIR", "FORCE_COLOR", "NO_COLOR"].map(
@@ -130,8 +130,8 @@ test("registered MCP gateway and direct tools use the host Box", async () => {
 		const gateway = tools.get("mcp")!;
 		const direct = tools.get("demo_search")!;
 		expect([gateway.name, direct.name]).toEqual(["mcp", "demo_search"]);
-		expect(gateway).not.toHaveProperty("renderShell");
-		expect(direct).not.toHaveProperty("renderShell");
+		expect(gateway.renderShell).toBe("self");
+		expect(direct.renderShell).toBe("self");
 		const theme = roleTheme();
 		const captures: Record<string, string[]> = {};
 		async function card(
@@ -164,7 +164,7 @@ test("registered MCP gateway and direct tools use the host Box", async () => {
 			const content = new Box(0, 0);
 			content.addChild(call());
 			content.addChild(output());
-			captures[name] = captureRows(content, { width: 80, surface: "host-box" });
+			captures[name] = captureRows(content, { width: 80, surface: "host-self" });
 		}
 		const result = await gateway.execute(
 			"capture",

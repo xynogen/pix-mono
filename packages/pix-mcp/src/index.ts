@@ -180,6 +180,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 					}
 					return execute(...args);
 				},
+				renderShell: "self",
 				renderCall: createMcpDirectToolCallRenderer(name),
 				renderResult: createMcpDirectToolResultRenderer(name),
 			});
@@ -389,6 +390,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 			label: "MCP",
 			description: buildProxyDescription(earlyConfig, earlyCache, directSpecs),
 			promptSnippet: "Discover and call configured MCP tools on demand",
+			renderShell: "self",
 			renderCall: renderMcpProxyToolCall,
 			parameters: Type.Object({
 				tool: Type.Optional(Type.String({ description: "Call this tool" })),

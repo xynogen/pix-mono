@@ -291,12 +291,14 @@ describe("mcpAdapter session lifecycle", () => {
 			expect.objectContaining({
 				name: "demo_search",
 				renderResult: expect.any(Function),
+				renderShell: "self",
 			}),
 		);
 		expect(api.registerTool).toHaveBeenCalledWith(
 			expect.objectContaining({
 				name: "mcp",
 				renderResult: expect.any(Function),
+				renderShell: "self",
 			}),
 		);
 	});

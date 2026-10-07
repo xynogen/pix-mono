@@ -68,10 +68,8 @@ describe("MCP tool call renderer", () => {
 			state: { collapsed: true } as never,
 			expanded: false,
 			invalidate: () => {},
-		})
-			.render(80)
-			.join("\n");
-		expect(collapsed.trim()).toBe("");
+		}).render(80);
+		expect(collapsed).toEqual([]);
 
 		// Re-expanding a collapsed row restores the full call.
 		const reExpanded = renderMcpProxyToolCall(args, boldTheme, {
@@ -317,6 +315,16 @@ describe("MCP tool result renderer", () => {
 		// The rendered output still carries the muted footer.
 		const out = render().render(80).join("\n");
 		expect(out).toContain("more");
+	});
+
+	it("uses the full viewport width without reserving shell padding", () => {
+		const body = "x".repeat(40);
+		const rows = renderMcpToolResult(
+			result([{ type: "text", text: body }]),
+			collapsedOptions,
+			plainTheme,
+		).render(40);
+		expect(rows).toEqual([body, "- ".repeat(20)]);
 	});
 
 	it("clips a long JSON string value to one row in preview but wraps it when expanded", () => {
