@@ -46,7 +46,7 @@
 		"@xynogen/pix-runtime": "^0.13.0",
 		"@xynogen/pix-data": "^0.5.4",
 		"@xynogen/pix-pretty": "^1.30.0",
-		"@xynogen/pix-welcome": "^0.2.6",
+		"@xynogen/pix-welcome": "^0.2.7",
 		"@xynogen/pix-footer": "^0.2.8",
 		"@xynogen/pix-diagnostics": "^0.3.6",
 		"@xynogen/pix-display": "^0.3.1",

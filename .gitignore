@@ -166,7 +166,6 @@ bun-debug.log*
 
 # ── Pix Agent ──
 .pi/
-.pi-lens/
 graphify-out/
 todo.md
 

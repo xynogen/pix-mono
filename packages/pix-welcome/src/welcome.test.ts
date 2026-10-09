@@ -245,7 +245,7 @@ describe("countSkillsInDirs", () => {
 });
 
 describe("PI_IGNORE_RULES", () => {
-	it("includes both rules", () => {
-		expect(PI_IGNORE_RULES).toEqual([".pi/", ".pi-lens/"]);
+	it("includes only the current Pi directory", () => {
+		expect(PI_IGNORE_RULES).toEqual([".pi/"]);
 	});
 });

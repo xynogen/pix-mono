@@ -9,7 +9,7 @@
  *   · models       — count of loaded models
  *   · tools        — count of active tools
  *   · skills       — count of loaded skills
- *   · gitignore    — auto-ignore Pi emissions (.pi/, .pi-lens/) in git repos
+ *   · gitignore    — auto-ignore Pi emissions (.pi/) in git repos
  *
  * Each check updates the banner live as results arrive.
  * Banner auto-dismisses on the first user turn (turn_start).
@@ -78,7 +78,7 @@ export const shortCwd = (cwd: string, home?: string): string => {
 	return h && cwd.startsWith(h) ? `~${cwd.slice(h.length)}` : cwd;
 };
 
-export const PI_IGNORE_RULES = [".pi/", ".pi-lens/"];
+export const PI_IGNORE_RULES = [".pi/"];
 const PI_IGNORE_SECTION_HEADER = "# Pix Agent";
 
 // ─── Individual checks ────────────────────────────────────────────────────────

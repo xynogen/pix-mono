@@ -4,7 +4,7 @@ Pi extension — welcome banner with startup health checks.
 
 ## What it does
 
-Renders a coloured ASCII π logo above the editor on session start and runs startup health checks in parallel while the banner is visible. Checks include: Pi version, auth status (at least one provider configured), loaded model + tool + skill counts, and gitignore hygiene (auto-adds `.pi/` and `.pi-lens/` to `.gitignore` in git repos). Each check updates the banner live as results arrive, showing ✓/⚠/✗ and a brief status. The banner auto-dismisses on the first user turn. No configuration required.
+Renders a coloured ASCII π logo above the editor on session start and runs startup health checks in parallel while the banner is visible. Checks include: Pi version, auth status (at least one provider configured), loaded model + tool + skill counts, and gitignore hygiene (auto-adds `.pi/` to `.gitignore` in git repos). Each check updates the banner live as results arrive, showing ✓/⚠/✗ and a brief status. The banner auto-dismisses on the first user turn. No configuration required.
 
 ## Install
 
