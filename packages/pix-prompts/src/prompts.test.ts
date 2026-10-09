@@ -183,6 +183,11 @@ describe("pix-prompts host-aware injection", () => {
 		expect(sop).not.toContain("lsp_diagnostics");
 	});
 
+	it("bundled SOP routes user choices through ask_user", () => {
+		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
+		expect(sop).toMatch(/Choices \u2192 `ask_user`, not text\..*multiSelect.*Exceptions:/);
+	});
+
 	it("replaces pi's default identity line with generic version", async () => {
 		const { pi, getHandler } = fakePi();
 		registerPrompts(pi);
