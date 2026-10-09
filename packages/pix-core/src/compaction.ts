@@ -26,7 +26,7 @@
  */
 
 import { complete } from "@earendil-works/pi-ai/compat";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ContextEditableContent, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { config } from "@xynogen/pix-runtime/config";
@@ -93,6 +93,43 @@ export function resumeDecisionAfterCompaction(args: {
 	if ((args.estimatedTokensAfter ?? 0) >= args.threshold) return "loop";
 	if (!args.idle || args.hasPending) return "skip";
 	return "resume";
+}
+
+// Pi cuts compaction only at message boundaries, so one huge message (a pasted
+// HAR/log, a giant tool result) can't be summarized away: "Nothing to compact".
+// Over threshold we instead trim oversized text to head+tail via a visible,
+// append-only context_edit — the original stays in the session file.
+// ponytail: fixed char limits (~20k tok kept per message); make them config if
+// someone needs to tune per model.
+const MAX_MESSAGE_CHARS = 80_000;
+const KEEP_CHARS = 20_000;
+
+type TextOrImage = { type: string; text?: string };
+
+/** Head+tail trim of oversized text. Undefined when the text already fits. */
+export function truncateLargeText(text: string): string | undefined {
+	if (text.length <= MAX_MESSAGE_CHARS) return undefined;
+	const cut = text.length - 2 * KEEP_CHARS;
+	return `${text.slice(0, KEEP_CHARS)}\n\n[… ${cut.toLocaleString()} chars trimmed by pix compaction (original kept in session file) …]\n\n${text.slice(-KEEP_CHARS)}`;
+}
+
+/** Trimmed copy of user/tool-result content, or undefined when nothing is oversized. */
+export function shrinkContent(
+	content: string | TextOrImage[],
+): { content: string | TextOrImage[]; saved: number } | undefined {
+	if (typeof content === "string") {
+		const t = truncateLargeText(content);
+		return t === undefined ? undefined : { content: t, saved: content.length - t.length };
+	}
+	let saved = 0;
+	const next = content.map((part) => {
+		if (part.type !== "text" || typeof part.text !== "string") return part;
+		const t = truncateLargeText(part.text);
+		if (t === undefined) return part;
+		saved += part.text.length - t.length;
+		return { ...part, text: t };
+	});
+	return saved > 0 ? { content: next, saved } : undefined;
 }
 
 // Sent as a user message after a self-triggered compaction so the agent picks
@@ -181,6 +218,44 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 	// agent_settled re-fires, and we compact again every turn. Reset by /compact or
 	// a new session; a session-scoped bool is the smallest fix.
 	let triggerDisabled = false;
+
+	// Runs before agent_settled; committed edits shrink the context the trigger
+	// below measures, so a single oversized message no longer blocks compaction.
+	pi.on("agent_before_settle", (event, ctx) => {
+		const { triggerPercent, minimumTokens } = config(compactionSection);
+		if (triggerPercent <= 0) return;
+		const usage = ctx.getContextUsage?.();
+		if (!usage || usage.tokens === null) return;
+		if (
+			usage.tokens < compactionThresholdTokens(usage.contextWindow, triggerPercent, minimumTokens)
+		)
+			return;
+
+		const edits: typeof event.entries = [];
+		let saved = 0;
+		for (const { sourceEntry, messages } of event.context.contextEntries) {
+			const msg = messages[0];
+			const editable =
+				sourceEntry.type === "custom_message" ||
+				(sourceEntry.type === "message" && (msg?.role === "user" || msg?.role === "toolResult"));
+			if (!editable || !msg || !("content" in msg)) continue;
+			const shrunk = shrinkContent(msg.content as string | TextOrImage[]);
+			if (!shrunk) continue;
+			saved += shrunk.saved;
+			edits.push({
+				type: "context_edit",
+				targetId: sourceEntry.id,
+				replacement: { content: shrunk.content as ContextEditableContent },
+			});
+		}
+		if (edits.length === 0) return;
+		ctx.ui.notify(
+			`Compaction: trimmed ${edits.length} oversized message(s), ~${Math.round(saved / 4).toLocaleString()} tok (head+tail kept; originals stay in session file)`,
+			"info",
+		);
+		return { entries: [...event.entries, ...edits] };
+	});
+
 	pi.on("agent_settled", (_event, ctx) => {
 		if (compacting || triggerDisabled) return;
 		const { triggerPercent, minimumTokens } = config(compactionSection);
@@ -259,7 +334,16 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 			},
 			onError: (err) => {
 				compacting = false;
-				ctx.ui.notify(`Compaction trigger failed: ${err.message}`, "error");
+				// Pi already reported the failure (compaction_end). "Nothing to compact" /
+				// "Already compacted" will fail identically next turn, so latch off instead
+				// of re-firing every agent_settled. Oversized messages are trimmed in
+				// agent_before_settle, so this is now only a backstop.
+				if (!/nothing to compact|already compacted/i.test(err.message)) return;
+				triggerDisabled = true;
+				ctx.ui.notify(
+					`Compaction: ${tokens.toLocaleString()} tok but nothing older to summarize. Auto-trigger disabled for this session; start a new session if context keeps growing.`,
+					"warning",
+				);
 			},
 		});
 	});

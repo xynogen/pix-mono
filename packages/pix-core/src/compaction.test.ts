@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { compactionThresholdTokens, resumeDecisionAfterCompaction } from "./compaction.ts";
+import {
+	compactionThresholdTokens,
+	resumeDecisionAfterCompaction,
+	shrinkContent,
+} from "./compaction.ts";
 
 describe("compactionThresholdTokens", () => {
 	it("uses the 100k floor when the percentage threshold is lower", () => {
@@ -78,5 +82,26 @@ describe("resumeDecisionAfterCompaction", () => {
 				hasPending: true,
 			}),
 		).toBe("loop");
+	});
+});
+
+describe("shrinkContent", () => {
+	it("keeps head and tail of oversized text and marks the cut", () => {
+		const big = `HEAD${"x".repeat(200_000)}TAIL`;
+		const out = shrinkContent(big);
+		expect(out?.saved).toBeGreaterThan(150_000);
+		expect(out?.content).toMatch(/^HEAD[\s\S]*chars trimmed by pix compaction[\s\S]*TAIL$/);
+	});
+
+	it("trims only oversized text parts and leaves images intact", () => {
+		const image = { type: "image", data: "abc", mimeType: "image/png" };
+		const out = shrinkContent([{ type: "text", text: "y".repeat(100_000) }, image]);
+		expect(out?.content).toEqual([{ type: "text", text: expect.stringMatching(/trimmed/) }, image]);
+	});
+
+	it("is idempotent: trimmed output fits under the limit", () => {
+		const once = shrinkContent("z".repeat(500_000))?.content as string;
+		expect(shrinkContent(once)).toBeUndefined();
+		expect(shrinkContent("small")).toBeUndefined();
 	});
 });

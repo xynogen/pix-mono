@@ -75,6 +75,7 @@ test("core awaits member factories in order and stops on failure", async () => {
 		expect(events).toEqual([
 			"session_start",
 			"session_before_compact",
+			"agent_before_settle",
 			"agent_settled",
 			"session_start",
 			"tool_call",
