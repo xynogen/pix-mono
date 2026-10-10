@@ -46,6 +46,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 			promptSnippet: `Ask the user up to ${MAX_QUESTIONS} structured questions (${MIN_OPTIONS}-${MAX_OPTIONS} options each) when requirements are ambiguous`,
 			promptGuidelines: [
 				"Do not stack multiple ask_user calls back-to-back — group all clarifying questions into one invocation.",
+				"When the user must pick, ask with ask_user instead of a text list: single-select for one answer, multiSelect for several, preview for side-by-side comparison. Skip it when the user asks for a written list or the options are informational only.",
 			],
 			executionMode: "sequential",
 			parameters: ParamsSchema,

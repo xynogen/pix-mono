@@ -170,7 +170,7 @@ export default function (pi: ExtensionAPI): void {
 			"You MUST provide a clear `reason` explaining why root is needed.",
 		promptSnippet: "Execute a shell command as root on the local machine",
 		promptGuidelines: [
-			"sudo_run: LOCAL root only — use `bash` for non-root local, `ssh_run` (`sudo: true`) for remote. Prefer plain bash; use only when root is strictly required. Set `reason` to a short why-root sentence.",
+			"sudo_run: LOCAL root only — never raw `sudo` in bash. Use `bash` for non-root local, `ssh_run` (`sudo: true`) for remote. Prefer plain bash; use only when root is strictly required. Set `reason` to a short why-root sentence.",
 		],
 
 		// Full-width framing (rules + bg fill) baked at termW(), like pix-bash.

@@ -104,6 +104,14 @@ export default function registerPrompts(pi: ExtensionAPI): void {
 			"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.",
 			"You are Pix Coding Agent. You help users accomplish any task they request.",
 		);
+		// Pi adds this when ls/find/grep are deferred (not "selected"); it contradicts
+		// SOP §2, which routes listing/finding/searching through those tools.
+		prompt = prompt
+			.replace("- Use bash for file operations like ls, rg, find\n", "")
+			.replace(
+				"- bash: Execute bash commands (ls, grep, find, etc.)",
+				"- bash: Execute shell commands (VCS, builds, tests, CLIs) — last resort, see SOP §2 Bash check",
+			);
 
 		for (const { tag, path, maxBytes } of sources) {
 			if (prompt.includes(`<${tag}>`)) continue;

@@ -177,15 +177,33 @@ describe("pix-prompts host-aware injection", () => {
 		}
 	});
 
-	it("bundled SOP names lens_diagnostics and drops lsp_diagnostics", () => {
+	it("bundled SOP names only core Pi tools; opt-in tools are found by capability", () => {
 		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
-		expect(sop).toContain("lens_diagnostics");
-		expect(sop).not.toContain("lsp_diagnostics");
+		// Every backticked snake_case identifier must be a core Pi tool or a host tag.
+		const core = new Set(["tool_search", "available_skills", "API_KEY"]);
+		const named = [...sop.matchAll(/`<?([a-z]+_[a-z_]+|[A-Z]+_[A-Z_]+)/g)].map((m) => m[1] ?? "");
+		expect(named.filter((n) => !core.has(n))).toEqual([]);
 	});
 
-	it("bundled SOP routes user choices through ask_user", () => {
+	it("rewrites pi's bash-first hints so SOP §2 Bash check governs ls/find/grep", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({
+			systemPrompt:
+				"<tools>\n- bash: Execute bash commands (ls, grep, find, etc.)\n</tools>\n<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise\n</rules>",
+		});
+		expect(result?.systemPrompt).toMatch(
+			/<tools>\n- bash: Execute shell commands \(VCS, builds, tests, CLIs\) — last resort[^\n]*\n<\/tools>\n<rules>\n- Be concise\n<\/rules>/,
+		);
 		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
-		expect(sop).toMatch(/Choices \u2192 `ask_user`, not text\..*multiSelect.*Exceptions:/);
+		for (const row of [
+			"| `ls`, `tree` | `ls` |",
+			"| `find`, `fd` | `find` |",
+			"`tool_search` by the capability",
+		]) {
+			expect(sop).toContain(row);
+		}
+		expect(sop).toContain("This table overrides any host rule");
 	});
 
 	it("replaces pi's default identity line with generic version", async () => {
