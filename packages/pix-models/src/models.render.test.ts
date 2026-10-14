@@ -93,12 +93,15 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 				refreshes++;
 			},
 			getAvailable: () => available,
-			getAvailableOfType: async () => [classifier],
+			getAvailableOfType: async (type: string) =>
+				type === "classifier"
+					? [classifier]
+					: [{ provider: "fixture", id: "painter", api: "openrouter-images" }],
 		};
 		const theme = roleTheme() as unknown as Theme;
 		const states: string[] = [];
 		const notifications: string[] = [];
-		let mode: "capture" | "chat" | "classifier" = "capture";
+		let mode: "capture" | "chat" | "classifier" | "image" = "capture";
 		const ctx = {
 			model: models[0],
 			modelRegistry: registry,
@@ -136,7 +139,14 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 						);
 					};
 					if (mode === "capture") {
-						capture("current, scored, unscored, missing, and classifier");
+						capture("current, scored, unscored, and missing");
+						component.handleInput("\t");
+						capture("classifier tab");
+						component.handleInput("\x1b[C");
+						expect(level).toBe("medium");
+						component.handleInput("\t");
+						capture("image tab");
+						component.handleInput("\t");
 						(tui.terminal as unknown as { rows: number }).rows = 16;
 						component.handleInput("\x1b[C");
 						expect(level).toBe("high");
@@ -171,7 +181,8 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 						available = models;
 						component.handleInput("\x1b");
 					} else {
-						if (mode === "classifier") component.handleInput("classify");
+						if (mode === "classifier") component.handleInput("\t");
+						if (mode === "image") component.handleInput("\x1b[Z");
 						component.handleInput("\r");
 					}
 					return result.promise;
@@ -185,6 +196,10 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 		await handler("", ctx);
 		expect(selected).toEqual([]);
 		expect(notifications.at(-1)).toContain("is a classifier model, not a chat model.");
+		mode = "image";
+		await handler("", ctx);
+		expect(selected).toEqual([]);
+		expect(notifications.at(-1)).toContain("is an image model, not a chat model.");
 		mode = "chat";
 		await handler("", ctx);
 		expect(selected).toEqual([models[0]]);

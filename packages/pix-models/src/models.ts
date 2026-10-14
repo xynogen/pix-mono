@@ -117,8 +117,18 @@ export function classifierProtocol(api: string): string {
 	return api;
 }
 
-/** Picker value prefix for classifier rows. They cannot be chat models. */
+/** Picker value prefixes for non-chat rows. They cannot be chat models. */
 export const CLASSIFIER_VALUE_PREFIX = "classifier:";
+export const IMAGE_VALUE_PREFIX = "image:";
+
+/** Picker tabs, one per Pi model type, so each task's models stay separate. */
+export const MODEL_TABS = [
+	{ id: "chat", label: "Chat", hint: "context · pricing · coding rank & score from modelgrep.com" },
+	{ id: "classifier", label: "Classifier", hint: "typed answers · codemode models.classify()" },
+	{ id: "image", label: "Image", hint: "image generation · codemode models.generateImages()" },
+] as const;
+
+export type ModelTab = (typeof MODEL_TABS)[number]["id"];
 
 /** Lowercase and strip all non-alphanumerics: "glm-5.2" → "glm52". */
 export function normalizeModelText(s: string): string {
@@ -241,27 +251,27 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 	// ModelRegistry instance (verified in runner.js) with refresh() and an
 	// async-capable getAvailable(). Reach through the narrowed type.
 	type AvailableModels = ReturnType<typeof ctx.modelRegistry.getAvailable>;
+	type TypedModel = {
+		provider: string;
+		id: string;
+		name?: string;
+		api: string;
+		contextWindow?: number;
+	};
 	// SAFETY: Runtime ModelRegistry includes refresh and async availability missing from public types.
 	const registry = ctx.modelRegistry as unknown as {
 		refresh?: () => void;
 		getAvailable(): AvailableModels | Promise<AvailableModels>;
-		getAvailableOfType?: (type: "classifier") => Promise<
-			readonly {
-				provider: string;
-				id: string;
-				name?: string;
-				api: string;
-				contextWindow?: number;
-			}[]
-		>;
+		getAvailableOfType?: (type: "classifier" | "image") => Promise<readonly TypedModel[]>;
 	};
-	// Classifier models (System One etc.) answer typed questions, not chat.
-	// Show them in their own section so they are visible but never picked as the chat model.
-	const loadClassifiers = async () =>
-		(await registry.getAvailableOfType?.("classifier").catch(() => [])) ?? [];
+	// Classifier and image models are not chat models. Each gets its own tab so
+	// they are visible but never picked as the session model.
+	const loadOfType = async (type: "classifier" | "image") =>
+		(await registry.getAvailableOfType?.(type).catch(() => [])) ?? [];
+	const loadTyped = () => Promise.all([loadOfType("classifier"), loadOfType("image")]);
 	registry.refresh?.();
 	let available = await registry.getAvailable();
-	let classifiers = await loadClassifiers();
+	let [classifiers, images] = await loadTyped();
 	if (available.length === 0) {
 		ctx.ui.notify("No models with configured auth.", "warning");
 		return;
@@ -323,46 +333,55 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				theme.fg("text", key) + theme.fg("muted", ` ${action}`);
 			const guideSep = theme.fg("muted", " · ");
 
-			const buildPickerData = (sourceRows: Row[], classifierModels: typeof classifiers) => {
-				// Classifier rows continue the numbering after the last ranked chat row.
-				const firstClassifierRank = Math.max(0, ...sourceRows.map((row) => row.localRank ?? 0)) + 1;
-				const lastRank = firstClassifierRank - 1 + classifierModels.length;
-				const maxRankWidth = Math.max(String(lastRank).length, 1);
+			let tab: ModelTab = "chat";
+			const currentValue = current ? `${current.provider}/${current.id}` : undefined;
+
+			const buildPickerData = (forTab: ModelTab) => {
+				const entries =
+					forTab === "chat"
+						? buildRows(available).map(({ m, dev, bench, localRank }) => ({
+								m,
+								dev,
+								bench,
+								rank: localRank,
+								value: `${m.provider}/${m.id}`,
+								text: `${m.id} ${m.name ?? ""}`,
+								tag: "",
+							}))
+						: (forTab === "classifier" ? classifiers : images).map((m, i) => {
+								const tag = forTab === "classifier" ? classifierProtocol(m.api) : "";
+								const prefix =
+									forTab === "classifier" ? CLASSIFIER_VALUE_PREFIX : IMAGE_VALUE_PREFIX;
+								return {
+									m,
+									dev: lookupModelsDev(m.provider, m.id),
+									bench: lookupBenchmark(m.id),
+									// Non-chat models have no benchmark rank; number them in list order.
+									rank: i + 1,
+									value: `${prefix}${m.provider}/${m.id}`,
+									text: `${m.id} ${m.name ?? ""} ${tag}`,
+									tag,
+								};
+							});
+				const maxRankWidth = Math.max(1, ...entries.map((e) => String(e.rank ?? "").length));
+				const maxCostWidth = Math.max("free".length, ...entries.map((e) => fmtCost(e.dev).length));
 				const rankByValue = new Map<string, number>();
 				const searchTextByValue = new Map<string, string>();
 				const normalizedByValue = new Map<string, string>();
-				for (const { m, localRank } of sourceRows) {
-					const value = `${m.provider}/${m.id}`;
-					const text = `${m.id} ${m.name ?? ""}`;
-					if (localRank) rankByValue.set(value, localRank);
+
+				const items: SelectItem[] = entries.map(({ m, dev, bench, rank, value, text, tag }) => {
+					if (rank) rankByValue.set(value, rank);
 					searchTextByValue.set(value, text);
 					normalizedByValue.set(value, normalizeModelText(text));
-				}
-
-				const classifierRows = classifierModels.map((c) => ({
-					m: c,
-					dev: lookupModelsDev(c.provider, c.id),
-					bench: lookupBenchmark(c.id),
-				}));
-				const maxCostWidth = Math.max(
-					...[...sourceRows, ...classifierRows].map((row) => fmtCost(row.dev).length),
-					"free".length,
-				);
-				const renderRow = (
-					m: { provider: string; id: string; contextWindow?: number },
-					dev: Row["dev"],
-					bench: Row["bench"],
-					rankPrefix: string,
-					value: string,
-					kindMark?: string,
-				): SelectItem => {
-					const isCurrent = current && m.provider === current.provider && m.id === current.id;
-					const marker = isCurrent ? theme.fg(accent, "▶") : " ";
+					const rankCell = !rank
+						? mute("—".padEnd(maxRankWidth))
+						: forTab === "chat"
+							? theme.fg(benchScoreColor(bench?.overallScore), String(rank).padEnd(maxRankWidth))
+							: mute(String(rank).padEnd(maxRankWidth));
+					const marker = value === currentValue ? theme.fg(accent, "▶") : " ";
 					const nameColor = bench ? benchScoreColor(bench.overallScore) : accent;
-					const label = `${marker} ${rankPrefix} ${theme.fg(nameColor, m.id)}`;
-					const ctxRaw = fmtCtx(
-						resolveContextWindow(m as { contextWindow?: number }, dev?.limit?.context),
-					);
+					const label = `${marker} ${mute("#")}${rankCell} ${theme.fg(nameColor, m.id)}`;
+					const ctxRaw = fmtCtx(resolveContextWindow(m, dev?.limit?.context));
 					const rawCost = fmtCost(dev);
 					const costSeg =
 						rawCost === "—"
@@ -382,31 +401,14 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						value,
 						label,
 						description: dotJoin(
-							[mute(ctxRaw.padStart(4)), costSeg, [benchSeg, kindMark].filter(Boolean).join(" ")],
+							[
+								mute(ctxRaw.padStart(4)),
+								costSeg,
+								[benchSeg, tag && mute(tag)].filter(Boolean).join(" "),
+							],
 							mute,
 						),
 					};
-				};
-
-				const items: SelectItem[] = sourceRows.map(({ m, dev, bench, localRank }) => {
-					const rankPrefix = localRank
-						? mute("#") +
-							theme.fg(benchScoreColor(bench?.overallScore), String(localRank).padEnd(maxRankWidth))
-						: mute("#") + mute("—".padEnd(maxRankWidth, " "));
-					return renderRow(m, dev, bench, rankPrefix, `${m.provider}/${m.id}`);
-				});
-				// Classifier rows: same columns and numbering. The symbol takes the
-				// empty score slot at the end of the row.
-				const classifierMark = theme.fg("warning", icon("model.classifier"));
-				classifierRows.forEach(({ m: c, dev, bench }, i) => {
-					const rank = firstClassifierRank + i;
-					const value = `${CLASSIFIER_VALUE_PREFIX}${c.provider}/${c.id}`;
-					const text = `${c.id} ${c.name ?? ""} classifier ${classifierProtocol(c.api)}`;
-					rankByValue.set(value, rank);
-					searchTextByValue.set(value, text);
-					normalizedByValue.set(value, normalizeModelText(text));
-					const rankPrefix = mute("#") + mute(String(rank).padEnd(maxRankWidth));
-					items.push(renderRow(c, dev, bench, rankPrefix, value, classifierMark));
 				});
 				return {
 					items,
@@ -417,9 +419,9 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				};
 			};
 
-			let pickerData = buildPickerData(buildRows(available), classifiers);
-			const currentIdx = current
-				? pickerData.items.findIndex((item) => item.value === `${current.provider}/${current.id}`)
+			let pickerData = buildPickerData(tab);
+			const currentIdx = currentValue
+				? pickerData.items.findIndex((item) => item.value === currentValue)
 				: 0;
 			const search = new Input();
 			const list = new SelectList(
@@ -465,6 +467,18 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			const pager = new ModalPager();
 			let reloading = false;
 			let spinnerFrame = 0;
+			// Replace the list contents (tab switch or reload) and keep the filter and selection.
+			const showData = (data: typeof pickerData, selectedValue?: string) => {
+				pickerData = data;
+				listInternal.items = data.items;
+				listInternal.maxVisible = Math.max(1, data.items.length);
+				listInternal.layout = {
+					minPrimaryColumnWidth: data.widestLabel + 2,
+					maxPrimaryColumnWidth: data.widestLabel + 2,
+				};
+				applyFuzzy(search.getValue?.() ?? "", selectedValue);
+				pager.followSelection();
+			};
 			const reload = async () => {
 				if (reloading) return;
 				reloading = true;
@@ -482,16 +496,8 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						return;
 					}
 					available = refreshed;
-					classifiers = await loadClassifiers();
-					pickerData = buildPickerData(buildRows(available), classifiers);
-					listInternal.items = pickerData.items;
-					listInternal.maxVisible = Math.max(1, pickerData.items.length);
-					listInternal.layout = {
-						minPrimaryColumnWidth: pickerData.widestLabel + 2,
-						maxPrimaryColumnWidth: pickerData.widestLabel + 2,
-					};
-					applyFuzzy(search.getValue?.() ?? "", selectedValue);
-					pager.followSelection();
+					[classifiers, images] = await loadTyped();
+					showData(buildPickerData(tab), selectedValue);
 				} catch (error) {
 					ctx.ui.notify(`Failed to reload models: ${String(error)}`, "error");
 				} finally {
@@ -499,6 +505,25 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					reloading = false;
 					tui.requestRender();
 				}
+			};
+
+			// Swap the list to another tab's models. Chat keeps the current model selected.
+			const counts = () => ({
+				chat: available.length,
+				classifier: classifiers.length,
+				image: images.length,
+			});
+			const switchTab = (dir: -1 | 1) => {
+				const idx = MODEL_TABS.findIndex((t) => t.id === tab);
+				tab = MODEL_TABS[(idx + dir + MODEL_TABS.length) % MODEL_TABS.length]?.id ?? "chat";
+				showData(buildPickerData(tab), tab === "chat" ? currentValue : undefined);
+			};
+			const tabBar = () => {
+				const n = counts();
+				return MODEL_TABS.map(({ id, label }) => {
+					const text = `  ${label} ${n[id]}  `;
+					return id === tab ? theme.fg(accent, theme.bold(text)) : mute(text);
+				}).join(mute("│"));
 			};
 
 			// Live thinking-level readout. ←/→ mutates the session immediately via
@@ -536,10 +561,12 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						minHeight: MIN_MODAL_HEIGHT,
 						header: [
 							theme.fg(accent, theme.bold(`${icon("picker.model")}  Select model`)),
+							tabBar(),
 							reloading
 								? theme.fg("accent", `${SPINNER[spinnerFrame] ?? ""} Reloading models…`)
-								: theme.fg("dim", "context · pricing · coding rank & score from modelgrep.com"),
-							thinkLine(),
+								: theme.fg("dim", MODEL_TABS.find((t) => t.id === tab)?.hint ?? ""),
+							// Thinking applies to the session chat model only.
+							...(tab === "chat" ? [thinkLine()] : []),
 							...search.render(inner),
 							"",
 						],
@@ -556,11 +583,12 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 							"",
 							guide("↑↓", "navigate") +
 								guideSep +
-								guide("←/→", "thinking") +
+								guide("tab", "type") +
 								guideSep +
+								(tab === "chat" ? guide("←/→", "thinking") + guideSep : "") +
 								guide("^r", "reload") +
 								guideSep +
-								guide("enter", "select") +
+								guide("enter", tab === "chat" ? "select" : "usage") +
 								guideSep +
 								guide("esc", "cancel"),
 						],
@@ -589,9 +617,16 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						return;
 					}
 					if (reloading) return;
+					const shiftTab = matchesKey(data, Key.shift(Key.tab));
+					if (shiftTab || matchesKey(data, Key.tab)) {
+						switchTab(shiftTab ? -1 : 1);
+						tui.requestRender();
+						return;
+					}
+					// Non-chat tabs: ←/→ falls through to the search input cursor.
 					let dir: -1 | 1 | 0 = 0;
-					if (matchesKey(data, Key.left)) dir = -1;
-					else if (matchesKey(data, Key.right)) dir = 1;
+					if (tab === "chat" && matchesKey(data, Key.left)) dir = -1;
+					else if (tab === "chat" && matchesKey(data, Key.right)) dir = 1;
 					if (dir !== 0) {
 						const cur = pi.getThinkingLevel?.() || localLevel || "medium";
 						localLevel = stepEffectiveThinkingLevel(cur, dir, (candidate) => {
@@ -625,6 +660,14 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 		const ref = result.slice(CLASSIFIER_VALUE_PREFIX.length);
 		ctx.ui.notify(
 			`${ref} is a classifier model, not a chat model. Call it with models.classify() in codemode or ctx.modelRegistry.classify().`,
+			"info",
+		);
+		return;
+	}
+	if (result.startsWith(IMAGE_VALUE_PREFIX)) {
+		const ref = result.slice(IMAGE_VALUE_PREFIX.length);
+		ctx.ui.notify(
+			`${ref} is an image model, not a chat model. Call it with models.generateImages() in codemode.`,
 			"info",
 		);
 		return;
