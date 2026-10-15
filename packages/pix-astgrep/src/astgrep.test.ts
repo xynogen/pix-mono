@@ -10,12 +10,19 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerAstGrep from "./astgrep.ts";
+import type { ExecuteCtx } from "./consent.ts";
 
 interface Tool {
 	name: string;
+	description: string;
+	promptSnippet: string;
+	parameters: { properties: Record<string, unknown>; required?: string[] };
 	execute: (
 		id: string,
 		params: Record<string, unknown>,
+		signal?: AbortSignal,
+		onUpdate?: unknown,
+		ctx?: ExecuteCtx,
 	) => Promise<{ content: Array<{ text: string }>; details?: unknown; isError?: boolean }>;
 }
 
@@ -54,18 +61,36 @@ describe("pix-astgrep tools", () => {
 	test("registers exactly the six tools", () => {
 		const tools = capture(fixture());
 		expect([...tools.keys()].sort()).toEqual([
-			"ast_grep_outline",
-			"ast_grep_replace",
-			"ast_grep_search",
-			"read_enclosing",
-			"read_symbol",
+			"ast_outline",
+			"ast_read_enclosing",
+			"ast_read_symbol",
+			"ast_replace",
+			"ast_search",
 			"symbol_search",
 		]);
 	});
 
-	test("ast_grep_outline lists top-level declarations with line numbers", async () => {
+	test("AST contracts stay bounded while preserving pattern and write controls", () => {
+		const tools = capture(fixture());
+		for (const tool of tools.values()) {
+			const { name, description, promptSnippet, parameters } = tool;
+			expect(
+				Buffer.byteLength(JSON.stringify({ name, description, promptSnippet, parameters })),
+			).toBeLessThanOrEqual(1250);
+		}
+		expect(tools.get("ast_search")?.parameters.required).toEqual(["pattern"]);
+		expect(tools.get("ast_replace")?.parameters.required).toEqual(["pattern", "rewrite"]);
+		expect(tools.get("ast_search")?.parameters.properties.pattern).toMatchObject({
+			anyOf: [{ type: "string" }, { type: "object", required: ["context", "selector"] }],
+		});
+		expect(tools.get("ast_replace")?.parameters.properties.apply).toMatchObject({
+			type: "boolean",
+		});
+	});
+
+	test("ast_outline lists top-level declarations with line numbers", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_grep_outline");
+		const tool = capture(dir).get("ast_outline");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { path: "." });
 		expect((res.details as { symbols: number }).symbols).toBeGreaterThanOrEqual(2);
@@ -73,9 +98,9 @@ describe("pix-astgrep tools", () => {
 		expect(res.content[0]?.text).toContain("Widget");
 	});
 
-	test("read_enclosing returns the symbol covering a line", async () => {
+	test("ast_read_enclosing returns the symbol covering a line", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("read_enclosing");
+		const tool = capture(dir).get("ast_read_enclosing");
 		if (!tool) throw new Error("tool missing");
 		// Line 2 is inside greet's body.
 		const res = await tool.execute("t", { path: "a.ts", line: 2 });
@@ -83,9 +108,9 @@ describe("pix-astgrep tools", () => {
 		expect(res.content[0]?.text).toContain("function greet");
 	});
 
-	test("ast_grep_replace previews without writing, applies on request", async () => {
+	test("ast_replace previews without writing, applies on request", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_grep_replace");
+		const tool = capture(dir).get("ast_replace");
 		if (!tool) throw new Error("tool missing");
 		const preview = await tool.execute("t", {
 			pattern: "greet($A)",
@@ -107,18 +132,75 @@ describe("pix-astgrep tools", () => {
 		expect(readFileSync(join(dir, "a.ts"), "utf8")).toContain("welcome('a')");
 	});
 
-	test("ast_grep_search finds every call of a pattern", async () => {
+	test("ast_search finds every call of a pattern", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_grep_search");
+		const tool = capture(dir).get("ast_search");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { pattern: "greet($A)", paths: ["."] });
 		expect((res.details as { matches: number }).matches).toBe(2);
 		expect(res.content[0]?.text).toContain("a.ts:");
 	});
 
-	test("read_symbol returns one symbol body with a header line", async () => {
+	test("search, replace and outline discover Python files and reach grammar consent", async () => {
+		const dir = mkdtempSync(join(tempDir(), "pix-astgrep-python-"));
+		writeFileSync(join(dir, "case_body.py"), "import math\n");
+		const tools = capture(dir);
+		let prompts = 0;
+		const ctx = {
+			hasUI: true,
+			ui: {
+				custom: async () => {
+					prompts++;
+					return { action: "denied" };
+				},
+			},
+		};
+		for (const name of ["ast_search", "ast_replace", "ast_outline"]) {
+			const tool = tools.get(name);
+			if (!tool) throw new Error("tool missing");
+			const res = await tool.execute(
+				"t",
+				{
+					pattern: "import $M",
+					rewrite: "import $M",
+					paths: [name === "ast_search" ? "." : "case_body.py"],
+					lang: "python",
+					path: "case_body.py",
+				},
+				undefined,
+				undefined,
+				ctx as ExecuteCtx,
+			);
+			expect(res.isError).toBe(true);
+			expect(res.content[0]?.text).toMatch(/python.*@ast-grep\/lang-python/);
+		}
+		expect(prompts).toBe(1);
+		const outline = tools.get("ast_outline");
+		if (!outline) throw new Error("tool missing");
+		const result = await outline.execute("t", { path: "." });
+		expect(result.isError).toBe(true);
+		expect(result.content[0]?.text).toMatch(/python.*@ast-grep\/lang-python/);
+	});
+
+	test("a missing grammar does not apply earlier replacements", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("read_symbol");
+		writeFileSync(join(dir, "z.py"), "import math\n");
+		const tool = capture(dir).get("ast_replace");
+		if (!tool) throw new Error("tool missing");
+		const before = readFileSync(join(dir, "a.ts"), "utf8");
+		const res = await tool.execute("t", {
+			pattern: "greet($A)",
+			rewrite: "welcome($A)",
+			paths: ["a.ts", "z.py"],
+			apply: true,
+		});
+		expect(res.isError).toBe(true);
+		expect(readFileSync(join(dir, "a.ts"), "utf8")).toBe(before);
+	});
+
+	test("ast_read_symbol returns one symbol body with a header line", async () => {
+		const dir = fixture();
+		const tool = capture(dir).get("ast_read_symbol");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { path: "a.ts", symbol: "greet" });
 		expect((res.details as { outcome: string }).outcome).toBe("success");
@@ -126,9 +208,9 @@ describe("pix-astgrep tools", () => {
 		expect(res.content[0]?.text).toContain("a.ts:1");
 	});
 
-	test("read_symbol reports a missing symbol as an error", async () => {
+	test("ast_read_symbol reports a missing symbol as an error", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("read_symbol");
+		const tool = capture(dir).get("ast_read_symbol");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { path: "a.ts", symbol: "nope" });
 		expect(res.isError).toBe(true);

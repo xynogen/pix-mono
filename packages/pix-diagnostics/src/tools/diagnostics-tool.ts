@@ -1,5 +1,5 @@
 /**
- * diagnostics-tool.ts — the `lens_diagnostics` tool.
+ * diagnostics-tool.ts — the `lsp_diagnostics` tool.
  *
  * Two sources:
  *  - `session` returns cached store snapshots (all, or filtered by `paths`),
@@ -102,24 +102,19 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 	const { store, manager, cwd } = deps;
 
 	pi.registerTool({
-		name: "lens_diagnostics",
+		name: "lsp_diagnostics",
 		label: "Diagnostics",
 		renderShell: "self",
 		description:
-			"Report LSP diagnostics. source=session returns cached findings (all files, or " +
-			"filter with paths); source=lsp runs a fresh check on 1..100 explicit paths. " +
-			"Prefer source=lsp with exact paths after editing code.",
-		promptSnippet:
-			"lens_diagnostics(source, paths?, severity?, waitMs?) — source: session|lsp. session reads cache; lsp checks explicit paths.",
+			"LSP diagnostics: session reads cache; lsp checks explicit paths. Prefer fresh checks after edits.",
+		promptSnippet: "Fresh LSP diagnostics or cached session findings.",
 		parameters: Type.Object({
-			source: StringEnum(["session", "lsp"] as const, {
-				description: "session reads cached findings; lsp runs a fresh check.",
-			}),
+			source: StringEnum(["session", "lsp"] as const),
 			paths: Type.Optional(
 				Type.Array(Type.String(), {
 					minItems: 1,
 					maxItems: 100,
-					description: "Files to check (lsp) or filter (session).",
+					description: "Required for lsp; optional session filter.",
 				}),
 			),
 			severity: Type.Optional(
@@ -137,7 +132,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { source?: string; paths?: string[] };
-			const title = formatToolCallTitle(t, "lens_diagnostics", context);
+			const title = formatToolCallTitle(t, "lsp_diagnostics", context);
 			const src = t.fg("muted", a.source ?? "session");
 			const count = a.paths?.length ? t.fg("dim", `${a.paths.length} paths`) : "";
 			return new Text(`${title} ${src} ${count}`.trimEnd(), 0, 0);
@@ -155,7 +150,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			if (!details) return frameToolResult(body, theme, isError);
 			if (
 				tickCollapse(
-					"lens_diagnostics",
+					"lsp_diagnostics",
 					context.state as CollapseState,
 					context.invalidate,
 					context.expanded,
@@ -164,7 +159,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 				return new Text(
 					formatCollapsedToolRow(
 						t,
-						"lens_diagnostics",
+						"lsp_diagnostics",
 						`${details.files} files`,
 						[
 							`${details.findings} findings`,
@@ -213,21 +208,29 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 				rows = rows.slice(0, MAX_FINDINGS);
 				truncated = true;
 			}
-			let text = rows.length > 0 ? rows.join("\n") : summarize(snapshots);
+			const incomplete = snapshots
+				.filter((s) => s.state === "unavailable" || s.state === "unconfirmed")
+				.map(
+					(s) =>
+						`${relativePath(cwd, s.filePath)}: ${s.state}: ${s.reason ?? "check did not complete"}`,
+				);
+			let text = [rows.length > 0 ? rows.join("\n") : summarize(snapshots), ...incomplete].join(
+				"\n",
+			);
 			const capped = truncateHead(text);
 			if (capped.truncated) truncated = true;
 			text = capped.content;
 
 			const details: DiagnosticsDetails = {
 				_type: "pixDiagnostics",
-				outcome: "success",
+				outcome: unavailable > 0 ? "error" : "success",
 				files: snapshots.length,
 				findings: findings.length,
 				unconfirmed,
 				unavailable,
 				truncated,
 			};
-			return { content: [{ type: "text" as const, text }], details };
+			return { content: [{ type: "text" as const, text }], details, isError: unavailable > 0 };
 		},
 	});
 }

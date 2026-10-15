@@ -46,9 +46,9 @@ describe("pix-diagnostics extension", () => {
 		const m = mockPi();
 		registerExtension(m.pi as never);
 		expect(m.tools.map((t) => t.name)).toEqual([
-			"lens_diagnostics",
+			"lsp_diagnostics",
 			"lsp_navigation",
-			"lens_diagnostic_mark",
+			"lsp_diagnostic_mark",
 		]);
 	});
 
@@ -90,9 +90,9 @@ describe("pix-diagnostics extension", () => {
 		registerExtension(m.pi as never);
 		registerExtension(m.pi as never);
 		expect(m.tools.map((t) => t.name)).toEqual([
-			"lens_diagnostics",
+			"lsp_diagnostics",
 			"lsp_navigation",
-			"lens_diagnostic_mark",
+			"lsp_diagnostic_mark",
 		]);
 	});
 });

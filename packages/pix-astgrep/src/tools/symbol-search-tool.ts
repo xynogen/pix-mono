@@ -11,7 +11,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -23,34 +23,13 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
+import { languageForFile } from "../engine.ts";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const MAX_FILES = 5000;
 const MAX_FILE_BYTES = 512 * 1024;
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
-const CODE_EXT = new Set([
-	".ts",
-	".mts",
-	".cts",
-	".tsx",
-	".js",
-	".mjs",
-	".cjs",
-	".jsx",
-	".py",
-	".go",
-	".rs",
-	".java",
-	".rb",
-	".php",
-	".c",
-	".h",
-	".cpp",
-	".cs",
-	".css",
-	".html",
-]);
 
 export interface SymbolSearchToolDeps {
 	cwd: string;
@@ -66,7 +45,7 @@ function collectFiles(root: string, out: string[]): void {
 		return;
 	}
 	if (stat.isFile()) {
-		if (CODE_EXT.has(extname(root).toLowerCase())) out.push(root);
+		if (languageForFile(root)) out.push(root);
 		return;
 	}
 	if (!stat.isDirectory()) return;
@@ -75,7 +54,7 @@ function collectFiles(root: string, out: string[]): void {
 		if (entry.isDirectory()) {
 			if (SKIP_DIRS.has(entry.name)) continue;
 			collectFiles(join(root, entry.name), out);
-		} else if (CODE_EXT.has(extname(entry.name).toLowerCase())) {
+		} else if (entry.isFile() && languageForFile(entry.name)) {
 			out.push(join(root, entry.name));
 		}
 	}
@@ -103,9 +82,7 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 		...({ exposure: "deferred" } as const),
 		label: "Symbol search",
 		description:
-			"Find files by identifier. Ranks code files by how often they contain the query terms. " +
-			"On-demand bounded scan, no persisted index. Use it to locate where a symbol lives " +
-			"before you read it. Space-separated terms are AND-matched.",
+			"Rank files by identifier frequency; not semantic resolution. Space-separated terms are AND-matched.",
 		promptSnippet: "symbol_search(query, paths?, limit?) — rank files by identifier.",
 		parameters: Type.Object({
 			query: Type.String({ description: "Identifier terms, e.g. `authenticate user`." }),

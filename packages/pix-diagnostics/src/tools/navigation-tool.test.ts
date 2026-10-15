@@ -8,6 +8,8 @@ import { registerNavigationTool } from "./navigation-tool.ts";
 
 type ToolDef = {
 	name: string;
+	description: string;
+	promptSnippet: string;
 	parameters: { properties: Record<string, unknown> };
 	execute: (
 		id: string,
@@ -46,6 +48,10 @@ function capture(manager: LspManager, cwd = "/repo"): ToolDef {
 describe("lsp_navigation tool", () => {
 	test("has exactly the nine public fields in order", () => {
 		const tool = capture(fakeManager([]));
+		const { name, description, promptSnippet, parameters } = tool;
+		expect(
+			Buffer.byteLength(JSON.stringify({ name, description, promptSnippet, parameters })),
+		).toBeLessThanOrEqual(1100);
 		expect(Object.keys(tool.parameters.properties)).toEqual([
 			"operation",
 			"path",

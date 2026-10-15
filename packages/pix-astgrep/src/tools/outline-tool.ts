@@ -1,5 +1,5 @@
 /**
- * outline-tool.ts — the `ast_grep_outline` tool.
+ * outline-tool.ts — the `ast_outline` tool.
  *
  * Syntax-only structure of a file or directory: the top-level declarations,
  * imports, and exports. No index, no LSP. Reads each supported file once,
@@ -7,7 +7,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -21,28 +21,18 @@ import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse"
 import { Type } from "typebox";
 import { type ExecuteCtx, grammarConsent } from "../consent.ts";
 import { languageForFile, type SgNode } from "../engine.ts";
-import { type ConsentFn, parseWithGrammar } from "../grammars.ts";
+import { grammarErrorResult } from "../grammar-result.ts";
+import { parseWithGrammar } from "../grammars.ts";
 
 const MAX_FILES = 500;
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
-const CODE_EXT = new Set([
-	".ts",
-	".mts",
-	".cts",
-	".tsx",
-	".js",
-	".mjs",
-	".cjs",
-	".jsx",
-	".css",
-	".html",
-	".htm",
-]);
-
-// Declaration node kinds worth listing in an outline, across the six grammars.
+// Declaration node kinds worth listing, including Python's definition nodes.
 const OUTLINE_KINDS = new Set([
 	"function_declaration",
 	"class_declaration",
+	"function_definition",
+	"class_definition",
+	"import_from_statement",
 	"abstract_class_declaration",
 	"interface_declaration",
 	"type_alias_declaration",
@@ -68,7 +58,7 @@ function collectFiles(root: string, out: string[]): void {
 		return;
 	}
 	if (stat.isFile()) {
-		if (CODE_EXT.has(extname(root).toLowerCase())) out.push(root);
+		if (languageForFile(root)) out.push(root);
 		return;
 	}
 	if (!stat.isDirectory()) return;
@@ -77,7 +67,7 @@ function collectFiles(root: string, out: string[]): void {
 		if (entry.isDirectory()) {
 			if (SKIP_DIRS.has(entry.name)) continue;
 			collectFiles(join(root, entry.name), out);
-		} else if (CODE_EXT.has(extname(entry.name).toLowerCase())) {
+		} else if (entry.isFile() && languageForFile(entry.name)) {
 			out.push(join(root, entry.name));
 		}
 	}
@@ -99,8 +89,12 @@ function nameOf(node: SgNode, depth = 3): string {
 /** One outline line per top-level declaration in a parsed file. */
 function outlineFile(root: SgNode): Array<{ line: number; kind: string; name: string }> {
 	const rows: Array<{ line: number; kind: string; name: string }> = [];
-	for (const node of root.children()) {
-		if (!OUTLINE_KINDS.has(node.kind())) continue;
+	for (const child of root.children()) {
+		const node =
+			child.kind() === "decorated_definition"
+				? child.children().find((node) => OUTLINE_KINDS.has(node.kind()))
+				: child;
+		if (!node || !OUTLINE_KINDS.has(node.kind())) continue;
 		const line = node.range().start.line + 1;
 		const first = node.text().split("\n")[0]?.slice(0, 80) ?? "";
 		rows.push({ line, kind: node.kind(), name: nameOf(node) || first });
@@ -112,13 +106,12 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 	const { cwd } = deps;
 
 	pi.registerTool({
-		name: "ast_grep_outline",
+		name: "ast_outline",
 		...({ exposure: "deferred" } as const),
 		label: "AST outline",
 		description:
-			"Syntax-only structure of a file or directory: top-level declarations, imports, and " +
-			"exports with line numbers. No index, no LSP. Supports ts, tsx, js, jsx, css, html.",
-		promptSnippet: "ast_grep_outline(path) — file or dir structure, syntax only.",
+			"Top-level declarations/imports with line numbers; syntax only. Extra grammars require consent and may need an agent restart.",
+		promptSnippet: "ast_outline(path) — file or dir structure, syntax only.",
 		parameters: Type.Object({
 			path: Type.String({ description: "File or directory to outline." }),
 		}),
@@ -128,7 +121,7 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string };
-			const title = formatToolCallTitle(t, "ast_grep_outline", context);
+			const title = formatToolCallTitle(t, "ast_outline", context);
 			return new Text(`${title} ${t.fg("dim", a.path ?? "")}`.trimEnd(), 0, 0);
 		},
 
@@ -140,7 +133,7 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 			if (
 				!options.isPartial &&
 				tickCollapse(
-					"ast_grep_outline",
+					"ast_outline",
 					context.state as CollapseState,
 					context.invalidate,
 					options.expanded,
@@ -149,7 +142,7 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 				return new Text(
 					formatCollapsedToolRow(
 						theme,
-						"ast_grep_outline",
+						"ast_outline",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",
@@ -166,13 +159,12 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 
 		async execute(_id, params, _signal, _onUpdate, ctx) {
 			const path = params.path as string;
-			const consent: ConsentFn = grammarConsent(ctx as ExecuteCtx);
+			const consent = grammarConsent(ctx as ExecuteCtx);
 
 			const files: string[] = [];
 			collectFiles(resolve(cwd, path), files);
 
 			const blocks: string[] = [];
-			const skippedLangs = new Set<string>();
 			let symbols = 0;
 			for (const file of files) {
 				const lang = languageForFile(file);
@@ -185,8 +177,7 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 				}
 				const parsed = await parseWithGrammar(lang, source, consent);
 				if (parsed.kind !== "ok") {
-					if (parsed.kind === "declined" || parsed.kind === "needs-install") skippedLangs.add(lang);
-					continue;
+					return grammarErrorResult(parsed, lang, "pixOutline");
 				}
 				const rows = outlineFile(parsed.root);
 				if (rows.length === 0) continue;
@@ -196,11 +187,8 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 				blocks.push(`${rel}\n${lines.join("\n")}`);
 			}
 
-			const skipNote =
-				skippedLangs.size > 0 ? `\n(skipped, no grammar: ${[...skippedLangs].join(", ")})` : "";
 			const text =
-				(blocks.length > 0 ? blocks.join("\n\n") : `No declarations in ${files.length} file(s).`) +
-				skipNote;
+				blocks.length > 0 ? blocks.join("\n\n") : `No declarations in ${files.length} file(s).`;
 			return {
 				content: [{ type: "text" as const, text }],
 				details: { _type: "pixOutline", outcome: symbols > 0 ? "success" : "empty", symbols },

@@ -1,36 +1,36 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`captures registered diagnostics tools and the subscribed widget without a server 1`] = `
-"lens_diagnostics:call
+"lsp_diagnostics:call
 
-<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                 
-lens_diagnostics:success
-
-<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-lens_diagnostics:partial
-
-<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
-lens_diagnostics:error
-
-<error>✗︎</error> src/a.ts:3:4 error ts(2304) Missing name                                      
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
-lens_diagnostics:no-details
+<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                  
+lsp_diagnostics:success
 
 <success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-lens_diagnostics:no-details-error
+lsp_diagnostics:partial
+
+<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
+lsp_diagnostics:error
 
 <error>✗︎</error> src/a.ts:3:4 error ts(2304) Missing name                                      
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
-lens_diagnostics:hidden-call
-lens_diagnostics:collapsed
+lsp_diagnostics:no-details
 
-<success>✓︎ </success> <toolTitle+bold>lens_diagnostics</toolTitle+bold> <dim>1 files</dim> <muted>·</muted> <muted>1 findings</muted>                                        
-lens_diagnostics:expanded
+<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+lsp_diagnostics:no-details-error
 
-<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                 
-lens_diagnostics:expanded-result
+<error>✗︎</error> src/a.ts:3:4 error ts(2304) Missing name                                      
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+lsp_diagnostics:hidden-call
+lsp_diagnostics:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <dim>1 files</dim> <muted>·</muted> <muted>1 findings</muted>                                         
+lsp_diagnostics:expanded
+
+<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                  
+lsp_diagnostics:expanded-result
 
 <success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
@@ -73,36 +73,36 @@ lsp_navigation:expanded-result
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-lens_diagnostic_mark:call
+lsp_diagnostic_mark:call
 
-<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                               
-lens_diagnostic_mark:success
-
-<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-lens_diagnostic_mark:partial
-
-<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
-lens_diagnostic_mark:error
-
-<error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
-lens_diagnostic_mark:no-details
+<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                                
+lsp_diagnostic_mark:success
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
-lens_diagnostic_mark:no-details-error
+lsp_diagnostic_mark:partial
+
+<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
+lsp_diagnostic_mark:error
 
 <error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
-lens_diagnostic_mark:hidden-call
-lens_diagnostic_mark:collapsed
+lsp_diagnostic_mark:no-details
 
-<success>✓︎ </success> <toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>·</muted> <muted>1 marks</muted>                                               
-lens_diagnostic_mark:expanded
+<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
+<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+lsp_diagnostic_mark:no-details-error
 
-<warning>◐︎ </warning> <toolTitle+bold>lens_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                               
-lens_diagnostic_mark:expanded-result
+<error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
+<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+lsp_diagnostic_mark:hidden-call
+lsp_diagnostic_mark:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>·</muted> <muted>1 marks</muted>                                                
+lsp_diagnostic_mark:expanded
+
+<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                                
+lsp_diagnostic_mark:expanded-result
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>

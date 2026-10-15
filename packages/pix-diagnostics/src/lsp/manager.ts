@@ -135,6 +135,12 @@ export type ResolveResult =
 	| { kind: "no-server" }
 	| { kind: "no-executable"; commands: readonly string[] };
 
+function unavailableReason(result: Exclude<ResolveResult, { kind: "ok" }>): string {
+	return result.kind === "no-server"
+		? "No language server configured for this file type. Add your chosen server under servers in .pi/lsp.json (command, args, extensions, languageId, rootMarkers); installing its executable alone is not enough."
+		: `Configured language server executable not found: ${result.commands.join(", ")}. Install it or set its executable path in .pi/lsp.json.`;
+}
+
 /**
  * Opaque timer handle. Production returns a `setTimeout` handle; tests return a
  * counter id. The manager only stores and hands it back to `clearTimer`, so an
@@ -230,7 +236,7 @@ class LazyLspManager implements LspManager {
 					diagnostics: [],
 					checkedAt: now,
 					state: "unavailable",
-					reason: "no language server for this file type",
+					reason: unavailableReason(result),
 				});
 				continue;
 			}
@@ -240,7 +246,7 @@ class LazyLspManager implements LspManager {
 					diagnostics: [],
 					checkedAt: now,
 					state: "unavailable",
-					reason: `install one of: ${result.commands.join(", ")}`,
+					reason: unavailableReason(result),
 				});
 				continue;
 			}
@@ -343,6 +349,11 @@ class LazyLspManager implements LspManager {
 	async navigate(request: NavigationRequest): Promise<NavigationResult[]> {
 		if (request.operation === "workspaceSymbol") {
 			const servers = [...this.live.values()];
+			if (servers.length === 0) {
+				throw new Error(
+					"No active language servers. Configure .pi/lsp.json and run a file navigation or source=lsp diagnostics check first.",
+				);
+			}
 			const results: NavigationResult[] = [];
 			for (const server of servers) {
 				server.busy++;
@@ -364,12 +375,13 @@ class LazyLspManager implements LspManager {
 			return results.slice(0, request.limit);
 		}
 
-		if (!request.path) return [];
+		if (!request.path) throw new Error("LSP navigation requires a file path");
 		const resolved = await this.deps.resolve(request.path);
-		if (resolved.kind !== "ok") return [];
+		if (resolved.kind !== "ok") throw new Error(unavailableReason(resolved));
 		const key = keyFor(resolved.resolved.spec.id, resolved.resolved.root);
 		const acquired = await this.acquire(key, resolved.resolved, request.signal);
-		if ("unavailable" in acquired) return [];
+		if ("unavailable" in acquired)
+			throw new Error(`Language server unavailable: ${acquired.unavailable}`);
 		const server = acquired.server;
 		server.busy++;
 		this.clearIdle(server);
@@ -732,9 +744,9 @@ export function mapNavigation(operation: NavigationOperation, raw: unknown): Nav
 
 /** Production manager wired to the registry, transport, fs, and real timers. */
 export function createManager(cwd: string, options: { idleMs?: number } = {}): LspManager {
-	const resolver = createResolver(cwd);
 	const deps: ManagerDeps = {
 		async resolve(filePath) {
+			const resolver = createResolver(cwd);
 			const spec = resolver.specFor(filePath);
 			if (!spec) return { kind: "no-server" };
 			const root = await resolver.rootFor(filePath, spec);

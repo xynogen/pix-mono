@@ -43,7 +43,7 @@ describe("DispositionStore", () => {
 	});
 });
 
-describe("lens_diagnostic_mark tool", () => {
+describe("lsp_diagnostic_mark tool", () => {
 	test("set requires path, code, and disposition", async () => {
 		const tool = captureMark(new DispositionStore());
 		await expect(tool.execute("t", { action: "set", path: "a.ts" })).rejects.toThrow("disposition");

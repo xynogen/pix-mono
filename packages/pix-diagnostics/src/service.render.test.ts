@@ -42,9 +42,9 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 			},
 		);
 		expect(tools.map((tool) => [tool.name, tool.renderShell])).toEqual([
-			["lens_diagnostics", "self"],
+			["lsp_diagnostics", "self"],
 			["lsp_navigation", "self"],
-			["lens_diagnostic_mark", "self"],
+			["lsp_diagnostic_mark", "self"],
 		]);
 		const rows = (
 			label: string,

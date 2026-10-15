@@ -13,11 +13,11 @@ dependency, installed with the package).
 
 | Tool | Purpose |
 |---|---|
-| `ast_grep_search` | Structural search by pattern, e.g. `foo($A)` or `useState($$$)`. |
-| `ast_grep_replace` | AST-aware rewrite (`pattern` → `rewrite`). Preview by default; `apply:true` writes. |
-| `ast_grep_outline` | Syntax-only outline of a file or dir — declarations, imports, exports with line numbers. |
-| `read_symbol` | Exact source of one named symbol (function, class, type, enum, const). |
-| `read_enclosing` | Smallest named declaration that encloses a line — the reverse of `read_symbol`. |
+| `ast_search` | Structural search by pattern, e.g. `foo($A)` or `useState($$$)`. |
+| `ast_replace` | AST-aware rewrite (`pattern` → `rewrite`). Preview by default; `apply:true` writes. |
+| `ast_outline` | Syntax-only outline of a file or dir — declarations, imports, exports with line numbers. |
+| `ast_read_symbol` | Exact source of one named symbol (function, class, type, enum, const). |
+| `ast_read_enclosing` | Smallest named declaration that encloses a line — the reverse of `ast_read_symbol`. |
 | `symbol_search` | Rank files by how often they contain the query identifiers (AND-matched). |
 
 ## Languages
@@ -25,7 +25,7 @@ dependency, installed with the package).
 Six grammars are bundled and always work: `typescript`, `tsx`, `javascript`,
 `jsx`, `css`, `html`.
 
-`ast_grep_search` and `ast_grep_replace` also accept a `lang` for other
+`ast_search` and `ast_replace` also accept a `lang` for other
 languages (python, go, rust, java, c, cpp, and more). The matching
 `@ast-grep/lang-*` grammar installs on demand into the pix cache prefix after
 your consent — it never touches a global path or this package's `node_modules`.

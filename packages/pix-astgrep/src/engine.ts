@@ -3,9 +3,8 @@
  *
  * The native addon loads on first tool call, never at extension registration.
  * The addon bundles six grammars: ts, tsx, js, jsx, css, html. We map file
- * extensions to those accessors. Other languages return `undefined` and the
- * tool reports a clear "unsupported language" result — it never installs a
- * grammar.
+ * extensions to language aliases. Non-bundled languages use grammars.ts, which
+ * loads cached grammar packages or installs them only after user consent.
  *
  * Loader adapted from pi-lens `clients/deps/ast-grep-napi.ts` (MIT). See
  * ../../pix-diagnostics/LICENSE.pi-lens.
@@ -91,9 +90,9 @@ export function isBundled(lang: string): lang is Language {
 }
 
 /**
- * Every ast-grep language alias, keyed by its `--lang` value. The six bundled
- * ones parse in-process; the rest need a `@ast-grep/lang-*` package (see
- * grammars.ts). This is the full set from the ast-grep language table.
+ * Supported ast-grep language aliases. The six bundled ones parse in-process;
+ * the rest have published `@ast-grep/lang-*` packages (see grammars.ts).
+ * This intentionally excludes languages without an installable grammar.
  */
 export const ALL_LANGUAGES = [
 	"typescript",
@@ -119,10 +118,7 @@ export const ALL_LANGUAGES = [
 	"json",
 	"yaml",
 	"bash",
-	"hcl",
 	"haskell",
-	"nix",
-	"solidity",
 ] as const;
 export type AnyLanguage = (typeof ALL_LANGUAGES)[number];
 
@@ -173,10 +169,7 @@ const EXT_TO_LANG: Record<string, AnyLanguage> = {
 	".bash": "bash",
 	".zsh": "bash",
 	".ksh": "bash",
-	".hcl": "hcl",
 	".hs": "haskell",
-	".nix": "nix",
-	".sol": "solidity",
 };
 
 /** Map a file path to any ast-grep language alias, or `undefined`. */

@@ -1,7 +1,7 @@
 /**
- * read-enclosing-tool.ts — the `read_enclosing` tool.
+ * read-enclosing-tool.ts — the `ast_read_enclosing` tool.
  *
- * The reverse of `read_symbol`: given a line, return the smallest named
+ * The reverse of `ast_read_symbol`: given a line, return the smallest named
  * declaration that encloses it. Use it when you know a location but not the
  * symbol name. Supports the six ast-grep grammars.
  */
@@ -72,13 +72,11 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 	const { cwd } = deps;
 
 	pi.registerTool({
-		name: "read_enclosing",
+		name: "ast_read_enclosing",
 		...({ exposure: "deferred" } as const),
 		label: "Read enclosing",
-		description:
-			"Return the smallest named declaration that encloses a line (the reverse of read_symbol). " +
-			"Use it when you know a location but not the symbol name. Supports ts, tsx, js, jsx, css, html.",
-		promptSnippet: "read_enclosing(path, line) — smallest symbol covering a line.",
+		description: "Read the smallest declaration covering a one-based line. Grammar-dependent.",
+		promptSnippet: "ast_read_enclosing(path, line) — smallest symbol covering a line.",
 		parameters: Type.Object({
 			path: Type.String({ description: "Source file, e.g. `src/app.ts`." }),
 			line: Type.Integer({ minimum: 1, description: "One-based line inside the symbol." }),
@@ -89,7 +87,7 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string; line?: number };
-			const title = formatToolCallTitle(t, "read_enclosing", context);
+			const title = formatToolCallTitle(t, "ast_read_enclosing", context);
 			const loc = a.path ? t.fg("dim", `${a.path}:${a.line ?? ""}`) : "";
 			return new Text(`${title} ${loc}`.trimEnd(), 0, 0);
 		},
@@ -102,7 +100,7 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 			if (
 				!options.isPartial &&
 				tickCollapse(
-					"read_enclosing",
+					"ast_read_enclosing",
 					context.state as CollapseState,
 					context.invalidate,
 					options.expanded,
@@ -111,7 +109,7 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 				return new Text(
 					formatCollapsedToolRow(
 						theme,
-						"read_enclosing",
+						"ast_read_enclosing",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

@@ -10,7 +10,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { ALL_LANGUAGES, isBundled, languageForFile } from "./engine.ts";
-import { packageForLanguage, parseWithGrammar, resetRegistered } from "./grammars.ts";
+import { packageForLanguage, parseWithGrammar } from "./grammars.ts";
 
 describe("language coverage", () => {
 	test("advertises far more than the six bundled grammars", () => {
@@ -41,23 +41,44 @@ describe("language coverage", () => {
 });
 
 describe("parseWithGrammar", () => {
-	test("parses a bundled language in-process", async () => {
-		const out = await parseWithGrammar("typescript", "const x = foo(1);");
-		expect(out.kind).toBe("ok");
-	});
+	for (const [lang, source] of [
+		["typescript", "const x: number = 1;"],
+		["tsx", "const x = <div />;"],
+		["javascript", "const x = 1;"],
+		["jsx", "const x = <div />;"],
+		["css", "div { color: red; }"],
+		["html", "<div>hello</div>"],
+	] as const) {
+		test(`${lang} parses without requesting installation`, async () => {
+			const out = await parseWithGrammar(lang, source, async () => {
+				throw new Error("Bundled grammars must not request installation");
+			});
+			expect(out.kind).toBe("ok");
+		});
+	}
 
-	test("an unknown alias is unsupported", async () => {
-		const out = await parseWithGrammar("cobol", "IDENTIFICATION DIVISION.");
-		expect(out.kind).toBe("unsupported");
-	});
+	for (const lang of ["cobol", "hcl", "nix", "solidity"]) {
+		test(`${lang} does not offer an unavailable grammar package`, async () => {
+			expect(await parseWithGrammar(lang, "")).toEqual({ kind: "unsupported" });
+			expect(packageForLanguage(lang)).toBeUndefined();
+		});
+	}
 
-	test("a non-bundled language with no consent is declined, not installed", async () => {
-		resetRegistered();
-		// No consent callback → the tool must not install; it declines.
-		const out = await parseWithGrammar("python", "def f(): pass");
-		// Either the grammar is already cached (ready) or it is declined without
-		// consent — never a silent install.
-		expect(["declined", "ready"]).toContain(out.kind);
-		if (out.kind === "declined") expect(out.pkg).toBe("@ast-grep/lang-python");
-	});
+	for (const lang of ALL_LANGUAGES.filter((lang) => !isBundled(lang))) {
+		test(`${lang}: headless calls defer consent and rejection is remembered`, async () => {
+			const out = await parseWithGrammar(lang, "");
+			expect(["needs-install", "ok"]).toContain(out.kind);
+			if (out.kind === "ok") return;
+			expect(out).toEqual({ kind: "needs-install", pkg: packageForLanguage(lang)! });
+			const prompts: string[] = [];
+			const consent = async (pkg: string) => {
+				prompts.push(pkg);
+				return false;
+			};
+			const retried = await parseWithGrammar(lang, "", consent);
+			expect(retried).toEqual({ kind: "declined", pkg: packageForLanguage(lang)! });
+			expect(await parseWithGrammar(lang, "", consent)).toEqual(retried);
+			expect(prompts).toEqual([packageForLanguage(lang)!]);
+		});
+	}
 });

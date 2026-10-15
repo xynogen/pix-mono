@@ -69,7 +69,7 @@ THEME_PACKAGE="npm:@xynogen/pix-themes"
 # Format: "<spec>|<description>"
 # (pix-core bundles pix-diagnostics, which now provides the LSP engine that
 # external pi-lens used to. Do not recommend pi-lens: both register the same
-# lens_diagnostics and lsp_navigation tools.)
+# lsp_diagnostics and lsp_navigation tools.)
 RECOMMENDED_PACKAGES="
 "
 
@@ -86,7 +86,7 @@ npm:@xynogen/pix-ssh|ssh_run — remote command execution with optional root acc
 npm:@xynogen/pix-sudo|sudo_run — root execution via a PAM password overlay; a privileged capability you opt into explicitly (blocked in non-interactive mode).
 npm:@xynogen/pix-toolbox|/toolbox — fuzzy-search picker to enable/disable tools at runtime; a power-user utility, not needed for normal use.
 npm:@xynogen/pix-graph|Native-TS code knowledge graph (build/query via CLI); a standalone tool you invoke on demand, not part of the always-on distro.
-npm:@xynogen/pix-astgrep|ast_grep_search / read_symbol / symbol_search — structural code search and symbol reads via the @ast-grep/napi native addon, so enable it explicitly.
+npm:@xynogen/pix-astgrep|ast_search / ast_read_symbol / symbol_search — structural code search and symbol reads via the @ast-grep/napi native addon, so enable it explicitly.
 npm:@xynogen/pix-hunk|Live Hunk diff-review bridge — requires the external Hunk CLI and an active review session, so enable it explicitly.
 npm:@xynogen/pix-search|Smarter @ file search (fuzzy + git-recency ranking) that overrides Pi's built-in autocomplete, so opt in when you want that ranking.
 npm:@xynogen/pix-aria2|Fast resumable downloads via an auto-managed aria2 daemon — requires the external aria2c binary, so enable it explicitly.

@@ -12,11 +12,11 @@ test("AST captures six default host-box tools without executing the engine", asy
 			registerTool: (tool: ToolDefinition) => tools.push(tool),
 		} as unknown as ExtensionAPI);
 		expect(tools.map((tool) => tool.name)).toEqual([
-			"ast_grep_search",
-			"ast_grep_replace",
-			"ast_grep_outline",
-			"read_symbol",
-			"read_enclosing",
+			"ast_search",
+			"ast_replace",
+			"ast_outline",
+			"ast_read_symbol",
+			"ast_read_enclosing",
 			"symbol_search",
 		]);
 		const theme = roleTheme();

@@ -14,7 +14,7 @@ installation. Configure it in `<project>/.pi/lsp.json`.
 2. Prefer an existing server in project dependencies or on `PATH`.
 3. Ask before installing a missing server. Use a project-local install.
 4. Add only the selected language to `.pi/lsp.json`.
-5. Run `lens_diagnostics` on one source file. Its manager reads `.pi/lsp.json` directly.
+5. Run `lsp_diagnostics` on one source file. Its manager reads `.pi/lsp.json` directly.
 
 Do not add all languages. Do not install a server globally. Do not use a server
 because it appears first in this table; project configuration and existing tools

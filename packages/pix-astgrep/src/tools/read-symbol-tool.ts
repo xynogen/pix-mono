@@ -1,5 +1,5 @@
 /**
- * read-symbol-tool.ts — the `read_symbol` tool.
+ * read-symbol-tool.ts — the `ast_read_symbol` tool.
  *
  * Return the exact source of one named top-level symbol in a file. It parses
  * the file with ast-grep and finds a declaration node whose name matches. This
@@ -72,13 +72,11 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 	const { cwd } = deps;
 
 	pi.registerTool({
-		name: "read_symbol",
+		name: "ast_read_symbol",
 		...({ exposure: "deferred" } as const),
 		label: "Read symbol",
-		description:
-			"Return the exact source of one named symbol (function, class, interface, type, enum, " +
-			"const) in a file, without reading the whole file. Supports ts, tsx, js, jsx, css, html.",
-		promptSnippet: "read_symbol(path, symbol) — one symbol's source.",
+		description: "Read one named declaration. Grammar-dependent; not semantic resolution.",
+		promptSnippet: "ast_read_symbol(path, symbol) — one symbol's source.",
 		parameters: Type.Object({
 			path: Type.String({ description: "Source file, e.g. `src/app.ts`." }),
 			symbol: Type.String({ description: "Exact symbol name to read." }),
@@ -89,7 +87,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string; symbol?: string };
-			const title = formatToolCallTitle(t, "read_symbol", context);
+			const title = formatToolCallTitle(t, "ast_read_symbol", context);
 			const sym = t.fg("dim", a.symbol ?? "");
 			const path = a.path ? t.fg("muted", ` · ${a.path}`) : "";
 			return new Text(`${title} ${sym}${path}`.trimEnd(), 0, 0);
@@ -103,7 +101,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 			if (
 				!options.isPartial &&
 				tickCollapse(
-					"read_symbol",
+					"ast_read_symbol",
 					context.state as CollapseState,
 					context.invalidate,
 					options.expanded,
@@ -112,7 +110,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 				return new Text(
 					formatCollapsedToolRow(
 						theme,
-						"read_symbol",
+						"ast_read_symbol",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

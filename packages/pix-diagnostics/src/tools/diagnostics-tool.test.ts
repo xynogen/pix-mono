@@ -7,6 +7,8 @@ import { registerDiagnosticsTool, renderClose } from "./diagnostics-tool.ts";
 
 type ToolDef = {
 	name: string;
+	description: string;
+	promptSnippet: string;
 	parameters: { properties: Record<string, unknown> };
 	execute: (
 		id: string,
@@ -60,9 +62,13 @@ function capture(store: DiagnosticStore, manager: LspManager, cwd = "/repo"): To
 	return tool;
 }
 
-describe("lens_diagnostics tool", () => {
+describe("lsp_diagnostics tool", () => {
 	test("has exactly the four public fields", () => {
 		const tool = capture(new DiagnosticStore(), fakeManager());
+		const { name, description, promptSnippet, parameters } = tool;
+		expect(
+			Buffer.byteLength(JSON.stringify({ name, description, promptSnippet, parameters })),
+		).toBeLessThanOrEqual(750);
 		expect(Object.keys(tool.parameters.properties)).toEqual([
 			"source",
 			"paths",
@@ -109,6 +115,31 @@ describe("lens_diagnostics tool", () => {
 	test("source=lsp without paths throws a validation error", async () => {
 		const tool = capture(new DiagnosticStore(), fakeManager());
 		await expect(tool.execute("t", { source: "lsp" })).rejects.toThrow(/paths/);
+	});
+
+	test("unavailable files expose their reason even alongside findings", async () => {
+		const store = new DiagnosticStore();
+		store.set({
+			filePath: "/repo/main.py",
+			checkedAt: 1,
+			diagnostics: [],
+			state: "unavailable",
+			reason: "Configure .pi/lsp.json",
+		});
+		store.set({
+			filePath: "/repo/a.ts",
+			checkedAt: 1,
+			state: "findings",
+			diagnostics: [
+				{ filePath: "/repo/a.ts", severity: "error", message: "bad", line: 1, column: 1 },
+			],
+		});
+		const result = await capture(store, fakeManager()).execute("t", { source: "session" });
+		expect(result.isError).toBe(true);
+		expect(result.details).toMatchObject({ outcome: "error", unavailable: 1, findings: 1 });
+		expect(result.content[0]?.text).toMatch(
+			/a\.ts:1:1 error bad[\s\S]*main\.py: unavailable: Configure \.pi\/lsp\.json/,
+		);
 	});
 
 	test("missing severity maps to all", async () => {

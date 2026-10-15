@@ -17,17 +17,17 @@
  * install still works.
  */
 
-import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { promisify } from "node:util";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { runTool } from "@xynogen/pix-runtime/exec";
 import { agentDir } from "@xynogen/pix-runtime/paths";
 import { isBundled, loadEngine, parse, parseDynamic, type SgNode } from "./engine.ts";
 
-const run = promisify(execFile);
+const require = createRequire(import.meta.url);
 
 /** Canonical language alias → its `@ast-grep/lang-*` package name. */
 const LANG_PACKAGE: Record<string, string> = {
@@ -48,10 +48,7 @@ const LANG_PACKAGE: Record<string, string> = {
 	json: "@ast-grep/lang-json",
 	yaml: "@ast-grep/lang-yaml",
 	bash: "@ast-grep/lang-bash",
-	hcl: "@ast-grep/lang-hcl",
 	haskell: "@ast-grep/lang-haskell",
-	nix: "@ast-grep/lang-nix",
-	solidity: "@ast-grep/lang-solidity",
 };
 
 /** Languages that need a `@ast-grep/lang-*` package (not the napi six). */
@@ -64,8 +61,15 @@ export function grammarCacheDir(): string {
 	return join(agentDir(), "pix-astgrep", "grammars");
 }
 
-const registered = new Set<string>();
-const declined = new Set<string>();
+// ponytail: napi registers once per process. Load all cached grammars together;
+// adding a language afterward needs an agent restart, not a silently ignored registration.
+const stateKey = Symbol.for("pix-astgrep.grammars");
+const globals = globalThis as typeof globalThis & {
+	[stateKey]?: { registered: Set<string>; declined: Set<string>; registration?: Promise<void> };
+};
+globals[stateKey] ??= { registered: new Set(), declined: new Set() };
+const state = globals[stateKey];
+const { registered, declined } = state;
 
 export type GrammarResult =
 	| { kind: "ready" }
@@ -78,14 +82,17 @@ export type GrammarResult =
 /** Import a grammar module from the cache prefix, then this package. */
 async function importGrammar(pkg: string): Promise<unknown | undefined> {
 	const cached = join(grammarCacheDir(), "node_modules", pkg);
-	const candidates = existsSync(cached) ? [pathToFileURL(cached).href, pkg] : [pkg];
+	const candidates = existsSync(cached) ? [cached, pkg] : [pkg];
 	for (const spec of candidates) {
+		let entry: string;
 		try {
-			const mod = (await import(spec)) as { default?: unknown };
-			return mod.default ?? mod;
-		} catch {
-			// try the next candidate
+			entry = require.resolve(spec);
+		} catch (err) {
+			if ((err as NodeJS.ErrnoException).code === "MODULE_NOT_FOUND") continue;
+			throw err;
 		}
+		const mod = (await import(pathToFileURL(entry).href)) as { default?: unknown };
+		return mod.default ?? mod;
 	}
 	return undefined;
 }
@@ -100,25 +107,32 @@ export async function ensureLanguage(lang: string): Promise<GrammarResult> {
 	if (!engine) return { kind: "error", message: "ast-grep engine unavailable" };
 
 	// The six bundled grammars never need a package.
-	if (["typescript", "tsx", "javascript", "jsx", "css", "html"].includes(lang)) {
+	if (isBundled(lang)) {
 		return { kind: "napi" };
 	}
 	const pkg = packageForLanguage(lang);
 	if (!pkg) return { kind: "unsupported" };
 	if (registered.has(lang)) return { kind: "ready" };
 
-	const grammar = await importGrammar(pkg);
-	if (!grammar) return { kind: "needs-install", pkg };
-
 	try {
-		// SAFETY: registerDynamicLanguage is a runtime napi method not in the
-		// bundled ESM types; the loaded grammar object is opaque to us.
-		const register = (
-			engine as unknown as { registerDynamicLanguage(m: Record<string, unknown>): void }
-		).registerDynamicLanguage;
-		register({ [lang]: grammar as Record<string, unknown> });
-		registered.add(lang);
-		return { kind: "ready" };
+		const grammar = await importGrammar(pkg);
+		if (!grammar) return { kind: "needs-install", pkg };
+		state.registration ??= (async () => {
+			const grammars: Record<string, unknown> = {};
+			for (const [alias, name] of Object.entries(LANG_PACKAGE)) {
+				const loaded = await importGrammar(name);
+				if (loaded) grammars[alias] = loaded;
+			}
+			engine.registerDynamicLanguage(grammars);
+			for (const alias of Object.keys(grammars)) registered.add(alias);
+		})();
+		await state.registration;
+		return registered.has(lang)
+			? { kind: "ready" }
+			: {
+					kind: "error",
+					message: `${pkg} is installed, but napi's language registry is already initialized. Restart the agent to load newly installed grammars.`,
+				};
 	} catch (err) {
 		return { kind: "error", message: getErrorMessage(err) };
 	}
@@ -139,19 +153,22 @@ export async function installGrammar(pkg: string): Promise<{ ok: boolean; messag
 			const { writeFile } = await import("node:fs/promises");
 			await writeFile(pkgJson, JSON.stringify({ name: "pix-astgrep-grammars", private: true }));
 		}
-		await run("npm", ["install", "--no-save", "--prefix", dir, pkg], {
+		const result = await runTool("npm", ["install", "--save", "--prefix", dir, pkg], {
 			cwd: dir,
-			timeout: 120_000,
+			timeoutMs: 120_000,
 		});
+		if (result.code !== 0) {
+			return {
+				ok: false,
+				message: result.timedOut
+					? "grammar installation timed out"
+					: result.stderr || `npm exited ${result.code}`,
+			};
+		}
 		return { ok: true };
 	} catch (err) {
 		return { ok: false, message: getErrorMessage(err) };
 	}
-}
-
-/** For tests: forget which languages were registered this process. */
-export function resetRegistered(): void {
-	registered.clear();
 }
 
 export type ParseOutcome = { kind: "ok"; root: SgNode } | GrammarResult;
@@ -182,7 +199,8 @@ export async function parseWithGrammar(
 
 		let ready = await ensureLanguage(lang);
 		if (ready.kind === "needs-install") {
-			if (!consent || !(await consent(ready.pkg))) {
+			if (!consent) return ready;
+			if (!(await consent(ready.pkg))) {
 				declined.add(lang);
 				return { kind: "declined", pkg: ready.pkg };
 			}

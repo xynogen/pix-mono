@@ -103,42 +103,35 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 		label: "Navigation",
 		renderShell: "self",
 		description:
-			"LSP navigation: definition, typeDefinition, implementation, references, hover, " +
-			"documentSymbol, workspaceSymbol, rename, callHierarchy. Positions are one-based. Pass " +
-			"path + line + character or path + line + symbol; workspaceSymbol takes query; rename " +
-			"takes newName and previews edits; callHierarchy takes direction.",
-		promptSnippet:
-			"lsp_navigation(operation, path?, line?, character?, symbol?, query?, limit?) — one-based positions.",
+			"LSP navigation; positions are one-based. File operations need path; positional ones need line + character or symbol. workspaceSymbol needs query; rename previews edits.",
+		promptSnippet: "LSP lookup, symbols, preview rename and call hierarchy.",
 		parameters: Type.Object({
-			operation: StringEnum(
-				[
-					"definition",
-					"typeDefinition",
-					"implementation",
-					"references",
-					"hover",
-					"documentSymbol",
-					"workspaceSymbol",
-					"rename",
-					"callHierarchy",
-				] as const,
-				{ description: "Navigation operation." },
-			),
-			path: Type.Optional(Type.String({ description: "File path (not for workspaceSymbol)." })),
-			line: Type.Optional(Type.Integer({ minimum: 1, description: "One-based line." })),
-			character: Type.Optional(Type.Integer({ minimum: 1, description: "One-based column." })),
+			operation: StringEnum([
+				"definition",
+				"typeDefinition",
+				"implementation",
+				"references",
+				"hover",
+				"documentSymbol",
+				"workspaceSymbol",
+				"rename",
+				"callHierarchy",
+			] as const),
+			path: Type.Optional(Type.String()),
+			line: Type.Optional(Type.Integer({ minimum: 1 })),
+			character: Type.Optional(Type.Integer({ minimum: 1 })),
 			symbol: Type.Optional(
-				Type.String({ description: "Identifier on `line` to locate when character is absent." }),
+				Type.String({ description: "Identifier on line; alternative to character." }),
 			),
 			query: Type.Optional(Type.String({ description: "workspaceSymbol query." })),
-			newName: Type.Optional(Type.String({ description: "New name for rename." })),
+			newName: Type.Optional(Type.String({ description: "Required for rename." })),
 			direction: Type.Optional(
 				StringEnum(["incoming", "outgoing"] as const, {
 					description: "callHierarchy direction (default incoming).",
 				}),
 			),
 			limit: Type.Optional(
-				Type.Integer({ minimum: 1, maximum: MAX_LIMIT, description: "Max results (default 100)." }),
+				Type.Integer({ minimum: 1, maximum: MAX_LIMIT, description: "Default 100." }),
 			),
 		}),
 

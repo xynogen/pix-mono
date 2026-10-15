@@ -217,6 +217,42 @@ describe("LazyLspManager", () => {
 		expect(snap?.reason).toContain("tsserver");
 	});
 
+	test("navigation distinguishes missing setup from genuinely empty results", async () => {
+		for (const result of [
+			{ kind: "no-server" },
+			{ kind: "no-executable", commands: ["basedpyright-langserver"] },
+		] as const) {
+			const harness = createManagerHarness({ resolve: async () => result });
+			await expect(
+				harness.manager.navigate({
+					operation: "references",
+					path: "/repo/main.py",
+					line: 1,
+					character: 1,
+					limit: 100,
+				}),
+			).rejects.toThrow(/\.pi\/lsp\.json/);
+		}
+		const ready = createManagerHarness();
+		expect(
+			await ready.manager.navigate({
+				operation: "references",
+				path: "/repo/a.ts",
+				line: 1,
+				character: 1,
+				limit: 100,
+			}),
+		).toEqual([]);
+		await ready.manager.shutdown();
+	});
+
+	test("workspace symbols require a running server", async () => {
+		const harness = createManagerHarness();
+		await expect(
+			harness.manager.navigate({ operation: "workspaceSymbol", query: "TOL", limit: 100 }),
+		).rejects.toThrow(/No active language servers/);
+	});
+
 	test("maps findings and bumps document version on repeat", async () => {
 		const harness = createManagerHarness({
 			diagnostics: [

@@ -1,5 +1,5 @@
 /**
- * replace-tool.ts — the `ast_grep_replace` tool.
+ * replace-tool.ts — the `ast_replace` tool.
  *
  * AST-aware structural rewrite. The agent gives a `pattern` and a `rewrite`,
  * both with metavariables ($A, $$$ARGS). The tool matches each file, resolves
@@ -13,7 +13,7 @@
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { extname, join, relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -34,23 +34,11 @@ import {
 	type SgEdit,
 	type SgNode,
 } from "../engine.ts";
+import { grammarErrorResult } from "../grammar-result.ts";
 import { parseWithGrammar } from "../grammars.ts";
 
 const MAX_LIMIT = 500;
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
-const CODE_EXT = new Set([
-	".ts",
-	".mts",
-	".cts",
-	".tsx",
-	".js",
-	".mjs",
-	".cjs",
-	".jsx",
-	".css",
-	".html",
-	".htm",
-]);
 
 export interface ReplaceToolDeps {
 	cwd: string;
@@ -66,7 +54,7 @@ function collectFiles(root: string, out: string[]): void {
 		return;
 	}
 	if (stat.isFile()) {
-		if (CODE_EXT.has(extname(root).toLowerCase())) out.push(root);
+		if (languageForFile(root)) out.push(root);
 		return;
 	}
 	if (!stat.isDirectory()) return;
@@ -75,7 +63,7 @@ function collectFiles(root: string, out: string[]): void {
 		if (entry.isDirectory()) {
 			if (SKIP_DIRS.has(entry.name)) continue;
 			collectFiles(join(root, entry.name), out);
-		} else if (CODE_EXT.has(extname(entry.name).toLowerCase())) {
+		} else if (entry.isFile() && languageForFile(entry.name)) {
 			out.push(join(root, entry.name));
 		}
 	}
@@ -116,25 +104,28 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 	const { cwd } = deps;
 
 	pi.registerTool({
-		name: "ast_grep_replace",
+		name: "ast_replace",
 		...({ exposure: "deferred" } as const),
 		label: "AST replace",
 		description:
-			"AST-aware structural rewrite. Give a `pattern` and a `rewrite`, both with metavariables " +
-			"($A, $$$ARGS). Previews a diff by default. Set apply=true to write the files. Supports " +
-			"ts, tsx, js, jsx, css, html.",
-		promptSnippet:
-			"ast_grep_replace(pattern, rewrite, paths?, lang?, apply?) — preview by default.",
+			"Structural replace ($A, $$$ARGS). Preview only unless apply=true. Extra grammars require consent; newly installed grammars may need an agent restart.",
+		promptSnippet: "ast_replace(pattern, rewrite, paths?, lang?, apply?) — preview by default.",
 		parameters: Type.Object({
-			pattern: Type.String({ description: "ast-grep match pattern, e.g. `foo($A)`." }),
+			pattern: Type.Union([
+				Type.String({ description: "Pattern, e.g. foo($A)." }),
+				Type.Object(
+					{ context: Type.String(), selector: Type.String() },
+					{
+						description:
+							"Fragment in context; selector is its AST kind (PHP: context='<?php 123;', selector='integer').",
+					},
+				),
+			]),
 			rewrite: Type.String({ description: "Replacement, e.g. `bar($A)`." }),
-			paths: Type.Optional(
-				Type.Array(Type.String(), { description: "Files or dirs (default: cwd)." }),
-			),
+			paths: Type.Optional(Type.Array(Type.String(), { description: "Files/dirs; default cwd." })),
 			lang: Type.Optional(
 				StringEnum([...ALL_LANGUAGES], {
-					description:
-						"Force one language. Non-bundled languages install a grammar on first use (with your ok).",
+					description: "Override file-extension language.",
 				}),
 			),
 			apply: Type.Optional(
@@ -147,7 +138,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { pattern?: string; rewrite?: string; apply?: boolean };
-			const title = formatToolCallTitle(t, "ast_grep_replace", context);
+			const title = formatToolCallTitle(t, "ast_replace", context);
 			const rule = t.fg("dim", `${a.pattern ?? ""} → ${a.rewrite ?? ""}`);
 			const mode = t.fg("muted", a.apply ? " · apply" : " · preview");
 			return new Text(`${title} ${rule}${mode}`, 0, 0);
@@ -161,7 +152,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 			if (
 				!options.isPartial &&
 				tickCollapse(
-					"ast_grep_replace",
+					"ast_replace",
 					context.state as CollapseState,
 					context.invalidate,
 					options.expanded,
@@ -170,7 +161,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				return new Text(
 					formatCollapsedToolRow(
 						theme,
-						"ast_grep_replace",
+						"ast_replace",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",
@@ -186,7 +177,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 		},
 
 		async execute(_id, params, _signal, _onUpdate, ctx) {
-			const pattern = params.pattern as string;
+			const pattern = params.pattern as string | { context: string; selector: string };
 			const rewrite = params.rewrite as string;
 			const apply = (params.apply as boolean | undefined) ?? false;
 			const forcedLang = params.lang as AnyLanguage | undefined;
@@ -197,7 +188,8 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 			for (const p of rawPaths) collectFiles(resolve(cwd, p), files);
 
 			const diffs: string[] = [];
-			const skippedLangs = new Set<string>();
+			const changes: Array<{ file: string; after: string }> = [];
+
 			let changedFiles = 0;
 			let totalEdits = 0;
 			for (const file of files) {
@@ -212,11 +204,10 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				}
 				const parsed = await parseWithGrammar(lang, source, consent);
 				if (parsed.kind !== "ok") {
-					if (parsed.kind === "declined" || parsed.kind === "needs-install") skippedLangs.add(lang);
-					continue;
+					return grammarErrorResult(parsed, lang, "pixReplace");
 				}
 				const root = parsed.root;
-				const matches = root.findAll(pattern);
+				const matches = root.findAll(typeof pattern === "string" ? pattern : { rule: { pattern } });
 				if (matches.length === 0) continue;
 				const edits: SgEdit[] = matches.map((m) => m.replace(fillRewrite(m, rewrite)));
 				const after = root.commitEdits(edits);
@@ -225,15 +216,15 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				totalEdits += edits.length;
 				const rel = relative(cwd, file);
 				diffs.push(summarizeChange(rel, source, after));
-				if (apply) writeFileSync(file, after);
+				changes.push({ file, after });
 			}
 
-			const skipNote =
-				skippedLangs.size > 0 ? ` (skipped, no grammar: ${[...skippedLangs].join(", ")})` : "";
+			// Validate all grammars before writing, so an unavailable language cannot leave partial edits.
+			if (apply) for (const { file, after } of changes) writeFileSync(file, after);
 			const head = apply
-				? `Applied ${totalEdits} edit(s) in ${changedFiles} file(s).${skipNote}`
-				: `Preview: ${totalEdits} edit(s) in ${changedFiles} file(s). Set apply=true to write.${skipNote}`;
-			const text = diffs.length > 0 ? `${head}\n\n${diffs.join("\n\n")}` : `No matches.${skipNote}`;
+				? `Applied ${totalEdits} edit(s) in ${changedFiles} file(s).`
+				: `Preview: ${totalEdits} edit(s) in ${changedFiles} file(s). Set apply=true to write.`;
+			const text = diffs.length > 0 ? `${head}\n\n${diffs.join("\n\n")}` : "No matches.";
 			return {
 				content: [{ type: "text" as const, text }],
 				details: {

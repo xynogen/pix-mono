@@ -51,7 +51,7 @@ $__pixInstaller = {
 		@{ Spec = "npm:@xynogen/pix-sudo"; Reason = "sudo_run - root execution via a PAM password overlay; a privileged capability you opt into explicitly (blocked in non-interactive mode)." }
 		@{ Spec = "npm:@xynogen/pix-toolbox"; Reason = "/toolbox - fuzzy-search picker to enable/disable tools at runtime; a power-user utility, not needed for normal use." }
 		@{ Spec = "npm:@xynogen/pix-graph"; Reason = "Native-TS code knowledge graph (build/query via CLI); a standalone tool you invoke on demand, not part of the always-on distro." }
-		@{ Spec = "npm:@xynogen/pix-astgrep"; Reason = "ast_grep_search / read_symbol / symbol_search - structural code search and symbol reads via the @ast-grep/napi native addon, so enable it explicitly." }
+		@{ Spec = "npm:@xynogen/pix-astgrep"; Reason = "ast_search / ast_read_symbol / symbol_search - structural code search and symbol reads via the @ast-grep/napi native addon, so enable it explicitly." }
 		@{ Spec = "npm:@xynogen/pix-hunk"; Reason = "Live Hunk diff-review bridge - requires the external Hunk CLI and an active review session, so enable it explicitly." }
 		@{ Spec = "npm:@xynogen/pix-search"; Reason = "Smarter @ file search (fuzzy + git-recency ranking) that overrides Pi's built-in autocomplete, so opt in when you want that ranking." }
 		@{ Spec = "npm:@xynogen/pix-aria2"; Reason = "Fast resumable downloads via an auto-managed aria2 daemon - requires the external aria2c binary, so enable it explicitly." }

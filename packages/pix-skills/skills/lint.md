@@ -9,7 +9,7 @@ Pix does not bundle linters. Use the project toolchain.
 
 ## Selection order
 
-1. Run `lens_diagnostics` for language-server diagnostics.
+1. Run `lsp_diagnostics` for language-server diagnostics.
 2. Prefer the project's `lint` or `check` script.
 3. Use the tool named by a project config file.
 4. Use the language default below only when the project has no choice.

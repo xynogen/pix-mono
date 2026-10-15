@@ -130,7 +130,7 @@ Not bundled by `pix-core`. Install each one only if you want it. Each one stays 
 | [`@xynogen/pix-mcp`](https://www.npmjs.com/package/@xynogen/pix-mcp) | Token-efficient MCP gateway — external servers can execute commands or reach sensitive services |
 | [`@xynogen/pix-codemode`](https://www.npmjs.com/package/@xynogen/pix-codemode) | Native `codemode` with highlighted JavaScript, formatted JSON, and Pix result frames |
 | [`@xynogen/pix-graph`](https://www.npmjs.com/package/@xynogen/pix-graph) | `graph` tool — native-TS code knowledge graph (build/query, no Python); TS/JS only |
-| [`@xynogen/pix-astgrep`](https://www.npmjs.com/package/@xynogen/pix-astgrep) | `ast_grep_search` / `read_symbol` / `symbol_search` — structural code search and symbol reads; needs the `@ast-grep/napi` native addon |
+| [`@xynogen/pix-astgrep`](https://www.npmjs.com/package/@xynogen/pix-astgrep) | `ast_search` / `ast_read_symbol` / `symbol_search` — structural code search and symbol reads; needs the `@ast-grep/napi` native addon |
 | [`@xynogen/pix-hunk`](https://www.npmjs.com/package/@xynogen/pix-hunk) | `hunk` tool — live Hunk diff-review bridge; needs the external Hunk CLI and an active review session |
 | [`@xynogen/pix-aria2`](https://www.npmjs.com/package/@xynogen/pix-aria2) | `download` tool — fast, resumable downloads via an auto-managed aria2 RPC daemon; needs the external `aria2c` binary |
 | [`@xynogen/pix-proc`](https://www.npmjs.com/package/@xynogen/pix-proc) | `proc` tool — run and manage long-lived processes (`npm run dev`, `vite`, `python`) that outlive a turn; spawns background processes |

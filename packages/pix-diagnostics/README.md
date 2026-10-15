@@ -6,7 +6,7 @@ Pi extension — an LSP client for project-selected language servers.
 
 - Reads language-server choices from `<project>/.pi/lsp.json`.
 - Starts a configured server only when a visible tool call needs it.
-- Reports diagnostics through `lens_diagnostics`.
+- Reports diagnostics through `lsp_diagnostics`.
 - Supports definition, references, hover, symbols, rename preview, and call hierarchy through `lsp_navigation`.
 
 Pix does not bundle, install, or select language servers. Use the `lsp` skill to
@@ -58,7 +58,7 @@ Add this server to `<project>/.pi/lsp.json`:
 
 The wrapper uses the project-local server, not a global installation.
 Run `/reload` after you change the server configuration.
-Then call `lens_diagnostics` with `source: "lsp"` and explicit file paths.
+Then call `lsp_diagnostics` with `source: "lsp"` and explicit file paths.
 This configuration does not add a JSON language server.
 
 ### Diagnostic states

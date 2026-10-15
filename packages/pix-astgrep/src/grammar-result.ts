@@ -37,7 +37,7 @@ export function grammarErrorResult(
 function messageFor(outcome: GrammarResult, lang: string): string {
 	switch (outcome.kind) {
 		case "needs-install":
-			return `${lang} needs grammar ${outcome.pkg}. Approve the install prompt to enable it.`;
+			return `${lang} needs grammar ${outcome.pkg}. Retry in an interactive session to approve its installation; no files were searched or changed successfully.`;
 		case "declined":
 			return `${lang} grammar not installed (${outcome.pkg}). Skipped.`;
 		case "unsupported":

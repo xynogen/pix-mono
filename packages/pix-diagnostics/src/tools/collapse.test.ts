@@ -42,7 +42,7 @@ function capture(register: (pi: never) => void): Renderer {
 describe("diagnostics tool collapse", () => {
 	const cases = [
 		{
-			name: "lens_diagnostics",
+			name: "lsp_diagnostics",
 			args: { source: "lsp", paths: ["a.ts"] },
 			result: {
 				content: [{ type: "text", text: "1 files, 0 clean, 1 unconfirmed" }],
@@ -61,7 +61,7 @@ describe("diagnostics tool collapse", () => {
 			register: (pi: never) => registerNavigationTool(pi, { manager, cwd: process.cwd() }),
 		},
 		{
-			name: "lens_diagnostic_mark",
+			name: "lsp_diagnostic_mark",
 			args: { action: "list" },
 			result: {
 				content: [{ type: "text", text: "No dispositions." }],

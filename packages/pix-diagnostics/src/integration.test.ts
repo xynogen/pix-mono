@@ -123,7 +123,7 @@ describe("pix-diagnostics end-to-end", () => {
 		writeFileSync(join(cwd, "package.json"), "{}\n");
 
 		const h = harness(cwd);
-		const diag = h.tools.find((t) => t.name === "lens_diagnostics");
+		const diag = h.tools.find((t) => t.name === "lsp_diagnostics");
 		const nav = h.tools.find((t) => t.name === "lsp_navigation");
 		if (!diag || !nav) throw new Error("tools missing");
 

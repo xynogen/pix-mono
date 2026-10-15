@@ -1,5 +1,5 @@
 /**
- * mark-tool.ts — the `lens_diagnostic_mark` tool.
+ * mark-tool.ts — the `lsp_diagnostic_mark` tool.
  *
  * Record a disposition for a diagnostic: false-positive, suppress, defer, or
  * flagged. It also lists and clears dispositions. This is visible, auditable
@@ -30,26 +30,23 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 	const { store, cwd } = deps;
 
 	pi.registerTool({
-		name: "lens_diagnostic_mark",
+		name: "lsp_diagnostic_mark",
 		...({ exposure: "deferred" } as const),
 		label: "Mark diagnostic",
 		renderShell: "self",
 		description:
-			"Record a disposition for a diagnostic: false-positive, suppress, defer, or flagged. " +
-			"action=set marks (needs path, code, disposition); action=list shows all; action=clear " +
-			"removes one (path + code) or all. Session memory only — changes no file.",
-		promptSnippet:
-			"lens_diagnostic_mark(action, path?, code?, disposition?, note?) — mark/list/clear a finding.",
+			"Session-only diagnostic marks; no file changes. set needs path/code/disposition; clear removes one (path/code) or all.",
+		promptSnippet: "Mark, list or clear diagnostic dispositions; session only.",
 		parameters: Type.Object({
-			action: StringEnum(["set", "list", "clear"] as const, { description: "What to do." }),
-			path: Type.Optional(Type.String({ description: "File of the diagnostic." })),
+			action: StringEnum(["set", "list", "clear"] as const),
+			path: Type.Optional(Type.String()),
 			code: Type.Optional(Type.String({ description: "Diagnostic code or identity." })),
 			disposition: Type.Optional(
 				StringEnum(["false-positive", "suppress", "defer", "flagged"] as const, {
 					description: "Disposition for action=set.",
 				}),
 			),
-			note: Type.Optional(Type.String({ description: "Optional note." })),
+			note: Type.Optional(Type.String()),
 		}),
 
 		renderCall(args, theme, context) {
@@ -57,7 +54,7 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { action?: string; disposition?: string; path?: string };
-			const title = formatToolCallTitle(t, "lens_diagnostic_mark", context);
+			const title = formatToolCallTitle(t, "lsp_diagnostic_mark", context);
 			const act = t.fg("muted", a.action ?? "");
 			const extra = a.disposition ? t.fg("dim", ` ${a.disposition}`) : "";
 			return new Text(`${title} ${act}${extra}`.trimEnd(), 0, 0);
@@ -82,7 +79,7 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 			if (!details) return frameToolResult(body, theme, isError);
 			if (
 				tickCollapse(
-					"lens_diagnostic_mark",
+					"lsp_diagnostic_mark",
 					context.state as CollapseState,
 					context.invalidate,
 					context.expanded,
@@ -91,7 +88,7 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 				return new Text(
 					formatCollapsedToolRow(
 						t,
-						"lens_diagnostic_mark",
+						"lsp_diagnostic_mark",
 						"",
 						isError
 							? "failed"
