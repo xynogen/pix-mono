@@ -106,7 +106,7 @@ describe("check-versions pre-publish guard", () => {
 		expect(status).toBe(1);
 	});
 
-	test("reports only packages whose version changed", () => {
+	test("reports only packages whose version changed", async () => {
 		if (!sandbox) throw new Error("sandbox not initialised");
 		writeFileSync(
 			join(sandbox.root, "packages/fresh/package.json"),
@@ -115,12 +115,32 @@ describe("check-versions pre-publish guard", () => {
 		spawnSync("git", ["add", "-A"], { cwd: sandbox.root });
 		spawnSync("git", ["commit", "-q", "-m", "bump fresh"], { cwd: sandbox.root });
 
-		const { stdout, stderr } = runCheckVersions(sandbox);
-		const output = `${stdout}${stderr}`;
-		expect(output).toContain("Checking 1 changed package(s)");
-		expect(output).toContain("fresh-pkg");
-		expect(output).not.toContain("stale-pkg");
-		expect(output).not.toContain("stable-pkg");
+		const requests: string[] = [];
+		const server = Bun.serve({
+			port: 0,
+			fetch(request) {
+				requests.push(new URL(request.url).pathname);
+				return new Response(null, { status: 404 });
+			},
+		});
+		try {
+			// Async spawn keeps the fake registry responsive while the guard runs.
+			const run = Bun.spawn(["bun", sandbox.scriptPath], {
+				cwd: sandbox.root,
+				env: { ...process.env, PIX_NPM_REGISTRY: server.url.href },
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			const output = `${await new Response(run.stdout).text()}${await new Response(run.stderr).text()}`;
+			expect(await run.exited).toBe(0);
+			expect(requests).toEqual(["/fresh-pkg/1.0.1"]);
+			expect(output).toContain("Checking 1 changed package(s)");
+			expect(output).toContain("fresh-pkg@1.0.1");
+			expect(output).not.toContain("stale-pkg");
+			expect(output).not.toContain("stable-pkg");
+		} finally {
+			server.stop(true);
+		}
 	});
 
 	// A manual first publish of a new package puts the version on npm before the
@@ -147,7 +167,7 @@ describe("check-versions pre-publish guard", () => {
 			if (!sandbox) throw new Error("sandbox not initialised");
 			const server = serve(publishFresh(sandbox.root));
 			try {
-				const run = await Bun.spawn(["bun", sandbox.scriptPath], {
+				const run = Bun.spawn(["bun", sandbox.scriptPath], {
 					cwd: sandbox.root,
 					env: { ...process.env, PIX_NPM_REGISTRY: server.url.href },
 					stdout: "pipe",
@@ -169,7 +189,7 @@ describe("check-versions pre-publish guard", () => {
 			spawnSync("git", ["commit", "-q", "-m", "change after publish"], { cwd: sandbox.root });
 			const server = serve(published);
 			try {
-				const run = await Bun.spawn(["bun", sandbox.scriptPath], {
+				const run = Bun.spawn(["bun", sandbox.scriptPath], {
 					cwd: sandbox.root,
 					env: { ...process.env, PIX_NPM_REGISTRY: server.url.href },
 					stdout: "pipe",

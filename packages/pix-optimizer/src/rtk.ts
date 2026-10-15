@@ -212,17 +212,20 @@ export function splitChain(command: string): string[] | null {
 const CHAIN_OPERATORS = new Set(["&&", "||", ";", "|"]);
 
 /**
- * Prefix each command segment with `rtk` when its first word is a known
- * RTK command and it is not already prefixed. Operators are preserved.
+ * Prefix known commands only when their output is not piped or redirected.
+ * Operators are preserved, and existing RTK prefixes are left untouched.
  * Returns the rewritten command, or the original if nothing changed.
  */
 export function rewriteChain(command: string, rtkCommand = "rtk"): string {
+	// ponytail: skip all redirect markers, even quoted/escaped ones; precise handling needs a shell parser.
+	if (/[<>]/.test(command)) return command;
+
 	const parts = splitChain(command);
 	if (!parts) return command; // unparseable — leave untouched
 
 	let changed = false;
-	const rewritten = parts.map((part) => {
-		if (CHAIN_OPERATORS.has(part.trim())) return part;
+	const rewritten = parts.map((part, i) => {
+		if (CHAIN_OPERATORS.has(part.trim()) || parts[i + 1]?.trim() === "|") return part;
 
 		const leading = part.match(/^\s*/)?.[0] ?? "";
 		const body = part.slice(leading.length);

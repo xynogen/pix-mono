@@ -103,16 +103,47 @@ describe("rewriteChain", () => {
 		expect(rewriteChain(cmd)).toBe(cmd);
 	});
 
-	it("prefixes known commands across a pipe (ls, wc)", () => {
-		expect(rewriteChain("ls -la | wc -l")).toBe("rtk ls -la | rtk wc -l");
+	it("preserves pipe producers and only prefixes the final consumer", () => {
+		expect(rewriteChain("ls -la | wc -l")).toBe("ls -la | rtk wc -l");
+		expect(rewriteChain("git status --short | wc -l")).toBe("git status --short | rtk wc -l");
+		expect(rewriteChain("git log | grep fix | head -5")).toBe("git log | grep fix | rtk head -5");
+		expect(rewriteChain("git status | sort && git diff", "'/o/rtk'")).toBe(
+			"git status | sort && '/o/rtk' git diff",
+		);
 	});
 
 	it("truly leaves a chain of only-unknown commands untouched", () => {
 		expect(rewriteChain("cd /tmp | sort | uniq")).toBe("cd /tmp | sort | uniq");
 	});
 
-	it("handles pipes between known commands", () => {
-		expect(rewriteChain("git log | grep fix")).toBe("rtk git log | rtk grep fix");
+	it("keeps quoted pipes as arguments", () => {
+		expect(rewriteChain("grep 'a|b' file")).toBe("rtk grep 'a|b' file");
+	});
+
+	it.each([
+		"git status --short > file.txt",
+		"git status --short>>file.txt",
+		"git status --short 1>file.txt",
+		"git status --short >| file.txt",
+		"git status --short &>file.txt",
+		"git status --short &>>file.txt",
+		"git status --short 2>errors.txt",
+		"git status --short 2>&1",
+		"git status --short >&2",
+		"git status --short 1>&-",
+		"git status --short | wc -l > count.txt",
+		"git status --short > file.txt && git diff",
+		"git status && git diff > patch.txt",
+		"cat < file.txt",
+		"cat <<EOF\ngit status\nEOF",
+		"cat <<< 'git status'",
+		"git diff <(git show HEAD:a.txt) file.txt",
+		"git status > >(cat)",
+		"grep 'a>b' file.txt",
+		'grep "a<b" file.txt',
+		"grep a\\>b file.txt",
+	])("leaves commands with redirect markers unchanged: %s", (command) => {
+		expect(rewriteChain(command)).toBe(command);
 	});
 });
 
