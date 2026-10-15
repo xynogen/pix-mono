@@ -8,6 +8,7 @@
 		"packages/*"
 	],
 	"scripts": {
+		"prepare": "git config --local core.hooksPath .githooks",
 		"dev": "bun test --watch --isolate",
 		"test": "bun test --isolate",
 		"typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/pix-mcp/tsconfig.json && tsc --noEmit -p packages/pix-mcp/tsconfig.tests.json",

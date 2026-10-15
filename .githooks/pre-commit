@@ -1,0 +1,6 @@
+#!/bin/sh
+# ponytail: check the whole working tree without rewriting/staging; CI checks the committed snapshot.
+set -e
+bun run check
+bun run typecheck
+exec bun run test

@@ -54,6 +54,8 @@ refactor(api): extract response builder from handler
 
 - Stage per cluster: `git add <paths>` (or `-p` for partial hunks).
 - One commit per logical change. Never mix `feat` + unrelated `fix` in one commit.
+- Commit with the repository's Git hooks enabled. Let hooks run their configured lint, format, typecheck, and tests; do not run the same checks separately just to commit. If hooks do not cover required checks, follow repository instructions.
+- If a hook fails, stop, report the failure, fix in-scope issues, review and re-stage before retrying. Never use `--no-verify` or disable hooks to force a commit.
 
 ### Phase 4: Maintain (when asked)
 

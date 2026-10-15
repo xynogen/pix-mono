@@ -282,7 +282,7 @@ These checks keep the rules above true. They run in CI through `bun run static-a
 ## 11. Development and Commits
 
 ```bash
-bun install                # install deps
+bun install                # install deps + enable Git hooks
 bun run dev:link           # symlink into Pi (restart Pi after)
 bun run dev:unlink         # restore npm copies
 bun run check              # biome lint + format
@@ -296,7 +296,7 @@ Commit format: `type(scope): short description`. The scope is the package name, 
 
 Types: **feat** (new capability) · **fix** (bug fix) · **refactor** (no behavior change) · **chore** (deps/config/tooling) · **docs** (documentation).
 
-Always run `bun run check` + `bun run typecheck` before you commit. CI fails otherwise.
+Pre-commit runs lint/format, typecheck, and tests; stop on failure and never bypass it. Do not repeat these checks manually just to commit. For lint/format failures, use `bun run check:fix`, review and re-stage. Checks use the working tree without rewriting/staging; CI verifies the committed snapshot.
 
 ---
 
@@ -310,7 +310,6 @@ When the user says "publish", read [`docs/release.md`](docs/release.md) and foll
 
 ## 13. Key Rules
 
-- Run `bun run check` + `bun run typecheck` before you commit.
 - Never tag without bumping versions. Publish skips already-published versions.
 - Patch bumps only by default. Minor/major need explicit user approval.
 - Search the shared layers (section 3) before you write a helper. Delete copies when you share one.
