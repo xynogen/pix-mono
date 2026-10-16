@@ -27,7 +27,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
-import { MAX_LOG_LINES, statusLine, statusWord } from "./format.ts";
+import { MAX_LOG_LINES, type ProcMeta, statusLine, statusWord } from "./format.ts";
 import { ProcManager } from "./manager.ts";
 import { MODAL_LOG_LINES, ProcModal, type ProcModalResult } from "./modal.ts";
 
@@ -79,13 +79,11 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		pollTimer = setInterval(() => void tick(), POLL_MS);
 	}
 
-	async function tick(): Promise<void> {
-		if (!ui) return;
-		const now = Date.now();
+	/** Running rows plus just-finished ones for collapseDelayMs — shared by widget and /proc. */
+	function visibleProcs(now: number): ProcMeta[] {
 		const all = mgr.list();
 		for (const m of all) mgr.checkCap(m.handle);
 		const running = all.filter((m) => m.status === "running");
-		// Keep a just-finished row visible for collapseDelayMs, then drop it.
 		const recent = all.filter((m) => {
 			if (m.status === "running") {
 				lastCleared.delete(m.handle);
@@ -95,7 +93,13 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			const at = lastCleared.get(m.handle) ?? now;
 			return now - at < collapseDelayMs();
 		});
-		const visible = [...running, ...recent];
+		return [...running, ...recent];
+	}
+
+	async function tick(): Promise<void> {
+		if (!ui) return;
+		const now = Date.now();
+		const visible = visibleProcs(now);
 		if (visible.length === 0) {
 			ui.setWidget(WIDGET_KEY, undefined);
 			if (pollTimer) {
@@ -318,7 +322,7 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		handler: async (_args, ctx) => {
 			if (typeof ctx.ui.custom === "function") {
 				// Copies, so the modal can see a status change between refreshes.
-				const snapshot = () => mgr.list().map((m) => ({ ...m }));
+				const snapshot = () => visibleProcs(Date.now()).map((m) => ({ ...m }));
 				let refresh: ReturnType<typeof setInterval> | undefined;
 				const result = await ctx.ui
 					.custom<ProcModalResult | undefined>(
