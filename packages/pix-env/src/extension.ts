@@ -15,6 +15,7 @@
  * stays a placeholder until the gated injection — it does not scrub output.
  */
 
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -24,18 +25,23 @@ import {
 	formatCollapsedToolRow,
 	formatToolCallTitle,
 	frameToolResult,
+	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
+import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { Type } from "typebox";
 import {
 	allRefsIn,
 	collectRefs,
 	collectUnsupported,
 	describeRegistry,
+	editEnvText,
+	envPath,
 	loadPath,
 	loadRegistry,
 	resolveInput,
@@ -63,28 +69,55 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 		pi.registerTool({
 			name: "read_env",
 			...({ exposure: "deferred" } as const),
-			label: "Read Environment",
+			label: "Environment",
 			description:
-				'Read loaded .env data with minimal disclosure. action="info" returns variable names and inferred shapes only, without approval. action="read" returns only requested names after explicit user approval. Never request unrelated variables.',
-			promptSnippet: "Inspect env names/shapes or request specific values with user approval",
-			parameters: Type.Object({
-				action: StringEnum(["info", "read"] as const, {
-					description:
-						'"info" lists names and inferred shapes; "read" reveals requested values after approval.',
-				}),
-				path: Type.Optional(
-					Type.String({
+				'Inspect, read, add, or edit env variables. "info" returns names/types only. "read" reveals only requested names. "add" creates a new key; "edit" changes an existing key using name/value. Read disclosure and writes require user approval. Never request unrelated variables.',
+			promptSnippet: "Inspect, read, add, or edit env variables with gated disclosure and writes",
+			parameters: Type.Object(
+				{
+					action: StringEnum(["info", "read", "add", "edit"] as const, {
 						description:
-							"Optional .env file or directory to load. Defaults to the configured files under the current directory.",
+							'"info" lists names/types; "read" reveals names; "add" creates and "edit" updates name/value.',
 					}),
-				),
-				names: Type.Optional(
-					Type.Array(Type.String(), {
-						description: 'Exact variable names to reveal. Required for action="read".',
-						minItems: 1,
-					}),
-				),
-			}),
+					path: Type.Optional(
+						Type.String({
+							description:
+								"File named .env or .env.<suffix>, including .env.examples; relative to cwd. Read/info also accept a directory. Required for add/edit. Default for read/info: configured files.",
+							minLength: 1,
+						}),
+					),
+					names: Type.Optional(
+						Type.Array(Type.String(), {
+							description: 'Exact variable names to reveal. Required for action="read".',
+							minItems: 1,
+						}),
+					),
+					name: Type.Optional(
+						Type.String({
+							description: "Exact variable name, required for add/edit (for example APP_PORT).",
+							pattern: "^[A-Za-z_][A-Za-z0-9_]*$",
+							minLength: 1,
+						}),
+					),
+					value: Type.Optional(
+						Type.Union([Type.String(), Type.Number(), Type.Boolean()], {
+							description:
+								"Single-line value required for add/edit, for example 8080. Stored as text. Supplied values enter the transcript; use $KEY for existing brokered secrets.",
+						}),
+					),
+				},
+				{
+					// Keep an object root for provider compatibility, with action-specific requirements.
+					anyOf: [
+						{ properties: { action: { const: "info" } } },
+						{ properties: { action: { const: "read" } }, required: ["names"] },
+						{
+							properties: { action: { enum: ["add", "edit"] } },
+							required: ["path", "name", "value"],
+						},
+					],
+				},
+			),
 			renderShell: "self",
 			renderCall(args, theme, context) {
 				if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
@@ -132,7 +165,82 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				return _options.isPartial ? text : frameToolResult(text, theme, renderCtx.isError);
 			},
 			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-				const reg = params.path ? loadPath(params.path) : loadRegistry(ctx.cwd);
+				if (params.action === "add" || params.action === "edit") {
+					try {
+						if (!params.name || params.value === undefined)
+							throw new Error("name and value are required for add/edit");
+						if (params.path === undefined) throw new Error("path is required for add/edit");
+						const path = envPath(params.path, ctx.cwd);
+						const safe = await validateOutputPath(path);
+						if (!safe.ok) throw new Error(safe.reason);
+						if (existsSync(path) && !statSync(path).isFile())
+							throw new Error("env path must be a regular file");
+						const before = existsSync(path) ? readFileSync(path, "utf-8") : null;
+						const next = editEnvText(
+							before ?? "",
+							params.name,
+							String(params.value),
+							params.action,
+						);
+						if (!ctx.hasUI) throw new Error("env writes require interactive user approval");
+						const result = await withAgentBlock(pi.events, "read_env", "env write approval", () =>
+							showOverlay(ctx.ui, {
+								mode: "confirm",
+								icon: icon("secret"),
+								title: `${params.action === "add" ? "Add" : "Edit"} Environment Variable`,
+								body: [
+									`File: ${path}`,
+									`Variable: ${params.name}`,
+									"Values are hidden. Other assignments are preserved.",
+								],
+								accent: "warning",
+								timeoutMs: 30_000,
+								choices: [
+									{ value: "no", label: "Deny", description: "Keep file unchanged" },
+									{ value: "yes", label: "Write", description: `Save ${params.name}` },
+								],
+								approveValue: "yes",
+							}),
+						);
+						if (result.action !== "approved")
+							return {
+								content: [{ type: "text", text: `read_env ${result.action}: ${params.name}` }],
+								details: { action: params.action },
+							};
+						const recheck = await validateOutputPath(path);
+						if (!recheck.ok) throw new Error(recheck.reason);
+						if ((existsSync(path) ? readFileSync(path, "utf-8") : null) !== before)
+							throw new Error("env file changed during approval; retry with the current file");
+						// ponytail: single-writer atomic save; add cross-process locking for concurrent writers.
+						writeFileAtomicSync(path, next);
+						cache.clear();
+						return {
+							content: [
+								{
+									type: "text",
+									text: `${params.action === "add" ? "Added" : "Edited"} ${params.name} in ${path} (value hidden).`,
+								},
+							],
+							details: { action: params.action, name: params.name, path },
+						};
+					} catch (error) {
+						return {
+							content: [{ type: "text", text: `read_env failed: ${getErrorMessage(error)}` }],
+							details: { action: params.action },
+							isError: true,
+						};
+					}
+				}
+				let reg: Map<string, string>;
+				try {
+					reg = params.path !== undefined ? loadPath(params.path, ctx.cwd) : loadRegistry(ctx.cwd);
+				} catch (error) {
+					return {
+						content: [{ type: "text", text: `read_env failed: ${getErrorMessage(error)}` }],
+						details: { action: params.action },
+						isError: true,
+					};
+				}
 				if (params.action === "info") {
 					const types = describeRegistry(reg);
 					const text = Object.entries(types)

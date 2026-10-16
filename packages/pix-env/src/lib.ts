@@ -13,11 +13,13 @@
  * ponytail: upgrade path is a tool_result redactor that masks known values.
  */
 
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
+import { expandHome } from "@xynogen/pix-runtime/paths";
 
 /** Default files scanned at the repo root, later entries override earlier. */
 const DEFAULT_FILES = [".env", ".env.local"] as const;
+const QUOTED_VALUE = /^(?:"((?:\\.|[^"\\])*)"|'([^']*)')([ \t]*(?:#.*)?)$/;
 
 /**
  * Parse dotenv text into key/value pairs. Handles `KEY=value`, `export KEY=`,
@@ -26,7 +28,7 @@ const DEFAULT_FILES = [".env", ".env.local"] as const;
  * ponytail: swap for the `dotenv` package if multiline/interp is ever needed.
  */
 export function parseEnv(text: string): Record<string, string> {
-	const out: Record<string, string> = {};
+	const out: Record<string, string> = Object.create(null);
 	for (const raw of text.split("\n")) {
 		const line = raw.trim();
 		if (!line || line.startsWith("#")) continue;
@@ -34,12 +36,17 @@ export function parseEnv(text: string): Record<string, string> {
 		if (!m) continue;
 		const key = m[1] as string;
 		let val = (m[2] ?? "").trim();
-		if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-			val = val.slice(1, -1);
+		const quoted = val.match(QUOTED_VALUE);
+		if (quoted) {
+			val = (quoted[1] ?? quoted[2]) as string;
+			if (quoted[1] !== undefined)
+				val = val.replace(
+					/\\([\\"nrt])/g,
+					(_, escaped: string) => ({ n: "\n", r: "\r", t: "\t" })[escaped] ?? escaped,
+				);
 		} else {
 			// strip trailing inline comment on unquoted values
-			const hash = val.indexOf(" #");
-			if (hash !== -1) val = val.slice(0, hash).trim();
+			val = val.replace(/[ \t]+#.*$/, "").trim();
 		}
 		out[key] = val;
 	}
@@ -57,21 +64,63 @@ export function envFileList(): readonly string[] {
 	return DEFAULT_FILES;
 }
 
-/**
- * Load a registry from an explicit path: a single `.env` file is parsed
- * directly; a directory is scanned via {@link loadRegistry}. Missing paths
- * yield an empty registry.
- */
-export function loadPath(path: string): Map<string, string> {
-	if (!existsSync(path)) return new Map();
-	if (statSync(path).isDirectory()) return loadRegistry(path);
-	const reg = new Map<string, string>();
-	try {
-		for (const [k, v] of Object.entries(parseEnv(readFileSync(path, "utf-8")))) reg.set(k, v);
-	} catch {
-		// unreadable file — skip silently
+/** Resolve an explicit env file; directories remain valid for read/info. */
+export function envPath(path: string, cwd: string, directory = false): string {
+	if (!path.trim() || /[\0\r\n]/.test(path)) throw new Error("invalid env path");
+	const target = resolve(cwd, expandHome(path));
+	if (directory && statSync(target).isDirectory()) return target;
+	if (!/^\.env(?:\.[A-Za-z0-9_-]+)*$/.test(basename(target)))
+		throw new Error("env filename must be .env or .env.<suffix> (for example .env.examples)");
+	return target;
+}
+
+/** Explicit paths fail visibly instead of silently returning an empty registry. */
+export function loadPath(path: string, cwd: string): Map<string, string> {
+	const target = envPath(path, cwd, true);
+	if (statSync(target).isDirectory()) return loadRegistry(target);
+	const actual = envPath(realpathSync(target), cwd);
+	if (!statSync(actual).isFile()) throw new Error("env path must be a regular file");
+	return new Map(Object.entries(parseEnv(readFileSync(actual, "utf-8"))));
+}
+
+/** Preserve unrelated lines/comments and change exactly one assignment. */
+export function editEnvText(
+	text: string,
+	name: string,
+	value: string,
+	action: "add" | "edit",
+): string {
+	if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || /[\r\n]/.test(name))
+		throw new Error("invalid env variable name");
+	// ponytail: single-line values only; use a full dotenv parser before supporting multiline files.
+	if (/[\0\r\n]/.test(value)) throw new Error("env value must be a single line without null bytes");
+	const lines = text.split("\n");
+	const matches = lines.flatMap((line, i) =>
+		new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=`).test(line) ? [i] : [],
+	);
+	if (action === "add" && matches.length) throw new Error(`env variable already exists: ${name}`);
+	if (action === "edit" && matches.length !== 1)
+		throw new Error(`edit requires exactly one existing assignment: ${name}`);
+	// Do not mistake a key-looking line inside a multiline value for an assignment.
+	for (const line of lines) {
+		const raw = line.match(/^\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_]*\s*=\s*(.*)$/)?.[1]?.trim();
+		if (raw && (raw.startsWith('"') || raw.startsWith("'"))) {
+			if (!QUOTED_VALUE.test(raw))
+				throw new Error("multiline or unterminated quoted env values are not supported for writes");
+		}
 	}
-	return reg;
+	const assignment = `${name}=${JSON.stringify(value)}`;
+	if (action === "add") return `${text}${text && !text.endsWith("\n") ? "\n" : ""}${assignment}\n`;
+	const index = matches[0] as number;
+	const line = lines[index] as string;
+	const parts = line.match(/^(\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_]*[ \t]*=[ \t]*)([^\r]*)(\r?)$/);
+	if (!parts) throw new Error("unsupported env assignment format");
+	const raw = parts[2] as string;
+	const suffix = raw.startsWith("#")
+		? ` ${raw}`
+		: (raw.match(QUOTED_VALUE)?.[3] ?? raw.match(/([ \t]+#.*|[ \t]*)$/)?.[0] ?? "");
+	lines[index] = `${parts[1]}${JSON.stringify(value)}${suffix}${parts[3]}`;
+	return lines.join("\n");
 }
 
 /** Load + merge the configured env files under `cwd` into one registry. */
