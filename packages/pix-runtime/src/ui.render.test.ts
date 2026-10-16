@@ -61,6 +61,13 @@ test("Settings and Footer actual overlay captures", async () => {
 		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot(
 			"footer changed",
 		);
+		for (let i = 0; i < 12; i++) component.handleInput("\x1b[B");
+		expect(captureRows(component, { width: 80, surface: "component" }).join("\n")).toMatch(
+			/wrap line.*off/,
+		);
+		component.handleInput("\x1b[C");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(fixture.runtime.get(prettySection).footer.wrap).toBe(true);
 		rows = 4;
 		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot(
 			"short terminal",

@@ -2,20 +2,20 @@
  * Footer extension — pure-prompt style.
  *
  * Layout:
- *   [MODE] | ~/cwd (branch *±⇡n⇣n) | ⇡in ⇣out [Rcache] [ctx%/ctxk] [$cost] | model [· thinking] [· ctxK · $in/$out] [| status…] [| N t/s]
+ *   [MODE] | ~/cwd (branch *±⇡n⇣n) | context | model | extension statuses | tokens | TPS
  *
  * - Branch shown with zsh-style dirty/ahead/behind markers.
  * - TPS: live during stream, holds 5s after turn ends, then clears.
  * - Model spec (ctx · cost) sourced from ~/.cache/pi/models-dev.json.
  * - Extension statuses surfaced via footerData.getExtensionStatuses();
- *   "plan" is rendered as the leftmost segment, others appended after model.
+ *   "plan" is rendered as the leftmost segment, others inline after model.
  */
 
 import { basename } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import type { AssistantMessage, AssistantMessageEvent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ReadonlyFooterDataProvider } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import type { ModelsDevModel } from "@xynogen/pix-data";
 import { benchScoreColor, formatCost, lookupBenchmark, resolveModelsDev } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -163,7 +163,7 @@ function renderTokens(
 		? `${icon("net.in")} ${fmtTokenCount(totals.input)} ${icon("net.out")} ${fmtTokenCount(totals.output)}`
 		: "";
 	if (parts.cost && totals.cost > 0) s += ` $${totals.cost.toFixed(3)}`;
-	return theme.fg(faded ? "muted" : "dim", s);
+	return s ? theme.fg(faded ? "muted" : "dim", s) : "";
 }
 
 /** Context usage block: "used/total (pct%)". Always shown when available. */
@@ -310,8 +310,8 @@ function renderStatuses(
 		others.push(compactStatus(k, v, theme));
 	}
 	return {
-		modePart: mode ? `${mode}${sep}` : "",
-		otherPart: others.length ? sep + others.join(sep) : "",
+		modePart: mode ?? "",
+		otherPart: others.join(sep),
 	};
 }
 
@@ -524,18 +524,20 @@ export default function (pi: ExtensionAPI) {
 						? theme.fg("muted", `${icon("cwd")}  `) + theme.fg("accent", shortCwd(ctx.cwd))
 						: "";
 					const line = [
-						parts.mode ? modePart.slice(0, -sep.length) : "",
+						parts.mode ? modePart : "",
 						loc + (parts.git ? branchSeg : ""),
 						parts.git ? markersSeg : "",
 						parts.context ? ctxUsage : "",
 						model,
-						parts.statuses ? otherPart.slice(sep.length) : "",
+						parts.statuses ? otherPart : "",
 						tokens,
 						parts.tps && liveTps ? theme.fg("accent", liveTps) : "",
 					]
 						.filter(Boolean)
 						.join(sep);
-					return line ? [truncateToWidth(line, width)] : [];
+					// ponytail: use Pi's width-aware helpers; wrapping is opt-in through /pix.
+					if (!line) return [];
+					return parts.wrap ? wrapTextWithAnsi(line, width) : [truncateToWidth(line, width)];
 				},
 			};
 		});

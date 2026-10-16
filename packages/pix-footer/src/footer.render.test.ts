@@ -1,4 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
+import { stripVTControlCharacters } from "node:util";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { benchlm, modelgrep } from "@xynogen/pix-data";
 import * as os from "@xynogen/pix-runtime/os";
 import { prettySection } from "@xynogen/pix-runtime/sections";
@@ -47,6 +49,11 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 	let branchChanged: (() => void) | undefined;
 	let branchDisposed = 0;
 	let paints = 0;
+	const statuses = new Map([
+		["plan", "PLAN"],
+		["mcp", "2/3 servers"],
+		["pi-lens-lsp", "LSP Active: ts, json · LSP Failed: eslint"],
+	]);
 	const ctx = {
 		cwd: "/fixture/project",
 		model: {
@@ -71,12 +78,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 			setFooter: (factory: (tui: unknown, theme: unknown, data: unknown) => typeof component) => {
 				component = factory({ requestRender: () => paints++ }, roleTheme(), {
 					getGitBranch: () => branch,
-					getExtensionStatuses: () =>
-						new Map([
-							["plan", "PLAN"],
-							["mcp", "2/3 servers"],
-							["pi-lens-lsp", "LSP Active: ts, json · LSP Failed: eslint"],
-						]),
+					getExtensionStatuses: () => statuses,
 					onBranchChange: (callback: () => void) => {
 						branchChanged = callback;
 						return () => {
@@ -103,9 +105,32 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		};
 		const defaults = prettySection.defaults.footer;
 		const flags = Object.keys(defaults) as (keyof typeof defaults)[];
-		expect(flags).toHaveLength(12);
+		expect(flags).toHaveLength(13);
 		take("idle / 80");
 		take("idle / 120", 120);
+		const wide = footer.render(240);
+		expect(wide).toHaveLength(1);
+		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/PLAN.*capture.*2[/]3.*2 !1/);
+		expect(defaults.wrap).toBe(false);
+		expect(footer.render(40)).toHaveLength(1);
+		expect(stripVTControlCharacters(footer.render(40)[0] ?? "")).toMatch(/\.\.\.$/);
+		await fixture.runtime.update(prettySection, { footer: { wrap: true } });
+		expect(footer.render(240)).toHaveLength(1);
+		for (const width of [16, 40, 80, 120]) {
+			const rows = footer.render(width);
+			if (visibleWidth(wide[0] ?? "") > width) expect(rows.length).toBeGreaterThan(1);
+			else expect(rows).toHaveLength(1);
+			expect(rows.every((row) => visibleWidth(row) <= width)).toBe(true);
+			expect(rows.map(stripVTControlCharacters).join(" ").replace(/\s+/g, " ").trim()).toBe(
+				stripVTControlCharacters(wide[0] ?? "")
+					.replace(/\s+/g, " ")
+					.trim(),
+			);
+		}
+		await fixture.runtime.update(prettySection, { footer: { statuses: false } });
+		expect(stripVTControlCharacters(footer.render(240)[0] ?? "")).toMatch(/PLAN.*capture/);
+		expect(stripVTControlCharacters(footer.render(240)[0] ?? "")).not.toContain("2/3");
+		await fixture.runtime.update(prettySection, { footer: defaults });
 		await hooks.get("message_start")?.({ message: { role: "assistant", id: "stream" } });
 		now += 2000;
 		await hooks.get("message_update")?.({
@@ -129,6 +154,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 			await fixture.runtime.update(prettySection, { footer: footerFlags });
 			expect(paints).toBeGreaterThan(beforePaint);
 			take(`only ${key} / 80`);
+			if (key === "statuses") expect(footer.render(80)).toHaveLength(1);
 		}
 		await fixture.runtime.update(prettySection, { footer: activityFlags });
 		await hooks.get("message_end")?.({

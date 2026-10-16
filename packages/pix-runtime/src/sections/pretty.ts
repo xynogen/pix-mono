@@ -31,7 +31,8 @@ export interface PrettyConfig {
 		| "statuses"
 		| "tokens"
 		| "cost"
-		| "tps",
+		| "tps"
+		| "wrap",
 		boolean
 	>;
 }
@@ -71,6 +72,7 @@ const DEFAULTS: Readonly<PrettyConfig> = {
 		tokens: true,
 		cost: true,
 		tps: true,
+		wrap: false,
 	},
 };
 

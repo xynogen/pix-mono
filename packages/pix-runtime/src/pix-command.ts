@@ -188,11 +188,12 @@ const SETTINGS: SettingRow<unknown>[] = [
 		const part = key as keyof typeof prettySection.defaults.footer;
 		return row({
 			section: "Footer",
-			label: part,
+			label: part === "wrap" ? "wrap line" : part,
 			handle: prettySection,
-			values: ["show", "hide"],
-			read: (v) => (v.footer[part] ? "show" : "hide"),
-			patch: (value) => ({ footer: { [part]: value === "show" } }),
+			values: part === "wrap" ? ["on", "off"] : ["show", "hide"],
+			read: (v) =>
+				part === "wrap" ? (v.footer[part] ? "on" : "off") : v.footer[part] ? "show" : "hide",
+			patch: (value) => ({ footer: { [part]: value === "show" || value === "on" } }),
 		});
 	}),
 ];
