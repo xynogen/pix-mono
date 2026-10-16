@@ -335,8 +335,7 @@ test("child results hide script output in preview and preserve expansion and err
 	const before = JSON.stringify(payload);
 	const preview = capture(renderResult(payload, options, theme, context()), 80);
 	expect(preview.join("\n")).toContain("bash");
-	expect(preview[0]).toMatch(/codemode.*0\.3s/);
-	expect(preview.filter((line) => line.includes("0.3s"))).toHaveLength(1);
+	expect(preview.join("\n")).not.toMatch(/0\.3s/);
 	expect(preview.join("\n")).not.toContain("script-only-value");
 	expect(preview.join("\n")).not.toContain("Script output");
 	close(preview, "success", 80);
@@ -354,4 +353,16 @@ test("child results hide script output in preview and preserve expansion and err
 	expect(failed.join("\n")).toContain("script-only-value");
 	close(failed, "error", 80);
 	expect(JSON.stringify(payload)).toBe(before);
+});
+
+test("call header shows the total from the result state", async () => {
+	terminal(80);
+	const ctx = context();
+	let redraws = 0;
+	const withState = { ...ctx, invalidate: () => redraws++ };
+	renderResult(result(), options, theme, withState);
+	await Promise.resolve();
+	expect(redraws).toBe(1);
+	const header = capture(renderCall({ code: "return 1;" }, theme, withState), 80)[0] ?? "";
+	expect(header).toMatch(/codemode.*<muted>0\.3s/);
 });

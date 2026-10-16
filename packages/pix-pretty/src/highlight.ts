@@ -35,11 +35,52 @@ function forceChalkColor(): void {
 	}
 }
 
+// highlight.js bash only colors shell builtins, so `sleep`, `df`, `tail` stay plain.
+// Add the standard external commands to its built_in list.
+export const BASH_COMMANDS =
+	"awk basename cat chgrp chmod chown cp curl cut date dd df diff dirname du env file find " +
+	"free git grep gzip head hostname id kill ln ls mkdir mktemp mv nohup pgrep pkill ps rm " +
+	"rmdir sed seq sleep sort ssh scp tail tar tee touch tr uname uniq wc which whoami xargs";
+
+// Windows native executables plus common cross-platform CLIs. highlight.js powershell
+// only knows cmdlets and aliases, so `ipconfig` or `git` would stay plain.
+export const POWERSHELL_COMMANDS =
+	"arp assoc attrib bcdedit certutil chkdsk choco cipher clip cmd cmdkey cscript curl diskpart " +
+	"docker driverquery fc find findstr format fsutil ftp getmac git gpresult gpupdate hostname " +
+	"icacls ipconfig klist logoff make msiexec nbtstat net netsh netstat nltest node npm npx " +
+	"nslookup pathping pip ping pnpm powercfg powershell pwsh python reg regsvr32 robocopy route " +
+	"scoop sfc shutdown ssh scp systeminfo takeown taskkill tasklist tar tracert tree uv " +
+	"w32tm wevtutil where whoami winget wmic xcopy bun cargo go yarn";
+
+// ponytail: reach the highlight.js instance cli-highlight already loaded instead of
+// declaring a second dependency. Pin highlight.js directly if cli-highlight drops it.
+function extendBuiltIns(): void {
+	try {
+		const { createRequire } = require("node:module") as typeof import("node:module");
+		const sub = createRequire(require.resolve("cli-highlight"));
+		const hljs = sub("highlight.js");
+		for (const [name, commands] of [
+			["bash", BASH_COMMANDS],
+			["powershell", POWERSHELL_COMMANDS],
+		] as const) {
+			const grammar = sub(`highlight.js/lib/languages/${name}`);
+			hljs.registerLanguage(name, (h: unknown) => {
+				const def = grammar(h);
+				def.keywords.built_in += ` ${commands}`;
+				return def;
+			});
+		}
+	} catch {
+		/* keep the stock grammars */
+	}
+}
+
 function cliHighlight(): CliHighlight | null {
 	if (_hl) return _hl;
 	try {
 		forceChalkColor();
 		_hl = require("cli-highlight") as CliHighlight;
+		extendBuiltIns();
 	} catch {
 		_hl = null;
 	}

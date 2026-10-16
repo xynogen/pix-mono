@@ -34,3 +34,21 @@ describe("active-theme syntax highlighting", () => {
 		expect(_cache.size).toBe(0); // not cached — it never went through highlight()
 	});
 });
+
+test("bash highlights standard commands like builtins", async () => {
+	const theme = { fg: (k: string, t: string) => `<${k}>${t}</${k}>` };
+	const [line = ""] = await hlBlock("sleep 10; df -h; cat x", "bash", theme as never);
+	for (const cmd of ["sleep", "df", "cat"])
+		expect(line).toMatch(new RegExp(`<syntaxType>${cmd}</syntaxType>`));
+});
+
+test("powershell highlights Windows executables like cmdlets", async () => {
+	const theme = { fg: (k: string, t: string) => `<${k}>${t}</${k}>` };
+	const [line = ""] = await hlBlock(
+		"ipconfig /all; git status; netstat -an",
+		"powershell",
+		theme as never,
+	);
+	for (const cmd of ["ipconfig", "git", "netstat"])
+		expect(line).toContain(`<syntaxType>${cmd}</syntaxType>`);
+});

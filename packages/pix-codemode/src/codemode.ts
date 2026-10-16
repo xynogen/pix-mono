@@ -168,8 +168,12 @@ export function renderCall(args: { code?: string }, theme: ThemeLike, ctx: Conte
 	const text = new PreviewText();
 	if (hideCollapsedToolCall(ctx.state, ctx.expanded, (value) => text.setText(value))) return text;
 	const code = typeof args.code === "string" ? args.code : "[invalid arg]";
+	const total = ctx.state.codemodeTotal;
 	return commandPreview(
-		`${formatToolCallTitle(theme, "codemode", ctx)}`,
+		dotJoin([
+			formatToolCallTitle(theme, "codemode", ctx),
+			typeof total === "string" && total ? theme.fg("muted", total) : "",
+		]),
 		code,
 		"javascript",
 		theme,
@@ -263,6 +267,12 @@ export function renderResult(
 	);
 	const cost = calls.reduce((sum, call) => sum + (call.cost ?? 0), 0);
 	const wall = display.wallTime === undefined ? "" : formatMs(display.wallTime * 1000);
+	// ponytail: the call header lives in renderCall. Pass totals through shared state, then redraw once.
+	const total = dotJoin([wall, cost ? costText(cost) : ""]);
+	if (!options.isPartial && (ctx.state.codemodeTotal ?? "") !== total) {
+		ctx.state.codemodeTotal = total;
+		void Promise.resolve().then(ctx.invalidate);
+	}
 	if (
 		!options.isPartial &&
 		!isError &&
@@ -289,13 +299,6 @@ export function renderResult(
 	}
 	const compactPreview = !options.expanded && !isError && calls.some((call) => call.result);
 	const rows: string[] = [];
-	if (!options.isPartial && compactPreview && (wall || cost))
-		rows.push(
-			dotJoin([
-				formatToolCallTitle(theme, "codemode", ctx),
-				theme.fg("muted", dotJoin([wall, cost ? costText(cost) : ""])),
-			]),
-		);
 	const nestedTexts: { text: string; metadata?: string; fullOutputPath?: string }[] = [];
 	const shown = options.expanded ? calls : calls.slice(-8);
 	if (shown.length < calls.length)
@@ -358,8 +361,6 @@ export function renderResult(
 			if (block.fullOutputPath)
 				rows.push(theme.fg("muted", `Full output: ${block.fullOutputPath}`));
 		}
-		if (!compactPreview && (wall || cost))
-			rows.push(theme.fg("muted", dotJoin([wall, cost ? costText(cost) : ""])));
 	}
 	const preview =
 		!options.expanded && rows.length > MAX_PREVIEW_LINES

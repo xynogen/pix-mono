@@ -404,75 +404,70 @@ export default function (pi: ExtensionAPI): void {
 		...({ exposure: "deferred" } as const),
 		label: "Run over SSH",
 		description:
-			"Run a command or transfer files/directories on a REMOTE host over SSH. " +
-			"For the LOCAL machine use `bash` (or `sudo_run` for local root) instead — do not use ssh_run for local work. " +
-			"Requires a `host`. Windows/PowerShell shells are best-effort (elevation and PowerShell stream/encoding semantics unsupported). " +
-			"Set `sudo: true` to run the command as root on the remote machine. " +
-			'For transfer, set `action: "file"`, `direction`, `source`, `destination`, and optional `recursive` — ' +
-			"transfers may overwrite the destination. " +
-			'To discover hosts without reading `~/.ssh/config`, use `action: "info"` — omit `host` to list configured aliases, or pass a `host` to get its effective config (no connection). ' +
-			"Always provide a clear `reason`.",
+			"Operate on a REMOTE host over SSH (for the LOCAL machine use `bash`, or `sudo_run` for local root). " +
+			"Pick one `action`; each has its own parameters:\n" +
+			"- command: run a command. Required: host, command. Optional: sudo (remote POSIX root).\n" +
+			"- file: upload/download a file or directory (may overwrite the destination). Required: host, direction, source, destination. Optional: recursive.\n" +
+			"- info: read SSH config, no connection. Optional: host (omit = list aliases, set = effective config).\n" +
+			"Always set `reason`. Windows/PowerShell remotes are best-effort.",
 		promptSnippet: "Run a remote command, transfer files, or read SSH config over SSH",
 		promptGuidelines: [
-			'ssh_run: REMOTE host only — use `bash`/`sudo_run` for the local machine. `host` as `[user@]host[:port]`; `sudo` covers remote POSIX sudo only. For transfer use `action: "file"` with `direction: "upload"|"download"`, `source`, `destination`, optional `recursive` (may overwrite). Use `action: "info"` (no `host` = list aliases, with `host` = its effective config) instead of reading `~/.ssh/config` yourself. Always set `reason`.',
+			'ssh_run: REMOTE host only — use `bash`/`sudo_run` locally. `action` is required: "command" (host, command, sudo?), "file" (host, direction, source, destination, recursive?), "info" (host? — no host = list aliases). `host` is `[user@]host[:port]`. Use "info" instead of reading `~/.ssh/config`. Always set `reason`.',
 		],
 
 		renderShell: "self",
 
-		// Single Type.Object (root `type: "object"`) rather than Type.Union — a union
+		// Single flat Type.Object (root `type: "object"`) rather than Type.Union — a union
 		// serializes to `anyOf` with no root type, which strict OpenAI-compatible
-		// providers (e.g. DeepSeek) reject with `type: null`. Conditional fields are
-		// optional and normalized/validated at runtime via normalizeOperation.
+		// providers (e.g. DeepSeek) reject with `type: null`. Only `action` is
+		// schema-required; per-action fields are tagged in their descriptions and
+		// validated at runtime via normalizeOperation.
 		parameters: Type.Object({
-			action: Type.Optional(
-				Type.Union([Type.Literal("command"), Type.Literal("file"), Type.Literal("info")], {
-					description:
-						'"command" (default) runs a remote command; "file" transfers a file/directory; "info" reports SSH config (no connection) — list configured host aliases, or resolve one host\'s effective config when `host` is given.',
-				}),
-			),
+			action: Type.Union([Type.Literal("command"), Type.Literal("file"), Type.Literal("info")], {
+				description:
+					'"command" runs a remote command, "file" transfers a file/directory, "info" reads SSH config (no connection).',
+			}),
 			host: Type.Optional(
 				Type.String({
 					description:
-						"Remote target as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`). Required for command/file; for info, omit to list all aliases or set it to resolve one host.",
+						"`[user@]host[:port]`, e.g. `deploy@10.0.0.5:2222`. REQUIRED for command and file. For info: omit to list aliases, set to resolve one host.",
 				}),
 			),
+			// command
 			command: Type.Optional(
 				Type.String({
-					description:
-						'Command sent to the remote host\'s configured SSH shell. Required when action is "command".',
+					description: "[command] REQUIRED. Sent to the remote host's configured SSH shell.",
 				}),
 			),
 			sudo: Type.Optional(
 				Type.Boolean({
-					description:
-						"Run the command as root on the remote host via sudo. Default false. Command action only.",
+					description: "[command] Optional, default false. Run as root on the remote via sudo.",
 				}),
 			),
+			// file
 			direction: Type.Optional(
 				Type.Union([Type.Literal("upload"), Type.Literal("download")], {
-					description: 'Transfer direction. Required when action is "file".',
+					description: "[file] REQUIRED. Transfer direction.",
 				}),
 			),
 			source: Type.Optional(
 				Type.String({
-					description:
-						'Source path (local for upload, remote for download). Required when action is "file".',
+					description: "[file] REQUIRED. Local path for upload, remote path for download.",
 				}),
 			),
 			destination: Type.Optional(
 				Type.String({
-					description:
-						'Destination path (remote for upload, local for download). Required when action is "file".',
+					description: "[file] REQUIRED. Remote path for upload, local path for download.",
 				}),
 			),
 			recursive: Type.Optional(
 				Type.Boolean({
-					description: "Copy a directory recursively. Default false. File action only.",
+					description: "[file] Optional, default false. Copy a directory recursively.",
 				}),
 			),
 			reason: Type.Optional(
 				Type.String({
-					description: "Short plain-English explanation of intent, shown to the user.",
+					description: "All actions. Short plain-English intent, shown to the user.",
 				}),
 			),
 		}),
