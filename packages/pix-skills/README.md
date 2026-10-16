@@ -7,7 +7,7 @@ Pi coding agent extension — skill loader tool + skills bundle.
 | Resource | Type | Description |
 |---|---|---|
 | `read_skills` | tool | Browse local skills, search Skills.sh, explicitly fetch/cache a selected public GitHub skill, read references, and copy bundled resources. |
-| `skills/` | skills | 29 bundled skills (off-context by default — discovered on demand via `read_skills`) |
+| `skills/` | skills | 33 bundled skills (off-context by default — discovered on demand via `read_skills`) |
 
 ## New: Skills.sh search and remote skill cache
 
@@ -147,33 +147,39 @@ as `/skill:<name>` slash commands.
 
 | Skill | Description |
 |---|---|
-| `ask-user` | Present 2–5 options before high-stakes/irreversible or ambiguous decisions |
-| `audit` | Security audit, integrity check, and secret/vulnerability scan |
-| `bootstrap` | Project and tool scaffolding from authoritative docs |
+| `ask-user` | Ask 1–4 structured questions before high-stakes, irreversible, or ambiguous decisions |
+| `audit` | Security audit, integrity check, and secret/vulnerability scan with evidence |
+| `bootstrap` | Scaffold a new project or tool from authoritative docs, with install consent |
 | `brainstorm` | Design exploration and spec refinement before implementation |
-| `cicd` | Set up a two-stage CI/CD release pipeline (validate on push/PR, publish on tag) across GitHub/Forgejo/GitLab |
-| `clone` | Clone any git repo into `/tmp/clones` for read-only exploration |
-| `command-runner` | Inspect workspace health using pre-populated git context (status + diff) |
-| `commit` | Split, write, and maintain Conventional-Commit-style commits |
-| `debug` | Root-cause analysis and self-annealing error resolution |
-| `diff` | Review current git changes via pre-populated status + staged/unstaged diffs |
-| `environment` | Detect OS/distro/kernel/arch/user/CPU before running platform-specific commands |
-| `explain` | Technical deconstruction and logic tracing of existing code |
-| `finish` | Structured branch completion — verify, decide, clean up |
+| `cicd` | Two-stage CI/CD release pipeline (validate on push/PR, publish the tested artifact on tag) |
+| `clone` | Clone a git repo into `/tmp/clones` for read-only exploration |
+| `command-runner` | Inspect workspace health from pre-populated git status + diff |
+| `commit` | Split, write, and maintain Conventional-Commit-style commits; secret checks |
+| `composio-mcp` | Safe Composio MCP workflow — prefer direct servers, introspect before writing |
+| `debug` | Root-cause analysis: reproduce, isolate, fix, and prove |
+| `diff` | Review current git changes from pre-populated staged/unstaged diffs |
+| `environment` | Detect OS/distro/kernel/arch before platform-specific commands |
+| `explain` | Trace and explain existing code in plain STE-style language |
+| `finish` | Branch completion — verify, decide merge/PR/keep, clean up |
+| `format` | Select and run the project's formatter, check mode before write mode |
 | `handoff` | Toggle session handoff — write or read+delete `HANDOFF.md` |
-| `human` | Audit and rewrite content to remove AI writing patterns ("AI-isms") |
+| `harden` | Retrofit a fail-fast static-analysis gate onto an existing project |
+| `human` | Audit and rewrite text to remove AI writing patterns (bundle with references) |
+| `lint` | Select and run the project's linter (LSP diagnostics first) and fix findings |
+| `lsp` | Select, install with consent, and configure a language server in `.pi/lsp.json` |
 | `readme` | Create or update a deployment-focused README in a fixed style |
-| `review` | Architectural review and quality assurance |
-| `runner` | Generate or convert a task runner (just/make/mise/task/npm/sh) |
-| `search` | Deep logic discovery and project context mapping |
-| `suggest` | Multi-dimensional optimization and improvement recommendations |
+| `review` | Strict code review by severity, ending in a Pass / Pass with suggestions / Fail verdict |
+| `runner` | Generate or convert a task runner (just/make/mise/task/npm/sh; bundle with references) |
+| `search` | Deep code discovery and project context mapping with grep, graph, and LSP |
+| `subagent` | Decompose work and fan out independent units to parallel `agent` workers |
+| `suggest` | Ranked optimization and improvement recommendations |
 | `task` | Task orchestration and ambiguity resolution |
-| `test` | Test execution, analysis, and failure resolution via TDD |
+| `tdd` | Test-first development: red, green, refactor |
+| `test` | Run tests, analyze failures, and fix them |
 | `tldr` | Maximum-density technical summary, zero filler |
-| `toon-json` | On-demand jq + TOON workflow for information-dense JSON |
+| `toon-json` | Shrink dense JSON for context with jq + TOON |
 | `ui` | UI/UX design and implementation guidance for frontends |
-| `verify` | Verification before completion — confirm it's actually fixed |
-| `subagent` | Plan, decompose, and fan out independent units to cheaper parallel subagent workers |
+| `verify` | Verification before completion — prove it is actually fixed |
 
 ## Command interpolation
 

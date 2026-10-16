@@ -1,26 +1,18 @@
 ---
 name: command-runner
-description: Inspect workspace health using pre-populated git context (status + diff).
+description: Checks workspace health from live git status and diff before running automation, and asks before it stages anything. Use before a scripted or bulk operation that needs a known, clean working tree.
 disable-model-invocation: true
 ---
+# Command Runner
 
-# Command Runner Skill
-
-## Pre-Populated Git Context
-
-The blocks below are populated with live repository state at skill-load time
-via `\!`cmd`` directives — read them before acting.
-
-### Working tree status
+## State (live at load time)
 
 !`git status -s`
 
-### Active diff
-
 !`git diff HEAD`
 
-## Instructions
+## Steps
 
-1. Analyze the pre-populated status and diff above.
-2. If unstaged files appear, ask the user before staging.
-3. Only proceed with automations if the tree is clean or the user overrides.
+1. Read the status and diff above.
+2. Unstaged files exist → ask before you stage them.
+3. Continue with automation only if the tree is clean or the user overrides.

@@ -1,24 +1,13 @@
 ---
 name: ui
-description: Design, build, redesign, and review distinctive, usable, accessible interfaces across web, mobile, desktop, dashboards, and design systems
+description: Designs, builds, redesigns, and reviews distinctive, usable, accessible interfaces across web, mobile, desktop, dashboards, and design systems. Use for any UI or UX work — new screens, components, layouts, styling, design reviews, or accessibility fixes.
 disable-model-invocation: true
 ---
-# UI/UX Design Directive
-
-## Goal
+# UI/UX design
 
 Create interfaces that are useful, coherent, distinctive, and production-ready. Treat visual design, interaction design, content, accessibility, responsiveness, and implementation quality as one system.
 
 Do not optimize for novelty at the expense of usability. Do not optimize for familiarity until the result feels generic. Make every important choice traceable to the product, audience, task, and existing brand.
-
-## When This Applies
-
-Use this skill when designing, building, redesigning, or reviewing:
-
-- Pages, applications, components, flows, dashboards, and data visualizations
-- Web, mobile, desktop, touch, and responsive interfaces
-- Layout, navigation, forms, typography, color, motion, content, or accessibility
-- Design systems, tokens, component libraries, and visual consistency
 
 For a small change, apply only the relevant checks. For a new product or major redesign, follow the complete workflow.
 
@@ -37,7 +26,7 @@ For a small change, apply only the relevant checks. For a new product or major r
 
 ## Workflow
 
-### Phase 1: Understand and Inspect
+### 1. Understand and inspect
 
 Before changing code:
 
@@ -49,7 +38,7 @@ Before changing code:
 - Confirm relevant constraints: platform, browser/device support, performance, localization, input methods, brand, and accessibility target.
 - Ask only when a missing decision would materially change the result; otherwise make and state a reasonable assumption.
 
-### Phase 2: Define the Direction
+### 2. Define the direction
 
 For substantial work, form a compact design plan before coding:
 
@@ -71,7 +60,7 @@ Critique the plan before implementation:
 
 Revise generic or unjustified choices before building.
 
-### Phase 3: Build the Experience
+### 3. Build
 
 #### Information Architecture and Layout
 
@@ -136,7 +125,7 @@ Revise generic or unjustified choices before building.
 - Tables need meaningful alignment, sorting/filter feedback, responsive behavior, empty states, and keyboard usability.
 - Avoid meaningless hero metrics, misleading axes, excessive precision, and chart junk.
 
-### Phase 4: Production Quality
+### 4. Production quality
 
 - Use semantic platform primitives first: landmarks, headings, buttons, links, labels, lists, tables, and dialogs.
 - Build modular components with clear responsibilities and all relevant variants and states.
@@ -166,8 +155,8 @@ Treat these as minimum checks, adjusted only when the target platform has strict
 
 Before delivery:
 
-1. Run relevant diagnostics, type checks, tests, and builds proactively.
-2. Render the interface rather than judging source code alone.
+1. Run relevant diagnostics, type checks, tests, and builds.
+2. Render the interface (browser automation or screenshot tool, if available) rather than judging source code alone. If you cannot render it, say so in the report.
 3. Check representative narrow, medium, and wide viewports; include real device sizes when specified.
 4. Exercise keyboard navigation, focus order, dialogs, forms, errors, loading, empty states, and destructive actions.
 5. Check contrast, accessible names, semantics, reduced motion, overflow, text wrapping, and zoom.

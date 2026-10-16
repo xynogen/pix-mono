@@ -1,6 +1,6 @@
 ---
 name: lint
-description: Select and run the project's linter through bash. Use when asked to lint, fix lint findings, or check code quality.
+description: Selects and runs the project's linter (lsp_diagnostics, then the project script, config, or a language default) and fixes findings. Use when asked to lint, fix lint errors, or check code quality.
 disable-model-invocation: true
 ---
 # Project Lint

@@ -3,30 +3,20 @@ name: explain
 description: Technical deconstruction and logic tracing. Use when user asks "how does X work", "explain this", "walk me through", "what does this do", or needs to understand existing code/architecture before changing it.
 disable-model-invocation: true
 ---
-# Explain Directive
+# Explain
 
-## Goal
+Goal: the reader understands the code from your answer alone. They do not need to trace the codebase again.
 
-Make code understandable from local reading. After explaining, reader grasps intent without re-tracing codebase themselves.
+## Steps
 
-## Below are what agent MUST do
-
-### Phase 1: Locate & Scope
-
-- **AUTO-RUN**: Run searches and reads needed without confirmation unless input required.
-- **CONTEXT**: Identify exact target — file, function, class, or concept. Quote the `file:line` under discussion.
-- **READ**: Read full target plus immediate callers and callees. Don't explain from name alone.
-
-### Phase 2: Deconstruct
-
-- **STRUCTURE**: Break logic into named components (inputs → transform → outputs → side effects).
-- **TRACE**: Map data flow and call chain. State where data enters, what mutates it, where it exits.
-- **RATIONALE**: Explain the *why* behind non-obvious choices. Why unknowable → say so, don't invent intent.
-- **CONTRACTS**: Note types, invariants, assumptions code relies on.
-
-### Phase 3: Report
-
-Use this structure:
+1. **Locate** — Run the needed searches and reads without asking. Find the exact target (file, function, class, or concept). Quote its `file:line`.
+2. **Read** — Read the full target and its direct callers and callees. Never explain from a name alone.
+3. **Deconstruct**
+   - Name the parts: inputs → transform → outputs → side effects.
+   - Trace the data: where it enters, what changes it, where it leaves.
+   - Give the reason for each non-obvious choice. If the reason is unknown, say so. Do not invent one.
+   - List the types, invariants, and assumptions the code needs.
+4. **Report** in this form:
 
 ```
 ## What it does
@@ -34,20 +24,29 @@ Use this structure:
 
 ## How it works
 1. [Step] — `file:line`
-2. [Step] — `file:line`
 
 ## Data flow
 [input] → [transform] → [output/side-effect]
 
 ## Why this way
-[Design rationale, or "rationale not documented" if unknown.]
+[Reason, or "reason not documented".]
 
 ## Gotchas
-[Non-obvious behavior, edge cases, hidden dependencies.]
+[Edge cases, hidden dependencies, surprising behavior.]
 ```
 
-## Red Flags — STOP
+## Writing style (STE100-inspired)
 
-- Explaining from function name without reading its body.
-- Inventing rationale not supported by code or comments.
-- Describing *what* a line does when self-evident — explain *why* instead.
+- One idea per sentence. Keep sentences short (about 20 words or fewer).
+- Use active voice and present tense: "The parser reads the token", not "The token is read by the parser".
+- Use simple words: "use", not "utilize"; "start", not "initiate".
+- Use one term for one thing. Do not switch between synonyms for the same function or variable.
+- Keep articles ("the", "a"). Do not drop them to save space.
+- Use imperative for instructions. Use numbered steps for sequences.
+- Keep code identifiers, error strings, and numbers exact. Style never changes them.
+
+## Stop if
+
+- You explain a function from its name without reading its body.
+- You state a reason that no code or comment supports.
+- You describe what a self-evident line does. Explain why instead.

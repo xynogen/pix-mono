@@ -1,65 +1,30 @@
 ---
 name: debug
-description: Root-Cause Analysis and self-annealing procedure for error resolution
+description: Root-cause debugging — reproduce, find the broken invariant, test one hypothesis at a time, then fix at the source with a regression test. Use when something errors, crashes, hangs, returns wrong output, or a test fails for an unknown reason, and before proposing any fix.
 disable-model-invocation: true
 ---
-# Debug & Anneal Directive
+# Debug
 
-## The Iron Law
+**No fix without a root cause.** Until step 3 confirms a cause, propose no fix.
 
-```
-NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
-```
+## Steps
 
-Phase 1 not complete → you CANNOT propose fixes.
+1. **Collect** — Read the full error and stack trace: messages, `file:line`, codes. Reproduce the failure reliably. If you cannot, gather more data. Do not guess. Check recent changes: `git diff`, recent commits, new dependencies, config.
+2. **Locate** — List what must be true for the code to work. Find the invariant that breaks. Trace the data backward from that point to the first wrong value. In a multi-part system, log at each boundary once, then read the output. Compare with similar code that works and list every difference.
+3. **Hypothesize** — Write it down: "X is the cause because Y." Test it with the smallest change, one variable at a time. Wrong → form a new hypothesis. Never stack fixes.
+4. **Fix** — Write a failing test that reproduces the bug. Make one targeted fix at the source, not the symptom. No unrelated changes. Run the full suite (see `test`).
+5. **Record** — If a missing rule caused the bug, propose the rule for the repo instructions.
 
-## First Principles Debugging
+Reason from the mechanism ("this error means Y in state Z"), not from analogy ("last time this meant X").
 
-Before diving into symptoms, strip problem to fundamentals:
+## Escalate
 
-1. **What MUST be true** for system to work correctly? List the invariants.
-2. **Which invariant violated?** Bug lives where reality diverges from required truth.
-3. **Why violated?** Trace from violated invariant backward — ignore surface symptoms.
-4. Do NOT reason by analogy ("last time this error meant X"). Reason from mechanism ("this error means Y in state Z, which requires W to have failed").
+Three failed fixes → stop. The design is likely wrong, not the hypothesis. Show the evidence to the user before you try again.
 
-## Below are what agent MUST do
+## Back to step 1 if you think
 
-### Phase 1: Root Cause Investigation
-
-- **READ**: Read error messages and stack traces completely. Note line numbers, file paths, error codes.
-- **REPRODUCE**: Reproduce error consistently. Not reproducible → gather more data, do NOT guess.
-- **CHANGES**: Check recent changes (git diff, recent commits, new deps, config changes).
-- **EVIDENCE**: Multi-component systems → add diagnostic logging at each boundary BEFORE proposing fixes. Run once to gather evidence, THEN analyze.
-- **TRACE**: Trace data flow backward through call stack to find original trigger. Fix at source, not symptom.
-
-### Phase 2: Pattern Analysis
-
-- **EXAMPLES**: Find working examples of similar code in codebase.
-- **COMPARE**: Compare working vs broken. List every difference, however small.
-- **DEPENDENCIES**: Understand what config, environment, or assumptions code relies on.
-
-### Phase 3: Hypothesis and Testing
-
-- **HYPOTHESIZE**: State clearly: "I think X is root cause because Y." Write it down.
-- **TEST MINIMALLY**: Make SMALLEST possible change to test hypothesis. One variable at a time.
-- **VERIFY**: Worked? Yes → Phase 4. No → form NEW hypothesis. Do NOT stack fixes.
-
-### Phase 4: Implementation
-
-- **TEST FIRST**: Create failing test reproducing bug BEFORE writing fix.
-- **FIX**: Implement single, targeted fix addressing root cause. No "while I'm here" changes.
-- **VERIFY**: Confirm test passes and no regressions via `/test`.
-- **ANNEAL**: Error due to missing rules → update appropriate Directive.
-
-## Escalation Rule
-
-- 3+ fixes failed → **STOP**. Question the architecture. Discuss with user before more fixes. This is wrong architecture, not wrong hypothesis.
-
-## Red Flags — STOP and Return to Phase 1
-
-- "Quick fix for now, investigate later"
-- "Just try changing X and see if it works"
-- "It's probably X, let me fix that"
-- "I don't fully understand but this might work"
-- "One more fix attempt" (when already tried 2+)
-- Each fix reveals new problem in different place
+- "Quick fix now, investigate later."
+- "Just try X and see."
+- "It's probably X."
+- "I don't fully understand, but this might work."
+- Each fix shows a new problem somewhere else.

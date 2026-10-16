@@ -1,36 +1,25 @@
 ---
 name: diff
-description: Review the current git changes using pre-populated status, staged, and unstaged diffs.
+description: Reviews the current uncommitted git changes from live status, staged, and unstaged diffs — summarizes intent and flags bugs, security issues, and out-of-scope edits. Use when asked to "review my changes", "check the diff", or "what did I change" before a commit.
 disable-model-invocation: true
 ---
+# Diff Review
 
-# Diff Review Skill
-
-## Pre-Populated Git Context
-
-The blocks below are filled with live repository state at skill-load time via
-`\!`cmd`` directives — read them before responding.
-
-### Branch + short status
+## State (live at load time)
 
 !`git status -sb`
-
-### Staged changes (index vs HEAD)
 
 !`git diff --cached --stat`
 
 !`git diff --cached`
 
-### Unstaged changes (working tree vs index)
-
 !`git diff --stat`
 
 !`git diff`
 
-## Instructions
+## Steps
 
-1. Summarize what changed: files touched, and the intent of each change.
-2. Flag bugs, logic errors, security issues, and missing error handling.
-3. Call out anything out of scope for the apparent goal of the change.
-4. If nothing is staged and the working tree is clean, say so — there is
-   nothing to review.
+1. Nothing staged and the tree is clean → say "nothing to review" and stop.
+2. Summarize: each file touched and the intent of its change.
+3. Flag bugs, logic errors, security issues, and missing error handling. Give `file:line` for each.
+4. Flag changes that do not fit the apparent goal.

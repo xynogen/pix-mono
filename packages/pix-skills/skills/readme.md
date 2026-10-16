@@ -1,22 +1,17 @@
 ---
 name: readme
-description: Create or update a project README in a fixed, deployment-focused style with required sections, env-var tables, and an enforced tone
+description: Creates or updates a project README in a fixed, deployment-focused style with required sections, env-var tables, and an enforced tone. Use when asked to write, rewrite, or update a README or project docs for setup and deployment.
 disable-model-invocation: true
 ---
-# README Directive
+# README
 
-## Core Philosophy
+Audience: a deployment engineer or new developer who must run the project in five minutes and know which settings are safe to change in production.
 
-Produce README aimed at deployment engineer or new developer who needs to run project locally and integrate it into a platform. Optimize for: can they get it running in five minutes, do they know which knobs safe to turn in production? No marketing language, no hobbyist framing.
+## 1. Gather inputs
 
-## Below are what agent MUST do
-
-### Phase 1: Gather Inputs (Before Writing)
-
-- **AUTO-RUN**: Run terminal commands and tool calls needed proactively without confirmation unless explicit input required.
-- **DETECT EXISTING**: `README.md` already exists → read it first as source of truth for name, purpose, documented endpoints. Treat update as rewrite into this style, preserving factual content.
-- **SCAN**: Read `.env.example`, route files, `docker-compose.yml`, task runner files (`justfile`, `Makefile`, `mise.toml`, `Taskfile.yml`, `package.json`), main entrypoint to gather source material.
-- **NO GUESSING**: Never invent env var names, endpoints, default values, ports, commands. Required input below unknown after scanning → ask user before writing.
+- **Existing README** → read it first; it is the source of truth for name, purpose, and endpoints. Keep its facts. Show the diff and get confirmation before you overwrite a non-trivial one.
+- **Scan** `.env.example`, route files, `docker-compose.yml`, task runner files (`justfile`, `Makefile`, `mise.toml`, `Taskfile.yml`, `package.json`), and the main entrypoint.
+- **Never invent** env var names, endpoints, defaults, ports, or commands. If a required input is still unknown, ask before you write.
 
 Following inputs MUST be identified before drafting:
 
@@ -34,7 +29,7 @@ Following inputs MUST be identified before drafting:
 | 10 | Development task-runner recipes | `test`, `codegen`, `tidy`, `lint` |
 | 11 | License | Exact license name |
 
-### Phase 2: Environment Variable Buckets
+## 2. Environment variable buckets
 
 Split every env var into exactly one of these three buckets. Bucket empty for project → OMIT its table, don't pad with empty rows.
 
@@ -44,14 +39,14 @@ Split every env var into exactly one of these three buckets. Bucket empty for pr
 | Infra-tunable runtime values | `Variable` (left-aligned `\|:---\|`), `Default` (right-aligned `\|---:\|`), `Description` | Sensible defaults, safe to override per environment |
 | Optional feature toggles / external integrations | `Variable` (left-aligned `\|:---\|`), `Default` (right-aligned `\|---:\|`), `Description` | Feature flags, third-party API keys |
 
-### Phase 3: Required Structure (Sections in Order)
+## 3. Sections, in order
 
 1. `# <Full Name> (<Acronym>)` — acronym only if one exists.
 2. Opening paragraph (2-3 sentences): what service is, what it ingests, what it emits.
 3. Separate short paragraph: key operational characteristics.
 4. `## Table of Contents` — bulleted list of section headings below.
 5. `## Requirements` — bullet list of runtime prerequisites.
-6. `## Quick Start` — copy `.env.example` → `.env`, set minimum required vars (show secret generation, e.g. `openssl rand -hex 32`), then run command(s). End with default listen address.
+6. `## Quick Start` — copy `.env.example` → `.env`, set minimum required vars, then run command(s). Show a secret-generation command that fits the secret type. End with the default listen address.
 7. `## Environment Configuration` — one orienting sentence, then three env tables in bucket order. Close with one-paragraph note about keeping `.env` out of git and injecting via platform secrets in deployments.
 8. `## Docker Compose` — ONLY if compose file exists. One sentence describing what it does, the `docker compose up --build` command, note that deployment platforms can supply same vars directly.
 9. `## Authentication` — login endpoint as `text` code block, then both auth methods (bearer header preferred, query param fallback) in separate code blocks.
@@ -60,26 +55,25 @@ Split every env var into exactly one of these three buckets. Bucket empty for pr
 12. `## Development` — `bash` code block listing most-used task-runner recipes (`test`, `codegen`, `tidy`), then one-line note about where annotations or generated artifacts live.
 13. `## License` — one line.
 
-### Phase 4: Style Rules (Enforce Strictly)
+## 4. Style
 
 - **PROSE**: Plain factual. No marketing words ("blazing fast", "powerful", "easy", "simple"). No emojis. No badges. No screenshots.
-- **ORIENTING SENTENCE**: Every section starts with one orienting sentence before any code, list, or table.
+- **ORIENTING SENTENCE**: Each section opens with one sentence before code, lists, or tables, unless section 3 says it opens with a code block.
 - **TABLES OVER BULLETS**: Use tables for structured data (env vars, endpoints). Never use bullet lists for things with columns.
 - **CODE FENCES**: Always carry explicit language tag, but stick to widely-supported ones (`bash`, `text`, `json`, `yaml`, `sql`). Avoid obscure tags like `http`, `dotenv`, `ini` — renderers (GitLab, some Markdown viewers) flag them unsupported, display block in red. Use `text` for raw HTTP request lines / headers or env files, `bash` for `curl` examples.
 - **CONCRETE DEFAULTS**: Show actual values inline (`8080`, `30`, `10485760`). Never write "configurable" without actual default.
 - **ENV FORMAT**: Value belongs in `.env` → show as real assignment, not prose.
 - **ENDPOINTS**: In tables use backticks. HTTP methods uppercase, inside backticks: `` `GET /api/streams` ``.
 - **OMIT**: No "Contributing", "Acknowledgments", "What is X?", or "About" sections unless explicitly requested.
-- **OPENING**: Open with what it does, not what it is for.
 
-### Phase 5: Customization Rules
+## 5. Omit when
 
-- **MISSING BUCKET**: Project has no infra-tunable middle tier or no optional integrations → omit that table rather than padding.
-- **NO COMPOSE**: Omit `## Docker Compose` section entirely if no compose file exists.
-- **NO AUTH**: Service unauthenticated → omit `## Authentication`.
-- **NO INTERACTIVE DOCS**: No Swagger/OpenAPI/Storybook served → omit `## Documentation`.
-- **MULTI-LANGUAGE MONOREPO**: Ask user which component README targets before writing.
-- **EXISTING README**: Present diff of proposed changes, ask confirmation before overwriting non-trivial existing README.
+- An env bucket is empty → omit its table.
+- No compose file → omit `## Docker Compose`.
+- No auth → omit `## Authentication`.
+- No served interactive docs → omit `## Documentation`.
+- Library with no HTTP API → omit `## Authentication` and `## API Overview`; add `## Usage` with a minimal code example.
+- Multi-language monorepo → ask which component the README targets.
 
 ## Report
 

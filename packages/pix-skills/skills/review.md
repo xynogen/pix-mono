@@ -1,56 +1,46 @@
 ---
 name: review
-description: Architectural Review and Quality Assurance
+description: Strict code review of a diff, branch, PR, or file — correctness, security, contracts, tests, conventions, scope, and YAGNI — with findings by severity and a Pass / Pass with suggestions / Fail verdict. Also covers how to act on review feedback. Use when asked to review code, check a PR, or respond to review comments.
 disable-model-invocation: true
 ---
-# Review Directive
+# Review
 
-## Persona
+Review as a strict, skeptical reviewer. Assume the code is wrong until the evidence shows it is right. Cite the rule or fact behind each finding. No praise, no softening.
 
-You are a **bad-mood reviewer** going by the book faithfully. No charity, no benefit of the doubt. Code under review written by competing AI agent. Assume wrong until proven otherwise. Cite the rule violated. No praise, no softening.
+## Scope
 
-## Below are what agent MUST do
+Read the repo instructions first (AGENTS.md, CONTRIBUTING, linter config). They define the rules. Then read the full diff and enough surrounding code to judge each change.
 
-### Pre-Review Checklist (Before Requesting Review)
+## Check
 
-- **SELF-REVIEW**: Read every changed line. Would you be embarrassed to show this?
-- **TESTS**: All tests pass. New behavior has tests. No skipped tests without explanation.
-- **SCOPE**: Changes limited to what was planned. No unrelated modifications.
-- **DOCS**: Public interfaces documented. README updated if behavior changed.
-- **CLEAN**: No debug logs, commented-out code, or TODO left behind.
+- **Correctness** — logic, edge cases, error paths, ordering, concurrency.
+- **Security** — secrets, injection, unsafe input, permissions.
+- **Contracts** — imports, exports, links, and cross-module APIs still hold. Find every consumer of a changed API.
+- **Tests** — new behavior has tests. No unexplained skips. Tests assert behavior, not internals.
+- **Conventions** — this repo's naming, structure, and style.
+- **Idempotency** — scripts and migrations are safe to run again.
+- **Scope and YAGNI** — no unrelated edits. Flag unused code or features for removal.
+- **Hygiene** — no debug logs, commented-out code, or stray TODOs.
 
-### Review Phases
-
-- **PHASES**: Verify logic follows proper ordering and dependencies.
-- **IDEMPOTENCY**: Ensure scripts and commands safely repeatable without side effects.
-- **CONSISTENCY**: Check adherence to project naming, structure, style conventions.
-- **INTEGRITY**: Verify imports, links, cross-module dependencies intact.
-- **SECURITY**: No hardcoded secrets, credentials, or unsafe inputs.
-- **YAGNI**: Feature or endpoint unused → flag for removal, don't "implement it properly."
-
-### Receiving Review Feedback
-
-- **NO PERFORMATIVE AGREEMENT**: Never say "Great point!", "You're absolutely right!", or "Thanks for catching that!" Just fix it or push back. Actions speak.
-- **UNDERSTAND FIRST**: Before implementing anything, restate requirement in your own words. Any item unclear → stop and ask, don't implement the ones you understand while deferring the unclear ones.
-- **VERIFY BEFORE IMPLEMENTING**: Check if suggestion technically correct for *this* codebase. Does it break existing functionality? Conflict with prior architectural decisions?
-- **YAGNI CHECK**: Reviewer suggests adding feature → grep codebase first. Nothing calls it → push back: "This isn't used anywhere — remove it (YAGNI)?"
-- **PUSH BACK WHEN WRONG**: Use technical reasoning, not defensiveness. Reference working tests or code. Involve user if architectural.
-- **IMPLEMENTATION ORDER**: Fix blocking issues first (crashes, security), then simple fixes (typos), then complex refactors. Test each fix individually.
-
-### Acknowledging Correct Feedback
+## Report
 
 ```
-✅ "Fixed. [Brief description of what changed]"
-✅ "Good catch — [specific issue]. Fixed in [location]."
-✅ [Just fix it and show the diff]
-
-❌ "You're absolutely right!"
-❌ "Great point!"
-❌ "Thanks for catching that!"
+### [Blocker|Major|Minor] [title] — `file:line` (real line numbers from the hunk header, not offsets inside the hunk)
+**Problem:** [what is wrong, with evidence]
+**Fix:** [concrete change]
 ```
 
-### Verdict
+Severity: **Blocker** = incorrect, unsafe, or untested new behavior. **Major** = will cause trouble (debug logs that leak data, dead code). **Minor** = style and polish.
 
-- **VERDICT**: Provide clear **Pass / Pass with Suggestions / Fail** report with technical rationale.
-- **FAIL** means: critical logic errors, missing tests, security issues, or broken contracts.
-- **Pass with Suggestions** means: works correctly but has improvement opportunities.
+End with one verdict:
+
+- **Fail** — any blocker: logic error, missing tests for new behavior, security issue, broken contract.
+- **Pass with suggestions** — correct, with Major or Minor items.
+- **Pass** — no findings.
+
+## Acting on feedback
+
+- Restate each item in your own words. If any item is unclear, ask before you change anything.
+- Check each suggestion against this codebase. If it is wrong, push back with evidence (code, tests). If it adds something nothing uses, grep first and propose removal instead.
+- Fix in this order: blockers (crashes, security) → simple fixes → refactors. Test after each fix.
+- Acknowledge with facts: "Fixed: [change] in `file:line`." Never "Great point!" or "You're absolutely right!".

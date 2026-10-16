@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Pragmatic test-driven development for any language or framework. Use when building features or fixing bugs test-first without dogma — red-green loop, seams, vertical slices, with sanctioned exceptions.
+description: Pragmatic test-driven development for any language — red-green-refactor in vertical slices, tests at public seams, and named exceptions for spikes, glue, and legacy code. Use when writing a new feature or fixing a bug test-first. To run or repair an existing suite, load the test skill instead.
 disable-model-invocation: true
 ---
 # Pragmatic TDD

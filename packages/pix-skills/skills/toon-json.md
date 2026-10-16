@@ -1,16 +1,12 @@
 ---
 name: toon-json
-description: Manipulate information-dense JSON efficiently with jq + TOON. Use when fetching or reading large, repetitive JSON such as LLM schemas, OpenAPI specs, API responses, datasets, and config dumps. Query and reshape with jq, compress to TOON for context, and decode back only when a strict JSON contract requires it.
+description: Shrinks information-dense JSON for context with jq + TOON. Use when fetching or reading large, repetitive JSON such as LLM schemas, OpenAPI specs, API responses, datasets, and config dumps. Query and reshape with jq, compress to TOON for context, and decode back only when a strict JSON contract requires it.
 disable-model-invocation: true
 ---
 
-# TOON + jq: Dense JSON Workflow
+# TOON + jq
 
-## Goal
-
-Carry only the JSON slice you need, in the cheapest encoding. Query with `jq`,
-compress with `toon`, and round-trip back to JSON **only** when a contract
-requires strict JSON.
+Carry only the JSON slice you need, in the cheapest encoding: query with `jq`, compress with `toon`, and decode back to JSON only when a contract needs strict JSON. If `toon` is missing, use `jq` alone and ask before you install `@toon-format/cli`.
 
 TOON (Token-Oriented Object Notation, <https://github.com/toon-format/spec>) is a
 line-oriented encoding of the JSON data model. Uniform arrays of objects declare
@@ -24,14 +20,14 @@ dense data.
 curl -s https://api.example.com/models | jq '.data' | toon
 
 # Local file, show token savings
-cat openapi.json | jq '.paths' | toon --stats
+jq '.paths' openapi.json | toon --stats
 
 # Just compress, no query
-cat data.json | toon
+toon data.json
 
 # Convert TOON back to JSON (strict contract / downstream parser)
 echo "$TOON_BLOB" | toon -d
-cat data.toon | toon --decode
+toon --decode data.toon
 ```
 
 `toon` auto-detects direction from input. Force it with `-e` (encode JSON→TOON)
@@ -40,7 +36,7 @@ or `-d` (decode TOON→JSON).
 ### Useful flags
 
 - `--stats` — print token/byte statistics for the conversion
-- `--delimiter=,|\t|"|"` — array delimiter (comma default; tab/pipe can tokenize better)
+- `--delimiter=<d>` — array delimiter: `,` (default), `\t`, or `|`. Tab or pipe can tokenize better.
 - `--keyFolding=safe` — collapse single-key nesting chains
 - `--no-strict` — lenient decode
 
@@ -57,17 +53,7 @@ TOON is not always smaller. Pick based on shape:
 | Array of arrays | **JSON** | TOON's one structurally-worse case (explicit list markers + inner headers) |
 | API contract / payload to send or store | **JSON** | Must stay valid JSON for the consumer |
 
-Rule of thumb: **TOON for reading dense data into context. JSON for contracts.**
-
-## When NOT to use TOON
-
-- Anything sent to or stored by an API that expects JSON.
-- Data a downstream tool/parser must consume as strict JSON.
-- Deeply nested config trees or highly irregular structures.
-- Tiny payloads where the conversion overhead isn't worth it.
-
-In those cases, still use `jq` to slice down to what you need — just skip the
-`| toon` step.
+Rule: **TOON for reading dense data into context. JSON for contracts.** Skip TOON for tiny payloads too. In every JSON case, still slice with `jq`; just drop `| toon`.
 
 ## Worked examples
 
@@ -87,21 +73,11 @@ curl -s https://api.example.com/v1/models | jq '.data | map({id, owned_by, conte
 OpenAPI paths summary (reshape first, then compress):
 
 ```bash
-cat openapi.json \
-  | jq '[.paths | to_entries[] | {path: .key, methods: (.value | keys)}]' \
-  | toon --stats
+jq '[.paths | to_entries[] | {path: .key, methods: (.value | keys)}]' openapi.json | toon --stats
 ```
 
-Round-trip back to JSON for an API call:
+Round-trip back to JSON for an API call (confirm with the user before any POST):
 
 ```bash
-RESHAPED=$(cat payload.toon | toon -d)
-curl -s -X POST https://api.example.com/ingest -d "$RESHAPED"
+toon -d payload.toon | curl -s -X POST https://api.example.com/ingest -H 'Content-Type: application/json' --data-binary @-
 ```
-
-## Checklist
-
-1. **Query** — narrow with `jq` to the exact slice needed.
-2. **Decide** — uniform/tabular/shallow → TOON; nested/array-of-arrays/contract → JSON.
-3. **Compress** — `| toon` (add `--stats` to confirm savings).
-4. **Round-trip** — `toon -d` only when strict JSON is required downstream.

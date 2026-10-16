@@ -1,24 +1,25 @@
 ---
 name: clone
-description: Temporarily clone an external git repository into /tmp/clones for read-only exploration. Use only when the user's goal is to inspect or analyze a repository; do not use for working copies or requested destinations.
+description: Temporarily clones an external git repository into /tmp/clones for read-only exploration and reports its stack and layout. Use only when the user's goal is to inspect or analyze a repository. Do not use for working copies, edits, or a destination the user named.
 disable-model-invocation: true
 ---
-# Temporary Repository Exploration
+# Clone for exploration
 
-## Below are what agent MUST do
+**Fit check:** use this only for temporary, read-only exploration. Do not use it when the user asks to clone "here", names a destination, needs a working copy, or plans to modify the repo. A git URL or the word "clone" alone is not enough.
 
-- **FIT CHECK**: Use only for temporary, read-only exploration. Do not use when the user asks to clone "here," specifies a destination, needs a persistent working copy, or intends to modify the repository. A git URL or the word "clone" alone is not sufficient.
-- **AUTO-RUN**: Run terminal commands proactively without confirmation unless explicit input required.
-- **INPUT**: Accept git URL (https, ssh, or `github.com/owner/repo` / `owner/repo` shorthand). Normalize shorthand → `https://github.com/owner/repo`.
-- **TARGET**: Derive repo name from URL (strip `.git`). Clone dest: `/tmp/clones/<repo-name>`.
-- **IDEMPOTENT**: `/tmp/clones/<repo-name>` exists + is git repo → `cd` in, `git fetch --all --prune`, report current branch/HEAD instead of re-cloning. Path exists but NOT git repo → abort with error.
-- **CLONE**: Use `git clone --depth=1` by default for speed. User requests full history → drop `--depth`. Always clone into `/tmp/clones/<repo-name>`.
-- **EXPLORE**: After clone/fetch, immediately:
-  - Print absolute path of clone
-  - List top-level entries (`ls -la`)
-  - Show `README.md` first 50 lines if present
-  - Detect project type (package.json, Cargo.toml, go.mod, pyproject.toml, etc.) and report stack
-  - Print `git log --oneline -5` for recent context
-- **READY**: End with one-line summary: `Repo ready at /tmp/clones/<name> — <stack> — <N> files at root`. Agent now positioned to answer follow-up questions about the code.
-- **NO MUTATIONS**: Treat clone as read-only. Do NOT commit, push, or modify files unless user explicitly requests it.
-- **CLEANUP NOTE**: `/tmp` is ephemeral (cleared on reboot). Inform user if they want persistence to move it elsewhere.
+## Steps
+
+1. **URL** — Accept https, ssh, or `owner/repo`. Expand `owner/repo` to `https://github.com/owner/repo` only when the user gave no host.
+2. **Target** — `/tmp/clones/<repo-name>` (repo name from the URL, without `.git`). Run `mkdir -p /tmp/clones` first.
+3. **Clone or refresh**
+   - Path is a git repo → `git -C <path> fetch --all --prune`. Do not re-clone.
+   - Path exists but is not a git repo → stop and report.
+   - Otherwise → `git clone --depth=1 <url> <path>`. Full history requested → no `--depth`, or `git -C <path> fetch --unshallow` on an existing clone.
+   - Clone fails (auth, 404) → report the error and stop. Do not try other URLs.
+4. **Orient** — Run only what the question needs. Default: `ls <path>`, the first 50 lines of `README.md`, the manifest (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, ...), and `git -C <path> log --oneline -5`.
+5. **Report** — `Repo ready at /tmp/clones/<name> — <stack> — <N> entries at root.` Then answer the user's question.
+
+## Rules
+
+- Read-only. Never commit, push, or edit files in the clone unless the user asks.
+- `/tmp` is cleared on reboot. Tell the user if they need a persistent copy.

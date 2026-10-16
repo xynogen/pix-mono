@@ -1,56 +1,47 @@
 ---
 name: composio-mcp
-description: Use when calling Composio MCP tools (any app it proxies). Prefer a direct MCP server if one exists; introspect object shape before mutating; ask the user with options instead of guessing IDs, names, or field paths.
+description: Safe workflow for Composio MCP tools — prefer a direct MCP server, get slugs and schemas from search, read live records before writing, and ask instead of guessing IDs or field names. Use when calling any app through Composio (COMPOSIO_* tools), especially for writes.
 disable-model-invocation: true
 ---
 
 # Composio MCP: introspect before you mutate
 
-Field names, type names, and enum options differ per workspace and are not
-guessable. Read the shape before you write — a guessed name burns a round-trip
-or silently writes bad data.
+Field names, types, and enum options differ per workspace. Read the shape before you write.
 
 ## Rules
 
-0. **Prefer a direct server over the proxy.** Before reaching for Composio, list
-   configured servers with `mcp()` (no args) and check whether the target app
-   has its own dedicated MCP server. If it does, use it — `mcp(server:"<app>")`
-   to discover, then call the native tool directly. One native call typically
-   replaces the whole Composio
-   `SEARCH_TOOLS → GET_TOOL_SCHEMAS → REMOTE_WORKBENCH → EXECUTE` chain. Composio
-   is the fallback only for apps with no direct server.
+0. **Prefer a direct server.** List configured MCP servers (the `mcp` tool with no
+   arguments, or `tool_search`). If the app has its own server, use its native
+   tool. One native call replaces the whole Composio chain. Composio is the
+   fallback for apps with no direct server.
 1. **Never invent a slug or arg.** Get them from `COMPOSIO_SEARCH_TOOLS` (returns
    `input_schema` inline for most tools). Only call `COMPOSIO_GET_TOOL_SCHEMAS`
    when a result carries `schemaRef` instead of `input_schema`.
-2. **Let Composio resolve IDs for you.** Put stable hints in `known_fields`
-   (`"<key>:<value>"`, e.g. a name or slug) so search resolves missing IDs —
-   before you go introspect them by hand.
-3. **Read model ≠ write model.** The name a field reads back as is often not the
-   name you write to; labels are not identifiers. Single-selects and custom
-   fields are frequently backed by a separate internal identifier or
-   auto-generated type (opaque suffixes, generated key strings, backing-type
-   names). Get the write name from the schema, not the query result.
-4. **Resolve option/relation values by reading a live record**, not by assuming
-   its label or id.
+2. **Resolve IDs in order:** first put stable hints in `known_fields`
+   (`"<key>:<value>"`) so search resolves them; if that fails, read one live
+   record. Never assume an ID or option value from its label.
+3. **Read name ≠ write name.** Labels are not identifiers; custom fields and
+   selects often have a separate internal name. Take the write name from the
+   schema, not from a query result.
 5. **Ask, don't guess, on human choices.** If the target entity/project/state
    doesn't uniquely resolve, or the user's word maps to 2+ candidates, use
    `ask_user` with the candidates as options. One ask beats three wrong writes.
-6. **Flag shared-scope side effects first.** Renaming an enum option, deleting a
-   type, retargeting a relation hits *every* record using it. Say so; if
-   irreversible, confirm before doing it.
-7. **If a response says a tool/toolkit is restricted, STOP** and tell the user.
-   No workarounds.
+6. **Confirm wide writes.** Before a delete, a batch write, or a change that hits
+   every record (renaming an option, deleting a type), show the target count
+   and confirm.
+7. **Restricted tool or toolkit → stop** and tell the user. No workarounds.
+8. **Connections need consent.** Ask before you start a new connection or OAuth flow.
+9. **Report** at the end: what you wrote, the record IDs, and anything unverified.
 
 ## Loop (mutations against an unfamiliar schema)
 
 ```text
-0. direct?     mcp() -> is there a dedicated server for this app? if yes:
-               mcp(server:"<app>") -> use the native tool, done
+0. direct?     dedicated MCP server for this app? -> use its native tool, done
 1. search      COMPOSIO_SEARCH_TOOLS(queries:[{use_case, known_fields}], session:{generate_id:true})
 2. schema      only if the result shows schemaRef (not input_schema)
 3. resolve     read live records -> concrete ids/write-names
 4. (ambiguous?) ask_user with options
-5. mutate      CREATE / UPDATE with confirmed names + ids
+5. mutate      CREATE / UPDATE with confirmed names + ids (confirm wide writes)
 6. verify      only if the response didn't echo the field, or it's a no-op-prone
                kind (rich text, attachment, computed)
 ```
@@ -63,8 +54,7 @@ the loop and go direct.
 - **Session is asymmetric.** `SEARCH_TOOLS` takes nested `session:{generate_id:true}`
   (new) or `session:{id:"…"}` (continue) and returns the id. Every *other* meta
   tool takes flat `session_id:"…"`. Pass it on all of them.
-- **`COMPOSIO_MULTI_EXECUTE_TOOL` shape** — verify against `mcp(describe:…)` if
-  unsure:
+- **`COMPOSIO_MULTI_EXECUTE_TOOL` shape** — check the tool schema if unsure:
   - `tools: [{tool_slug, arguments, account?}]` — ≤50, logically independent only
   - `thought`, `session_id`, `current_step` — **top-level**, not per-item
   - `sync_response_to_workbench` — **required** bool
@@ -88,6 +78,6 @@ the loop and go direct.
 - **The internal name in an error is the source of truth, not the label.** On
   `type-not-found` / `field-not-found`, fetch the schema for the real name before
   retrying — don't re-guess.
-- **Connection is per-toolkit.** `SEARCH_TOOLS` reports it. If inactive, initiate
-  via `COMPOSIO_MANAGE_CONNECTIONS` (+ `COMPOSIO_WAIT_FOR_CONNECTIONS`); don't
-  fire calls that will 401.
+- **Connection is per-toolkit.** `SEARCH_TOOLS` reports it. If inactive, ask the
+  user, then start it with `COMPOSIO_MANAGE_CONNECTIONS` and show them the link.
+  Don't fire calls that will 401.

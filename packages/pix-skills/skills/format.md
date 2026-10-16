@@ -1,6 +1,6 @@
 ---
 name: format
-description: Select and run the project's formatter through bash. Use when asked to format code, check formatting, or apply style fixes.
+description: Selects and runs the project's formatter (project script first, then config, then a language default) in check mode before write mode. Use when asked to format code, check formatting, or apply style fixes.
 disable-model-invocation: true
 ---
 # Project Format

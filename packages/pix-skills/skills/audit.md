@@ -1,53 +1,50 @@
 ---
 name: audit
-description: Security audit, integrity check, and health scan. Use only on explicit request — "audit this", "security scan", "check for secrets", "is this safe", "find vulnerabilities".
+description: Security and health audit of a repository — leaked secrets, injection and unsafe input, broken references, vulnerable or unused dependencies — with file:line evidence and severity. Use only on explicit request such as "audit this", "security scan", "check for secrets", "is this safe", or "find vulnerabilities".
 disable-model-invocation: true
 ---
-# Audit Directive
+# Audit
 
-## Goal
+Every finding needs `file:line` evidence and a fix. No vague warnings.
 
-Surface every risk with evidence + severity. No vague warnings — each finding locatable + actionable.
+## Scan
 
-## Below are what agent MUST do
+If the target is unclear (whole repo, one package, one diff), ask once.
 
-### Phase 1: Scan
+- **Secrets** — Search with the grep tool for API keys, tokens, `password=`, private keys, and connection strings. Search git history only when asked: `git log -p -S'<pattern>'`, or `gitleaks` if it is installed.
+- **Inputs** — Trace untrusted input to sinks: SQL, shell, file paths, deserialization, HTML.
+- **Integrity** — Imports resolve, symlinks are valid, cross-module references hold.
+- **Dependencies** — Known CVEs and outdated packages via the installed tool (`npm audit`, `bun audit`, `pip-audit`, `cargo audit`, `govulncheck`). If none is installed, report "not checked". Do not install one without consent.
+- **Bloat** — Unused dependencies, dead files, duplicate logic.
 
-- **AUTO-RUN**: Run scans without confirmation unless input required.
-- **SECRETS**: Grep credential patterns — API keys, tokens, `password=`, private keys, connection strings. Check committed files AND history if asked.
-- **INTEGRITY**: Verify imports resolve, symlinks valid, cross-module refs intact.
-- **BLOAT**: Find duplicate logic, unused deps, dead files.
-- **HEALTH**: Flag outdated packages, deprecated APIs, known CVEs.
-- **INPUTS**: Check unvalidated user input → injection, path traversal, unsafe deserialization.
+## Severity
 
-### Phase 2: Report
+- **Critical** — exposed secret, remote code execution, injection (untrusted input reaches a sink with no validation), auth bypass.
+- **Warning** — dependency with a known CVE, weak crypto, missing validation that does not reach a sink.
+- **Info** — dead code, hardening opportunity, style risk.
+
+## Report
 
 ```
-## Audit Findings
+## Audit findings — [scope]
 
-### 🔴 Critical
+### Critical
 - **[Issue]** — `file:line`
-  Evidence: [exact match/snippet]
-  Fix: [remediation step]
+  Evidence: [exact snippet]
+  Fix: [step]
 
-### 🟡 Warning
+### Warning
 - **[Issue]** — `file:line` · Fix: [step]
 
-### 🔵 Info
+### Info
 - **[Issue]** — `file:line` · Note: [context]
 
 ## Summary
-[N critical, N warning, N info. Top priority: ...]
+[N critical, N warning, N info. Scanned: [what]. Not checked: [what]. Fix first: [item].]
 ```
 
-## Severity Rules
+## Rules
 
-- **🔴 Critical**: exposed secret, RCE, injection, auth bypass. Fix first.
-- **🟡 Warning**: outdated dep with CVE, missing input validation, weak crypto.
-- **🔵 Info**: dead code, style risk, hardening opportunity.
-
-## Red Flags — STOP
-
-- Reporting finding without `file:line` evidence.
-- Claiming "no issues found" without stating what scanned.
-- Auto-fixing secrets in git history (destructive — confirm with user first).
+- Never claim "no issues" without listing what you scanned.
+- Never rewrite git history to remove a secret without explicit confirmation. Recommend rotating the key first.
+- More than about 15 findings in one severity: show the top ones and state how many you left out.

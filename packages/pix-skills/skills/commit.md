@@ -3,80 +3,34 @@ name: commit
 description: Split, write, and maintain Conventional-Commit-style commits. Use only on explicit request — "commit this", "make a commit", "split these changes", "amend/squash the history".
 disable-model-invocation: true
 ---
-# Conventional Commit Management Directive
+# Commit
 
-## The Iron Law
+Invocation is permission: commit without asking again. Never commit secrets, binaries, debug logs, unrelated edits, or trailer metadata.
 
-```
-INVOCATION IS PERMISSION. User invoked this skill → commit without asking again.
-Still forbidden: secrets, binaries, unrelated changes, trailer metadata.
-```
-
-## Below are what agent MUST do
-
-### Phase 1: Inspect
-
-The blocks below are pre-populated with live repository state at skill-load
-time via `\!`cmd`` directives — read them before composing the commit.
-
-#### Branch + short status
+## State (live at load time)
 
 !`git status -sb`
 
-#### Staged changes (index vs HEAD)
-
 !`git diff --cached`
-
-#### Unstaged changes (working tree vs index)
 
 !`git diff`
 
-- **AUTO-RUN**: The status + diff above are already loaded — review them, then proceed straight to commit. Re-run `git status` / `git diff` only after staging or `.gitignore` edits. Do NOT pause for "may I commit?" confirmation — user already asked.
-- **GITIGNORE**: Before staging, inspect untracked/generated files. Add obvious ignore candidates to `.gitignore` (build dirs, caches, logs, temp files, editor/OS junk, local env files). Re-run `git status`. Uncertain whether file should be ignored vs committed → ask user before changing `.gitignore` or staging it.
-- **GROUP**: Cluster changes by path/module and by functionality. Each cluster → one self-contained commit.
-- **GUARD**: Scan diff for secrets, binaries, debug logs, unrelated edits. Halt and report if found.
+## Steps
 
-### Phase 2: Compose
+1. **Inspect** — Read the state above. Re-run git only after staging or `.gitignore` edits.
+   - Untracked/generated files: add clear ignore candidates (build dirs, caches, logs, temp, editor/OS junk, local env) to `.gitignore`. If unsure whether to ignore or commit, ask first.
+   - Secret in an untracked or ignored file (e.g. `.env`) → never stage it, ignore it, commit the rest, and name the file and key name (never the value) in your final message so the user can rotate it if it was ever exposed.
+   - Secret, binary, debug print, or unrelated edit in a tracked or staged diff → stop, commit nothing, and report it with `file:line`.
+2. **Group** — One commit per logical change, clustered by module and function. Never mix `feat` with an unrelated `fix`. Stage with `git add <paths>` (`-p` for partial hunks).
+3. **Compose** — `<type>(<scope>): <subject>`
+   - type: `feat` new capability · `fix` bug fix · `refactor` no behavior change · `perf` speed/memory · `docs` documentation · `test` tests only · `build` build system/deps · `ci` CI/CD config · `style` formatting only · `chore` tooling/misc · `revert` undo a commit.
+   - Breaking change: add `!` after the scope, e.g. `feat(api)!: drop v1 routes`.
+   - scope: lowercase module/area. Subject: imperative, no trailing period.
+   - Example: `fix(parser): handle empty frame without panic`
+4. **Commit with hooks on** — Let hooks run lint, format, typecheck, and tests. Do not repeat them by hand. If hooks miss required checks, follow repo instructions.
+   - Hook fails → stop, report, fix in-scope issues, re-stage, retry. Never use `--no-verify` or disable hooks.
+   - New hook setup: use `git rev-parse --git-path hooks`. No tracked hook folder, no `core.hooksPath`. Never overwrite existing hooks. Keep a repo's custom setup; migrate only on request.
+5. **Maintain** (only when asked) — Squash, amend, or reorder; drop WIP commits. Never rewrite pushed history without explicit confirmation.
+6. **Push** — After success, ask whether to push. Never push unprompted. Push the current branch only on a "yes", then report the result.
 
-Format: `<type>(<scope>): <subject>`
-
-- **type**: `feat` · `fix` · `chore` · `refactor` (also `docs`, `test`, `perf` when apt).
-- **scope**: module/area touched. Clear, lowercase.
-- **subject**: imperative, concise, no trailing period.
-
-```
-feat(auth): add token refresh on 401
-fix(parser): handle empty CUDA frame without panic
-refactor(api): extract response builder from handler
-```
-
-### Phase 3: Split & Stage
-
-- Stage per cluster: `git add <paths>` (or `-p` for partial hunks).
-- One commit per logical change. Never mix `feat` + unrelated `fix` in one commit.
-- For new hook setup, use Git's standard `.git/hooks` directory, resolved with `git rev-parse --git-path hooks` for worktree compatibility. Do not create a tracked hook folder such as `.githooks` or configure `core.hooksPath`. Preserve existing hooks; never overwrite them. If the repository already uses a custom hook setup, keep it enabled and follow repository instructions; migration requires an explicit request.
-- Commit with the repository's Git hooks enabled. Let hooks run their configured lint, format, typecheck, and tests; do not run the same checks separately just to commit. If hooks do not cover required checks, follow repository instructions.
-- If a hook fails, stop, report the failure, fix in-scope issues, review and re-stage before retrying. Never use `--no-verify` or disable hooks to force a commit.
-
-### Phase 4: Maintain (when asked)
-
-- Squash/amend/reorder to keep history clean. Remove WIP commits.
-- Never rewrite pushed history without explicit confirmation (irreversible for collaborators).
-
-### Phase 5: Offer push
-
-- After successful commit, ask whether to push now so interaction stays short.
-- Do **not** push automatically. `git push` is irreversible/shared-state; require explicit confirmation for that exact push.
-- If user says yes, push current branch and report result.
-
-## Authorship Rule
-
-- Commits authored solely by user's git config identity.
-- Do NOT add `Co-Authored-By`, `Signed-off-by`, or any trailer metadata.
-
-## Red Flags — STOP
-
-- Asking "should I commit?" after skill invoked — invocation already answered that.
-- Secrets, binaries, or `console.log`/`print` debug lines in diff.
-- One commit bundling unrelated changes.
-- Rewriting pushed history without confirmation.
+Author is the user's git identity only. No `Co-Authored-By` or `Signed-off-by`.

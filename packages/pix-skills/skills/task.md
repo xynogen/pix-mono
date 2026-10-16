@@ -1,56 +1,36 @@
 ---
 name: task
-description: Task Orchestration and Ambiguity Resolution
+description: Executes a multi-step change in small verified steps — resolves vague references, maps impact, runs one step at a time, and stops on blockers. Use when the user gives an order with several steps, a terse follow-up like "do it" or "fix that", or a change that touches several files, tests, or configs.
 disable-model-invocation: true
 ---
-# Task Orchestration Directive
+# Task
 
-## Below are what agent MUST do
+## Before you start
 
-- **AUTO-RUN**: Run terminal commands and tool calls needed proactively without confirmation unless explicit input required.
-- **CONTEXT**: Synthesize intent from recent history. Link "orders" to last proposed `/plan` or `/suggest`.
-- **RESOLVE**: Identify and fill "Human Ambiguities" (e.g., 'fix that' → define 'that' via `/audit` or `/search` context).
-- **IMPACT**: Calculate implications of task. Identify affected docs, tests, downstream dependencies. Flag potential breaking changes.
-- **PRE-FLIGHT**: Audit current system state. Confirm paths, versions, permissions. Map dependency chains that could break.
+1. **Resolve the request** from recent context. "Fix that" or "do it" refers to the last proposed plan or finding. If two readings remain and the wrong one is costly, ask.
+2. **Map the impact**: affected files, tests, docs, configs, and consumers. Flag breaking changes.
+3. **Check the state**: paths, versions, permissions, and a clean starting point.
 
-## Phased Execution
+## Execute
 
-Order tasks logically:
+Order: back up (only before destructive changes) → code → config → validation.
 
-1. **Backup** — Snapshot state if destructive changes planned.
-2. **Execution** — Implement changes in bite-sized steps (2-5 minutes each).
-3. **Configuration** — Apply config changes after code changes verified.
-4. **Validation** — Run `/test` and `/verify` to confirm correctness.
-
-**CAUTION**: Run one chunk at a time. Verify outcome of Step N before starting Step N+1.
-
-## Bite-Sized Task Structure
-
-Each task step MUST be atomic and verifiable:
+Write each step as:
 
 ```
-Step N: [Action]
+Step N: [action]
 - Files: [exact paths]
-- Command: [exact command to run]
+- Command: [exact command]
 - Expected: [what success looks like]
 ```
 
-## Batch Execution Pattern
+- Do one step, check its result, then start the next.
+- For long plans, report after every batch of about 3 steps. Continue unless the user must decide something.
 
-For multi-task plans, execute in batches of 3 tasks:
+## Blocked
 
-1. Execute batch → verify each step → report what was done
-2. Say: "Ready for feedback." and wait
-3. Apply feedback if any → execute next batch → repeat
+A missing dependency, a failing test, or an unclear instruction → stop. Do not guess or work around it. Report the command, the output, and the `file:line`, then ask.
 
-## Stop-When-Blocked Rule
+## Finish
 
-Blocker hit mid-batch (missing dependency, failing test, unclear instruction):
-
-- **STOP immediately** — don't guess or work around it
-- Report blocker with exact context
-- Ask for clarification before continuing
-
-## Report
-
-Provide Final Answer using Response Contract, detailing exactly what was performed.
+Apply the `verify` skill checks. Report each step, its evidence, and anything still open.

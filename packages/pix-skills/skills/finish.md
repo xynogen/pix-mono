@@ -1,90 +1,57 @@
 ---
 name: finish
-description: Structured branch completion — verify, decide, and clean up when implementation is done
+description: Closes out a finished feature branch — runs the full test suite, offers merge, pull request, keep, or discard, and executes the choice safely. Use when implementation is done and the user asks to wrap up, merge, open a PR, or clean up the branch.
 disable-model-invocation: true
 ---
-# Finish Directive
+# Finish
 
-## Overview
+## 1. Verify
 
-Guide completion of dev work by verifying tests + presenting clear options for the branch.
+Run the project's full test suite with the repo's own command. If it fails, show the failures and stop. Offer no options while tests are red.
 
-**Core principle:** Verify tests → Present options → Execute choice → Clean up.
+## 2. Ask
 
-## Below are what agent MUST do
+Call `ask_user` with exactly these four options:
 
-### Step 1: Verify Tests
+1. **Merge locally** into `<base-branch>`
+2. **Push and open a PR**
+3. **Keep the branch** as it is
+4. **Discard** the branch and its commits
 
-Run full test suite BEFORE presenting any options.
+## 3. Execute
 
-```bash
-# Use the project's test command, e.g.:
-pytest / npm test / go test ./... / cargo test
-```
-
-- Tests **fail** → Show failures. Do NOT proceed to Step 2. Fix first.
-- Tests **pass** → Continue.
-
-### Step 2: Present Options
-
-Present exactly these 4 options — no more, no less:
-
-```
-Implementation complete. All tests pass. What would you like to do?
-
-1. Merge into <base-branch> locally
-2. Push and create a Pull Request
-3. Keep the branch as-is (handle it later)
-4. Discard this work
-
-Which option?
-```
-
-### Step 3: Execute Choice
-
-**Option 1 — Merge locally:**
+**Merge locally**
 
 ```bash
-git checkout <base-branch>
-git pull
+git checkout <base-branch> && git pull
 git merge <feature-branch>
-<run tests again on merged result>
+# Re-run the full test suite on the merged result. Red → stop and report.
 git branch -d <feature-branch>
 ```
 
-**Option 2 — Create PR:**
+**Push and open a PR**
 
 ```bash
 git push -u origin <feature-branch>
 gh pr create --title "<title>" --body "## Summary
-- <bullet of what changed>
+- <what changed>
 
-## Test Plan
+## Test plan
 - [ ] <verification steps>"
 ```
 
-**Option 3 — Keep as-is:**
-Report: "Branch `<name>` kept. No changes made."
+**Keep** — Report: "Branch `<name>` kept. No changes made."
 
-**Option 4 — Discard:**
-Require typed confirmation first:
-
-```
-This will permanently delete branch <name> and all its commits.
-Type 'discard' to confirm.
-```
-
-Then:
+**Discard** — Show: "This permanently deletes branch `<name>` and all its commits. Type 'discard' to confirm." Continue only on that exact word.
 
 ```bash
 git checkout <base-branch>
 git branch -D <feature-branch>
 ```
 
-## Red Flags — Never
+## Never
 
-- Proceed with failing tests
-- Merge without re-running tests on merged result
-- Delete work without typed confirmation
-- Force-push without explicit user request
-- Add extra options beyond the 4 listed
+- Offer options or merge while tests fail.
+- Merge without a test run on the merged result.
+- Delete work without the typed confirmation.
+- Force-push without an explicit request.

@@ -1,56 +1,32 @@
 ---
 name: bootstrap
-description: Project and tool scaffolding using authoritative docs for best practices. Use only on explicit request — "scaffold a project", "set up X", "bootstrap this", "init a new service".
+description: Scaffolds a new, runnable project skeleton from the stack's official docs — init command, standard layout, pinned dependencies, .env.example, and a passing baseline build or test. Use only on explicit request such as "scaffold a project", "bootstrap this", "init a new service", or "set up a new X app".
 disable-model-invocation: true
 ---
-# Bootstrap & Scaffolding Directive
+# Bootstrap
 
-## Goal
+Goal: a skeleton that a new developer can clone and run in minutes.
 
-Produce runnable, convention-correct project skeleton. New developer clones it + runs it in five minutes.
+## Steps
 
-## Below are what agent MUST do
+1. **Confirm the stack** — If the language, framework, or package manager is unclear, ask once (`ask_user`). Confirm the target directory is new or empty. Never scaffold over existing files.
+2. **Check the docs** — Read the official setup docs (web fetch or a docs tool). Check every flag with `--help`. Never invent init flags.
+3. **Init** — Run the standard init (`bun init`, `npm init -y`, `cargo init`, `go mod init`, `uv init`, ...). Use the ecosystem's standard layout.
+4. **Dependencies** — Install only what the user named or the stack needs. Pin versions. Ask before the first network install.
+5. **Env** — Write `.env.example` with placeholders for every required variable. Never write real secrets or a real `.env`.
+6. **Extras** — Add a linter, formatter, or CI only if the user asked. Otherwise offer them in the report.
+7. **Baseline** — Run the build or test command once and confirm it passes. If the fresh skeleton has no test command, say so; do not invent one. If the baseline fails twice, stop and report.
 
-### Phase 1: Research
-
-- **AUTO-RUN**: Run setup commands without confirmation unless input required.
-- **RESEARCH**: Use authoritative docs for target language/framework setup. Don't guess flags — verify with `--help` or docs.
-- **CONFIRM STACK**: Language/framework/package-manager ambiguous → ask one question before scaffolding.
-
-### Phase 2: Scaffold
-
-- **INIT**: Run standard init (`npm init -y`, `cargo init`, `go mod init`, `uv init`, etc.).
-- **STRUCTURE**: Create standard layout — `src/`, `tests/`, `docs/`. Mirror community conventions for that ecosystem.
-- **DEPENDENCIES**: Install core libs via project manager. Pin versions.
-- **ENVIRONMENT**: Generate `.env.example`; document every required env var. Never write real secrets.
-- **TOOLING**: Set up linter, formatter, CI config matching ecosystem defaults.
-
-### Phase 3: Verify
-
-- Run project build/test command. Confirm clean baseline passes.
-- Confirm `README` or `.env.example` lists everything needed to run.
-
-### Phase 4: Report
+## Report
 
 ```
-## Scaffolded: [project name]
-
-**Stack:** [lang/framework/pm]
-**Layout:**
-  src/ ...
-  tests/ ...
-
-**Run it:**
+## Scaffolded: [name]
+Stack: [language / framework / package manager]
+Layout: [top-level tree]
+Run it:
   1. [command]
   2. [command]
-
-**Env vars required:** see `.env.example`
-**Baseline:** `[test command]` → PASS
+Env vars: see `.env.example`
+Baseline: `[command]` → PASS
+Optional next: [linter / formatter / CI, if not added]
 ```
-
-## Red Flags — STOP
-
-- Scaffolding before confirming ambiguous stack.
-- Inventing init flags instead of checking docs.
-- Writing real secrets into `.env` (use `.env.example` with placeholders).
-- Declaring done without running baseline build/test once.

@@ -1,54 +1,21 @@
 ---
 name: test
-description: Test execution, analysis, and failure resolution using TDD
+description: Finds, runs, and analyzes a project's tests, then fixes failures at the root cause. Use when asked to run tests, check coverage, explain a failing test, or fix a red suite. To write new code test-first, load the tdd skill instead.
 disable-model-invocation: true
 ---
-# Test Directive
+# Test
 
-## The Iron Law
+## Steps
 
-```
-NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
-```
+1. **Discover** — Find the test command in the repo instructions, task runner, or manifest (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`, `Cargo.toml`, `go.mod`). Use the repo's command, not a guessed one. Keep its required flags (isolation, preload, env vars).
+2. **Run** — Start narrow (the affected file or test name) for fast feedback. Finish with the full suite.
+3. **Analyze** — For each failure, record the test name, `file:line`, expected vs actual, and whether it is new or pre-existing.
+4. **Fix** — Fix the root cause in the code or in the test, whichever is wrong. If the cause is unclear, load the `debug` skill.
+5. **Report** — The command, pass/fail/skip counts, each fixed failure with its cause, and each failure left open.
 
-Wrote code before the test? Delete it. Start over.
+## Rules
 
-## Below are what agent MUST do
-
-### Red-Green-Refactor Cycle (for new features/bugfixes)
-
-- **RED**: Write one minimal failing test showing what SHOULD happen. Run it. Confirm it fails for right reason (feature missing, not a typo).
-- **GREEN**: Write SIMPLEST possible code to make test pass. No extra features. No refactoring other code.
-- **VERIFY GREEN**: Run the test. Confirm it passes. Confirm all other tests still pass.
-- **REFACTOR**: Clean up duplication and names. Keep tests green. Do NOT add new behavior.
-- **REPEAT**: Write next failing test for next behavior.
-
-### Test Execution (for existing codebases)
-
-- **AUTO-RUN**: Run terminal commands and tool calls proactively without confirmation.
-- **DISCOVER**: Identify test frameworks and test files in project.
-- **EXECUTE**: Run relevant tests with appropriate flags and coverage.
-- **ANALYZE**: Parse test output to identify failures, errors, coverage gaps.
-- **FIX**: Resolve test failures by addressing root causes in code or tests. Use `/debug` for complex failures.
-- **REPORT**: Provide test results summary with pass/fail counts and any issues found.
-
-## Verification Checklist
-
-Before marking work complete:
-
-- [ ] Every new function/method has a test
-- [ ] Watched each test FAIL before implementing
-- [ ] Each test failed for expected reason
-- [ ] Wrote minimal code to pass each test
-- [ ] All tests pass with no errors or warnings
-- [ ] Edge cases and error paths covered
-
-Cannot check all boxes? You skipped TDD. Start over.
-
-## Red Flags — STOP and Start Over
-
-- Code written before the test
-- Test passes immediately (you're testing existing behavior)
-- "I'll write tests after to verify it works"
-- "Already manually tested all the edge cases"
-- "Tests after achieve the same goals"
+- Green means the full suite, not only the tests you touched.
+- Never weaken an assertion, add a skip, or raise a timeout only to get green.
+- A flaky test is a failure. Report it. Do not re-run until it passes.
+- A new regression test must fail once before the fix (see `tdd`).

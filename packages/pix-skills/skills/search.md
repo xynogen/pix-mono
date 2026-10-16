@@ -1,53 +1,43 @@
 ---
 name: search
-description: Deep logic discovery and project context mapping. Use when user asks "where is X", "find all usages of Y", "how is Z wired up", "what handles this", or location of a behavior is unknown across many files.
+description: Maps where a behavior lives and how it connects across a codebase — finds every match, groups by role, and traces the call chain with file:line evidence. Use when the user asks "where is X", "find all usages of Y", "how is Z wired up", "what handles this", or when a behavior's location is unknown across many files.
 disable-model-invocation: true
 ---
-# Deep Context Search Directive
+# Search
 
-## Goal
+Goal: the full map, not the first match.
 
-Build precise map of where a behavior lives and how it connects — so next action operates on full context, not single match.
+## Tools
 
-## Tool Tiers (match tool to scope)
+- **Unknown location, text, config, comments** → the `grep` and `find` tools, then `read` the hits.
+- **Known symbol** → `lsp_navigation` with `definition`, `references`, `implementation`, `callHierarchy`, or `hover`. LSP results are exact; prefer them over grep for symbols.
+- **Code graph available** (`.pi/graph/graph.json`) → `graph` query first.
 
-- **Unknown location, pattern across many files, comments/strings/config** → native `Grep` / `Read`.
-- **Known symbol — definition, usages, type** → LSP `goToDefinition` / `findReferences` / `hover`.
-- Start with `Grep` to locate, then switch to LSP for exact navigation. Never grep what LSP can resolve exactly.
+Start broad with grep, then switch to LSP for exact navigation.
 
-## Below are what agent MUST do
+## Steps
 
-### Phase 1: Scan
+1. **Sweep** — Search the term plus synonyms, abbreviations, and other spellings (`retry`, `backoff`, `attempts`). Use one wide pattern rather than many narrow ones.
+2. **Group** — Sort hits by role: logic, config, tests, docs.
+3. **Trace** — From the entry point, follow the calls to the exit. Note each call site and cross-module dependency.
+4. **Stop** when a new search finds no new locations. Cap the report at about 20 locations and say how many more exist.
 
-- **AUTO-RUN**: Run searches without confirmation unless input required.
-- **SEARCH**: Grep for content, glob for structure. Search synonyms and likely alternate spellings, not just literal term.
-- **GROUP**: Cluster matches by intent — Logic, Config, Tests, Docs.
-
-### Phase 2: Trace
-
-- **FLOW**: For each cluster, identify how data flows in and out. Note every call site.
-- **DEPENDENCIES**: Map cross-module references the matches rely on.
-- **IDENTIFY**: Flag inconsistencies, anti-patterns, deviations from project convention.
-
-### Phase 3: Report
+## Report
 
 ```
-## Target: [what was searched]
+## Target: [what you searched]
+Terms tried: [list]
 
 ## Found in
-- **Logic**: `path:line` — [role]
-- **Config**: `path:line` — [role]
-- **Tests**: `path:line` — [role]
+- Logic: `path:line` — [role]
+- Config: `path:line` — [role]
+- Tests: `path:line` — [role]
 
 ## How it connects
-[entry point] → [path:line] → [path:line] → [exit]
+[entry] → `path:line` → `path:line` → [exit]
 
 ## Notes
-[Inconsistencies, dead code, missing coverage, surprises.]
+[Surprises only: dead paths, missing tests, conflicting copies.]
 ```
 
-## Red Flags — STOP
-
-- Reporting first match without checking for others.
-- Searching only literal string when synonyms/aliases likely exist.
-- Using LSP for broad sweep, or grep for exact symbol resolution.
+No match → say so and list the terms you tried.

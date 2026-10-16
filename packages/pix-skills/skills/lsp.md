@@ -1,6 +1,6 @@
 ---
 name: lsp
-description: Select and configure a project language server for pix-diagnostics. Use when LSP is missing, unavailable, or needs setup for a language.
+description: Selects, installs with consent, and configures a project language server in .pi/lsp.json for pix-diagnostics, then confirms it with lsp_diagnostics. Use when LSP diagnostics or navigation are missing, unavailable, or need setup for a language.
 disable-model-invocation: true
 ---
 # Project LSP Setup
@@ -12,13 +12,10 @@ installation. Configure it in `<project>/.pi/lsp.json`.
 
 1. Detect the language from project files and manifests.
 2. Prefer an existing server in project dependencies or on `PATH`.
-3. Ask before installing a missing server. Use a project-local install.
-4. Add only the selected language to `.pi/lsp.json`.
-5. Run `lsp_diagnostics` on one source file. Its manager reads `.pi/lsp.json` directly.
-
-Do not add all languages. Do not install a server globally. Do not use a server
-because it appears first in this table; project configuration and existing tools
-win.
+3. Ask before installing a missing server. Prefer a project-local install (dev dependency, `uv` group). For servers with no local form (`gopls`, `rust-analyzer`, `clangd`, `terraform-ls`, `lua-language-server`), ask how the user wants it installed.
+4. Add only the selected language to `.pi/lsp.json`. Never add every language.
+5. Run `lsp_diagnostics` on one source file.
+6. Report: language, server, config path, and the result. If the server fails to start or returns an error, report it and stop. Do not try another server without asking.
 
 ## Common choices
 
@@ -41,7 +38,7 @@ win.
 | CSS | `vscode-css-language-server` | `--stdio` |
 | TOML | `taplo` | `lsp stdio` |
 
-Check official server documentation when a command is not in this table.
+For other languages (Java, C#, Swift, Bash, ...), check the official server docs. Do not guess the command.
 
 ## Config shape
 
@@ -62,8 +59,7 @@ Check official server documentation when a command is not in this table.
 Each key is a server ID. Required fields are `command`, `extensions`, and
 `languageId`. Optional fields are `args`, `filenames`, and `rootMarkers`.
 
-Use one command. Wrapper commands such as `uv` or `bunx` can be the command,
-with the server command in `args`:
+`command` is the executable. For a wrapper such as `uv` or `bunx`, put the wrapper in `command` and the server in `args`:
 
 ```json
 {
