@@ -37,6 +37,18 @@ const keyedTheme: ThemeLike = {
 };
 
 describe("registerEditTool", () => {
+	it("advertises hash anchors first and exact text only after failure", () => {
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, makeToolContext(), noopTrack);
+		expect(tool.description).toMatch(
+			/Try hash anchors.*Only after a hash-anchor edit fails.*exact text/,
+		);
+		expect(tool.promptSnippet).toMatch(/hash anchors first.*exact text only after failure/);
+		expect((tool.promptGuidelines as string[]).join(" ")).toMatch(
+			/try hash anchors from read first.*Only if the hash-anchor edit fails.*oldText\/newText.*read the affected region again/,
+		);
+	});
+
 	it("schema accepts one edit format and rejects malformed hash operations", () => {
 		const { pi, tool } = capturePi();
 		registerEditTool(pi, noopFactory, makeToolContext(), noopTrack);

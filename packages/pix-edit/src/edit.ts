@@ -146,7 +146,8 @@ const editSchema = Type.Object(
 						{
 							oldText: Type.String({
 								minLength: 1,
-								description: "Exact source text. Include enough context to match once.",
+								description:
+									"Fallback only after a hash-anchor edit fails. Exact current source text; must match once.",
 							}),
 							newText: Type.String({ description: "Replacement text. Empty string deletes." }),
 						},
@@ -157,7 +158,7 @@ const editSchema = Type.Object(
 			],
 			{
 				description:
-					"Use only hash edits or only exact-text edits in this array. Never mix formats.",
+					"Try hash-anchor edits first. Use exact-text edits only after a hash-anchor edit fails. Never mix formats.",
 			},
 		),
 	},
@@ -368,10 +369,12 @@ export function registerEditTool(
 		...origEdit,
 		name: "edit",
 		description:
-			"Edit using one format per call: hash anchors {op,pos,end?,lines} or exact text {oldText,newText}. Exact oldText must match once. All edits target the original file and must not overlap. Hash ops: replace, insert_before, insert_after. Empty lines or newText delete. Insertions may touch range boundaries, not interiors. Same-gap inserts follow input order. Use write for empty files or complete rewrites.",
+			"Try hash anchors {op,pos,end?,lines} from read first. Only after a hash-anchor edit fails, use exact text {oldText,newText} from current source; oldText must match once. Never mix formats. All edits target the original file and must not overlap. Hash ops: replace, insert_before, insert_after. Empty lines or newText delete. Insertions may touch range boundaries, not interiors. Same-gap inserts follow input order. Use write for empty files or complete rewrites.",
 		parameters: editSchema,
-		promptSnippet: "Edit with hash anchors or exact text",
-		promptGuidelines: [],
+		promptSnippet: "Edit with hash anchors first; exact text only after failure",
+		promptGuidelines: [
+			"For edit, try hash anchors from read first. Only if the hash-anchor edit fails, fall back to oldText/newText. If the file changed, read the affected region again before using current source text; never guess anchors or overwrite unseen changes.",
+		],
 		prepareArguments: prepareHashArguments,
 		constrainedSampling: { type: "json_schema", strict: "prefer" },
 		renderShell: "self",
