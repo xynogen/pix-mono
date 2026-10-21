@@ -1,3 +1,4 @@
+import { StringEnum } from "@earendil-works/pi-ai";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionAPI,
@@ -393,26 +394,46 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 			renderShell: "self",
 			renderCall: renderMcpProxyToolCall,
 			parameters: Type.Object({
-				tool: Type.Optional(Type.String({ description: "Call this tool" })),
-				args: Type.Optional(Type.String({ description: "Tool arguments as a JSON object string" })),
+				tool: Type.Optional(
+					Type.String({ description: "Optional. Tool to call. Omit unless calling a tool." }),
+				),
+				args: Type.Optional(
+					Type.String({
+						description:
+							"Optional. Arguments as a JSON object string, for tool/connect/auth-complete.",
+					}),
+				),
 				connect: Type.Optional(
 					Type.String({
 						description:
-							'Connect or refresh this server. Pass ephemeral env via args, e.g. args: \'{"env":{"API_KEY":"sk-..."}}\' — merged over config env for this connect only, never persisted.',
+							'Optional. Server to connect or refresh. Omit unless reconnecting. Ephemeral env via args, e.g. args: \'{"env":{"API_KEY":"sk-..."}}\' — never persisted.',
 					}),
 				),
-				describe: Type.Optional(Type.String({ description: "Show one tool's schema" })),
-				search: Type.Optional(Type.String({ description: "Find tools by name or description" })),
-				server: Type.Optional(Type.String({ description: "Filter/disambiguate by server" })),
+				describe: Type.Optional(
+					Type.String({ description: "Optional. Tool whose schema to show. Omit otherwise." }),
+				),
+				search: Type.Optional(
+					Type.String({ description: "Optional. Find tools by name or description." }),
+				),
+				server: Type.Optional(
+					Type.String({
+						description: "Optional. Alone: list this server's tools. With tool/search: filter.",
+					}),
+				),
 				limit: Type.Optional(
-					Type.Number({ description: "Max discovery results (default 12, max 50)" }),
+					Type.Number({ description: "Optional. Max discovery results (default 12, max 50)." }),
 				),
 				includeSchemas: Type.Optional(
-					Type.Boolean({ description: "Include schemas in search (default false)" }),
+					Type.Boolean({ description: "Optional. Include schemas in search (default false)." }),
 				),
-				regex: Type.Optional(Type.Boolean({ description: "Use regex search" })),
+				regex: Type.Optional(
+					Type.Boolean({ description: "Optional. Treat search as regex (default false)." }),
+				),
 				action: Type.Optional(
-					Type.String({ description: "ui-messages | auth-start | auth-complete" }),
+					StringEnum(["auth-start", "auth-complete", "ui-messages"] as const, {
+						description:
+							"Optional. Omit for normal use. auth-start/auth-complete: OAuth login (needs server). ui-messages: read results after an MCP UI window closed.",
+					}),
 				),
 			}),
 			renderResult: renderMcpToolResult,
@@ -476,9 +497,6 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 					};
 				}
 
-				if (params.action === "ui-messages") {
-					return executeUiMessages(state);
-				}
 				if (params.action === "auth-start") {
 					if (!params.server) {
 						return {
@@ -552,6 +570,10 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 				}
 				if (params.server) {
 					return executeList(state, params.server, params.limit ?? defaultDiscoveryLimit);
+				}
+				// Weak models fill every optional field; a stray action must not shadow a real mode.
+				if (params.action === "ui-messages") {
+					return executeUiMessages(state);
 				}
 				return executeStatus(state);
 			},
