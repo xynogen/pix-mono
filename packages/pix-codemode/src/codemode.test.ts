@@ -91,7 +91,7 @@ test("uses the renderer hook without replacing native tool execution", () => {
 		renderShell: "self",
 	});
 	const other = { renderCall: () => "native" };
-	for (const name of ["bash", "read", "tool_search", "graph"]) {
+	for (const name of ["bash", "read", "graph"]) {
 		expect(resolver(name, () => other)).toBe(other);
 		expect(resolver(name, () => undefined)).toBeUndefined();
 	}
@@ -251,7 +251,7 @@ test("extension wraps the enabled native tool only after session start", () => {
 	expect(typeof captured.tool.execute).toBe("function");
 });
 
-test("tool_search uses a compact row and restores full details on expansion", async () => {
+test("tool_search renders query, one row per loaded tool, and a collapsed summary", async () => {
 	const fixture = await withUiFixture({ hostTheme: true });
 	try {
 		const captured = capturePi();
@@ -262,38 +262,50 @@ test("tool_search uses a compact row and restores full details on expansion", as
 			},
 		});
 		extension(captured.pi as unknown as ExtensionAPI);
-		const native = compactRenderers("tool_search", undefined, () => undefined);
-		const renderer = resolver("tool_search", () => native) as typeof native;
-		expect(renderer).toBe(native);
+		const renderer = resolver("tool_search", () => undefined) as never;
 		const { ToolExecutionComponent } = await import("@earendil-works/pi-coding-agent");
+		const long = `Execute a shell command ${"x".repeat(200)}`;
+		const text = `Loaded 2 tools. They are available from your next call:\n- ask_user: Ask the user\n- sudo_run: ${long}`;
 		for (const isError of [false, true]) {
 			const card = new ToolExecutionComponent(
 				"tool_search",
 				"lifecycle",
-				{ query: "skills" },
+				{ query: "ask user", limit: 3 },
 				{},
 				renderer,
 				{ requestRender() {} } as never,
 				fixture.agentDir,
 			);
 			card.markExecutionStarted();
-			const rows = () => card.render(120).map(semanticRow);
-			expect(rows()[1]).toStartWith("<warning>");
+			const rows = () => card.render(80).map(semanticRow);
+			expect(rows().join("\n")).toMatch(
+				/<warning>.*tool_search.*\(limit 3\).*<dim>ask user<\/dim>/,
+			);
 			const result = {
-				content: [{ type: "text", text: "Loaded a tool.\nFull description" }],
-				details: { loaded: ["read_skills"] },
+				content: [{ type: "text", text: isError ? "query must not be empty" : text }],
+				details: isError ? {} : { loaded: ["ask_user", "sudo_run"] },
 				isError,
 			};
-			card.updateResult(result, true);
-			expect(rows()).toHaveLength(2);
 			card.updateResult(result, false);
-			expect(rows()).toHaveLength(2);
-			expect(rows()[1]).toStartWith(`<${isError ? "error" : "success"}>`);
-			card.setExpanded(true);
-			expect(rows().join("\n")).toContain("Full description");
-			expect(rows().at(-1)).toBe(
-				`<${isError ? "error" : "success"}>${"- ".repeat(60)}</${isError ? "error" : "success"}>`,
+			const done = rows();
+			expect(done.at(-1)).toBe(
+				`<${isError ? "error" : "success"}>${"- ".repeat(40)}</${isError ? "error" : "success"}>`,
 			);
+			if (isError) {
+				expect(done.join("\n")).toContain("query must not be empty");
+				continue;
+			}
+			const body = done.join("\n");
+			expect(body).toMatch(/<accent>ask_user<\/accent>.*<dim>Ask the user<\/dim>/);
+			// One clipped row per tool: the long description does not wrap.
+			expect(done.filter((row) => row.includes("sudo_run"))).toHaveLength(1);
+			expect(done.find((row) => row.includes("sudo_run"))).toContain("…");
+			card.setExpanded(true);
+			expect(
+				rows()
+					.join("")
+					.replace(/<[^>]+>|\s/g, ""),
+			).toContain("x".repeat(200));
 		}
 	} finally {
 		await fixture.restore();

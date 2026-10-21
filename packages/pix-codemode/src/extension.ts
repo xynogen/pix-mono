@@ -2,6 +2,7 @@ import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-ag
 import * as host from "@earendil-works/pi-coding-agent";
 import { once } from "@xynogen/pix-runtime/once";
 import { renderCall, renderResult } from "./codemode.ts";
+import { renderToolSearchCall, renderToolSearchResult } from "./tool-search.ts";
 
 export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 	once(pi, "pix-codemode", () => {
@@ -46,7 +47,15 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 		};
 		if (typeof rendererApi.registerToolRenderer === "function") {
 			rendererApi.registerToolRenderer((name, next) =>
-				name === "codemode" ? { renderCall, renderResult, renderShell: "self" } : next(),
+				name === "codemode"
+					? { renderCall, renderResult, renderShell: "self" }
+					: name === "tool_search"
+						? {
+								renderCall: renderToolSearchCall,
+								renderResult: renderToolSearchResult,
+								renderShell: "self",
+							}
+						: next(),
 			);
 			return;
 		}
