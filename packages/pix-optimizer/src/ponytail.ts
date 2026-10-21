@@ -66,8 +66,8 @@ Use the fewest files.
 Never stop for an answer you can default.
 - For two stdlib options of the same size, take the one that is correct on the edge cases. \
 Lazy means less code, not the weaker algorithm.
-- Mark a deliberate simplification with a \`ponytail:\` comment. \
-A shortcut with a known ceiling names the ceiling and the upgrade path.`;
+- Add a \`ponytail:\` comment only for a shortcut with a real ceiling: one line, the ceiling and the upgrade path. \
+Obvious code needs no comment.`;
 
 const INTENSITY: Record<Exclude<Level, "off">, string> = {
 	lite: `\

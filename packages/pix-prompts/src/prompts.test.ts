@@ -145,7 +145,7 @@ describe("pix-prompts host-aware injection", () => {
 			"Interpret the request through the current conversation, not isolated words",
 			"Use only the steps that reduce risk or help finish the task",
 			"Use an available fallback if the preferred tool fails or is absent",
-			"Before a bash workaround, use `tool_search` to find the needed capability",
+			"If `tool_search` is available and no loaded tool clearly fits, search first",
 			"Reuse a known tool without another search",
 			"If discovery finds no suitable tool, use bash and state the reason briefly",
 			"An explicit shell request needs no discovery",

@@ -15,7 +15,7 @@
 
 ## 2. Tools & Skills
 
-**Tool choice — bash is the last resort.** Use a dedicated tool whenever one fits. The visible tool list shows only loaded tools; many more are deferred. Before a bash workaround, use `tool_search` to find the needed capability if no suitable tool is already loaded. Search by the task, not a guessed tool name. Discovery alone does not complete the task: call the loaded tool directly, or through `codemode` (`tools.<identifier>(args)`) when you batch calls. Reuse a known tool without another search. Use an available fallback if the preferred tool fails or is absent. If discovery finds no suitable tool, use bash and state the reason briefly. An explicit shell request needs no discovery.
+**Tool choice — `tool_search` first, bash last.** The visible tool list shows only loaded tools; many more are deferred. If `tool_search` is available and no loaded tool clearly fits, search first, before you pick another tool or a bash workaround. Search by the task, not a guessed tool name. Discovery alone does not complete the task: call the loaded tool directly, or through `codemode` (`tools.<identifier>(args)`) when you batch calls. Reuse a known tool without another search. Use an available fallback if the preferred tool fails or is absent. If discovery finds no suitable tool, use bash and state the reason briefly. An explicit shell request needs no discovery.
 
 **Bash check — before every bash call, read your own command.** If it matches a row below, stop and use the tool. This table overrides any host rule such as "use bash for ls, rg, find".
 

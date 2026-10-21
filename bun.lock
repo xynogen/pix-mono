@@ -46,7 +46,7 @@
     },
     "packages/pix-ask": {
       "name": "@xynogen/pix-ask",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -59,7 +59,7 @@
     },
     "packages/pix-astgrep": {
       "name": "@xynogen/pix-astgrep",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "dependencies": {
         "@ast-grep/napi": "^0.45.0",
         "@xynogen/pix-pretty": "^1.30.0",
@@ -86,7 +86,7 @@
     },
     "packages/pix-codemode": {
       "name": "@xynogen/pix-codemode",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -112,33 +112,33 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.6.3",
+      "version": "0.7.5",
       "dependencies": {
-        "@xynogen/pix-ask": "^0.3.1",
+        "@xynogen/pix-ask": "^0.3.2",
         "@xynogen/pix-bash": "^0.2.10",
         "@xynogen/pix-commands": "^0.6.9",
         "@xynogen/pix-data": "^0.5.4",
-        "@xynogen/pix-diagnostics": "^0.3.6",
+        "@xynogen/pix-diagnostics": "^0.4.0",
         "@xynogen/pix-display": "^0.3.1",
-        "@xynogen/pix-edit": "^0.2.8",
+        "@xynogen/pix-edit": "^0.2.9",
         "@xynogen/pix-find": "^0.3.4",
-        "@xynogen/pix-footer": "^0.2.8",
+        "@xynogen/pix-footer": "^0.2.9",
         "@xynogen/pix-gate": "^0.4.1",
         "@xynogen/pix-grep": "^0.3.4",
         "@xynogen/pix-ls": "^0.3.4",
-        "@xynogen/pix-models": "^0.3.1",
+        "@xynogen/pix-models": "^0.4.0",
         "@xynogen/pix-nudge": "^0.3.3",
-        "@xynogen/pix-optimizer": "^1.3.2",
+        "@xynogen/pix-optimizer": "^1.3.4",
         "@xynogen/pix-powershell": "^0.1.1",
-        "@xynogen/pix-pretty": "^1.30.0",
-        "@xynogen/pix-prompts": "^0.5.6",
+        "@xynogen/pix-pretty": "^1.30.1",
+        "@xynogen/pix-prompts": "^0.5.7",
         "@xynogen/pix-read": "^0.4.3",
-        "@xynogen/pix-runtime": "^0.13.0",
-        "@xynogen/pix-skills": "^0.9.2",
-        "@xynogen/pix-subagent": "^0.10.6",
+        "@xynogen/pix-runtime": "^0.13.1",
+        "@xynogen/pix-skills": "^0.10.2",
+        "@xynogen/pix-subagent": "^0.10.7",
         "@xynogen/pix-todo": "^0.4.6",
         "@xynogen/pix-update": "^0.2.5",
-        "@xynogen/pix-welcome": "^0.2.6",
+        "@xynogen/pix-welcome": "^0.2.7",
         "@xynogen/pix-write": "^0.2.8",
       },
       "peerDependencies": {
@@ -160,7 +160,7 @@
     },
     "packages/pix-diagnostics": {
       "name": "@xynogen/pix-diagnostics",
-      "version": "0.3.6",
+      "version": "0.4.0",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -186,7 +186,7 @@
     },
     "packages/pix-edit": {
       "name": "@xynogen/pix-edit",
-      "version": "0.2.8",
+      "version": "0.2.9",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -198,7 +198,7 @@
     },
     "packages/pix-env": {
       "name": "@xynogen/pix-env",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -223,11 +223,11 @@
     },
     "packages/pix-footer": {
       "name": "@xynogen/pix-footer",
-      "version": "0.2.8",
+      "version": "0.2.9",
       "dependencies": {
         "@xynogen/pix-data": "^0.5.3",
         "@xynogen/pix-pretty": "^1.30.0",
-        "@xynogen/pix-runtime": "^0.13.0",
+        "@xynogen/pix-runtime": "^0.13.1",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
@@ -334,7 +334,7 @@
     },
     "packages/pix-models": {
       "name": "@xynogen/pix-models",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "dependencies": {
         "@xynogen/pix-data": "^0.5.3",
         "@xynogen/pix-pretty": "^1.30.0",
@@ -357,7 +357,7 @@
     },
     "packages/pix-optimizer": {
       "name": "@xynogen/pix-optimizer",
-      "version": "1.3.2",
+      "version": "1.3.4",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -381,7 +381,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "1.30.0",
+      "version": "1.30.1",
       "dependencies": {
         "@ff-labs/fff-node": "^0.10.6",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -396,7 +396,7 @@
     },
     "packages/pix-proc": {
       "name": "@xynogen/pix-proc",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -409,7 +409,7 @@
     },
     "packages/pix-prompts": {
       "name": "@xynogen/pix-prompts",
-      "version": "0.5.6",
+      "version": "0.5.7",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.13.0",
       },
@@ -431,7 +431,7 @@
     },
     "packages/pix-runtime": {
       "name": "@xynogen/pix-runtime",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "dependencies": {
         "xxhash-wasm": "1.1.0",
       },
@@ -455,7 +455,7 @@
     },
     "packages/pix-skills": {
       "name": "@xynogen/pix-skills",
-      "version": "0.9.2",
+      "version": "0.10.2",
       "dependencies": {
         "@xynogen/pix-gate": "^0.4.0",
         "@xynogen/pix-pretty": "^1.30.0",
@@ -468,7 +468,7 @@
     },
     "packages/pix-ssh": {
       "name": "@xynogen/pix-ssh",
-      "version": "0.5.6",
+      "version": "0.5.7",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -496,7 +496,7 @@
     },
     "packages/pix-sudo": {
       "name": "@xynogen/pix-sudo",
-      "version": "0.3.32",
+      "version": "0.3.34",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -578,7 +578,7 @@
     },
     "packages/pix-welcome": {
       "name": "@xynogen/pix-welcome",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.30.0",
         "@xynogen/pix-runtime": "^0.13.0",
@@ -602,7 +602,8 @@
     },
   },
   "overrides": {
-    "@modelcontextprotocol/sdk": "1.31.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@modelcontextprotocol/server": "2.3.1",
     "brace-expansion": "5.0.12",
     "fast-uri": "3.1.8",
     "protobufjs": "7.6.5",
@@ -784,13 +785,12 @@
 
     "@modelcontextprotocol/client": ["@modelcontextprotocol/client@2.3.1", "", { "dependencies": { "@modelcontextprotocol/core": "2.3.1", "cross-spawn": "^7.0.5", "eventsource": "^3.0.2", "eventsource-parser": "^3.0.8", "jose": "^6.1.3", "pkce-challenge": "^5.0.0", "zod": "^4.2.0" } }, "sha512-mIGZXpHsjnZ6lD+gD/WCMpR5k8yVQQ8nNFH1N0Srf7AvnwTUMYD6pvTY8ng2+He5FfV7YMZLmrjL7cLa/cc3dQ=="],
 
-    "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.0.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA=="],
+    "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.3.1", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-laVmIhPGpWi7rG9q+0UigblRN0Hws/Yjlb6qLFtVqryXVLkc4h+yN8z731POD2LnAGQlFe7/tXhUm7Bi0YB91g=="],
 
     "@modelcontextprotocol/ext-apps": ["@modelcontextprotocol/ext-apps@1.7.5", "", { "dependencies": { "@standard-schema/spec": "^1.1.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.29.0", "react": "^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0", "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["react", "react-dom"] }, "sha512-TjPH2S2y5UEGKhmI6+XGFuqfqOV4ppe1x6DA3txnUaEWkgtA4G5vo14jGKFZmegdkZ1H4QMLyujLvoU1BEdnAg=="],
 
-    "@modelcontextprotocol/sdk": ["@modelcontextprotocol/sdk@1.31.0", "", { "dependencies": { "@hono/node-server": "^1.19.9 || ^2.0.5", "ajv": "^8.17.1", "ajv-formats": "^3.0.1", "content-type": "^1.0.5", "cors": "^2.8.5", "cross-spawn": "^7.0.5", "eventsource": "^3.0.2", "eventsource-parser": "^3.0.0", "express": "^5.2.1", "express-rate-limit": "^8.2.1", "hono": "^4.11.4", "jose": "^6.1.3", "json-schema-typed": "^8.0.2", "pkce-challenge": "^5.0.0", "raw-body": "^3.0.0", "zod": "^3.25 || ^4.0", "zod-to-json-schema": "^3.25.1" }, "peerDependencies": { "@cfworker/json-schema": "^4.1.1" }, "optionalPeers": ["@cfworker/json-schema"] }, "sha512-UvTMgnNlnIBO/22ob2RcVGDlcvOslQs8T59+FTGdA0L27a39fdGF/EDETNtDVK4DZGpwomlsYpRdA8UXcVL/pw=="],
 
-    "@modelcontextprotocol/server": ["@modelcontextprotocol/server@2.0.0", "", { "dependencies": { "@modelcontextprotocol/core": "2.0.0", "zod": "^4.2.0" } }, "sha512-YhHWdHfpFMQfd0prsEnxKeS3Qz3ytIGmsS0sth4KDjnacIT7hxk6hXHkJ9KysxlkvTM+WZAtQbbcUhdoP4Hvtw=="],
+    "@modelcontextprotocol/server": ["@modelcontextprotocol/server@2.3.1", "", { "dependencies": { "@modelcontextprotocol/core": "2.3.1", "zod": "^4.2.0" } }, "sha512-e59MfWuSssj6DoQ96JCTqdW1AXT5/XtnTl0WWd6MU1Ka434fFUGGosCLJbGNySDhHGvxQWoRWK137FXYFkYNWw=="],
 
     "@pkgr/core": ["@pkgr/core@0.1.2", "", {}, "sha512-fdDH1LSGfZdTH2sxdpVMw31BanV28K/Gry0cVFxaNP77neJSkd82mM8ErPNYs9e+0O7SdHBLTDzDgwUuy18RnQ=="],
 
@@ -1367,8 +1367,6 @@
     "@aws-sdk/credential-provider-sso/@aws-sdk/token-providers": ["@aws-sdk/token-providers@3.1138.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/nested-clients": "^3.997.46", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-GpyAr0DD63YOEmYFM6Df+gJuIgC92MMTiBK4FTKfxii5MJ9ge20epR7LyroulscYlG89J+ZB2ivFDPjvfQhzdw=="],
 
     "@earendil-works/pi-coding-agent/chalk": ["chalk@6.0.0", "", {}, "sha512-2uNTXIuTTxk7ciZgAU1BQcgnchcG0xXnrs6jzkQfj9SsRa9M2s5zE8WT96hS6KmG4MzWHSrvH43DF1m4XRkrFg=="],
-
-    "@modelcontextprotocol/client/@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.3.1", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-laVmIhPGpWi7rG9q+0UigblRN0Hws/Yjlb6qLFtVqryXVLkc4h+yN8z731POD2LnAGQlFe7/tXhUm7Bi0YB91g=="],
 
     "body-parser/content-type": ["content-type@2.0.0", "", {}, "sha512-j/O/d7GcZCyNl7/hwZAb606rzqkyvaDctLmckbxLzHvFBzTJHuGEdodATcP3yIRoDrLHkIATJuvzbFlp/ki2cQ=="],
 
