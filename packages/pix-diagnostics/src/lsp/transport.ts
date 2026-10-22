@@ -94,12 +94,71 @@ function diagnosticUri(uri: string): string {
 	);
 }
 
+interface LspPosition {
+	line: number;
+	character: number;
+}
+
+/** LSP position (UTF-16 units; `\r\n`, `\n` and `\r` end a line) of `offset` in `text`. */
+function positionAt(text: string, offset: number): LspPosition {
+	let line = 0;
+	let lineStart = 0;
+	for (let i = 0; i < offset; i++) {
+		const ch = text[i];
+		if (ch === "\n" || (ch === "\r" && text[i + 1] !== "\n")) {
+			line++;
+			lineStart = i + 1;
+		}
+	}
+	return { line, character: offset - lineStart };
+}
+
+/** True when `i` falls inside a `\r\n` pair or a surrogate pair. */
+function splitsPair(text: string, i: number): boolean {
+	if (text[i - 1] === "\r" && text[i] === "\n") return true;
+	const hi = text.charCodeAt(i - 1);
+	const lo = text.charCodeAt(i);
+	return hi >= 0xd800 && hi <= 0xdbff && lo >= 0xdc00 && lo <= 0xdfff;
+}
+
+/**
+ * One ranged LSP change that turns `prev` into `next` (common prefix and suffix
+ * kept), or undefined when the texts are equal. Edits stay small, so the server
+ * re-parses only the changed span.
+ */
+export function rangedChange(
+	prev: string,
+	next: string,
+): { range: { start: LspPosition; end: LspPosition }; text: string } | undefined {
+	if (prev === next) return undefined;
+	const max = Math.min(prev.length, next.length);
+	let start = 0;
+	while (start < max && prev.charCodeAt(start) === next.charCodeAt(start)) start++;
+	let tail = 0;
+	while (
+		tail < max - start &&
+		prev.charCodeAt(prev.length - 1 - tail) === next.charCodeAt(next.length - 1 - tail)
+	)
+		tail++;
+	while (start > 0 && splitsPair(prev, start)) start--;
+	while (tail > 0 && splitsPair(prev, prev.length - tail)) tail--;
+	return {
+		range: { start: positionAt(prev, start), end: positionAt(prev, prev.length - tail) },
+		text: next.slice(start, next.length - tail),
+	};
+}
+
 export class LspTransport {
 	private stateValue: TransportState = "starting";
 	private seq = 0;
 	private readonly diagnostics = new Map<string, PublishEvent>();
 	private readonly waiters = new Set<() => void>();
 	private readonly versions = new Map<string, number>();
+	/** Last text sent per URI, the base for ranged changes. */
+	private readonly texts = new Map<string, string>();
+	/** Publish `seq` at the last didOpen/didChange per URI; unversioned publishes must be newer. */
+	private readonly sentSeq = new Map<string, number>();
+	private incrementalSync = false;
 	/** Insertion-ordered open URIs for LRU eviction. */
 	private readonly openOrder: string[] = [];
 	private readonly openLanguage = new Map<string, string>();
@@ -187,13 +246,22 @@ export class LspTransport {
 					diagnostic: {},
 				},
 			},
-		})) as { capabilities?: { positionEncoding?: string; diagnosticProvider?: unknown } };
+		})) as {
+			capabilities?: {
+				positionEncoding?: string;
+				diagnosticProvider?: unknown;
+				textDocumentSync?: number | { change?: number };
+			};
+		};
 
 		const encoding = result.capabilities?.positionEncoding;
 		if (encoding && encoding !== "utf-16") {
 			throw new Error(`LSP ${this.serverId}: server selected unsupported encoding ${encoding}`);
 		}
 		this.pullCapable = Boolean(result.capabilities?.diagnosticProvider);
+		const sync = result.capabilities?.textDocumentSync;
+		// TextDocumentSyncKind.Incremental = 2.
+		this.incrementalSync = (typeof sync === "number" ? sync : sync?.change) === 2;
 		this.connection.sendNotification("initialized", {});
 	}
 
@@ -215,9 +283,7 @@ export class LspTransport {
 		while (this.openOrder.length > MAX_OPEN) {
 			const victim = this.openOrder.shift();
 			if (!victim) break;
-			this.versions.delete(victim);
-			this.openLanguage.delete(victim);
-			this.diagnostics.delete(victim);
+			this.forget(victim);
 			this.connection.sendNotification("textDocument/didClose", {
 				textDocument: { uri: victim },
 			});
@@ -232,6 +298,8 @@ export class LspTransport {
 		}
 		this.versions.set(uri, version);
 		this.openLanguage.set(uri, languageId);
+		this.texts.set(uri, text);
+		this.sentSeq.set(uri, this.seq);
 		this.touchOpen(uri);
 		this.connection.sendNotification("textDocument/didOpen", {
 			textDocument: { uri, languageId, version, text },
@@ -243,11 +311,17 @@ export class LspTransport {
 		const uri = this.uriFor(filePath);
 		const prev = this.versions.get(uri) ?? 0;
 		const next = Math.max(version, prev + 1);
+		const base = this.texts.get(uri);
+		// Equal text sends a full replacement, so the server still re-publishes for this version.
+		const ranged =
+			this.incrementalSync && base !== undefined ? rangedChange(base, text) : undefined;
 		this.versions.set(uri, next);
+		this.texts.set(uri, text);
+		this.sentSeq.set(uri, this.seq);
 		this.touchOpen(uri);
 		this.connection.sendNotification("textDocument/didChange", {
 			textDocument: { uri, version: next },
-			contentChanges: [{ text }],
+			contentChanges: [ranged ?? { text }],
 		});
 	}
 
@@ -256,10 +330,16 @@ export class LspTransport {
 		const idx = this.openOrder.indexOf(uri);
 		if (idx === -1) return;
 		this.openOrder.splice(idx, 1);
+		this.forget(uri);
+		this.connection.sendNotification("textDocument/didClose", { textDocument: { uri } });
+	}
+
+	private forget(uri: string): void {
 		this.versions.delete(uri);
 		this.openLanguage.delete(uri);
 		this.diagnostics.delete(uri);
-		this.connection.sendNotification("textDocument/didClose", { textDocument: { uri } });
+		this.texts.delete(uri);
+		this.sentSeq.delete(uri);
 	}
 
 	openCount(): number {
@@ -267,9 +347,11 @@ export class LspTransport {
 	}
 
 	/**
-	 * Resolve with the diagnostics for `filePath` at `version` or later. For
-	 * push-only servers with a settle window that merges phased publishes. Reject
-	 * on abort or child exit.
+	 * Resolve with the diagnostics for `filePath` at `version` or later. A publish
+	 * without a version (typescript-language-server) counts only when it arrived
+	 * after the last didOpen/didChange, so the previous edit's cached result is
+	 * never returned as fresh. A quiet window restarts on each new publish to merge
+	 * phased publishes (syntax, then semantic). Reject on abort or child exit.
 	 */
 	waitForDiagnostics(
 		filePath: string,
@@ -282,7 +364,7 @@ export class LspTransport {
 
 		return new Promise<LspDiagnostic[] | undefined>((resolve, reject) => {
 			let settleTimer: ReturnType<typeof setTimeout> | undefined;
-			let firstSeen = false;
+			let seenSeq = -1;
 
 			const cleanup = (): void => {
 				this.waiters.delete(check);
@@ -298,7 +380,11 @@ export class LspTransport {
 			const matches = (): PublishEvent | undefined => {
 				const event = this.diagnostics.get(uri);
 				if (!event) return undefined;
-				if (event.version !== undefined && event.version < version) return undefined;
+				const stale =
+					event.version !== undefined
+						? event.version < version
+						: event.seq <= (this.sentSeq.get(uri) ?? 0);
+				if (stale) return undefined;
 				return event;
 			};
 
@@ -314,20 +400,21 @@ export class LspTransport {
 					return;
 				}
 				const event = matches();
-				if (event && !firstSeen) {
-					firstSeen = true;
-					// Settle window: wait briefly for phased publishes, bounded by deadline.
+				if (event && event.seq !== seenSeq) {
+					seenSeq = event.seq;
+					// Quiet window: restart on each new publish, bounded by the deadline.
 					const settle = Math.min(500, Math.max(250, Math.round(this.ewmaMs)));
 					const remaining = deadline - Date.now();
 					if (remaining <= 0) {
 						finish();
 						return;
 					}
+					if (settleTimer) clearTimeout(settleTimer);
 					settleTimer = setTimeout(finish, Math.min(settle, remaining));
 					settleTimer.unref?.();
 					return;
 				}
-				if (Date.now() >= deadline && !firstSeen) {
+				if (Date.now() >= deadline && seenSeq < 0) {
 					finish();
 				}
 			};
@@ -343,7 +430,7 @@ export class LspTransport {
 
 			const timeout = setTimeout(
 				() => {
-					if (!firstSeen) finish();
+					if (seenSeq < 0) finish();
 				},
 				Math.max(1, waitMs),
 			);

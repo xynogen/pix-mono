@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { tempDir } from "@xynogen/pix-runtime/paths";
-import { LspTransport } from "./transport.ts";
+import { LspTransport, rangedChange } from "./transport.ts";
 
 const root = mkdtempSync(join(tempDir(), "pix-lsp-"));
 const fakeServerPath = join(import.meta.dir, "fake-server.fixture.ts");
@@ -64,6 +64,31 @@ describe("LspTransport", () => {
 		await client.stop();
 	});
 
+	test("an unversioned publish from the previous edit is never returned as fresh", async () => {
+		const client = await startClient(["--unversioned", "--echo", "--delay=700"]);
+		try {
+			await client.open(filePath, "typescript", "old\n", 1);
+			expect((await client.waitForDiagnostics(filePath, 1, 3_000))?.[0]?.message).toBe("old\n");
+			await client.change(filePath, "new\n", 2);
+			expect((await client.waitForDiagnostics(filePath, 2, 3_000))?.[0]?.message).toBe("new\n");
+		} finally {
+			await client.stop();
+		}
+	});
+
+	test("sends only the changed span to an incremental server", async () => {
+		const client = await startClient(["--incremental"]);
+		try {
+			const edited = "line one\r\nline 2 😀!\nline three\nmore\n";
+			await client.open(filePath, "typescript", "line one\r\nline two 😀\nline three\n", 1);
+			await client.change(filePath, edited, 2);
+			const uri = pathToFileURL(filePath).href;
+			expect(await client.request<string>("pix/text", { uri })).toBe(edited);
+		} finally {
+			await client.stop();
+		}
+	});
+
 	test("keeps at most 32 open documents with LRU eviction", async () => {
 		const client = await startClient();
 		for (let i = 0; i < 33; i++) {
@@ -88,4 +113,22 @@ describe("LspTransport", () => {
 
 afterAll(() => {
 	// temp dir cleaned by the OS; nothing persistent to remove
+});
+
+describe("rangedChange", () => {
+	test("replaces only the differing span, in LSP line/UTF-16 positions", () => {
+		expect(rangedChange("ab\ncdef\ngh", "ab\ncXf\ngh")).toEqual({
+			range: { start: { line: 1, character: 1 }, end: { line: 1, character: 3 } },
+			text: "X",
+		});
+		expect(rangedChange("same", "same")).toBeUndefined();
+	});
+
+	test("never splits a CRLF or surrogate pair", () => {
+		expect(rangedChange("a\r\nb", "a\nb")?.range.start).toEqual({ line: 0, character: 1 });
+		expect(rangedChange("x😀", "x😃")).toEqual({
+			range: { start: { line: 0, character: 1 }, end: { line: 0, character: 3 } },
+			text: "😃",
+		});
+	});
 });
