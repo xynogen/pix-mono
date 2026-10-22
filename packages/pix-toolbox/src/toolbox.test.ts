@@ -224,9 +224,17 @@ afterAll(async () => {
 	}
 });
 
-function makeHost(toolNames: string[], deferred: string[] = [], mcp: string[] = []) {
+function makeHost(
+	toolNames: string[],
+	deferred: string[] = [],
+	mcp: string[] = [],
+	/** Direct tools the host left inactive (defaultActive: false, or a restored branch). */
+	inactive: string[] = [],
+) {
 	const handlers: Record<string, Array<(p: unknown) => unknown>> = {};
-	let active: string[] = toolNames.filter((name) => !deferred.includes(name));
+	let active: string[] = toolNames.filter(
+		(name) => !deferred.includes(name) && !inactive.includes(name),
+	);
 	const commands: Array<{
 		name: string;
 		handler: (...args: unknown[]) => unknown;
@@ -294,11 +302,16 @@ describe("/toolbox command", () => {
 	const ALL = ["read", "write", "bash", "grep", "find"];
 	const statePath = () => join(tmpAgentDir, "pix.json");
 
-	async function boot(tools = ALL, deferred: string[] = [], mcp: string[] = []) {
+	async function boot(
+		tools = ALL,
+		deferred: string[] = [],
+		mcp: string[] = [],
+		inactive: string[] = [],
+	) {
 		await pixRuntime().flush();
 		rmSync(statePath(), { force: true });
 		await pixRuntime().reload();
-		const host = makeHost(tools, deferred, mcp);
+		const host = makeHost(tools, deferred, mcp, inactive);
 		registerToolbox(host.pi);
 		await host.emit("session_start", {}, {});
 		return host;
@@ -358,6 +371,15 @@ describe("/toolbox command", () => {
 		(host.pi as { setActiveTools(n: string[]): void }).setActiveTools([...ALL, "hunk"]); // what tool_search does
 		await host.emit("tool_execution_end", { toolName: "tool_search" });
 		expect(host.getActive()).toEqual(ALL);
+	});
+
+	test("keeps a direct tool the host left inactive off until the user enables it", async () => {
+		const host = await boot([...ALL, "codemode"], [], [], ["codemode"]);
+		expect(host.getActive()).toEqual(ALL);
+		await host.emit("session_tree", {}, {});
+		expect(host.getActive()).toEqual(ALL);
+		await host.command("toolbox")?.handler("enable codemode", makeCtx().ctx);
+		expect(host.getActive()).toEqual([...ALL, "codemode"]);
 	});
 
 	test("bare /toolbox falls back to listing when no custom UI", async () => {

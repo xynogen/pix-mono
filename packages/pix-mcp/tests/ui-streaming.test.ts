@@ -591,3 +591,16 @@ describe("UI Streaming", () => {
 		});
 	});
 });
+
+describe("withStreamEnvelope", () => {
+	it("adds the envelope to object content and passes non-object content through", async () => {
+		const { withStreamEnvelope } = await import("../src/ui-session.ts");
+		const wrapped = withStreamEnvelope({ content: [], structuredContent: { a: 1 } }, "s1", 2);
+		expect(wrapped.structuredContent).toMatchObject({ a: 1 });
+		expect(Object.keys(wrapped.structuredContent ?? {})).toHaveLength(2);
+		for (const value of [[1, 2], null, "text", 0]) {
+			const result = { content: [], structuredContent: value } as never;
+			expect(withStreamEnvelope(result, "s1", 2)).toBe(result);
+		}
+	});
+});

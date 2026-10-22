@@ -49,7 +49,8 @@ export type VisualizationStreamEnvelope = z.infer<typeof visualizationStreamEnve
 export const uiStreamCallToolResultSchema = z
 	.object({
 		content: looseArraySchema.optional(),
-		structuredContent: looseRecordSchema.optional(),
+		// MCP 2026-07-28: structured content may be any JSON value, not only an object.
+		structuredContent: z.unknown().optional(),
 		isError: z.boolean().optional(),
 		_meta: looseRecordSchema.optional(),
 	})

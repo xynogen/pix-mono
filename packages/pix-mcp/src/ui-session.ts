@@ -45,7 +45,7 @@ export interface UiSessionRuntime {
 
 const MAX_COMPLETED_SESSIONS = 10;
 
-function withStreamEnvelope(
+export function withStreamEnvelope(
 	result: CallToolResult,
 	streamId: string | undefined,
 	sequence: number,
@@ -54,12 +54,14 @@ function withStreamEnvelope(
 		return result;
 	}
 
-	const structuredContent: Record<string, unknown> =
-		result.structuredContent &&
-		typeof result.structuredContent === "object" &&
-		!Array.isArray(result.structuredContent)
-			? { ...(result.structuredContent as Record<string, unknown>) }
-			: {};
+	const raw: unknown = result.structuredContent;
+	const isRecord = typeof raw === "object" && raw !== null && !Array.isArray(raw);
+	// MCP 2026-07-28 allows arrays, null and primitives. The envelope needs an object, so pass
+	// those through untouched instead of replacing the server's data with `{}`.
+	if (raw !== undefined && !isRecord) return result;
+	const structuredContent: Record<string, unknown> = isRecord
+		? { ...(raw as Record<string, unknown>) }
+		: {};
 
 	const rawEnvelope = structuredContent[UI_STREAM_STRUCTURED_CONTENT_KEY];
 	const envelope =

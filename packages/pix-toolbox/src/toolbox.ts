@@ -338,21 +338,25 @@ function createState(pi: ExtensionAPI) {
 		if (file?.legacy && fromFile) persist();
 	}
 
-	/** Rebuild the active set. `drop` removes one tool that apply() would otherwise keep. */
-	function apply(drop?: string): void {
+	/**
+	 * Rebuild the active set from the host's own: (host active ∪ loaded ∪ add) − disabled − drop.
+	 * The host already applied defaults (`defaultActive: false`) and the branch's recorded tools
+	 * (Pi >= 1.3), so toolbox only enforces its explicit choices instead of re-enabling every
+	 * direct tool.
+	 */
+	function apply(change: { add?: string; drop?: string } = {}): void {
 		if (!initialized) return;
 		try {
-			const tools = pi.getAllTools();
 			const active = new Set(pi.getActiveTools());
-			if (drop) active.delete(drop);
+			if (change.add) active.add(change.add);
+			if (change.drop) active.delete(change.drop);
 			pi.setActiveTools(
-				tools
+				pi
+					.getAllTools()
 					.filter(
 						(tool) =>
 							!disabledTools.has(tool.name) &&
-							(["direct", "model-only"].includes(exposureOf(tool)) ||
-								loadedTools.has(tool.name) ||
-								active.has(tool.name)),
+							(active.has(tool.name) || loadedTools.has(tool.name)),
 					)
 					.map((tool) => tool.name),
 			);
@@ -375,7 +379,7 @@ function createState(pi: ExtensionAPI) {
 		else disabledTools.delete(name);
 		if (next === "enabled" && isDeferred(name)) loadedTools.add(name);
 		else loadedTools.delete(name);
-		apply(next === "enabled" ? undefined : name);
+		apply(next === "enabled" ? { add: name } : { drop: name });
 		persist();
 		return true;
 	}
