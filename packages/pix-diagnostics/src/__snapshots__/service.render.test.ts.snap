@@ -6,22 +6,22 @@ exports[`captures registered diagnostics tools and the subscribed widget without
 <warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                  
 lsp_diagnostics:success
 
-<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
+   <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lsp_diagnostics:partial
 
-<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
+   <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 lsp_diagnostics:error
 
-<error>✗︎</error> src/a.ts:3:4 error ts(2304) Missing name                                      
+   <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 lsp_diagnostics:no-details
 
-<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
+   <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lsp_diagnostics:no-details-error
 
-<error>✗︎</error> src/a.ts:3:4 error ts(2304) Missing name                                      
+   <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
 lsp_diagnostics:hidden-call
 lsp_diagnostics:collapsed
@@ -32,7 +32,7 @@ lsp_diagnostics:expanded
 <warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                  
 lsp_diagnostics:expanded-result
 
-<success>●︎</success> src/a.ts:3:4 error ts(2304) Missing name                                      
+   <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 lsp_navigation:call
 

@@ -13,8 +13,7 @@ import { resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import {
 	formatCollapsedToolRow,
 	formatToolCallTitle,
@@ -86,6 +85,43 @@ export function collectFindings(
 	return rows.map((d) => formatFinding(cwd, d));
 }
 
+// Body aligns under the tool name: status glyph (2 cols) + space. Wrapped rows hang 2 deeper.
+const BODY = "   ";
+const HANG = `${BODY}  `;
+const FINDING = /^(.+?):(\d+:\d+) (error|warning|information|hint)( \S+\(\S+\))? (.*)$/;
+const INCOMPLETE = /^(.+?): (unconfirmed|unavailable): (.*)$/;
+
+/** Color one result row by priority: severity and message first, path dim, metadata muted. */
+export function paintRow(line: string, t: Theme): string {
+	const f = FINDING.exec(line);
+	if (f) {
+		const [, path = "", pos = "", severity = "", code = "", message = ""] = f;
+		const role = severity === "error" ? "error" : severity === "warning" ? "warning" : "muted";
+		return `${t.fg("dim", path)}${t.fg("muted", `:${pos}`)} ${t.fg(role, severity)}${t.fg("muted", code)} ${message}`;
+	}
+	const i = INCOMPLETE.exec(line);
+	if (i) {
+		const [, path = "", state = "", reason = ""] = i;
+		const role = state === "unavailable" ? "warning" : "muted";
+		return `${t.fg("dim", path)} ${t.fg(role, state)} ${t.fg("muted", reason)}`;
+	}
+	return t.fg("dim", line);
+}
+
+/** Result body: one painted row per line, indented under the tool name, wrapped with a hang. */
+function resultBody(text: string, t: Theme) {
+	const rows = text.split("\n").map((line) => paintRow(line, t));
+	return {
+		render: (width: number) =>
+			rows.flatMap((row) =>
+				wrapTextWithAnsi(row, Math.max(10, width - HANG.length)).map(
+					(part, i) => (i === 0 ? BODY : HANG) + part,
+				),
+			),
+		invalidate() {},
+	};
+}
+
 /** Render the completed-result close chrome, or nothing for a partial result. */
 export function renderClose(
 	outcome: "success" | "error" | "partial",
@@ -143,9 +179,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
 			const details = result.details as DiagnosticsDetails | undefined;
 			const isError = context.isError || details?.outcome === "error";
-			const glyph = isError ? icon("status.error") : icon("status.done");
-			const role = isError ? "error" : "success";
-			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
+			const body = resultBody(text, t);
 			if (options.isPartial) return body;
 			if (!details) return frameToolResult(body, theme, isError);
 			if (

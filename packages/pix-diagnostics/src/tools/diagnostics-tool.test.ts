@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import type { DiagnosticRequest, LspManager, NavigationResult } from "../lsp/manager.ts";
 import { DiagnosticStore } from "../store.ts";
 import type { DiagnosticSnapshot } from "../types.ts";
-import { registerDiagnosticsTool, renderClose } from "./diagnostics-tool.ts";
+import { paintRow, registerDiagnosticsTool, renderClose } from "./diagnostics-tool.ts";
 
 type ToolDef = {
 	name: string;
@@ -156,5 +156,44 @@ describe("renderClose", () => {
 		expect(renderClose("success", theme, 40)).toContain("[success]- - -");
 		expect(renderClose("error", theme, 40)).toContain("[error]- - -");
 		expect(renderClose("partial", theme, 40)).not.toContain("- - -");
+	});
+});
+
+describe("result rows", () => {
+	const theme = { fg: (role: string, text: string) => `<${role}>${text}</${role}>` } as never;
+
+	test("paint path dim, position muted, severity by role, message plain", () => {
+		expect(paintRow("src/a.ts:3:4 error ts(2304) Cannot find name 'x'.", theme)).toBe(
+			"<dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Cannot find name 'x'.",
+		);
+		expect(paintRow("README.md: unavailable: No server", theme)).toBe(
+			"<dim>README.md</dim> <warning>unavailable</warning> <muted>No server</muted>",
+		);
+	});
+
+	test("indent under the tool name and hang wrapped rows", () => {
+		let tool: { renderResult: (...args: unknown[]) => { render(w: number): string[] } } | null =
+			null;
+		registerDiagnosticsTool({ registerTool: (def: never) => (tool = def) } as never, {
+			store: new DiagnosticStore(),
+			manager: fakeManager(),
+			cwd: "/repo",
+		});
+		const plain = { fg: (_role: string, text: string) => text, bold: (t: string) => t };
+		const text = `src/a.ts:1:1 error ts(1) ${"word ".repeat(20)}\nsrc/b.ts: unconfirmed: no reply`;
+		const rows = tool!
+			.renderResult(
+				{ content: [{ type: "text", text }] },
+				{ expanded: true, isPartial: true },
+				plain,
+				{ state: {}, expanded: true, invalidate() {} },
+			)
+			.render(40);
+		const shape = rows.map(
+			(row) => `${row.length - row.trimStart().length}:${row.trim().split(" ")[0]}`,
+		);
+		expect(shape[0]).toBe("3:src/a.ts:1:1");
+		expect(shape.slice(1, -1).every((s) => s.startsWith("5:"))).toBe(true);
+		expect(shape.at(-1)).toBe("3:src/b.ts");
 	});
 });
