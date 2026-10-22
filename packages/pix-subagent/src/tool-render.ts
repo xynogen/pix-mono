@@ -1,4 +1,4 @@
-import { Text } from "@earendil-works/pi-tui";
+import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	COLLAPSED_TOOL_GLYPH,
@@ -91,6 +91,28 @@ function utilityHeading(label: string, count: number, theme: Theme): string {
 	return `${theme.fg("accent", icon("status.active"))} ${theme.fg("toolTitle", theme.bold(label))} ${theme.fg("muted", `· ${count}`)}`;
 }
 
+// Body aligns under the tool name: status glyph (2 cols) + space, same as tool_search.
+const BODY = "   ";
+
+/**
+ * Indent every line to the body column. A line's own leading spaces nest it, and
+ * nested lines wrap with a 2-col hanging indent so long descriptions stay in their column.
+ */
+function bodyBlock(text: string) {
+	return {
+		render: (width: number) =>
+			text.split("\n").flatMap((line) => {
+				const content = line.trimStart();
+				if (!content) return [""];
+				const lead = BODY + line.slice(0, line.length - content.length);
+				const hang = lead.length > BODY.length ? `${lead}  ` : lead;
+				const wrapped = wrapTextWithAnsi(content, Math.max(10, width - hang.length));
+				return wrapped.map((row, i) => (i === 0 ? lead : hang) + row);
+			}),
+		invalidate() {},
+	};
+}
+
 // ── expanded pretty renderers ────────────────────────────────────────────────
 // ponytail: type and model catalogs still parse execute() text. Active agents use details. If the
 // execute() line format changes, update the split logic here. Ceiling: a format
@@ -101,7 +123,7 @@ function utilityHeading(label: string, count: number, theme: Theme): string {
 function formatInfoActive(details: AgentInfoResultDetails, theme: Theme): string {
 	const rows = details.rows ?? [];
 	const out = [utilityHeading("Agents", details.count, theme)];
-	if (rows.length === 0) out.push(theme.fg("muted", "  (none)"));
+	if (rows.length === 0) out.push(`  ${theme.fg("muted", "(none)")}`);
 	for (const row of rows) {
 		const model = row.modelName ? ` ${theme.fg("muted", `[${row.modelName}]`)}` : "";
 		const head = dotJoin(
@@ -113,7 +135,7 @@ function formatInfoActive(details: AgentInfoResultDetails, theme: Theme): string
 		);
 		out.push(`  ${head}`);
 	}
-	if (details.guidance) out.push("", theme.fg("muted", `  ${details.guidance}`));
+	if (details.guidance) out.push("", theme.fg("muted", details.guidance));
 	return out.join("\n");
 }
 
@@ -142,7 +164,7 @@ function formatInfoTypes(text: string, count: number, theme: Theme): string {
 			)}`,
 		);
 	}
-	if (guidance) out.push("", theme.fg("muted", `  ${guidance}`));
+	if (guidance) out.push("", theme.fg("muted", guidance));
 	return out.join("\n");
 }
 
@@ -156,19 +178,18 @@ function formatInfoModels(text: string, count: number, theme: Theme): string {
 		.slice(headingIdx + 1)
 		.filter((l) => l.trim() && l !== guidance && !l.startsWith("Current parent:"));
 	const out = [utilityHeading("Models", count, theme)];
+	const row = (line: string) => {
+		const [id, meta] = splitFirst(line.trim(), "  — ");
+		return `${theme.fg("dim", id)}${meta ? ` ${theme.fg("muted", `— ${meta}`)}` : ""}`;
+	};
 	if (parentLine) {
-		const val = parentLine.slice("Current parent:".length).trim();
-		out.push(`  ${theme.fg("muted", "parent:")} ${theme.fg("dim", val)}`);
+		const val = parentLine.slice("Current parent:".length);
+		out.push(`  ${theme.fg("muted", "parent:")} ${row(val)}`);
 	}
 	for (const line of dataLines) {
-		if (line.trim() === "(none)") {
-			out.push(theme.fg("muted", "  (none)"));
-			continue;
-		}
-		const [id, meta] = splitFirst(line, "  — ");
-		out.push(`  ${theme.fg("dim", id.trim())}${meta ? ` ${theme.fg("muted", `— ${meta}`)}` : ""}`);
+		out.push(`  ${line.trim() === "(none)" ? theme.fg("muted", "(none)") : row(line)}`);
 	}
-	if (guidance) out.push("", theme.fg("muted", `  ${guidance}`));
+	if (guidance) out.push("", theme.fg("muted", guidance));
 	return out.join("\n");
 }
 
@@ -201,7 +222,7 @@ function renderExpandedUtility(
 	text: string,
 	theme: Theme,
 	ctxIsError: boolean,
-): { pretty?: string; isError?: boolean } {
+): { pretty?: string; indent?: boolean; isError?: boolean } {
 	if (details._type === "agent-info") {
 		const pretty =
 			details.kind === "active"
@@ -209,7 +230,7 @@ function renderExpandedUtility(
 				: details.kind === "types"
 					? formatInfoTypes(text, details.count, theme)
 					: formatInfoModels(text, details.count, theme);
-		return { pretty, isError: ctxIsError };
+		return { pretty, indent: true, isError: ctxIsError };
 	}
 	if (details._type === "agent-result") {
 		let isError: boolean | undefined;
@@ -285,13 +306,13 @@ export function renderAgentUtilityResult(
 	);
 
 	if (!collapsed) {
-		const { pretty, isError } = renderExpandedUtility(
+		const { pretty, indent, isError } = renderExpandedUtility(
 			details,
 			text,
 			theme,
 			renderCtx.isError === true,
 		);
-		const view = pretty ? new Text(pretty, 0, 0) : component;
+		const view = pretty ? (indent ? bodyBlock(pretty) : new Text(pretty, 0, 0)) : component;
 		return isError == null ? view : frameToolResult(view, theme, isError);
 	}
 

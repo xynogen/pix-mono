@@ -272,6 +272,39 @@ describe("subagent utility compact renderers", () => {
 		expect(expanded).toContain("omit model to inherit the parent");
 	});
 
+	test("agent_control info indents under the tool name and hangs wrapped rows", () => {
+		const tool = createAgentControlTool({} as never, new Map(), () => {});
+		const meta = "⚡89 · 1M ctx · $4/$20 · frontier";
+		const result = {
+			content: [
+				{
+					type: "text",
+					text: `Current parent: test/one  — ${meta}\n\nAvailable models:\ntest/one  — ${meta}\n\nOmit model.`,
+				},
+			],
+			details: { _type: "agent-info", kind: "models", count: 1, guidance: "Omit model." },
+		};
+		const rows = (
+			tool as unknown as {
+				renderResult: (...args: unknown[]) => { render(width: number): string[] };
+			}
+		)
+			.renderResult(result, { expanded: true, isPartial: false }, theme, {
+				state: {},
+				expanded: true,
+				invalidate: () => {},
+			})
+			.render(36)
+			.filter((row) => row.trim() && !row.startsWith("- "));
+		// Heading/guidance at the body column (3), list rows at 5, their wraps hang at 7.
+		const shape = rows.map((row) => `${row.length - row.trimStart().length}:${row.trim()}`);
+		expect(shape[0]).toBe("3:● Models · 1");
+		expect(shape.at(-1)).toBe("3:Omit model.");
+		expect(shape.slice(1, -1).join("\n")).toMatch(
+			/^5:parent: test\/one — .+\n7:.+\n5:test\/one — .+\n7:.+$/,
+		);
+	});
+
 	test("agent_control info active expands to one structured row per agent", async () => {
 		const manager = {
 			listAgents: () => [
