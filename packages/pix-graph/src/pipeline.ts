@@ -1,16 +1,18 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { godNodes, surprisingConnections } from "./analyze.ts";
-import { analyzeGraph, analyzeGraphProgress } from "./analyzer.ts";
+import { analyzeGraph, analyzeGraphProgress, type GraphData } from "./analyzer.ts";
 import { buildGraph } from "./build.ts";
+import { assignCommunities } from "./cluster.ts";
 import {
 	collectFiles,
 	createGraphParseCache,
 	extract,
 	type GraphParseCache,
 	parseFilesProgress,
+	type UnresolvedImport,
 } from "./extract.ts";
 
 export { createGraphParseCache } from "./extract.ts";
@@ -31,7 +33,7 @@ export interface BuildResult {
 }
 
 /** Ordered build phases, for progress reporting. */
-export const BUILD_PHASES = ["scan", "extract", "cluster", "analyze", "write"] as const;
+export const BUILD_PHASES = ["scan", "extract", "analyze", "cluster", "write"] as const;
 export type BuildPhase = (typeof BUILD_PHASES)[number];
 
 /** One progress tick emitted by {@link buildCodeGraphProgress}. */
@@ -47,8 +49,8 @@ export interface BuildProgress {
 const PHASE_WEIGHT: Record<BuildPhase, number> = {
 	scan: 0.05,
 	extract: 0.55,
-	cluster: 0.2,
 	analyze: 0.15,
+	cluster: 0.2,
 	write: 0.05,
 };
 
@@ -64,7 +66,7 @@ function phaseStart(phase: BuildPhase): number {
 
 const yieldToLoop = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 // ponytail: bump this when extraction changes for builds outside the pix-graph source tree.
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const CACHE_FILE = ".graph-cache.json";
 const OUTPUT_FILES = ["graph.json", "graph.cleaned.json", "GRAPH_REPORT.md", "graph.html"] as const;
 
@@ -75,7 +77,15 @@ function buildKey(files: string[], repoRoot: string, inputPath: string): string 
 	hash.update(`${CACHE_VERSION}\0${resolve(repoRoot)}\0${resolve(inputPath)}\0`);
 	// A renderer change must rewrite graph.html, or an old page (with old bugs) survives updates.
 	hash.update(readFileSync(new URL("./html.ts", import.meta.url)));
+	// Workspace import resolution reads package.json name/exports, so those files count too.
+	const manifests = new Set<string>();
 	for (const file of files) {
+		for (let dir = dirname(file); ; dir = dirname(dir)) {
+			manifests.add(join(dir, "package.json"));
+			if (dir === dirname(dir) || relative(repoRoot, dir) === "") break;
+		}
+	}
+	for (const file of [...files, ...[...manifests].filter((m) => existsSync(m)).sort()]) {
 		hash.update(relative(repoRoot, file));
 		hash.update("\0");
 		hash.update(readFileSync(file));
@@ -104,7 +114,43 @@ function cachedBuild(outputDir: string, key: string): BuildResult | undefined {
 }
 
 /**
- * Full code-graph pipeline: extract → build/cluster → analyze → clean → write.
+ * Cluster the cleaned graph (the one query reads), stamp the same communities on the
+ * raw graph, then write graph.json, graph.cleaned.json, GRAPH_REPORT.md, and graph.html.
+ */
+function clusterAndWrite(
+	raw: GraphData,
+	cleaned: GraphData,
+	unresolved: UnresolvedImport[],
+	outputDir: string,
+): { links: number; communities: number } {
+	const built = buildGraph({ nodes: cleaned.nodes, links: cleaned.links });
+	assignCommunities(raw.nodes, built.communities);
+	const report = renderGraphReport({
+		...built,
+		gods: godNodes(built.graph),
+		surprises: surprisingConnections(built.graph, built.communities),
+		unresolved,
+	});
+	const cleanedOut = { ...cleaned, ...built.graph, hyperedges: cleaned.hyperedges };
+	mkdirSync(outputDir, { recursive: true });
+	// Invalidate the old manifest before any output changes. A failed write must rebuild.
+	rmSync(resolve(outputDir, CACHE_FILE), { force: true });
+	writeFileSync(resolve(outputDir, "graph.json"), `${JSON.stringify(raw, null, 2)}\n`);
+	writeFileSync(
+		resolve(outputDir, "graph.cleaned.json"),
+		`${JSON.stringify(cleanedOut, null, 2)}\n`,
+	);
+	writeFileSync(resolve(outputDir, "GRAPH_REPORT.md"), report);
+	writeFileSync(resolve(outputDir, "graph.html"), renderGraphHtml(cleanedOut));
+	return { links: raw.links.length, communities: built.communities.size };
+}
+
+function rawGraph(extraction: { nodes: GraphData["nodes"]; links: GraphData["links"] }): GraphData {
+	return { directed: false, multigraph: false, nodes: extraction.nodes, links: extraction.links };
+}
+
+/**
+ * Full code-graph pipeline: extract → analyze/clean → cluster → write.
  * Writes graph.json, graph.cleaned.json, GRAPH_REPORT.md, and graph.html under `outputDir`.
  */
 export function buildCodeGraph(
@@ -113,29 +159,11 @@ export function buildCodeGraph(
 	outputDir: string,
 ): BuildResult {
 	const files = collectFiles(resolve(inputPath));
-	const built = buildGraph(extract(files, repoRoot));
-	const fileCount = files.length;
-	const gods = godNodes(built.graph);
-	const surprises = surprisingConnections(built.graph, built.communities);
-	const report = renderGraphReport({ ...built, gods, surprises });
-	const cleaned = analyzeGraph(built.graph, { repoRoot });
-
-	mkdirSync(outputDir, { recursive: true });
-	writeFileSync(resolve(outputDir, "graph.json"), `${JSON.stringify(built.graph, null, 2)}\n`);
-	writeFileSync(
-		resolve(outputDir, "graph.cleaned.json"),
-		`${JSON.stringify(cleaned.cleanedGraph, null, 2)}\n`,
-	);
-	writeFileSync(resolve(outputDir, "GRAPH_REPORT.md"), report);
-	writeFileSync(resolve(outputDir, "graph.html"), renderGraphHtml(cleaned.cleanedGraph));
-
-	return {
-		files: fileCount,
-		nodes: built.graph.nodes.length,
-		links: built.graph.links.length,
-		communities: built.communities.size,
-		outputDir,
-	};
+	const extraction = extract(files, repoRoot);
+	const raw = rawGraph(extraction);
+	const cleaned = analyzeGraph(raw, { repoRoot }).cleanedGraph;
+	const written = clusterAndWrite(raw, cleaned, extraction.unresolved, outputDir);
+	return { files: files.length, nodes: raw.nodes.length, ...written, outputDir };
 }
 
 /**
@@ -172,7 +200,7 @@ export async function buildCodeGraphProgress(
 
 	// Parse files in yielding chunks (the slow half of extraction) so the widget
 	// animates, then run the whole-corpus extract pass on the pre-parsed list
-	// (cross-file call inference needs every declaration first).
+	// (import and re-export resolution needs every file first).
 	const parsed = await parseFilesProgress(
 		files,
 		repoRoot,
@@ -197,21 +225,10 @@ export async function buildCodeGraphProgress(
 	const extraction = extract(parsed, repoRoot);
 
 	checkAbort();
-	onProgress({
-		phase: "cluster",
-		fraction: phaseStart("cluster"),
-		label: "clustering communities…",
-	});
-	await yieldToLoop();
-	const built = buildGraph(extraction);
-
-	checkAbort();
-	const gods = godNodes(built.graph);
-	const surprises = surprisingConnections(built.graph, built.communities);
-	const report = renderGraphReport({ ...built, gods, surprises });
+	const raw = rawGraph(extraction);
 	// Call-edge validation re-parses source files and is the slowest step; run the
 	// yielding variant so the progress widget keeps animating throughout.
-	const cleaned = await analyzeGraphProgress(built.graph, {
+	const cleaned = await analyzeGraphProgress(raw, {
 		repoRoot,
 		signal,
 		onProgress: (done, total) => {
@@ -224,24 +241,18 @@ export async function buildCodeGraphProgress(
 	});
 
 	checkAbort();
-	onProgress({ phase: "write", fraction: phaseStart("write"), label: "writing output…" });
+	onProgress({
+		phase: "cluster",
+		fraction: phaseStart("cluster"),
+		label: "clustering communities…",
+	});
 	await yieldToLoop();
-	mkdirSync(outputDir, { recursive: true });
-	// Invalidate the old manifest before any output changes. A failed write must rebuild.
-	rmSync(resolve(outputDir, CACHE_FILE), { force: true });
-	writeFileSync(resolve(outputDir, "graph.json"), `${JSON.stringify(built.graph, null, 2)}\n`);
-	writeFileSync(
-		resolve(outputDir, "graph.cleaned.json"),
-		`${JSON.stringify(cleaned.cleanedGraph, null, 2)}\n`,
-	);
-	writeFileSync(resolve(outputDir, "GRAPH_REPORT.md"), report);
-	writeFileSync(resolve(outputDir, "graph.html"), renderGraphHtml(cleaned.cleanedGraph));
+	const written = clusterAndWrite(raw, cleaned.cleanedGraph, extraction.unresolved, outputDir);
 
 	const result: BuildResult = {
 		files: fileCount,
-		nodes: built.graph.nodes.length,
-		links: built.graph.links.length,
-		communities: built.communities.size,
+		nodes: raw.nodes.length,
+		...written,
 		outputDir,
 		cached: false,
 		parsedFiles: parseCache.parsedFiles,

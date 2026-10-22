@@ -18,6 +18,7 @@ import { cluster, cohesionScore } from "./cluster.ts";
 import { collectFiles, extract } from "./extract.ts";
 import { buildCodeGraph, buildCodeGraphProgress, createGraphParseCache } from "./pipeline.ts";
 import { query, shortestPath } from "./query.ts";
+import { boundaries, renderGraphReport } from "./report.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -30,6 +31,11 @@ function fixture(): string {
 	dirs.push(root);
 	mkdirSync(join(root, "packages/a/src"), { recursive: true });
 	mkdirSync(join(root, "packages/b/src"), { recursive: true });
+	writeFileSync(join(root, "packages/a/package.json"), '{"name":"@xynogen/a"}');
+	writeFileSync(
+		join(root, "packages/b/package.json"),
+		'{"name":"@xynogen/b","exports":{"./util":"./src/util.ts"}}',
+	);
 	writeFileSync(
 		join(root, "packages/b/src/util.ts"),
 		'export function greet(name: string) {\n\treturn "hi " + name;\n}\n',
@@ -50,22 +56,77 @@ function fixture(): string {
 	return root;
 }
 
+const GREET = "packages_b_src_util_ts_greet";
+
 describe("extract", () => {
-	test("emits file + entity nodes and a cross-file call edge", () => {
+	test("emits file + entity nodes and a resolved cross-package call edge", () => {
 		const root = fixture();
 		const { nodes, links } = extract(collectFiles(root), root);
 		const ids = new Set(nodes.map((n) => n.id));
-		expect(ids.has("src_util_greet")).toBe(true);
-		expect(ids.has("src_main_run")).toBe(true);
+		expect(ids.has(GREET)).toBe(true);
+		expect(ids.has("packages_a_src_main_ts_run")).toBe(true);
 
-		const call = links.find((l) => l.relation === "calls" && l.target === "src_util_greet");
-		expect(call).toBeDefined();
-		expect(call?.confidence).toBe("INFERRED");
-		expect(call?.source_file).toBe("packages/a/src/main.ts");
+		const call = links.find((l) => l.relation === "calls" && l.target === GREET);
+		expect(call).toMatchObject({
+			source: "packages_a_src_main_ts_run",
+			confidence: "EXTRACTED",
+			source_file: "packages/a/src/main.ts",
+			source_location: "L3",
+		});
+		expect(links.find((l) => l.relation === "imports")).toMatchObject({
+			source: "packages_a_src_main_ts",
+			target: "packages_b_src_util_ts",
+			source_location: "L1",
+		});
+		expect(nodes.find((n) => n.id === GREET)?.package).toBe("@xynogen/b");
+	});
 
-		// contains + imports are EXTRACTED
-		expect(links.some((l) => l.relation === "contains")).toBe(true);
-		expect(links.some((l) => l.relation === "imports")).toBe(true);
+	test("distinct file ids, re-exports, namespace calls, and unresolved internal imports", () => {
+		const root = mkdtempSync(join(tempDir(), "pix-graph-"));
+		dirs.push(root);
+		const put = (rel: string, body: string) => {
+			mkdirSync(join(root, rel, ".."), { recursive: true });
+			writeFileSync(join(root, rel), body);
+		};
+		put("packages/a/package.json", '{"name":"@x/a","exports":{".":"./src/index.ts"}}');
+		put("packages/b/package.json", '{"name":"@x/b","exports":{".":"./src/index.ts"}}');
+		put("packages/a/src/core.ts", "export function render() {}\nexport function it() {}\n");
+		put(
+			"packages/a/src/index.ts",
+			// `.js` spelled apart: the repo guard bans real `.js` relative imports, this one is test data.
+			`export { render as draw } from "./core${".js"}";\nexport * from "./core.ts";\n`,
+		);
+		put(
+			"packages/b/src/index.ts",
+			[
+				'import { draw } from "@x/a";',
+				'import * as a from "@x/a";',
+				'import { gone } from "./missing";',
+				"function it() {}",
+				"export function main() { draw(); a.it(); it(); gone(); }",
+			].join("\n"),
+		);
+		put("packages/b/src/other.ts", "export function render() {}\n");
+		const { nodes, links, unresolved } = extract(collectFiles(root), root);
+
+		const files = nodes.filter((n) => !n.source_location).map((n) => n.id);
+		expect(new Set(files).size).toBe(4);
+		expect(files).toContain("packages_a_src_index_ts");
+		expect(files).toContain("packages_b_src_index_ts");
+
+		const calls = links
+			.filter((l) => l.relation === "calls")
+			.map((l) => `${l.source} -> ${l.target}`)
+			.sort();
+		// `draw` follows the aliased re-export; `a.it` the star re-export. Local `it()` and the
+		// same-named `render` in b/other.ts never link across packages.
+		expect(calls).toEqual([
+			"packages_b_src_index_ts_main -> packages_a_src_core_ts_it",
+			"packages_b_src_index_ts_main -> packages_a_src_core_ts_render",
+		]);
+		expect(unresolved).toEqual([
+			{ source_file: "packages/b/src/index.ts", source_location: "L3", specifier: "./missing" },
+		]);
 	});
 
 	test("respects ignore files and scans un-ignored hidden dirs", () => {
@@ -154,6 +215,24 @@ describe("cluster", () => {
 		expect(cohesionScore(graph, ["a", "b", "c", "a"])).toBe(0.67);
 	});
 
+	test("ownership never glues communities; labels and boundaries are deterministic", () => {
+		const root = fixture();
+		const built = buildGraph(extract(collectFiles(root), root));
+		const of = (id: string) => built.graph.nodes.find((n) => n.id === id)?.community;
+		// Entities share their file's community; the isolated file stays alone.
+		expect(of("packages_a_src_main_ts_unused")).toBe(of("packages_a_src_main_ts"));
+		expect(of(GREET)).toBe(of("packages_a_src_main_ts"));
+		expect(of("packages_a_src_lonely_ts")).not.toBe(of("packages_a_src_main_ts"));
+		const main = of("packages_a_src_main_ts") as number;
+		expect(built.labels.get(main)).toMatch(/^@xynogen\/[ab] · (run|greet)\(\)$/);
+
+		const report = renderGraphReport({ ...built, gods: [], surprises: [] });
+		expect(report).toContain(
+			"- `@xynogen/a` → `@xynogen/b`: 1 imports, 1 calls — uses `greet()`\n  - at packages/a/src/main.ts:L1",
+		);
+		expect(boundaries(built.graph)).toHaveLength(1);
+	});
+
 	test("empty graph yields no communities", () => {
 		expect(cluster({ nodes: [], links: [] }).size).toBe(0);
 	});
@@ -167,7 +246,7 @@ describe("analyze", () => {
 		expect(gods.every((g) => !g.label.endsWith(".ts"))).toBe(true);
 
 		const surprises = surprisingConnections(graph, communities);
-		expect(surprises.some((s) => s.target === "src_util_greet")).toBe(true);
+		expect(surprises.some((s) => s.target === GREET)).toBe(true);
 	});
 });
 
@@ -176,11 +255,11 @@ describe("query", () => {
 		const root = fixture();
 		const { graph } = buildGraph(extract(collectFiles(root), root));
 		const hits = query(graph, "greet util", { maxDepth: 2 });
-		expect(hits.some((h) => h.node.id === "src_util_greet")).toBe(true);
+		expect(hits.some((h) => h.node.id === GREET)).toBe(true);
 
 		const path = shortestPath(graph, "run()", "greet()");
 		expect(path.length).toBeGreaterThanOrEqual(2);
-		expect(path.at(-1)?.id).toBe("src_util_greet");
+		expect(path.at(-1)?.id).toBe(GREET);
 	});
 });
 

@@ -22,7 +22,7 @@ const graph = {
 };
 
 describe("graphPageData", () => {
-	test("indexes nodes, keeps valid links, and names communities by folder, largest first", () => {
+	test("indexes nodes, keeps valid links, and names communities by place + hub, largest first", () => {
 		expect(graphPageData(graph)).toEqual({
 			rels: ["calls", "imports"],
 			nodes: [
@@ -35,8 +35,8 @@ describe("graphPageData", () => {
 				[1, 2, 1, 1],
 			],
 			groups: [
-				["pkg/src #0", 2],
-				["other/lib #1", 1],
+				["pkg/src · </script><b>x #0", 2],
+				["other/lib · c #1", 1],
 			],
 		});
 	});

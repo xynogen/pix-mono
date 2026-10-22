@@ -88,7 +88,7 @@ test("captures actual graph calls, progress, trees and terminal result states", 
 			},
 		};
 		await result("tree", "raw query content", query);
-		await result("empty", "No matching nodes in the graph.", {
+		await result("empty", "No graph node name matches: authenticate. Query is lexical", {
 			...query,
 			query: { ...query.query, traversal: "dfs", hits: [] },
 		});

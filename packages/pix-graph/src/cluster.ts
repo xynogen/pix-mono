@@ -11,18 +11,38 @@ function byText(a: string, b: string): number {
 	return a > b ? 1 : 0;
 }
 
-/** Undirected adjacency with edge weights (parallel edges accumulate). */
-function adjacency(graph: GraphData): Map<string, Map<string, number>> {
-	const adj = new Map<string, Map<string, number>>();
-	for (const node of graph.nodes) adj.set(node.id, new Map<string, number>());
+/** Ownership edges: hierarchy, not dependency. They never feed clustering. */
+const HIERARCHY = new Set(["contains"]);
+
+/** Each node's owner: the source of its `contains` edge, or itself. */
+function owners(graph: GraphData): Map<string, string> {
+	const owner = new Map(graph.nodes.map((n) => [n.id, n.id]));
 	for (const link of graph.links) {
-		if (link.source === link.target) continue;
-		const a = adj.get(link.source);
-		const b = adj.get(link.target);
+		if (HIERARCHY.has(link.relation) && owner.has(link.target) && owner.has(link.source)) {
+			owner.set(link.target, link.source);
+		}
+	}
+	return owner;
+}
+
+/**
+ * Undirected weighted adjacency of the dependency projection: every non-hierarchy
+ * edge is lifted onto its endpoints' owners (entity -> file), parallel edges accumulate.
+ */
+function adjacency(graph: GraphData, owner: Map<string, string>): Map<string, Map<string, number>> {
+	const adj = new Map<string, Map<string, number>>();
+	for (const id of new Set(owner.values())) adj.set(id, new Map<string, number>());
+	for (const link of graph.links) {
+		if (HIERARCHY.has(link.relation)) continue;
+		const s = owner.get(link.source);
+		const t = owner.get(link.target);
+		if (!s || !t || s === t) continue;
+		const a = adj.get(s);
+		const b = adj.get(t);
 		if (!a || !b) continue;
 		const w = typeof link.weight === "number" ? link.weight : 1;
-		a.set(link.target, (a.get(link.target) ?? 0) + w);
-		b.set(link.source, (b.get(link.source) ?? 0) + w);
+		a.set(t, (a.get(t) ?? 0) + w);
+		b.set(s, (b.get(s) ?? 0) + w);
 	}
 	return adj;
 }
@@ -95,29 +115,27 @@ function louvain(nodeIds: string[], adj: Map<string, Map<string, number>>): stri
 }
 
 /**
- * Community detection with oversized-community splitting.
- * Isolates (degree 0) each become their own community. Communities larger than
- * 25% of the graph (min 10 nodes) get a second Louvain pass. Result is indexed
- * by size descending so id 0 is always the largest — stable across runs.
+ * Community detection over the dependency projection, with oversized-community splitting.
+ * Files (owners) are clustered on imports/calls; every owned entity joins its owner's
+ * community, so ownership never glues groups together. Isolated owners each become their
+ * own community. Communities larger than 25% of the graph (min 10 owners) get a second
+ * Louvain pass. Result is indexed by size descending so id 0 is always the largest.
  */
 export function cluster(graph: GraphData): Communities {
 	if (graph.nodes.length === 0) return new Map();
-	const adj = adjacency(graph);
-	if (graph.links.length === 0) {
-		const sorted = [...graph.nodes].sort((a, b) => byText(a.id, b.id));
-		return new Map(sorted.map((n, i) => [i, [n.id]]));
-	}
+	const owner = owners(graph);
+	const adj = adjacency(graph, owner);
 
 	const isolates: string[] = [];
 	const connected: string[] = [];
-	for (const node of graph.nodes) {
-		if ((adj.get(node.id)?.size ?? 0) === 0) isolates.push(node.id);
-		else connected.push(node.id);
+	for (const id of [...adj.keys()].sort(byText)) {
+		if ((adj.get(id)?.size ?? 0) === 0) isolates.push(id);
+		else connected.push(id);
 	}
 
 	const raw = [...louvain(connected, adj), ...isolates.map((id) => [id])];
 
-	const maxSize = Math.max(MIN_SPLIT_SIZE, Math.floor(graph.nodes.length * MAX_COMMUNITY_FRACTION));
+	const maxSize = Math.max(MIN_SPLIT_SIZE, Math.floor(adj.size * MAX_COMMUNITY_FRACTION));
 	const final: string[][] = [];
 	for (const members of raw) {
 		if (members.length > maxSize) {
@@ -129,8 +147,52 @@ export function cluster(graph: GraphData): Communities {
 		}
 	}
 
-	final.sort((a, b) => b.length - a.length || byText(a[0] ?? "", b[0] ?? ""));
-	return new Map(final.map((members, i) => [i, [...members].sort(byText)]));
+	// Expand owners to every node they own.
+	const owned = new Map<string, string[]>();
+	for (const [id, o] of owner) owned.set(o, [...(owned.get(o) ?? []), id]);
+	const expanded = final.map((members) => members.flatMap((m) => owned.get(m) ?? [m]));
+	expanded.sort(
+		(a, b) => b.length - a.length || byText(a.sort(byText)[0] ?? "", b.sort(byText)[0] ?? ""),
+	);
+	return new Map(expanded.map((members, i) => [i, [...members].sort(byText)]));
+}
+
+/**
+ * Deterministic community names: dominant package (or folder) plus the most-connected
+ * entity, e.g. `@xynogen/pix-graph · extract()`. Reads `node.community` stamps.
+ */
+export function communityLabels(graph: GraphData): Map<number, string> {
+	const degree = new Map<string, number>();
+	for (const l of graph.links) {
+		if (HIERARCHY.has(l.relation)) continue;
+		degree.set(l.source, (degree.get(l.source) ?? 0) + 1);
+		degree.set(l.target, (degree.get(l.target) ?? 0) + 1);
+	}
+	const groups = new Map<number, GraphNode[]>();
+	for (const n of graph.nodes) {
+		if (n.community === undefined) continue;
+		groups.set(n.community, [...(groups.get(n.community) ?? []), n]);
+	}
+	const labels = new Map<number, string>();
+	for (const [id, members] of groups) {
+		const counts = new Map<string, number>();
+		for (const n of members) {
+			const file = n.source_file ?? "";
+			const where =
+				typeof n.package === "string" ? n.package : file.split("/").slice(-3, -1).join("/") || file;
+			if (where) counts.set(where, (counts.get(where) ?? 0) + 1);
+		}
+		const place = [...counts].sort((a, b) => b[1] - a[1] || byText(a[0], b[0]))[0]?.[0];
+		const hub = [...members].sort(
+			(a, b) =>
+				// Entities carry a source_location; file nodes do not. Name the group after an entity.
+				Number(!a.source_location) - Number(!b.source_location) ||
+				(degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) ||
+				byText(a.id, b.id),
+		)[0];
+		labels.set(id, [place, hub?.label].filter(Boolean).join(" · ") || `Community ${id}`);
+	}
+	return labels;
 }
 
 /** Ratio of actual intra-community edges to the maximum possible. */

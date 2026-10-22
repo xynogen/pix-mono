@@ -90,7 +90,12 @@ export function surprisingConnections(
 		const conf = link.confidence ?? "EXTRACTED";
 		score += CONFIDENCE_WEIGHT[conf] ?? 1;
 		if (conf !== "EXTRACTED") why.push(`${conf.toLowerCase()} connection — not explicit in source`);
-		if (topDir(uf) !== topDir(vf)) {
+		if (typeof u.package === "string" && typeof v.package === "string") {
+			if (u.package !== v.package) {
+				score += 2;
+				why.push(`crosses packages ${u.package} → ${v.package}`);
+			}
+		} else if (topDir(uf) !== topDir(vf)) {
 			score += 2;
 			why.push("connects across different directories");
 		}

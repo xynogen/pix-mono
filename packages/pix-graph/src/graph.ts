@@ -34,9 +34,17 @@ import { projectDir } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
 import type { GraphData } from "./analyzer.ts";
 import { renderGraphHtml } from "./html.ts";
+import {
+	estimateTokens,
+	globalQuery,
+	loadSummaries,
+	moduleCards,
+	staleCards,
+	storeSummary,
+} from "./modules.ts";
 import { createGraphParseCache } from "./parse-cache.ts";
 import type { BuildProgress } from "./pipeline.ts";
-import { query as queryGraph } from "./query.ts";
+import { query as queryGraph, tokenize } from "./query.ts";
 
 const OUT_DIR = `${projectDir()}/graph`; // "/" so prompt text reads the same on Windows
 // Also read graphs left by the CLI's old default / external graphify.
@@ -59,7 +67,7 @@ interface QueryHitRow {
 
 interface GraphResultDetails {
 	_type: "graphResult";
-	action: "build" | "query";
+	action: "build" | "query" | "summarize";
 	outcome: "success" | "error" | "running";
 	/** Set while a build is in flight, for the progress-bar render. */
 	progress?: BuildProgress;
@@ -188,31 +196,53 @@ export default function registerGraph(pi: ExtensionAPI): void {
 			label: "Graph",
 			renderShell: "self",
 			description:
-				"Code knowledge graph (TS/JS). action=build extracts+clusters the codebase into " +
-				`${OUT_DIR}/graph.json (also use to update after edits). action=query answers a ` +
-				"codebase question by traversing an existing graph — prefer it over grepping for " +
-				'"how does X work", "what calls Y", "trace Z".',
+				"Code knowledge graph (TS/JS only). action=build extracts+clusters the codebase into " +
+				`${OUT_DIR}/graph.json (also use to update after edits). action=query is a lexical ` +
+				"search (not semantic): it matches keywords against symbol/file names, then walks " +
+				'their neighbors. Pass identifiers or name fragments ("authenticate token"), not prose. ' +
+				'scope:"global" ranks whole modules (packages) with their summary, entry files, APIs and ' +
+				"dependencies, for architecture questions. action=summarize lists modules whose summary " +
+				"is missing or stale with their evidence; call it again with module+summary to store one.",
 			promptSnippet:
-				'graph(action, path?, question?, dfs?) — action: build|query. build [path=.] (re)builds the graph; query "<question>" traverses it.',
+				'graph(action, path?, question?, scope?, dfs?, module?, summary?) — build|query|summarize. query "<keywords>" matches names and traverses; scope:"global" ranks modules for architecture questions.',
 			promptGuidelines: [
-				`For codebase questions, if ${OUT_DIR}/graph.json exists, call graph(action:"query", question) before reading files.`,
+				`To locate TS/JS code, if ${OUT_DIR}/graph.json exists, call graph(action:"query", question:"<identifier keywords>") before reading files. It matches names, not meaning; on no match, fall back to grep.`,
 				'After changing code, graph(action:"build") refreshes the graph so later queries stay accurate.',
 			],
 			parameters: Type.Object({
-				action: Type.Enum(["build", "query"] as const, {
+				action: Type.Enum(["build", "query", "summarize"] as const, {
 					type: "string",
 					description:
-						'"build" (re)builds/updates the graph from source; "query" answers a question from the existing graph.',
+						'"build" (re)builds the graph; "query" answers from it; "summarize" lists or stores module summaries.',
 				}),
 				path: Type.Optional(
 					Type.String({ description: "build: directory or file to scan (default: current dir)." }),
 				),
 				question: Type.Optional(
-					Type.String({ description: "query: natural-language question about the codebase." }),
+					Type.String({
+						description:
+							"query: keywords matched against symbol/file names (e.g. 'exportStl mesh').",
+					}),
+				),
+				scope: Type.Optional(
+					Type.Enum(["local", "global"] as const, {
+						type: "string",
+						description:
+							'query: "local" (default) walks symbols; "global" ranks modules for architecture questions.',
+					}),
 				),
 				dfs: Type.Optional(
 					Type.Boolean({
 						description: "query: depth-first (trace a specific path) instead of breadth-first.",
+					}),
+				),
+				module: Type.Optional(
+					Type.String({ description: "summarize: module name to store a summary for." }),
+				),
+				summary: Type.Optional(
+					Type.String({
+						description:
+							"summarize: 2-5 sentences grounded in the module's evidence card (purpose, entry points, key APIs, dependencies).",
 					}),
 				),
 			}),
@@ -221,12 +251,23 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				const t = theme as Theme;
 				if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 					return new Text("", 0, 0);
-				const a = args as { action?: string; question?: string; path?: string; dfs?: boolean };
+				const a = args as {
+					action?: string;
+					question?: string;
+					path?: string;
+					dfs?: boolean;
+					scope?: string;
+					module?: string;
+				};
 				const title = formatToolCallTitle(t, "graph", context);
 				if (a.action === "query") {
-					const trav = a.dfs ? "dfs" : "bfs";
+					const trav = a.scope === "global" ? "global" : a.dfs ? "dfs" : "bfs";
 					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
 					return new Text(`${title} ${t.fg("muted", `query · ${trav}`)} ${q}`, 0, 0);
+				}
+				if (a.action === "summarize") {
+					const target = a.module ? ` ${t.fg("dim", a.module)}` : "";
+					return new Text(`${title} ${t.fg("dim", "summarize")}${target}`, 0, 0);
 				}
 				const target = a.path ? t.fg("dim", a.path) : t.fg("dim", ".");
 				return new Text(`${title} ${t.fg("dim", "build")} ${target}`, 0, 0);
@@ -278,8 +319,8 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				return frameToolResult(component, theme, isError);
 			},
 
-			async execute(_id, params, signal, onUpdate) {
-				const action = params.action as "build" | "query";
+			async execute(_id, params, signal, onUpdate, ctx) {
+				const action = params.action as "build" | "query" | "summarize";
 				const details = (outcome: "success" | "error"): GraphResultDetails => ({
 					_type: "graphResult",
 					action,
@@ -345,14 +386,72 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					}
 				}
 
-				// action === "query"
-				const question = (params.question as string | undefined)?.trim();
-				if (!question) return fail('query requires a "question".');
 				const graph = loadGraph(cwd);
 				if (!graph) {
 					return fail(
 						`No graph found. Run graph(action:"build") first to create ${OUT_DIR}/graph.json.`,
 					);
+				}
+				const summariesPath = join(cwd, OUT_DIR, "summaries.json");
+
+				if (action === "summarize") {
+					const cards = moduleCards(graph);
+					const stored = loadSummaries(summariesPath);
+					const name = (params.module as string | undefined)?.trim();
+					const text = params.summary as string | undefined;
+					if (name || text !== undefined) {
+						if (!name || text === undefined)
+							return fail("summarize needs both module and summary.");
+						const card = cards.find((c) => c.module === name);
+						if (!card) return fail(`Unknown module: ${name}.`);
+						// The summary was written by the session model; stamp it so provenance stays visible.
+						const model = ctx?.model ? `${ctx.model.provider}/${ctx.model.id}` : "unknown";
+						const saved = storeSummary(summariesPath, card, text, model);
+						if (typeof saved === "string") return fail(`Summary rejected: ${saved}`);
+						const left = staleCards(cards, loadSummaries(summariesPath)).length;
+						return ok(
+							`Stored summary for ${card.module} (model ${model}, evidence ${card.hash}) → ${OUT_DIR}/summaries.json. ${left} module(s) still missing or stale.`,
+						);
+					}
+					const stale = staleCards(cards, stored);
+					if (stale.length === 0) {
+						return ok(`All ${cards.length} module summaries are current. Nothing to write.`);
+					}
+					// Bounded work list: the agent summarizes a few modules per call and comes back.
+					const batch = stale.slice(0, 5);
+					const tokens = batch.reduce((n, c) => n + estimateTokens(c.text), 0);
+					return ok(
+						[
+							`${stale.length} of ${cards.length} module summaries missing or stale. Showing ${batch.length} evidence card(s), ~${tokens} tokens.`,
+							`For each, call graph(action:"summarize", module, summary) with 2-5 sentences grounded only in its card.`,
+							...batch.map((c) => `\n${c.text}`),
+						].join("\n"),
+					);
+				}
+
+				// action === "query"
+				const question = (params.question as string | undefined)?.trim();
+				if (!question) return fail('query requires a "question".');
+				if (params.scope === "global") {
+					const cards = moduleCards(graph);
+					const hits = globalQuery(cards, loadSummaries(summariesPath), question);
+					if (hits.length === 0) {
+						return ok(
+							`No module matches: ${tokenize(question).join(", ") || "(no keywords)"}. ${cards.length} modules in the graph.`,
+						);
+					}
+					const missing = hits.filter((h) => h.stale).length;
+					const blocks = hits.map((h) => {
+						const said = h.summary
+							? `summary${h.stale ? " (stale)" : ""} [${h.summary.model}]: ${h.summary.summary}`
+							: "summary: none";
+						return `${said}\n${h.card.text}`;
+					});
+					const hint =
+						missing > 0
+							? `\n\n${missing} module(s) above lack a current summary. graph(action:"summarize") lists them.`
+							: "";
+					return ok(`${blocks.join("\n\n")}${hint}`);
 				}
 				const traversal = params.dfs ? "dfs" : "bfs";
 				const hits = queryGraph(graph, question, { mode: traversal });
@@ -368,7 +467,10 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					const where = h.where ? ` — ${h.where}` : "";
 					return `${"  ".repeat(h.depth)}${h.label}${via}${where}`;
 				});
-				const text = rows.length === 0 ? "No matching nodes in the graph." : plainRows.join("\n");
+				const text =
+					rows.length === 0
+						? `No graph node name matches: ${tokenize(question).join(", ") || "(no keywords)"}. Query is lexical over TS/JS symbol/file names; retry with identifiers or use grep.`
+						: plainRows.join("\n");
 				return {
 					content: [{ type: "text" as const, text }],
 					details: {

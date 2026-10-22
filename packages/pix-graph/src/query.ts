@@ -65,7 +65,7 @@ const STOP_WORDS = new Set([
 	"you",
 ]);
 
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
 	return text
 		.toLowerCase()
 		.split(/[^a-z0-9]+/)
@@ -101,7 +101,7 @@ function seedScore(node: GraphNode, terms: string[]): number {
 }
 
 /** True if two words share a ≥4-char prefix (loose stemming for inflections). */
-function sharePrefix(a: string, b: string): boolean {
+export function sharePrefix(a: string, b: string): boolean {
 	const n = Math.min(a.length, b.length);
 	if (n < 4) return false;
 	let i = 0;
@@ -110,7 +110,7 @@ function sharePrefix(a: string, b: string): boolean {
 }
 
 /**
- * Answer a natural-language question by traversing the graph from the
+ * Lexical query: match keywords against node names, then traverse from the
  * best-matching seed nodes. BFS gives broad neighborhood context (default);
  * DFS traces a specific path. Returns ranked hits — the caller narrates them.
  * ponytail: lexical seed match, no embeddings. Upgrade path: rank seeds with a

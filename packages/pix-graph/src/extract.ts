@@ -4,6 +4,7 @@ import { runToolSync } from "@xynogen/pix-runtime/exec";
 import ts from "typescript";
 import type { GraphLink, GraphNode } from "./analyzer.ts";
 import { createGraphParseCache, type GraphParseCache } from "./parse-cache.ts";
+import { createResolver } from "./resolve.ts";
 
 export { createGraphParseCache, type GraphParseCache };
 
@@ -20,6 +21,8 @@ function byText(a: string, b: string): number {
 }
 
 const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
+// Generated bundles are one huge file of vendored code; they glue unrelated clusters together.
+const GENERATED_GLOBS = ["*.bundle.js", "*.min.js", "*.min.mjs", "*.d.ts"];
 
 /** Slugify a path fragment to the `[a-z0-9_]` node-id alphabet. */
 function slug(text: string): string {
@@ -29,12 +32,9 @@ function slug(text: string): string {
 		.replace(/^_+|_+$/g, "");
 }
 
-/** File node id: `{parent_dir}_{stem}`; top-level files collapse to the bare stem. */
+/** File node id: the slugged repo-relative path, so `a/src/index.ts` and `b/src/index.ts` differ. */
 function fileNodeId(relPath: string): string {
-	const parts = relPath.split("/");
-	const stem = basename(parts.at(-1) ?? relPath, extname(relPath));
-	const parent = parts.length >= 2 ? parts.at(-2) : undefined;
-	return slug(parent ? `${parent}_${stem}` : stem);
+	return slug(relPath);
 }
 
 /** Entity node id: file id plus the entity name. */
@@ -52,6 +52,7 @@ export function collectFiles(root: string): string[] {
 	// --no-config: RIPGREP_CONFIG_PATH must not change which files the graph sees (pi #11203).
 	const args = ["--no-config", "--files", "--hidden", "--no-require-git", "--glob", "!.git"];
 	for (const ext of CODE_EXTENSIONS) args.push("--glob", `*${ext}`);
+	for (const glob of GENERATED_GLOBS) args.push("--glob", `!${glob}`);
 	if (existsSync(join(root, ".dockerignore"))) args.push("--ignore-file", ".dockerignore");
 	const r = runToolSync("rg", args, { cwd: root, timeoutMs: 30_000 });
 	// rg exits 1 when no file matches.
@@ -86,13 +87,6 @@ function declName(node: ts.Node): { name: string; label: string } | undefined {
 			return { name: decl.name.text, label: isFn ? `${decl.name.text}()` : decl.name.text };
 		}
 	}
-	return undefined;
-}
-
-/** Called identifier/member name for a call expression. */
-function callName(expr: ts.LeftHandSideExpression): string | undefined {
-	if (ts.isIdentifier(expr)) return expr.text;
-	if (ts.isPropertyAccessExpression(expr)) return expr.name.text;
 	return undefined;
 }
 
@@ -163,50 +157,141 @@ export async function parseFilesProgress(
 	return parsed;
 }
 
+/** Where a name exported by a file really lives: a declared entity or a re-export. */
+interface FileExports {
+	/** Exported/declared name -> entity node id in this file. */
+	declared: Map<string, string>;
+	/** `export { a as b } from "./x"` -> b -> { file: x, name: a }. */
+	named: Map<string, { file: string; name: string }>;
+	/** `export * from "./x"` targets. */
+	star: string[];
+}
+
+/** One import specifier that should resolve inside the repo but does not. */
+export interface UnresolvedImport {
+	source_file: string;
+	source_location: string;
+	specifier: string;
+}
+
 /**
  * Extract a deterministic structural graph from TS/JS source files.
- * Produces file + entity nodes, `contains`/`imports` (EXTRACTED) and
- * cross-file `calls` (INFERRED) edges. Call edges are intentionally loose —
- * the analyzer validates them against real bindings and drops the false ones.
+ * Produces file + entity nodes, `contains` (ownership), file→file `imports`, and
+ * `calls` edges from the enclosing declaration to the imported entity. Imports resolve
+ * relative paths and workspace packages (`package.json` name + exports). Calls resolve
+ * only through import bindings (named, default-free, namespace `ns.fn()`), following
+ * `export … from` re-exports, so a common name like `it` or `render` never links
+ * unrelated packages.
  * ponytail: TS/JS only. Other languages need a tree-sitter extractor (not built).
  *
  * Accepts either file paths (parsed here) or a pre-parsed list from
  * {@link parseFilesProgress} so a caller can parse incrementally with yields.
  */
-export function extract(files: string[] | ParsedFile[], repoRoot: string): Extraction {
+export function extract(
+	files: string[] | ParsedFile[],
+	repoRoot: string,
+): Extraction & { unresolved: UnresolvedImport[] } {
 	const nodes: GraphNode[] = [];
 	const links: GraphLink[] = [];
-	// name -> node ids that declare it (for cross-file call inference)
-	const declByName = new Map<string, string[]>();
+	const unresolved: UnresolvedImport[] = [];
 	const seen = new Set<string>();
 
 	const parsed: ParsedFile[] =
 		typeof files[0] === "string" || files.length === 0
 			? (files as string[]).map((file) => parseFile(file, repoRoot))
 			: (files as ParsedFile[]);
+	const resolver = createResolver(
+		parsed.map((p) => p.rel),
+		repoRoot,
+	);
+	const fileIdByRel = new Map(parsed.map((p) => [p.rel, p.fileId]));
+	const exportsByRel = new Map<string, FileExports>();
+	// Per file: local binding -> imported module file + imported name ("*" = namespace).
+	const bindingsByRel = new Map<string, Map<string, { file: string; name: string }>>();
 
-	// Pass 1: file + entity nodes, contains + imports edges.
+	const resolveSpec = (rel: string, source: ts.SourceFile, at: ts.Node, spec: string) => {
+		const target = resolver.resolve(rel, spec);
+		// Relative and workspace-package specifiers should resolve; npm/node modules need not.
+		if (!target && (spec.startsWith(".") || resolver.isWorkspace(spec))) {
+			unresolved.push({ source_file: rel, source_location: line(source, at), specifier: spec });
+		}
+		return target;
+	};
+	const importEdges = new Set<string>();
+	const addImport = (rel: string, source: ts.SourceFile, at: ts.Node, target: string) => {
+		const targetId = fileIdByRel.get(target);
+		const fromId = fileIdByRel.get(rel);
+		if (!targetId || !fromId || targetId === fromId || importEdges.has(`${fromId}\0${targetId}`))
+			return;
+		importEdges.add(`${fromId}\0${targetId}`);
+		links.push({
+			source: fromId,
+			target: targetId,
+			relation: "imports",
+			confidence: "EXTRACTED",
+			confidence_score: 1,
+			source_file: rel,
+			source_location: line(source, at),
+		});
+	};
+
+	// Pass 1: file + entity nodes, contains edges, import bindings, export tables.
 	for (const { rel, source, fileId } of parsed) {
+		const pkg = resolver.packageOf(rel);
 		if (!seen.has(fileId)) {
 			seen.add(fileId);
-			nodes.push({ id: fileId, label: basename(rel), file_type: "code", source_file: rel });
+			nodes.push({
+				id: fileId,
+				label: basename(rel),
+				file_type: "code",
+				source_file: rel,
+				...(pkg ? { package: pkg } : {}),
+			});
 		}
+		const table: FileExports = { declared: new Map(), named: new Map(), star: [] };
+		const bindings = new Map<string, { file: string; name: string }>();
+		exportsByRel.set(rel, table);
+		bindingsByRel.set(rel, bindings);
 		for (const stmt of source.statements) {
 			if (ts.isImportDeclaration(stmt) && ts.isStringLiteral(stmt.moduleSpecifier)) {
-				links.push({
-					source: fileId,
-					target: stmt.moduleSpecifier.text,
-					relation: "imports",
-					confidence: "EXTRACTED",
-					confidence_score: 1,
-					source_file: rel,
-					source_location: line(source, stmt),
-				});
+				const target = resolveSpec(rel, source, stmt, stmt.moduleSpecifier.text);
+				if (!target) continue;
+				if (!stmt.importClause?.isTypeOnly) addImport(rel, source, stmt, target);
+				const clause = stmt.importClause;
+				const named = clause?.namedBindings;
+				if (named && ts.isNamespaceImport(named)) {
+					bindings.set(named.name.text, { file: target, name: "*" });
+				} else if (named) {
+					for (const el of named.elements) {
+						bindings.set(el.name.text, { file: target, name: (el.propertyName ?? el.name).text });
+					}
+				}
+				continue;
+			}
+			if (
+				ts.isExportDeclaration(stmt) &&
+				stmt.moduleSpecifier &&
+				ts.isStringLiteral(stmt.moduleSpecifier)
+			) {
+				const target = resolveSpec(rel, source, stmt, stmt.moduleSpecifier.text);
+				if (!target) continue;
+				if (!stmt.isTypeOnly) addImport(rel, source, stmt, target);
+				const clause = stmt.exportClause;
+				if (!clause) table.star.push(target);
+				else if (ts.isNamedExports(clause)) {
+					for (const el of clause.elements) {
+						table.named.set(el.name.text, {
+							file: target,
+							name: (el.propertyName ?? el.name).text,
+						});
+					}
+				}
 				continue;
 			}
 			const decl = declName(stmt);
 			if (!decl) continue;
 			const id = entityNodeId(fileId, decl.name);
+			table.declared.set(decl.name, id);
 			if (!seen.has(id)) {
 				seen.add(id);
 				nodes.push({
@@ -215,6 +300,7 @@ export function extract(files: string[] | ParsedFile[], repoRoot: string): Extra
 					file_type: "code",
 					source_file: rel,
 					source_location: line(source, stmt),
+					...(pkg ? { package: pkg } : {}),
 				});
 			}
 			links.push({
@@ -226,51 +312,76 @@ export function extract(files: string[] | ParsedFile[], repoRoot: string): Extra
 				source_file: rel,
 				source_location: line(source, stmt),
 			});
-			const bare = decl.label.replace(/\(\)$/, "");
-			declByName.set(bare, [...(declByName.get(bare) ?? []), id]);
 		}
 	}
 
-	// Pass 2: cross-file call edges (INFERRED — validated later by the analyzer).
-	const nodeById = new Map(nodes.map((n) => [n.id, n]));
-	for (const { rel, source, fileId } of parsed) {
-		const localNames = new Set<string>();
-		for (const n of nodes) {
-			if (n.source_file === rel) localNames.add(n.label.replace(/\(\)$/, ""));
+	/** Entity id for `name` exported by `file`, following re-exports (cycle-safe). */
+	const resolveExport = (file: string, name: string, depth = 0): string | undefined => {
+		const table = exportsByRel.get(file);
+		if (!table || depth > 8) return undefined;
+		const own = table.declared.get(name);
+		if (own) return own;
+		const hop = table.named.get(name);
+		if (hop) return resolveExport(hop.file, hop.name, depth + 1);
+		for (const star of table.star) {
+			const hit = resolveExport(star, name, depth + 1);
+			if (hit) return hit;
 		}
+		return undefined;
+	};
+
+	// Pass 2: calls from the enclosing top-level declaration (or the file) to imported entities.
+	for (const { rel, source, fileId } of parsed) {
+		const bindings = bindingsByRel.get(rel);
+		if (!bindings || bindings.size === 0) continue;
 		const emitted = new Set<string>();
-		const visit = (node: ts.Node): void => {
-			if (ts.isCallExpression(node)) {
-				const name = callName(node.expression);
-				const targets = name ? declByName.get(name) : undefined;
-				if (name && targets) {
-					for (const target of targets) {
-						const targetNode = nodeById.get(target);
-						// Only cross-file, and skip names also declared locally (ambiguous).
-						if (
-							targetNode &&
-							targetNode.source_file !== rel &&
-							!localNames.has(name) &&
-							!emitted.has(`${target}:${line(source, node)}`)
-						) {
-							emitted.add(`${target}:${line(source, node)}`);
-							links.push({
-								source: fileId,
-								target,
-								relation: "calls",
-								confidence: "INFERRED",
-								confidence_score: 0.75,
-								source_file: rel,
-								source_location: line(source, node),
-							});
-						}
+		const callee = (expr: ts.LeftHandSideExpression): string | undefined => {
+			if (ts.isIdentifier(expr)) {
+				const b = bindings.get(expr.text);
+				return b && b.name !== "*" ? resolveExport(b.file, b.name) : undefined;
+			}
+			if (ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.expression)) {
+				const b = bindings.get(expr.expression.text);
+				return b?.name === "*" ? resolveExport(b.file, expr.name.text) : undefined;
+			}
+			return undefined;
+		};
+		for (const stmt of source.statements) {
+			if (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) continue;
+			const decl = declName(stmt);
+			const from = decl ? entityNodeId(fileId, decl.name) : fileId;
+			const visit = (node: ts.Node): void => {
+				if (ts.isCallExpression(node)) {
+					// `await import("./x.ts")` is a lazy dependency; keep it as a file import.
+					const [arg] = node.arguments;
+					if (
+						node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+						arg &&
+						ts.isStringLiteral(arg)
+					) {
+						const target = resolveSpec(rel, source, node, arg.text);
+						if (target) addImport(rel, source, node, target);
+					}
+					const target = callee(node.expression);
+					const key = `${from}\0${target}`;
+					if (target && target !== from && !emitted.has(key)) {
+						emitted.add(key);
+						links.push({
+							source: from,
+							target,
+							relation: "calls",
+							confidence: "EXTRACTED",
+							confidence_score: 1,
+							source_file: rel,
+							source_location: line(source, node),
+						});
 					}
 				}
-			}
-			ts.forEachChild(node, visit);
-		};
-		visit(source);
+				ts.forEachChild(node, visit);
+			};
+			visit(stmt);
+		}
 	}
 
-	return { nodes, links };
+	return { nodes, links, unresolved };
 }

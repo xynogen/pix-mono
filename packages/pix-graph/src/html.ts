@@ -1,4 +1,5 @@
 import type { GraphData } from "./analyzer.ts";
+import { communityLabels } from "./cluster.ts";
 
 // ponytail: d3 loads from a CDN, like graphify. The page needs network the first time.
 // Vendor the file next to graph.html if you need offline viewing.
@@ -24,19 +25,6 @@ function inlineJson(value: unknown): string {
 		.replace(/\u2028|\u2029/g, " ");
 }
 
-/** Name a community after the folder most of its members live in, e.g. `pix-graph/src`. */
-function groupName(files: string[], fallback: string): string {
-	const counts = new Map<string, number>();
-	for (const f of files) {
-		const dir = f.split("/").slice(-3, -1).join("/") || f;
-		counts.set(dir, (counts.get(dir) ?? 0) + 1);
-	}
-	let best = fallback;
-	let max = 0;
-	for (const [dir, n] of counts) if (n > max) [best, max] = [dir, n];
-	return best;
-}
-
 /** Reduce a graph to the compact page payload. Drops self-loops and dangling links. */
 export function graphPageData(graph: GraphData): GraphPageData {
 	const byCommunity = new Map<number, number[]>();
@@ -48,10 +36,10 @@ export function graphPageData(graph: GraphData): GraphPageData {
 	});
 	const ordered = [...byCommunity].sort((a, b) => b[1].length - a[1].length);
 	const groupOf = new Map<number, number>();
+	const labels = communityLabels(graph);
 	const groups: [string, number][] = ordered.map(([c, members], gi) => {
 		for (const i of members) groupOf.set(i, gi);
-		const files = members.map((i) => graph.nodes[i]?.source_file).filter((f): f is string => !!f);
-		return [`${groupName(files, `community ${c}`)} #${gi}`, members.length];
+		return [`${labels.get(c) ?? `community ${c}`} #${gi}`, members.length];
 	});
 
 	const index = new Map(graph.nodes.map((n, i) => [n.id, i]));

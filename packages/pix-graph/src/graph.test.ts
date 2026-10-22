@@ -82,11 +82,17 @@ function fixture(): string {
 
 /** Register + execute with cwd pointed at the fixture (the tool binds cwd at
  * registration time, so chdir must happen before capture). */
-async function run(params: Record<string, unknown>, cwd: string) {
+async function run(params: Record<string, unknown>, cwd: string, ctx?: unknown) {
 	const prev = process.cwd();
 	process.chdir(cwd);
 	try {
-		return await capture()("t", params);
+		return await (capture() as (...a: unknown[]) => ReturnType<ExecuteFn>)(
+			"t",
+			params,
+			undefined,
+			undefined,
+			ctx,
+		);
 	} finally {
 		process.chdir(prev);
 	}
@@ -220,6 +226,52 @@ describe("graph tool", () => {
 		const res = await run({ action: "query", question: "how does greet work" }, root);
 		const hits = (res.details as { query?: { hits: Array<{ label: string }> } }).query?.hits ?? [];
 		expect(hits.some((h) => h.label.includes("greet"))).toBe(true);
+	});
+
+	test("summarize lists stale modules, stores grounded summaries, then has no work left", async () => {
+		const root = fixture();
+		await run({ action: "build" }, root);
+		const text = async (p: Record<string, unknown>, ctx?: unknown) =>
+			(await run(p, root, ctx)).content.map((c) => c.text).join("");
+
+		const list = await text({ action: "summarize" });
+		expect(list).toMatch(
+			/^1 of 1 module summaries missing or stale\. Showing 1 evidence card\(s\), ~\d+ tokens\./,
+		);
+		expect(list).toContain("module src — 2 files (+0 tests), 2 symbols");
+		expect(list).toContain("entry files: src/main.ts");
+
+		const rejected = await run(
+			{ action: "summarize", module: "src", summary: "Does things." },
+			root,
+		);
+		expect(rejected.isError).toBe(true);
+		expect(rejected.content[0]?.text).toMatch(/^Summary rejected: summary cites nothing/);
+
+		const model = { model: { provider: "p", id: "m" } };
+		const stored = await text(
+			{ action: "summarize", module: "src", summary: "src greets: main.ts calls greet()." },
+			model,
+		);
+		expect(stored).toMatch(
+			/^Stored summary for src \(model p\/m, evidence [0-9a-f]{16}\).* 0 module\(s\) still/,
+		);
+
+		// Unchanged rerun: zero modules to summarize, so zero model work.
+		await run({ action: "build" }, root);
+		expect(await text({ action: "summarize" })).toBe(
+			"All 1 module summaries are current. Nothing to write.",
+		);
+
+		const global = await text({ action: "query", scope: "global", question: "who greets" });
+		expect(global).toMatch(/^summary \[p\/m\]: src greets: main\.ts calls greet\(\)\.\nmodule src/);
+
+		// A source change moves the evidence hash: the summary turns stale and is listed again.
+		writeFileSync(join(root, "src/extra.ts"), "export const extra = 1;\n");
+		await run({ action: "build" }, root);
+		expect(await text({ action: "summarize" })).toMatch(
+			/^1 of 1 module summaries missing or stale/,
+		);
 	});
 
 	test("/graph warns when no graph exists", async () => {
