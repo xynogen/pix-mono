@@ -9,7 +9,15 @@
  *   ROUTER_API_KEY   — bearer token (required for live model list)
  */
 
-import type { ClassifierResult, RefreshModelsContext } from "@earendil-works/pi-ai";
+import {
+	type ClassifierApi,
+	type ClassifierContext,
+	type ClassifierModel,
+	type ClassifierOptions,
+	type ClassifierResult,
+	formatUserAgent,
+	type RefreshModelsContext,
+} from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 import type { ModelsDevModel, RouterModel } from "./data.ts";
@@ -168,107 +176,31 @@ export default async function registerProvider(pi: ExtensionAPI): Promise<void> 
 		.catch(() => {});
 }
 
+/**
+ * 9router serves TypeSafe's System One protocol at `<base>/systemone`. Delegate to pi-ai's
+ * built-in TypeSafe classifier (bool->noul, strict answers, retries, usage, client identity).
+ * It dispatches on the model it is given, so 9router's baseUrl and id are kept.
+ * `/providers/all` is one of the extension loader's aliased pi-ai entrypoints.
+ */
 export async function classifySystemOne(
-	model: { id: string; baseUrl?: string; api?: string; provider?: string },
-	context: { state: Record<string, unknown>; questions: Record<string, any> },
-	apiKey: string,
-	options?: { signal?: AbortSignal; headers?: Record<string, string> },
+	model: ClassifierModel<ClassifierApi>,
+	context: ClassifierContext,
+	options?: ClassifierOptions,
 ): Promise<ClassifierResult> {
-	const output = {
-		api: model.api ?? "typesafe-system-one",
-		provider: model.provider ?? "9router",
-		model: model.id,
-		answers: {} as Record<string, any>,
-		stopReason: "stop" as const,
-		timestamp: Date.now(),
-	};
-
-	try {
-		const wireQuestions = Object.fromEntries(
-			Object.entries(context.questions ?? {}).map(([key, q]) => [
-				key,
-				q.type === "bool" ? { ...q, type: "noul" } : q,
-			]),
-		);
-
-		const base = (model.baseUrl || routerBaseUrl()).replace(/\/+$/, "");
-		const url = `${base}/systemone`;
-		const res = await fetch(url, {
-			method: "POST",
-			signal: ioTimeoutSignal(options?.signal),
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				"Content-Type": "application/json",
-				"User-Agent": "pi-coding-agent",
-				...(options?.headers ?? {}),
-			},
-			body: JSON.stringify({
-				model: model.id,
-				state: context.state,
-				questions: wireQuestions,
-			}),
-		});
-
-		if (!res.ok) {
-			const errText = await res.text().catch(() => "");
-			return {
-				...output,
-				stopReason: "error" as const,
-				errorMessage: `9router /systemone returned ${res.status}: ${errText}`,
-			};
-		}
-
-		const data = (await res.json()) as any;
-		const answers: Record<string, any> = {};
-
-		for (const [key, q] of Object.entries(context.questions ?? {})) {
-			const ans = data?.answers?.[key];
-			if (!ans) continue;
-			if (q.type === "bool") {
-				answers[key] = {
-					type: "bool",
-					probability: typeof ans.noul === "number" ? ans.noul : (ans.probability ?? 0),
-				};
-			} else if (q.type === "choice") {
-				answers[key] = {
-					type: "choice",
-					choice: ans.choice,
-					probabilities: ans.probabilities ?? {},
-					confidence: ans.confidence ?? 0,
-				};
-			} else if (q.type === "score") {
-				answers[key] = {
-					type: "score",
-					score: ans.score ?? 0,
-					confidence: ans.confidence ?? 0,
-				};
-			} else {
-				answers[key] = ans;
-			}
-		}
-
-		const inputTokens = data?.usage?.input_tokens ?? 0;
-		const outputTokens = data?.usage?.output_tokens ?? 0;
-
+	const { builtinProviders } = await import("@earendil-works/pi-ai/providers/all");
+	const typesafe = builtinProviders().find((provider) => provider.id === "typesafe");
+	if (!typesafe?.classify) {
 		return {
-			...output,
-			answers,
-			usage: {
-				input: inputTokens,
-				output: outputTokens,
-				cacheRead: 0,
-				cacheWrite: 0,
-				totalTokens: inputTokens + outputTokens,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-			},
-		};
-	} catch (error) {
-		return {
-			...output,
-			stopReason: "error" as const,
-			errorMessage: error instanceof Error ? error.message : String(error),
+			api: model.api,
+			provider: model.provider,
+			model: model.id,
+			answers: {},
+			stopReason: "error",
+			errorMessage: "pi-ai has no TypeSafe classifier; update Pi to 1.4 or later",
+			timestamp: Date.now(),
 		};
 	}
+	return typesafe.classify(model, context, options);
 }
 
 function providerConfig(
@@ -281,17 +213,8 @@ function providerConfig(
 		baseUrl: routerBaseUrl(),
 		apiKey,
 		api: "openai-completions",
-		headers: { "User-Agent": "pi-coding-agent" },
 		models: models.map(toModelConfig(devIndex)),
-		classifiers: {
-			"typesafe-system-one": {
-				classify: (
-					model: Parameters<typeof classifySystemOne>[0],
-					context: Parameters<typeof classifySystemOne>[1],
-					options?: Parameters<typeof classifySystemOne>[3],
-				) => classifySystemOne(model, context, apiKey, options),
-			},
-		},
+		classifiers: { "typesafe-system-one": { classify: classifySystemOne } },
 		// Live fetch on /model refresh — bypasses the disk cache.
 		// Pi calls refreshModels once per provider at every startup with
 		// allowNetwork:false (awaited, no timeout) — never touch the network
@@ -302,7 +225,7 @@ function providerConfig(
 				signal: ioTimeoutSignal(signal),
 				headers: {
 					Authorization: `Bearer ${apiKey}`,
-					"User-Agent": "pi-coding-agent",
+					"User-Agent": formatUserAgent(),
 				},
 			});
 			if (!res.ok) throw new Error(`9router /models: ${res.status}`);

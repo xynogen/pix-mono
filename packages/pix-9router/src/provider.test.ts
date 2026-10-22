@@ -280,65 +280,71 @@ describe("toModelConfig", () => {
 // ── classifySystemOne ────────────────────────────────────────────────────────
 
 describe("classifySystemOne", () => {
-	it("translates bool to noul and parses response", async () => {
+	const model = {
+		type: "classifier",
+		id: "oc/jev-1.13-free",
+		name: "Jev",
+		api: "typesafe-system-one",
+		provider: "9router",
+		baseUrl: "https://router.dev/v1",
+		input: ["text"],
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		contextWindow: 32_000,
+	} as unknown as Parameters<typeof classifySystemOne>[0];
+	const question = {
+		check: { type: "bool", instructions: "is bool", criteria: { true: "y", false: "n" } },
+	} as const;
+
+	async function withFetch<T>(reply: () => Response, run: () => Promise<T>) {
 		const origFetch = globalThis.fetch;
-		let sentBody: any;
-		globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
-			sentBody = JSON.parse(init?.body as string);
-			return new Response(
-				JSON.stringify({
-					model: "jev-1.13-free",
-					answers: {
-						check: { type: "noul", noul: 0.92 },
-					},
+		const sent: { url: string; body: any; headers: Headers }[] = [];
+		globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+			sent.push({
+				url: String(url),
+				body: JSON.parse(String(init?.body)),
+				headers: new Headers(init?.headers),
+			});
+			return reply();
+		}) as typeof fetch;
+		try {
+			return { result: await run(), sent };
+		} finally {
+			globalThis.fetch = origFetch;
+		}
+	}
+
+	it("posts to the 9router /systemone with bool as noul and parses the answer", async () => {
+		const { result, sent } = await withFetch(
+			() =>
+				Response.json({
+					answers: { check: { type: "noul", noul: 0.92 } },
 					usage: { input_tokens: 100, output_tokens: 10 },
 				}),
-				{ status: 200 },
-			);
-		}) as any;
-
-		try {
-			const res = await classifySystemOne(
-				{ id: "oc/jev-1.13-free", baseUrl: "https://router.dev/v1" },
-				{
-					state: { prompt: "test" },
-					questions: {
-						check: {
-							type: "bool",
-							instructions: "is bool",
-							criteria: { true: "y", false: "n" },
-						},
-					},
-				},
-				"test-key",
-			);
-
-			expect(sentBody.questions.check.type).toBe("noul");
-			expect(res.stopReason).toBe("stop");
-			expect(res.answers.check).toEqual({ type: "bool", probability: 0.92 });
-			expect(res.usage?.input).toBe(100);
-			expect(res.usage?.output).toBe(10);
-		} finally {
-			globalThis.fetch = origFetch;
-		}
+			() =>
+				classifySystemOne(
+					model,
+					{ state: { prompt: "test" }, questions: question },
+					{ apiKey: "k" },
+				),
+		);
+		expect(sent[0]?.url).toBe("https://router.dev/v1/systemone");
+		expect(sent[0]?.body).toMatchObject({
+			model: "oc/jev-1.13-free",
+			questions: { check: { type: "noul" } },
+		});
+		expect(sent[0]?.headers.get("authorization")).toBe("Bearer k");
+		expect(sent[0]?.headers.get("user-agent")).toMatch(/^pi\//);
+		expect(result.stopReason).toBe("stop");
+		expect(result.answers.check).toEqual({ type: "bool", probability: 0.92 });
+		expect(result.usage).toMatchObject({ input: 100, output: 10 });
 	});
 
-	it("handles http errors gracefully", async () => {
-		const origFetch = globalThis.fetch;
-		globalThis.fetch = (async () => {
-			return new Response("Bad request", { status: 400 });
-		}) as any;
-
-		try {
-			const res = await classifySystemOne(
-				{ id: "oc/jev-1.13-free" },
-				{ state: {}, questions: {} },
-				"test-key",
-			);
-			expect(res.stopReason).toBe("error");
-			expect(res.errorMessage).toContain("400");
-		} finally {
-			globalThis.fetch = origFetch;
-		}
+	it("reports an http error without throwing", async () => {
+		const { result } = await withFetch(
+			() => new Response("Bad request", { status: 400 }),
+			() => classifySystemOne(model, { state: {}, questions: question }, { apiKey: "k" }),
+		);
+		expect(result.stopReason).toBe("error");
+		expect(result.errorMessage).toMatch(/400/);
 	});
 });
