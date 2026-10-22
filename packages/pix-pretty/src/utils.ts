@@ -1,5 +1,6 @@
-import { isAbsolute, relative } from "node:path";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { isAbsolute, relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { getCapabilities, hyperlink, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 import {
 	ANSI_CAPTURE_RE,
@@ -544,6 +545,17 @@ export function shortPath(cwd: string, home: string, p: string): string {
 	if (!r.startsWith("..") && !isAbsolute(r)) return r;
 	// Empty home (unset HOME) must not match: "".replace would prefix every path with "~".
 	return home && p.startsWith(home) ? `~${p.slice(home.length)}` : p;
+}
+
+/**
+ * shortPath() wrapped in an OSC 8 `file://` link when the terminal supports it
+ * (pi-tui detects support, including tmux/screen). Width math and truncation in
+ * pi-tui skip OSC 8, and terminals without it get plain text.
+ */
+export function linkedShortPath(cwd: string, home: string, p: string): string {
+	const text = shortPath(cwd, home, p);
+	if (!text || !getCapabilities().hyperlinks) return text;
+	return hyperlink(text, pathToFileURL(resolve(cwd, p)).href);
 }
 
 /** Paints a rule line. Callers pass `(s) => theme.fg(status, s)` so the frame

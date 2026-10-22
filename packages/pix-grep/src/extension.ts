@@ -16,7 +16,11 @@ import {
 } from "@xynogen/pix-pretty/fff";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import type { OptionalFffModule, PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
-import { getErrorMessage, shortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
+import {
+	getErrorMessage,
+	linkedShortPath,
+	viewportTextConstructor,
+} from "@xynogen/pix-pretty/utils";
 import { once } from "@xynogen/pix-runtime/once";
 import { homeDir } from "@xynogen/pix-runtime/paths";
 import { registerGrepTool } from "./grep.ts";
@@ -86,7 +90,7 @@ export default function pixGrepExtension(pi: ExtensionAPI): void {
 
 		registerGrepTool(prettyPi, createGrepTool, {
 			cwd,
-			sp: (p: string) => shortPath(cwd, home, p),
+			sp: (p: string) => linkedShortPath(cwd, home, p),
 			TextComponent: viewportTextConstructor(Text),
 			fffState,
 			cursorStore,

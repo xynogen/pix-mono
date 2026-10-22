@@ -1,6 +1,7 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 
 import { join } from "node:path";
+import { getCapabilities, setCapabilities, visibleWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { icon } from "./icon-catalog.ts";
 import type { FgTheme } from "./types.ts";
@@ -15,6 +16,7 @@ import {
 	frameToolResult,
 	frameToolSection,
 	hideCollapsedToolCall,
+	linkedShortPath,
 	moreLines,
 	padIcon,
 	pluralize,
@@ -673,5 +675,25 @@ describe("shortPath", () => {
 	it("leaves the path as is when home is empty (HOME unset on Windows)", () => {
 		const outside = join("/", "srv", "c.ts");
 		expect(shortPath(cwd, "", outside)).toBe(outside);
+	});
+});
+
+describe("linkedShortPath", () => {
+	const cwd = join("/", "home", "me", "repo");
+	const caps = getCapabilities();
+	afterEach(() => setCapabilities(caps));
+
+	it("wraps the short path in an OSC 8 file link when the terminal supports links", () => {
+		setCapabilities({ ...caps, hyperlinks: true });
+		const out = linkedShortPath(cwd, "", join(cwd, "src", "a b.ts"));
+		expect(out).toMatch(
+			/^\x1b\]8;;file:\/\/\/[^\x1b]*\/repo\/src\/a%20b\.ts\x1b\\src[\\/]a b\.ts\x1b\]8;;\x1b\\$/,
+		);
+		expect(visibleWidth(out)).toBe(join("src", "a b.ts").length);
+	});
+
+	it("returns plain shortPath text when links are unsupported", () => {
+		setCapabilities({ ...caps, hyperlinks: false });
+		expect(linkedShortPath(cwd, "", join(cwd, "a.ts"))).toBe("a.ts");
 	});
 });
