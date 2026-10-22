@@ -100,13 +100,17 @@ function seedScore(node: GraphNode, terms: string[]): number {
 	return score;
 }
 
-/** True if two words share a ≥4-char prefix (loose stemming for inflections). */
+/**
+ * True if two words share a stem: a common prefix of ≥4 chars that covers the shorter word
+ * except for at most a 3-char inflection (cluster/clustered, resolve/resolution), so that
+ * unrelated words with one short prefix (communities/commands) do not match.
+ */
 export function sharePrefix(a: string, b: string): boolean {
 	const n = Math.min(a.length, b.length);
 	if (n < 4) return false;
 	let i = 0;
 	while (i < n && a[i] === b[i]) i++;
-	return i >= 4;
+	return i >= Math.max(4, n - 3);
 }
 
 /**

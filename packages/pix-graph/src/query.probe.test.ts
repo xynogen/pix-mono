@@ -42,3 +42,13 @@ test.each([
 	);
 	expect(edge?.source_location).toMatch(/^L\d+$/);
 });
+
+test("stem match keeps inflections and rejects short shared prefixes", async () => {
+	const { sharePrefix } = await import("./query.ts");
+	expect([
+		sharePrefix("cluster", "clustered"),
+		sharePrefix("resolve", "resolution"),
+		sharePrefix("communities", "commands"),
+		sharePrefix("render", "renderers"),
+	]).toEqual([true, true, false, true]);
+});
