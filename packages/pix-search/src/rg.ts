@@ -37,7 +37,8 @@ function spawnRg(args: string[], cwd: string, signal: AbortSignal): Promise<stri
 			return;
 		}
 
-		const child = spawn(rgBinary(), args, {
+		// --no-config: RIPGREP_CONFIG_PATH must not change what the picker lists (pi #11203).
+		const child = spawn(rgBinary(), ["--no-config", ...args], {
 			cwd,
 			stdio: ["ignore", "pipe", "ignore"],
 			// ponytail: no env filtering — inherits .gitignore respect from rg defaults

@@ -89,6 +89,21 @@ describe("extract", () => {
 			"packages/b/src/util.ts",
 		]);
 	});
+
+	test("ignores the user's ripgrep config", () => {
+		const root = fixture();
+		const config = join(root, "rgrc");
+		writeFileSync(config, "--glob=!packages/b/**\n");
+		const previous = process.env.RIPGREP_CONFIG_PATH;
+		process.env.RIPGREP_CONFIG_PATH = config;
+		try {
+			const rel = collectFiles(root).map((f) => f.slice(root.length + 1).replaceAll("\\", "/"));
+			expect(rel).toContain("packages/b/src/util.ts");
+		} finally {
+			if (previous === undefined) delete process.env.RIPGREP_CONFIG_PATH;
+			else process.env.RIPGREP_CONFIG_PATH = previous;
+		}
+	});
 });
 
 describe("cluster", () => {

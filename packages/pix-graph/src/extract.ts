@@ -49,7 +49,8 @@ function entityNodeId(fileId: string, name: string): string {
  */
 export function collectFiles(root: string): string[] {
 	if (!statSync(root).isDirectory()) return CODE_EXTENSIONS.has(extname(root)) ? [root] : [];
-	const args = ["--files", "--hidden", "--no-require-git", "--glob", "!.git"];
+	// --no-config: RIPGREP_CONFIG_PATH must not change which files the graph sees (pi #11203).
+	const args = ["--no-config", "--files", "--hidden", "--no-require-git", "--glob", "!.git"];
 	for (const ext of CODE_EXTENSIONS) args.push("--glob", `*${ext}`);
 	if (existsSync(join(root, ".dockerignore"))) args.push("--ignore-file", ".dockerignore");
 	const r = runToolSync("rg", args, { cwd: root, timeoutMs: 30_000 });
