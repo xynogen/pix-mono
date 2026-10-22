@@ -6,7 +6,7 @@
  *
  *   1. Summary prompt — ALWAYS ours. `session_before_compact` fires for every
  *      compaction (manual, threshold, overflow); we generate the summary with
- *      the CURRENT conversation model (no silent routing) using SUMMARY_PROMPT
+ *      the CURRENT conversation model (no silent routing) using summaryPrompt()
  *      below. Edit the prompt/format to experiment.
  *
  *   2. Trigger — ours when `compaction.triggerPercent > 0`. After each settled
@@ -25,7 +25,8 @@
  * notify line with reason, model, and token counts.
  */
 
-import { complete } from "@earendil-works/pi-ai/compat";
+import { contentText, retryAssistantCall, type ThinkingLevel } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { ContextEditableContent, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
@@ -37,11 +38,41 @@ import { compactionSection } from "@xynogen/pix-runtime/sections";
 // pi keeps recent turns verbatim (via firstKeptEntryId). This matches current
 // context-engineering guidance — recency is highest-signal, and "context rot"
 // makes full-history replacement risky. Tune freely.
-const SUMMARY_PROMPT = (previousSummary: string | undefined, conversation: string): string => {
-	const prior = previousSummary
-		? `\n\nPrevious summary (fold in, do not repeat verbatim):\n${previousSummary}`
+//
+// Adopted from pi 1.4.0's own summarizer: a system prompt that forbids
+// continuing the chat, data first and instructions last, /compact focus text,
+// no fixed output cap (the model's own limit), the current thinking level,
+// transient-error retry, and refusing truncated (`length`) summaries.
+// Kept ours: one call for a split turn (pi makes two) and file lists that
+// carry across compactions, which pi drops for extension-made summaries.
+const SYSTEM_PROMPT =
+	"You are a context summarization assistant. Read the conversation between a user and an AI assistant and produce the structured summary requested. Do NOT continue the conversation or answer its questions. Output ONLY the summary.";
+
+export function summaryPrompt(p: {
+	conversation: string;
+	turnPrefix?: string;
+	previousSummary?: string;
+	customInstructions?: string;
+}): string {
+	const blocks: string[] = [];
+	if (p.conversation) blocks.push(`<conversation>\n${p.conversation}\n</conversation>`);
+	if (p.turnPrefix) blocks.push(`<turn-prefix>\n${p.turnPrefix}\n</turn-prefix>`);
+	if (p.previousSummary)
+		blocks.push(`<previous-summary>\n${p.previousSummary}\n</previous-summary>`);
+
+	const prior = p.previousSummary
+		? " Fold <previous-summary> in: keep what still matters, update Progress and Next Steps, do not repeat it verbatim."
 		: "";
-	return `You are summarizing the OLDER part of a coding session. Recent turns are kept verbatim after your summary, so capture only what those recent turns would otherwise lose.${prior}
+	const split = p.turnPrefix
+		? "\n\n<turn-prefix> is the start of the current turn; its later messages are kept verbatim. Add a `## Turn Context` section with that turn's request and the progress shown in it."
+		: "";
+	const focus = p.customInstructions?.trim()
+		? `\n\nAdditional focus: ${p.customInstructions.trim()}`
+		: "";
+
+	return `${blocks.join("\n\n")}
+
+Summarize the OLDER part of this coding session above. Recent turns are kept verbatim after your summary, so capture only what they would otherwise lose.${prior}
 
 Produce compact, high-signal markdown with these sections (omit a section if empty):
 
@@ -52,14 +83,55 @@ Produce compact, high-signal markdown with these sections (omit a section if emp
 ## Next Steps
 ## Critical Context (facts, paths, values needed to continue)
 
-Be terse. Prefer names, paths, numbers over prose. No filler.
+Be terse. Prefer names, paths, numbers over prose. No filler. Preserve exact file paths, function names, and error messages.${split}${focus}`;
+}
 
-<conversation>
-${conversation}
-</conversation>`;
-};
+// ── File lists ───────────────────────────────────────────────────────────────────
+// Same <read-files>/<modified-files> tags pi appends. Pi rebuilds them from
+// entry details only for its own compactions, so we carry them through the
+// previous summary text instead — that works for both pi's and ours.
+const FILE_TAGS = /\n*<(read-files|modified-files)>\n([\s\S]*?)\n<\/\1>/g;
 
-const MAX_SUMMARY_TOKENS = 8192;
+export function mergeFileLists(
+	fileOps: { read: Set<string>; written: Set<string>; edited: Set<string> },
+	previousSummary: string | undefined,
+): { readFiles: string[]; modifiedFiles: string[]; previousSummary: string | undefined } {
+	const read = new Set(fileOps.read);
+	const modified = new Set([...fileOps.edited, ...fileOps.written]);
+	for (const [, tag, body] of previousSummary?.matchAll(FILE_TAGS) ?? []) {
+		const into = tag === "read-files" ? read : modified;
+		for (const line of body?.split("\n") ?? []) if (line.trim()) into.add(line.trim());
+	}
+	return {
+		readFiles: [...read].filter((f) => !modified.has(f)).sort(),
+		modifiedFiles: [...modified].sort(),
+		previousSummary: previousSummary?.replace(FILE_TAGS, "").trim() || undefined,
+	};
+}
+
+export function formatFileLists(readFiles: string[], modifiedFiles: string[]): string {
+	const sections: string[] = [];
+	if (readFiles.length) sections.push(`<read-files>\n${readFiles.join("\n")}\n</read-files>`);
+	if (modifiedFiles.length)
+		sections.push(`<modified-files>\n${modifiedFiles.join("\n")}\n</modified-files>`);
+	return sections.length ? `\n\n${sections.join("\n\n")}` : "";
+}
+
+/** Why a summary response must not become a checkpoint, or undefined when it is usable. */
+export function summaryFailure(response: {
+	stopReason: string;
+	errorMessage?: string;
+	content: { type: string }[];
+}): string | undefined {
+	if (response.stopReason === "error") return response.errorMessage || "unknown error";
+	if (response.stopReason === "length") return "hit the output limit; summary incomplete";
+	if (response.content.some((c) => c.type === "toolCall")) return "model tried to call a tool";
+	return undefined;
+}
+
+// ponytail: mirrors pi's default `retry` settings; extensions cannot read
+// settings.retry. Move to the `compaction` config section if someone tunes it.
+const SUMMARY_RETRY = { enabled: true, maxRetries: 3, baseDelayMs: 2000 };
 
 export function compactionThresholdTokens(
 	contextWindow: number,
@@ -151,56 +223,76 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 			return;
 		}
 
-		const messages = [...preparation.messagesToSummarize, ...preparation.turnPrefixMessages];
-		const conversation = serializeConversation(convertToLlm(messages));
+		const toText = (m: typeof preparation.messagesToSummarize) =>
+			m.length ? serializeConversation(convertToLlm(m)) : "";
+		const files = mergeFileLists(preparation.fileOps, preparation.previousSummary);
+		const prompt = summaryPrompt({
+			conversation: toText(preparation.messagesToSummarize),
+			turnPrefix: toText(preparation.turnPrefixMessages),
+			previousSummary: files.previousSummary,
+			customInstructions: event.customInstructions,
+		});
+		const level = pi.getThinkingLevel?.();
+		const reasoning =
+			model.reasoning && level && level !== "off" ? (level as ThinkingLevel) : undefined;
+		const count = preparation.messagesToSummarize.length + preparation.turnPrefixMessages.length;
 		ctx.ui.notify(
-			`Compaction (${reason}): summarizing ${messages.length} msgs / ${preparation.tokensBefore.toLocaleString()} tok with ${model.id}`,
+			`Compaction (${reason}): summarizing ${count} msgs / ${preparation.tokensBefore.toLocaleString()} tok with ${model.id}${reasoning ? ` (thinking ${reasoning})` : ""}`,
 			"info",
 		);
 
 		try {
-			const response = await complete(
-				model,
-				{
-					messages: [
+			const response = await retryAssistantCall(
+				() =>
+					completeSimple(
+						model,
 						{
-							role: "user" as const,
-							content: [
-								{
-									type: "text" as const,
-									text: SUMMARY_PROMPT(preparation.previousSummary, conversation),
-								},
+							systemPrompt: SYSTEM_PROMPT,
+							messages: [
+								{ role: "user", content: [{ type: "text", text: prompt }], timestamp: Date.now() },
 							],
-							timestamp: Date.now(),
 						},
-					],
-				},
+						// No maxTokens: the model's own output limit, so long reasoning cannot
+						// starve the summary (pi #9512).
+						{
+							apiKey: auth.apiKey,
+							headers: auth.headers,
+							env: auth.env,
+							signal,
+							cacheRetention: "none",
+							reasoning,
+						},
+					),
+				SUMMARY_RETRY,
+				signal,
 				{
-					apiKey: auth.apiKey,
-					headers: auth.headers,
-					env: auth.env,
-					maxTokens: MAX_SUMMARY_TOKENS,
-					signal,
-					cacheRetention: "none",
+					onRetryScheduled: (attempt, max, delayMs, error) =>
+						ctx.ui.notify(
+							`Compaction: retry ${attempt}/${max} in ${Math.round(delayMs / 1000)}s (${error})`,
+							"warning",
+						),
 				},
 			);
+			if (signal.aborted) return;
 
-			const summary = response.content
-				.flatMap((c) => (c.type === "text" ? [c.text] : []))
-				.join("\n")
-				.trim();
-
+			const failure = summaryFailure(response);
+			if (failure) {
+				ctx.ui.notify(`Compaction: summary failed (${failure}); using built-in`, "warning");
+				return;
+			}
+			const summary = contentText(response.content).trim();
 			if (!summary) {
-				if (!signal.aborted) ctx.ui.notify("Compaction: empty summary; using built-in", "warning");
+				ctx.ui.notify("Compaction: empty summary; using built-in", "warning");
 				return;
 			}
 
 			return {
 				compaction: {
-					summary,
+					summary: summary + formatFileLists(files.readFiles, files.modifiedFiles),
 					firstKeptEntryId: preparation.firstKeptEntryId,
 					tokensBefore: preparation.tokensBefore,
 					usage: response.usage,
+					details: { readFiles: files.readFiles, modifiedFiles: files.modifiedFiles },
 				},
 			};
 		} catch (error) {

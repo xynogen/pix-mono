@@ -1,9 +1,66 @@
 import { describe, expect, it } from "bun:test";
 import {
 	compactionThresholdTokens,
+	formatFileLists,
+	mergeFileLists,
 	resumeDecisionAfterCompaction,
 	shrinkContent,
+	summaryFailure,
+	summaryPrompt,
 } from "./compaction.ts";
+
+describe("summaryPrompt", () => {
+	it("puts data blocks first and the instructions last", () => {
+		const p = summaryPrompt({
+			conversation: "[User]: hi",
+			turnPrefix: "[User]: fix bug",
+			previousSummary: "## Goal\nold",
+			customInstructions: "  focus on tests ",
+		});
+		expect(p).toMatch(
+			/^<conversation>\n\[User\]: hi\n<\/conversation>\n\n<turn-prefix>[\s\S]*<\/turn-prefix>\n\n<previous-summary>[\s\S]*<\/previous-summary>\n\nSummarize the OLDER part/,
+		);
+		expect(p).toMatch(/## Turn Context[\s\S]*\n\nAdditional focus: focus on tests$/);
+	});
+
+	it("omits optional blocks when absent", () => {
+		const p = summaryPrompt({ conversation: "[User]: hi" });
+		expect(p).toMatch(
+			/^<conversation>[\s\S]*<\/conversation>\n\nSummarize[\s\S]*error messages\.$/,
+		);
+	});
+});
+
+describe("mergeFileLists", () => {
+	it("merges new ops with the previous summary's tags and strips them from the text", () => {
+		const prev = `## Goal\nx${formatFileLists(["a.ts", "b.ts"], ["c.ts"])}`;
+		const r = mergeFileLists(
+			{ read: new Set(["d.ts"]), written: new Set(["b.ts"]), edited: new Set() },
+			prev,
+		);
+		expect(r).toEqual({
+			readFiles: ["a.ts", "d.ts"],
+			modifiedFiles: ["b.ts", "c.ts"],
+			previousSummary: "## Goal\nx",
+		});
+	});
+
+	it("formats nothing when no files were touched", () => {
+		expect(formatFileLists([], [])).toBe("");
+	});
+});
+
+describe("summaryFailure", () => {
+	it("accepts a normal stop and rejects truncated, failed, or tool-calling responses", () => {
+		const text = [{ type: "text" }];
+		expect(summaryFailure({ stopReason: "stop", content: text })).toBeUndefined();
+		expect(summaryFailure({ stopReason: "length", content: text })).toMatch(/output limit/);
+		expect(summaryFailure({ stopReason: "error", errorMessage: "503", content: [] })).toBe("503");
+		expect(summaryFailure({ stopReason: "toolUse", content: [{ type: "toolCall" }] })).toMatch(
+			/tool/,
+		);
+	});
+});
 
 describe("compactionThresholdTokens", () => {
 	it("uses the 100k floor when the percentage threshold is lower", () => {
