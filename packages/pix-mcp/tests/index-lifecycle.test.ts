@@ -418,6 +418,30 @@ describe("mcpAdapter session lifecycle", () => {
 		);
 	});
 
+	it("does not let a stray ui-messages action shadow a real proxy mode", async () => {
+		const state = createState();
+		mocks.initializeMcp.mockResolvedValue(state);
+		mocks.executeSearch.mockResolvedValue({ content: [{ type: "text", text: "found" }] });
+		mocks.executeUiMessages.mockResolvedValue({ content: [{ type: "text", text: "msgs" }] });
+
+		const { default: mcpAdapter } = await import("../src/index.ts");
+		const { api, handlers } = createPi();
+		mcpAdapter(api);
+		await handlers.get("session_start")?.({}, {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const proxyTool = api.registerTool.mock.calls.find(
+			(call: any[]) => call[0].name === "mcp",
+		)?.[0];
+
+		await proxyTool.execute("call-1", { action: "ui-messages", search: "browser" });
+		expect(mocks.executeSearch).toHaveBeenCalledTimes(1);
+		expect(mocks.executeUiMessages).not.toHaveBeenCalled();
+
+		await proxyTool.execute("call-2", { action: "ui-messages" });
+		expect(mocks.executeUiMessages).toHaveBeenCalledWith(state);
+	});
+
 	it("forwards the proxy tool AbortSignal into executeCall", async () => {
 		const state = createState();
 		mocks.initializeMcp.mockResolvedValue(state);

@@ -233,6 +233,25 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 		now += 2_000;
 		for (const callback of timers.values()) callback();
 		expect(widget).toBeUndefined();
+		// Regression: /proc lists the same rows as the widget, so an expired finished proc is hidden.
+		const base = { cwd: "/fixture", pid: 1, pgid: 1, startTime: 0, capped: false };
+		procs = [
+			{ ...base, handle: "proc-dev", command: "serve", status: "running" },
+			{ ...base, handle: "proc-old", command: "compile", status: "exited", exitCode: 1 },
+		];
+		let listed: string[] = [];
+		await command("", {
+			ui: {
+				custom: async (factory: (...args: unknown[]) => Component) => {
+					listed = factory(tui, theme, kb, () => {}).render(80);
+					return undefined;
+				},
+			},
+		});
+		expect(listed.join("\n")).toContain("proc-dev");
+		expect(listed.join("\n")).not.toContain("proc-old");
+		procs = [];
+		for (const callback of timers.values()) callback();
 		states.push(
 			"cleared widget",
 			...captureRows({ render: () => [] }, { width: 80, surface: "component" }),
