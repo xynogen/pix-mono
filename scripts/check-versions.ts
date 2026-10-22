@@ -62,12 +62,20 @@ async function versionAt(ref: string, pkgDir: string): Promise<string | undefine
 	}
 }
 
+/** Test-only files are not released, so a change to them alone needs no version bump. */
+const IGNORE_TESTS = [
+	":(exclude,glob)**/*.test.*",
+	":(exclude,glob)**/__snapshots__/**",
+	":(exclude,glob)**/test/**",
+	":(exclude,glob)**/tests/**",
+];
+
 async function packageChanged(pkgDir: string): Promise<boolean> {
 	if (!lastTag) return true;
 	const path = `packages/${pkgDir}`;
 	const [committed, local] = await Promise.all([
-		$`git diff --name-only ${lastTag} -- ${path}`.quiet(),
-		$`git status --porcelain --untracked-files=all -- ${path}`.quiet(),
+		$`git diff --name-only ${lastTag} -- ${path} ${IGNORE_TESTS}`.quiet(),
+		$`git status --porcelain --untracked-files=all -- ${path} ${IGNORE_TESTS}`.quiet(),
 	]);
 	return committed.stdout.length > 0 || local.stdout.length > 0;
 }
@@ -108,7 +116,9 @@ console.log(
  */
 async function samePackageContent(gitHead: unknown, pkgDir: string): Promise<boolean> {
 	if (typeof gitHead !== "string" || !/^[0-9a-f]{40}$/.test(gitHead)) return false;
-	const diff = await $`git diff --quiet ${gitHead} HEAD -- packages/${pkgDir}`.nothrow().quiet();
+	const diff = await $`git diff --quiet ${gitHead} HEAD -- packages/${pkgDir} ${IGNORE_TESTS}`
+		.nothrow()
+		.quiet();
 	return diff.exitCode === 0;
 }
 

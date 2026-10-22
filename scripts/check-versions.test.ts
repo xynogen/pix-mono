@@ -12,6 +12,8 @@ interface Sandbox {
 let sandbox: Sandbox | undefined;
 
 async function setupSandbox(): Promise<Sandbox> {
+	// A git hook exports GIT_INDEX_FILE/GIT_DIR. Inherited, they make sandbox git write the real repo.
+	for (const key of Object.keys(process.env)) if (key.startsWith("GIT_")) delete process.env[key];
 	const root = mkdtempSync(join(tmpdir(), "pix-check-versions-"));
 	// Copy the real script under test so the test exercises the same source.
 	const source = join(import.meta.dir, "check-versions.ts");
@@ -104,6 +106,26 @@ describe("check-versions pre-publish guard", () => {
 			"stable-pkg@1.0.0 — package changed but version was not bumped",
 		);
 		expect(status).toBe(1);
+	});
+
+	test("ignores test-only changes", () => {
+		if (!sandbox) throw new Error("sandbox not initialised");
+		for (const file of [
+			"src/a.test.ts",
+			"src/__snapshots__/a.test.ts.snap",
+			"test/b.ts",
+			"tests/c.ts",
+		]) {
+			const path = join(sandbox.root, "packages/stable", file);
+			mkdirSync(join(path, ".."), { recursive: true });
+			writeFileSync(path, "x\n");
+		}
+		spawnSync("git", ["add", "-A"], { cwd: sandbox.root });
+		spawnSync("git", ["commit", "-q", "-m", "tests only"], { cwd: sandbox.root });
+
+		const { stdout, status } = runCheckVersions(sandbox);
+		expect(stdout).toContain("No packages changed since last release");
+		expect(status).toBe(0);
 	});
 
 	test("reports only packages whose version changed", async () => {
