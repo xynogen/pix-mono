@@ -76,7 +76,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 		expect(patchSpy).toHaveBeenCalledTimes(1);
 		if (!handler) throw new Error("models command not registered");
 		const models = [
-			{ provider: "fixture", id: "alpha", name: "Alpha", contextWindow: 200_000 },
+			{ provider: "fixture", id: "alpha", name: "Alpha", contextWindow: 200_000, reasoning: true },
 			{ provider: "fixture", id: "beta", name: "Beta", contextWindow: 0 },
 			{ provider: "fixture", id: "other", name: "Other", contextWindow: 0 },
 		];

@@ -9,53 +9,28 @@ import {
 	normalizeModelText,
 	resolveContextWindow,
 	sortModels,
-	stepEffectiveThinkingLevel,
 	stepThinkingLevel,
-	THINKING_LEVELS,
 } from "./models.ts";
 
 describe("stepThinkingLevel", () => {
-	it("steps up one notch", () => {
-		expect(stepThinkingLevel("low", 1)).toBe("medium");
-		expect(stepThinkingLevel("off", 1)).toBe("minimal");
-	});
-	it("steps down one notch", () => {
-		expect(stepThinkingLevel("medium", -1)).toBe("low");
-		expect(stepThinkingLevel("xhigh", -1)).toBe("high");
-	});
-	it("clamps at the low end (no wrap)", () => {
-		expect(stepThinkingLevel("off", -1)).toBe("off");
-	});
-	it("clamps at the high end (no wrap)", () => {
-		expect(stepThinkingLevel("xhigh", 1)).toBe("xhigh");
-	});
-	it("falls back to a medium-anchored step for unknown input", () => {
-		expect(stepThinkingLevel("bogus", 1)).toBe("high");
-		expect(stepThinkingLevel("", -1)).toBe("low");
-	});
-	it("exposes the six canonical levels ascending", () => {
-		expect(THINKING_LEVELS).toEqual(["off", "minimal", "low", "medium", "high", "xhigh"]);
-	});
-	it("can walk the full ladder up and back down", () => {
-		let lvl: string = "off";
-		for (let i = 0; i < 10; i++) lvl = stepThinkingLevel(lvl, 1);
-		expect(lvl).toBe("xhigh");
-		for (let i = 0; i < 10; i++) lvl = stepThinkingLevel(lvl, -1);
-		expect(lvl).toBe("off");
-	});
-});
+	// Shape of pi-ai getSupportedThinkingLevels() for a model without minimal/xhigh.
+	const levels = ["off", "low", "medium", "high", "max"];
 
-describe("stepEffectiveThinkingLevel", () => {
-	it("skips levels that clamp back to the current level", () => {
-		const clamp = (requested: string) => {
-			if (requested === "minimal" || requested === "low") return "off";
-			return requested;
-		};
-		expect(stepEffectiveThinkingLevel("off", 1, clamp)).toBe("medium");
+	it("steps one supported notch, skipping levels the model lacks", () => {
+		expect(stepThinkingLevel(levels, "off", 1)).toBe("low");
+		expect(stepThinkingLevel(levels, "high", 1)).toBe("max");
+		expect(stepThinkingLevel(levels, "low", -1)).toBe("off");
 	});
-
-	it("stays at an endpoint when every farther request clamps back", () => {
-		expect(stepEffectiveThinkingLevel("high", 1, () => "high")).toBe("high");
+	it("clamps at both ends (no wrap)", () => {
+		expect(stepThinkingLevel(levels, "off", -1)).toBe("off");
+		expect(stepThinkingLevel(levels, "max", 1)).toBe("max");
+	});
+	it("anchors unknown input on medium, else the first level", () => {
+		expect(stepThinkingLevel(levels, "xhigh", 1)).toBe("high");
+		expect(stepThinkingLevel(["off"], "bogus", 1)).toBe("off");
+	});
+	it("keeps the current level when the model reports none", () => {
+		expect(stepThinkingLevel([], "high", 1)).toBe("high");
 	});
 });
 

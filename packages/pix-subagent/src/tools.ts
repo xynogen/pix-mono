@@ -390,7 +390,7 @@ export function createAgentTool(
 				Type.Array(Type.String(), { description: "General-purpose tool restriction." }),
 			),
 			thinking: Type.Optional(
-				Type.Enum(["off", "minimal", "low", "medium", "high", "xhigh"] as const, {
+				Type.Enum(["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const, {
 					type: "string",
 					description:
 						'Reasoning effort. Use only "medium" (default) or "high" unless the user explicitly approves a higher level after a concrete benefit and cost/latency justification.',

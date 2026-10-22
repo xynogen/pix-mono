@@ -147,7 +147,7 @@ test("agent exposes thinking as a guided string enum", () => {
 	expect(parameters.properties.prompt.description).toContain("self-contained");
 	expect(parameters.properties.prompt.description).toContain("never rely on forked parent context");
 	expect(thinking?.type).toBe("string");
-	expect(thinking?.enum).toEqual(["off", "minimal", "low", "medium", "high", "xhigh"]);
+	expect(thinking?.enum).toEqual(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 	expect(thinking?.description).toContain('"medium" (default)');
 	expect(thinking?.description).toContain('or "high"');
 	expect(thinking?.description).toContain("user explicitly approves");

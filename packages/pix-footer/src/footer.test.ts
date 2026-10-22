@@ -11,6 +11,7 @@ describe("renderThinkingLevel", () => {
 	test("uses the host theme's canonical thinking-level renderer", () => {
 		expect(renderThinkingLevel(theme, "high", "high")).toBe("<high>high</high>");
 		expect(renderThinkingLevel(theme, "xhigh", "xhigh")).toBe("<xhigh>xhigh</xhigh>");
+		expect(renderThinkingLevel(theme, "max", "max")).toBe("<max>max</max>");
 	});
 
 	test("renders unknown levels as a secondary model value", () => {

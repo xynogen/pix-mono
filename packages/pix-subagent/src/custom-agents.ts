@@ -14,7 +14,7 @@ import type { AgentConfig } from "./types.ts";
  * ThinkingLevel union — the tool schema and README both document "off" as a
  * valid value, so frontmatter should accept it too.
  */
-const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
+const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 
 /**
  * Parse and validate a thinking level value.
