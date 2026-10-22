@@ -24,6 +24,11 @@ const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", "
 // Generated bundles are one huge file of vendored code; they glue unrelated clusters together.
 const GENERATED_GLOBS = ["*.bundle.js", "*.min.js", "*.min.mjs", "*.d.ts"];
 
+/** True for files the TypeScript extractor parses. */
+export function isTsFile(path: string): boolean {
+	return CODE_EXTENSIONS.has(extname(path));
+}
+
 /** Slugify a path fragment to the `[a-z0-9_]` node-id alphabet. */
 function slug(text: string): string {
 	return text
@@ -45,13 +50,13 @@ function entityNodeId(fileId: string, name: string): string {
 /**
  * List code files under `root`. ripgrep applies `.gitignore`, `.ignore`, `.rgignore` and
  * `.dockerignore`. Hidden paths are scanned unless an ignore file excludes them, and a
- * `!path` line in `.ignore` re-includes a gitignored path.
+ * `!path` line in `.ignore` re-includes a gitignored path. `accept` widens the set beyond
+ * TS/JS (pix-graph passes the ast-grep language map); generated bundles are always skipped.
  */
-export function collectFiles(root: string): string[] {
-	if (!statSync(root).isDirectory()) return CODE_EXTENSIONS.has(extname(root)) ? [root] : [];
+export function collectFiles(root: string, accept: (path: string) => boolean = isTsFile): string[] {
+	if (!statSync(root).isDirectory()) return accept(root) ? [root] : [];
 	// --no-config: RIPGREP_CONFIG_PATH must not change which files the graph sees (pi #11203).
 	const args = ["--no-config", "--files", "--hidden", "--no-require-git", "--glob", "!.git"];
-	for (const ext of CODE_EXTENSIONS) args.push("--glob", `*${ext}`);
 	for (const glob of GENERATED_GLOBS) args.push("--glob", `!${glob}`);
 	if (existsSync(join(root, ".dockerignore"))) args.push("--ignore-file", ".dockerignore");
 	const r = runToolSync("rg", args, { cwd: root, timeoutMs: 30_000 });
@@ -60,7 +65,7 @@ export function collectFiles(root: string): string[] {
 	if (r.code !== 0) throw new Error(`rg --files failed in ${root}: ${r.stderr.trim() || r.code}`);
 	return r.stdout
 		.split("\n")
-		.filter(Boolean)
+		.filter((rel) => rel && accept(rel))
 		.map((rel) => join(root, rel))
 		.sort(byText);
 }
@@ -182,7 +187,7 @@ export interface UnresolvedImport {
  * only through import bindings (named, default-free, namespace `ns.fn()`), following
  * `export … from` re-exports, so a common name like `it` or `render` never links
  * unrelated packages.
- * ponytail: TS/JS only. Other languages need a tree-sitter extractor (not built).
+ * Other languages go through `generic.ts` (ast-grep, optional).
  *
  * Accepts either file paths (parsed here) or a pre-parsed list from
  * {@link parseFilesProgress} so a caller can parse incrementally with yields.

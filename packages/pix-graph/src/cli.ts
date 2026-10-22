@@ -8,7 +8,7 @@ import type { GraphData } from "./analyzer.ts";
 import { buildCodeGraph } from "./pipeline.ts";
 import { query, shortestPath } from "./query.ts";
 
-const USAGE = `pix-graph — native TS code knowledge graph
+const USAGE = `pix-graph — native code knowledge graph (TS/JS + ast-grep languages)
 
 Usage:
   pix-graph build [path] [--out DIR] [--root DIR]   Build graph.json + report from code

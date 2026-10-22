@@ -1,10 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+	ALL_LANGUAGES,
+	grammarCacheDir,
+	languageForFile,
+	parseWithGrammar,
+} from "@xynogen/pix-runtime/ast";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerAstGrep from "./astgrep.ts";
-import { ALL_LANGUAGES, languageForFile } from "./engine.ts";
-import { grammarCacheDir, parseWithGrammar } from "./grammars.ts";
 
 // ponytail: opt-in native integration; ordinary tests never download grammars.
 // Run: PIX_AST_GRAMMARS_DIR=<npm-prefix-with-18-grammars> bun run test languages.integration.test.ts

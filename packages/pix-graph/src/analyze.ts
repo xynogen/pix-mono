@@ -16,7 +16,6 @@ export interface Surprise {
 	why: string[];
 }
 
-const CODE_EXT = new Set(["ts", "tsx", "js", "jsx", "mjs", "cjs", "mts", "cts"]);
 const CONFIDENCE_WEIGHT: Record<string, number> = { AMBIGUOUS: 3, INFERRED: 2, EXTRACTED: 1 };
 
 /** Degree (undirected) for every node. */
@@ -35,8 +34,7 @@ function degrees(graph: GraphData): Map<string, number> {
 function isFileNode(node: GraphNode, degree: number): boolean {
 	const label = node.label ?? "";
 	if (!label) return false;
-	const ext = label.split(".").at(-1) ?? "";
-	if (CODE_EXT.has(ext)) return true; // filename label
+	if (node.source_file && label === node.source_file.split("/").at(-1)) return true; // file node
 	if (label.startsWith(".") && label.endsWith("()")) return true; // method stub
 	if (label.endsWith("()") && degree <= 1) return true; // isolated function
 	return false;

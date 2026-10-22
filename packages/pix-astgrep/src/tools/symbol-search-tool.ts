@@ -21,9 +21,9 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
+import { languageForFile } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
-import { languageForFile } from "../engine.ts";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;

@@ -75,8 +75,12 @@ a graph built by either tool works with the other's `query`.
 
 ## Scope ceilings
 
-- **TS/JS only.** Other languages need a tree-sitter extractor (not built).
-  Upgrade path: add per-language extractors behind `collectFiles`.
+- **Other languages are coarser than TS/JS.** TS/JS use the TypeScript compiler
+  (import bindings, re-exports). Python, Go, Rust, Java, C/C++, Ruby and the rest of the
+  ast-grep languages go through `@xynogen/pix-astgrep` (optional dependency): definitions
+  plus `calls` edges (`INFERRED`) only when exactly one file defines the called name. No
+  import edges yet. A missing grammar is installed once after the user agrees; until then
+  the build reports that language as skipped.
 - **Louvain, not Leiden.** Leiden needs the native `graspologic` library.
   Upgrade path: add a Leiden refinement pass over the Louvain communities.
 - **Lexical query seeds, no embeddings.** Global scope gains meaning only from

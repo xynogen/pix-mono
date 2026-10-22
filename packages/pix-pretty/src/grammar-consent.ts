@@ -1,14 +1,14 @@
 /**
- * consent.ts — one-time user consent to install a grammar package.
+ * pix-pretty/grammar-consent — one-time user consent to install an ast-grep grammar.
  *
  * A tool's `execute` receives a Pi UI context. This turns it into a `ConsentFn`
- * for `parseWithGrammar`: it shows a confirm overlay once per package. Without
+ * for `parseWithGrammar` (`@xynogen/pix-runtime/ast`): it shows a confirm overlay once per package. Without
  * a UI (non-interactive session), it defers — the package installs nothing
  * without a person saying yes.
  */
 
-import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
-import { type ConsentFn, grammarCacheDir } from "./grammars.ts";
+import { type ConsentFn, grammarCacheDir } from "@xynogen/pix-runtime/ast";
+import { showOverlay } from "./gate-overlay.ts";
 
 // Minimal shape of the execute `ctx` we need. No hard dep on the host type.
 export interface ExecuteCtx {

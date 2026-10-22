@@ -257,6 +257,8 @@ function callEdgeProblem(
 	const sourceFile = edge.source_file ?? sourceNode?.source_file;
 	const targetFile = targetNode?.source_file;
 	if (!sourceFile || !targetFile || sourceFile === targetFile) return undefined;
+	// Only TS/JS sources can be checked against real import bindings.
+	if (!/\.[cm]?[jt]sx?$/.test(sourceFile)) return undefined;
 
 	const targetPackage = packageFromPath(targetFile);
 	if (!targetPackage) return undefined;

@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	formatCollapsedToolRow,
@@ -20,12 +21,10 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
+import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
-import { type ExecuteCtx, grammarConsent } from "../consent.ts";
-import { languageForFile, type SgNode } from "../engine.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
-import { parseWithGrammar } from "../grammars.ts";
 
 const MAX_BYTES = 16 * 1024;
 

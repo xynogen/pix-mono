@@ -17,6 +17,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	dotJoin,
@@ -339,6 +340,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				if (action === "build") {
 					// ponytail: pipeline pulls in typescript (9.1 MB, about 224 ms). Load it only when a build runs.
 					const { buildCodeGraphProgress } = await import("./pipeline.ts");
+					const consent = grammarConsent(ctx);
 					const input = (params.path as string | undefined)?.trim() || ".";
 					const startedAt = Date.now();
 					let frame = 0;
@@ -370,13 +372,19 @@ export default function registerGraph(pi: ExtensionAPI): void {
 							},
 							signal,
 							parseCache,
+							consent,
 						);
 						const took = formatDuration(Date.now() - startedAt, "btw");
+						const langs = Object.entries(r.languages ?? {})
+							.map(([lang, n]) => `${lang} ${n}`)
+							.join(", ");
 						return ok(
 							`Graph ${r.cached ? "unchanged (cache hit)" : `built in ${took}`}: ` +
 								`${r.files} files → ${r.nodes} nodes, ${r.links} links, ` +
 								`${r.communities} communities → ${OUT_DIR}/ (view: /graph)` +
-								(r.cached ? "" : ` · parsed ${r.parsedFiles} · reused ${r.reusedFiles}`),
+								(r.cached ? "" : ` · parsed ${r.parsedFiles} · reused ${r.reusedFiles}`) +
+								(langs ? `\nOther languages (ast-grep): ${langs}` : "") +
+								(r.skipped?.length ? `\nSkipped: ${r.skipped.join("; ")}` : ""),
 						);
 					} catch (error) {
 						const msg = getErrorMessage(error);

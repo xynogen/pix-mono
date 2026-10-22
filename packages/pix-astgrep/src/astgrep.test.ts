@@ -8,9 +8,9 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ExecuteCtx } from "@xynogen/pix-pretty/grammar-consent";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerAstGrep from "./astgrep.ts";
-import type { ExecuteCtx } from "./consent.ts";
 
 interface Tool {
 	name: string;

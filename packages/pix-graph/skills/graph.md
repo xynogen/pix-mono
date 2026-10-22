@@ -86,7 +86,7 @@ The `.pi/` directory is gitignored, so the graph never gets committed.
 
 ## Scope and limits
 
-- **TS/JS only.** Other languages aren't parsed yet (no tree-sitter extractor).
+- **TS/JS are exact; other languages are coarse.** Python, Go, Rust, Java, C/C++, Ruby, … are parsed with ast-grep when `@xynogen/pix-astgrep` is installed. They get definitions and unambiguous cross-file `calls` (`INFERRED`), no import edges. The first build in a new language asks to install its grammar; the result lists skipped languages.
 - **Louvain clustering**, not Leiden — communities are good, not maximally refined.
 - **Lexical seed matching**, no embeddings — queries lean on keyword overlap with
   symbol names and paths. Use concrete identifiers when recall matters. Global

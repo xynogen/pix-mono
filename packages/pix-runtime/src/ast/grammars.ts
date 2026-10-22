@@ -7,7 +7,7 @@
  *
  *   1. If napi already parses it (the six), no grammar is needed.
  *   2. Else try to import `@ast-grep/lang-<x>` from the pix cache, then from
- *      this package's own node_modules.
+ *      the resolvable node_modules.
  *   3. If absent, report `needs-install` with the exact package name. The tool
  *      asks the user once, then this module installs it INTO the pix cache
  *      (never the agent, never a global write). A later call finds it cached.
@@ -22,12 +22,12 @@ import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { runTool } from "@xynogen/pix-runtime/exec";
-import { agentDir } from "@xynogen/pix-runtime/paths";
+import { runTool } from "../exec.ts";
+import { agentDir } from "../paths.ts";
 import { isBundled, loadEngine, parse, parseDynamic, type SgNode } from "./engine.ts";
 
 const require = createRequire(import.meta.url);
+const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 /** Canonical language alias → its `@ast-grep/lang-*` package name. */
 const LANG_PACKAGE: Record<string, string> = {
@@ -56,7 +56,10 @@ export function packageForLanguage(lang: string): string | undefined {
 	return LANG_PACKAGE[lang];
 }
 
-/** Cache root for installed grammars: `<agentDir>/pix-astgrep/grammars`. */
+/**
+ * Cache root for installed grammars: `<agentDir>/pix-astgrep/grammars`. The path predates the
+ * move into pix-runtime; it stays so grammars users already installed keep working.
+ */
 export function grammarCacheDir(): string {
 	return join(agentDir(), "pix-astgrep", "grammars");
 }
@@ -134,7 +137,7 @@ export async function ensureLanguage(lang: string): Promise<GrammarResult> {
 					message: `${pkg} is installed, but napi's language registry is already initialized. Restart the agent to load newly installed grammars.`,
 				};
 	} catch (err) {
-		return { kind: "error", message: getErrorMessage(err) };
+		return { kind: "error", message: errorText(err) };
 	}
 }
 
@@ -167,7 +170,7 @@ export async function installGrammar(pkg: string): Promise<{ ok: boolean; messag
 		}
 		return { ok: true };
 	} catch (err) {
-		return { ok: false, message: getErrorMessage(err) };
+		return { ok: false, message: errorText(err) };
 	}
 }
 
@@ -213,6 +216,6 @@ export async function parseWithGrammar(
 		if (ready.kind !== "ready") return ready;
 		return { kind: "ok", root: parseDynamic(engine, lang, source) };
 	} catch (err) {
-		return { kind: "error", message: getErrorMessage(err) };
+		return { kind: "error", message: errorText(err) };
 	}
 }

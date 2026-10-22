@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { godNodes, surprisingConnections } from "./analyze.ts";
 import { analyzeGraph, analyzeGraphProgress, type GraphData } from "./analyzer.ts";
@@ -11,9 +11,11 @@ import {
 	createGraphParseCache,
 	extract,
 	type GraphParseCache,
+	isTsFile,
 	parseFilesProgress,
 	type UnresolvedImport,
 } from "./extract.ts";
+import { extractGeneric, type GenericFile, genericLanguage } from "./generic.ts";
 
 export { createGraphParseCache } from "./extract.ts";
 
@@ -30,6 +32,10 @@ export interface BuildResult {
 	cached?: boolean;
 	parsedFiles?: number;
 	reusedFiles?: number;
+	/** Files parsed per non-TS language (ast-grep). */
+	languages?: Record<string, number>;
+	/** Non-TS languages that were found but not parsed, with the reason. */
+	skipped?: string[];
 }
 
 /** Ordered build phases, for progress reporting. */
@@ -66,7 +72,7 @@ function phaseStart(phase: BuildPhase): number {
 
 const yieldToLoop = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 // ponytail: bump this when extraction changes for builds outside the pix-graph source tree.
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const CACHE_FILE = ".graph-cache.json";
 const OUTPUT_FILES = ["graph.json", "graph.cleaned.json", "GRAPH_REPORT.md", "graph.html"] as const;
 
@@ -179,6 +185,8 @@ export async function buildCodeGraphProgress(
 	onProgress: (p: BuildProgress) => void,
 	signal?: AbortSignal,
 	parseCache: GraphParseCache = createGraphParseCache(),
+	/** Asked once per missing grammar; without it, missing grammars are reported as skipped. */
+	consent?: (pkg: string) => Promise<boolean>,
 ): Promise<BuildResult> {
 	const checkAbort = (): void => {
 		if (signal?.aborted) throw new Error("Operation aborted");
@@ -187,7 +195,16 @@ export async function buildCodeGraphProgress(
 	onProgress({ phase: "scan", fraction: 0, label: "scanning files…" });
 	await yieldToLoop();
 	checkAbort();
-	const files = collectFiles(resolve(inputPath));
+	// TS/JS use the compiler extractor; every other ast-grep language uses the generic one.
+	const files = collectFiles(
+		resolve(inputPath),
+		(p) => isTsFile(p) || genericLanguage(p) !== undefined,
+	);
+	const tsFiles = files.filter(isTsFile);
+	const otherFiles: GenericFile[] = files.flatMap((file) => {
+		const lang = isTsFile(file) ? undefined : genericLanguage(file);
+		return lang ? [{ file, rel: relative(repoRoot, file).split(sep).join("/"), lang }] : [];
+	});
 	const fileCount = files.length;
 	const key = buildKey(files, repoRoot, inputPath);
 	checkAbort();
@@ -202,7 +219,7 @@ export async function buildCodeGraphProgress(
 	// animates, then run the whole-corpus extract pass on the pre-parsed list
 	// (import and re-export resolution needs every file first).
 	const parsed = await parseFilesProgress(
-		files,
+		tsFiles,
 		repoRoot,
 		(done, total) => {
 			onProgress({
@@ -223,9 +240,23 @@ export async function buildCodeGraphProgress(
 	});
 	await yieldToLoop();
 	const extraction = extract(parsed, repoRoot);
+	const generic = await extractGeneric(
+		otherFiles,
+		consent,
+		(done, total) =>
+			onProgress({
+				phase: "extract",
+				fraction: phaseStart("extract") + PHASE_WEIGHT.extract * 0.95,
+				label: `parse other languages ${done}/${total} files`,
+			}),
+		signal,
+	);
 
 	checkAbort();
-	const raw = rawGraph(extraction);
+	const raw = rawGraph({
+		nodes: [...extraction.nodes, ...generic.nodes],
+		links: [...extraction.links, ...generic.links],
+	});
 	// Call-edge validation re-parses source files and is the slowest step; run the
 	// yielding variant so the progress widget keeps animating throughout.
 	const cleaned = await analyzeGraphProgress(raw, {
@@ -255,11 +286,17 @@ export async function buildCodeGraphProgress(
 		...written,
 		outputDir,
 		cached: false,
-		parsedFiles: parseCache.parsedFiles,
+		parsedFiles:
+			parseCache.parsedFiles + Object.values(generic.languages).reduce((a, b) => a + b, 0),
 		reusedFiles: parseCache.reusedFiles,
+		...(Object.keys(generic.languages).length ? { languages: generic.languages } : {}),
+		...(generic.skipped.length ? { skipped: generic.skipped } : {}),
 	};
 	// Write the manifest last. An interrupted build cannot mark partial output as current.
-	writeFileAtomicSync(resolve(outputDir, CACHE_FILE), `${JSON.stringify({ key, result })}\n`);
+	// A build that skipped a language must not be reused once its grammar is installed.
+	if (!result.skipped) {
+		writeFileAtomicSync(resolve(outputDir, CACHE_FILE), `${JSON.stringify({ key, result })}\n`);
+	}
 	onProgress({ phase: "write", fraction: 1, label: "done" });
 	return result;
 }

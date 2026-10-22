@@ -2,8 +2,9 @@ import { expect, mock, test } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { SgNode } from "@xynogen/pix-runtime/ast";
+import * as ast from "@xynogen/pix-runtime/ast";
 import { tempDir } from "@xynogen/pix-runtime/paths";
-import type { SgNode } from "../engine.ts";
 
 // ponytail: synthetic parser nodes check outline selection without installing a Python grammar.
 function node(kind: string, text: string, line: number, children: SgNode[] = []): SgNode {
@@ -15,7 +16,8 @@ function node(kind: string, text: string, line: number, children: SgNode[] = [])
 	} as SgNode;
 }
 
-mock.module("../grammars.ts", () => ({
+mock.module("@xynogen/pix-runtime/ast", () => ({
+	...ast,
 	grammarCacheDir: () => join(tempDir(), "pix-outline-grammar-cache"),
 	parseWithGrammar: async () => ({
 		kind: "ok",

@@ -7,7 +7,12 @@
  * loads cached grammar packages or installs them only after user consent.
  *
  * Loader adapted from pi-lens `clients/deps/ast-grep-napi.ts` (MIT). See
- * ../../pix-diagnostics/LICENSE.pi-lens.
+ * packages/pix-diagnostics/LICENSE.pi-lens.
+ *
+ * `@ast-grep/napi` is an optional peer: pix-runtime never forces the native addon on
+ * every install. Packages that parse (pix-astgrep, pix-graph) depend on it; without it
+ * `loadEngine()` returns undefined and callers degrade.
+ * ponytail: resolution assumes npm hoists napi next to pix-runtime (the flat Pi install).
  */
 
 import { createRequire } from "node:module";
@@ -26,6 +31,9 @@ export interface SgNode {
 	range(): { start: SgPos; end: SgPos };
 	findAll(matcher: string | { rule: Record<string, unknown> }): SgNode[];
 	children(): SgNode[];
+	isNamed(): boolean;
+	/** Child stored under a tree-sitter field name (`name`, `body`, `function`, …). */
+	field(name: string): SgNode | null;
 	replace(text: string): SgEdit;
 	commitEdits(edits: SgEdit[]): string;
 	getMatch(name: string): SgNode | null;

@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-runtime",
-	"version": "0.13.2",
+	"version": "0.14.0",
 	"description": "Pix shared runtime — versioned pix.json config, atomic persistence, typed change events",
 	"type": "module",
 	"main": "src/index.ts",
@@ -38,7 +38,8 @@
 		"./os": "./src/os.ts",
 		"./audio": "./src/audio.ts",
 		"./safe-path": "./src/safe-path.ts",
-		"./which": "./src/which.ts"
+		"./which": "./src/which.ts",
+		"./ast": "./src/ast/index.ts"
 	},
 	"keywords": [
 		"pi",
@@ -63,9 +64,18 @@
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
-		"@earendil-works/pi-tui": "*"
+		"@earendil-works/pi-tui": "*",
+		"@ast-grep/napi": "^0.45.0"
 	},
 	"dependencies": {
 		"xxhash-wasm": "1.1.0"
+	},
+	"peerDependenciesMeta": {
+		"@ast-grep/napi": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@ast-grep/napi": "^0.45.0"
 	}
 }

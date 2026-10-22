@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-powershell",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "Pi tool \u2014 PowerShell execution with pretty output (renders Pi's built-in powershell tool like pix-bash)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -40,8 +40,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.31.0",
-		"@xynogen/pix-runtime": "^0.13.0"
+		"@xynogen/pix-pretty": "^1.32.0",
+		"@xynogen/pix-runtime": "^0.14.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

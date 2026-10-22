@@ -165,6 +165,7 @@ The shared layers exist so that 40 small packages look and behave like one produ
 | `/safe-path` | Pre-flight check before a tool writes to a path the model chose. |
 | `/lfid` | Short IDs that are easy for a model to read (`agent-happy-walrus-42`), not UUIDs. |
 | `/audio` | Microphones, record, play. |
+| `/ast` | `languageForFile`, `parseWithGrammar`, `loadEngine`, `SgNode`. ast-grep parsing with consent-gated grammar install. `@ast-grep/napi` is an optional peer; the parsing package depends on it. |
 | `/icon-catalog` | The catalog source. Consumers import it through `pix-pretty/icon-catalog`. |
 | `/testing` | `createIsolatedRuntime()`. A config runtime for tests that never touches the real agent dir. |
 
@@ -185,6 +186,7 @@ Add a config section: define it with `defineSection({ key, defaults, parse })` i
 | `/confirm` | Yes/No confirmation overlay. |
 | `/progress` | Modal progress overlay. |
 | `/gate-overlay` | The permission/root approval dialog only. |
+| `/grammar-consent` | `grammarConsent(ctx)`. The one-time "install this grammar?" prompt for `pix-runtime/ast`. |
 | `/provider-picker` | Provider settings UI used by `/web` and `/voice`. |
 | `/shell-tool` | Shared registrar + renderer for command-shell tools (bash, powershell). |
 | `/transient-error` | `showTransientMessage`, `showTransientError`. One-line runtime diagnostics. |

@@ -6,7 +6,7 @@
  * stay identical across tools.
  */
 
-import type { GrammarResult } from "./grammars.ts";
+import type { GrammarResult } from "@xynogen/pix-runtime/ast";
 
 interface ToolResult {
 	content: Array<{ type: "text"; text: string }>;

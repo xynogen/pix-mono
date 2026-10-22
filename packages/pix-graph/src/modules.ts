@@ -40,7 +40,9 @@ export interface SummaryFile {
 	modules: Record<string, StoredSummary>;
 }
 
-const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+// Test files across ecosystems: foo.test.ts, foo_test.go, test_foo.py, FooTest.java, tests/.
+const TEST_FILE =
+	/(?:^|\/)(?:tests?|__tests__|spec)\/|(?:^|\/)test_[^/]*$|[._-](?:test|spec)\.[^/]+$|Tests?\.[^/.]+$/;
 
 /** Module key: workspace package name, else the first path segment. */
 export function moduleOf(n: GraphNode): string | undefined {
