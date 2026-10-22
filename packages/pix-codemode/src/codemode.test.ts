@@ -240,7 +240,7 @@ test("extension wraps the enabled native tool only after session start", () => {
 	start?.();
 	expect(captured.names).toEqual(["codemode"]);
 	for (const key of Object.keys(native.tool)) {
-		if (["renderCall", "renderResult", "execute", "prepareLoadout"].includes(key)) continue;
+		if (typeof native.tool[key] === "function") continue;
 		expect(captured.tool[key]).toEqual(native.tool[key]);
 	}
 	expect(captured.tool.parameters).toBe(native.tool.parameters);

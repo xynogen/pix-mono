@@ -163,7 +163,7 @@ const hostThemeKeys = [
 ];
 
 test("opt-in fixture checks installed host reads and real Markdown semantic roles", async () => {
-	expect(VERSION).toBe("0.99.2");
+	expect(VERSION).toBe("1.4.0");
 	const source = readFileSync(
 		new URL(
 			"./modes/interactive/theme/theme.js",

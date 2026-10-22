@@ -1,4 +1,9 @@
 import { Box, CURSOR_MARKER, visibleWidth } from "@earendil-works/pi-tui";
+
+// Not re-exported from the pi-tui index; values are fixed in tui.ts (1.4.0).
+const FAKE_CURSOR_START = "\x1b_pi:fc\x07";
+const FAKE_CURSOR_END = "\x1b_pi:/fc\x07";
+
 import { getIconMode, setIconMode } from "@xynogen/pix-runtime/icon-catalog";
 import { collapseSection, prettySection } from "@xynogen/pix-runtime/sections";
 import { createIsolatedRuntime } from "@xynogen/pix-runtime/testing";
@@ -89,8 +94,11 @@ export function roleTheme() {
 	};
 }
 
-/** OSC policy: default rejects all. Opt-in accepts only native 0.99.2 BEL-terminated 133 A/B/C. */
+/** OSC policy: default rejects all. Opt-in accepts only native BEL-terminated 133 A/B/C. */
 export function semanticRow(line: string, options: { osc133?: boolean } | number = {}): string {
+	// pi-tui 1.4 draws cursors as zero-width fake-cursor APC pairs and TUI.resolveFakeCursors
+	// turns them into inverse video. Resolve them the same way before decoding.
+	line = line.replaceAll(FAKE_CURSOR_START, "\x1b[7m").replaceAll(FAKE_CURSOR_END, "\x1b[27m");
 	let foreground = "";
 	let background = "";
 	let bold = false;
@@ -217,7 +225,7 @@ export function captureRows(
 	if (!Number.isInteger(width) || width < 1)
 		throw new Error("Capture width must be a positive integer");
 	let rows: string[];
-	// ponytail: these adapters cover installed 0.99.2 shell geometry only. Use a public host adapter for full-host coverage.
+	// ponytail: these adapters cover installed 1.4.0 shell geometry only. Use a public host adapter for full-host coverage.
 	if (surface === "host-box") {
 		const box = new Box(1, 1);
 		box.addChild({ render: (childWidth) => component.render(childWidth), invalidate() {} });
@@ -248,9 +256,9 @@ export function captureRows(
 export async function withUiFixture(
 	options: { icons?: "unicode" | "ascii"; hostTheme?: boolean } = {},
 ) {
-	// ponytail: checked structural adapter for host 0.99.2 only. Recheck host reads before supporting another version.
+	// ponytail: checked structural adapter for host 1.4.0 only. Recheck host reads before supporting another version.
 	const host = options.hostTheme ? await import("@earendil-works/pi-coding-agent") : undefined;
-	if (host && host.VERSION !== "0.99.2")
+	if (host && host.VERSION !== "1.4.0")
 		throw new Error(`Unsupported capture host version: ${host.VERSION}`);
 	const hostThemes = host
 		? [

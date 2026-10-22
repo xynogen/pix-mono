@@ -1,4 +1,4 @@
-import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { AgentToolResult, ExtensionAPI, ToolRenderers } from "@earendil-works/pi-coding-agent";
 import * as host from "@earendil-works/pi-coding-agent";
 import { once } from "@xynogen/pix-runtime/once";
 import { renderCall, renderResult } from "./codemode.ts";
@@ -42,19 +42,20 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 		pi.on("session_shutdown", () => {
 			nested.clear();
 		});
-		const rendererApi = pi as ExtensionAPI & {
-			registerToolRenderer?: (resolver: (name: string, next: () => unknown) => unknown) => void;
-		};
+		// Pix renderers take structural theme/ctx types, so cast them to the host shape once.
+		const renderers = (r: object) => r as ToolRenderers;
+		const rendererApi = pi as Omit<ExtensionAPI, "registerToolRenderer"> &
+			Partial<Pick<ExtensionAPI, "registerToolRenderer">>;
 		if (typeof rendererApi.registerToolRenderer === "function") {
 			rendererApi.registerToolRenderer((name, next) =>
 				name === "codemode"
-					? { renderCall, renderResult, renderShell: "self" }
+					? renderers({ renderCall, renderResult, renderShell: "self" })
 					: name === "tool_search"
-						? {
+						? renderers({
 								renderCall: renderToolSearchCall,
 								renderResult: renderToolSearchResult,
 								renderShell: "self",
-							}
+							})
 						: next(),
 			);
 			return;

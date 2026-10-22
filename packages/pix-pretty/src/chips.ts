@@ -51,7 +51,9 @@ type PiEditor = {
 /** A text paste becomes a chip only above this many characters (Pi's own limit is 1000). */
 const PASTE_MAX_CHARS = 100;
 const MARKER = /\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]/g;
-const SGR = "(?:\\x1b\\[[0-9;]*m|\\x1b_pi:c\\x07)*";
+// Zero-width codes the editor may put inside a marker: SGR, the cursor marker, and
+// pi-tui 1.4's fake-cursor APC pair (`\x1b_pi:fc\x07` … `\x1b_pi:/fc\x07`).
+const SGR = "(?:\\x1b\\[[0-9;]*m|\\x1b_pi:(?:c|/?fc)\\x07)*";
 const PASTE_SPAN = new RegExp(`${SGR}\\[${SGR}paste #(?:[^\\]]|${SGR})*\\]`, "g");
 const PATH_TAG = /<path>([^<]+)<\/path>/g;
 /** Matches `chipTag.skill` output. Group 1 is the ref. */
@@ -60,7 +62,7 @@ const PASTE_TAG = /<paste>([\s\S]*?)<\/paste>/g;
 // Injected prompt from another extension (e.g. /plan). Kept as a tag for the model.
 const PROMPT_TAG = /<prompt name="([\w-]+)">([\s\S]*?)<\/prompt>/g;
 const PROMPT_ONLY = /^<prompt name="[\w-]+">[\s\S]*<\/prompt>\s*$/;
-const CODES = /\x1b\[[0-9;]*m|\x1b_pi:c\x07/g;
+const CODES = /\x1b\[[0-9;]*m|\x1b_pi:(?:c|\/?fc)\x07/g;
 const IMAGE_PATH =
 	/(^|[^\w/@])((?:~|[a-zA-Z]:[/\\]|\/|\\\\)[^\s,;'"(){}[\]]+\.(?:png|jpe?g|gif|webp|bmp|tiff?|heic|heif))(?=$|[\s,;'"(){}[\]])/gi;
 
@@ -79,7 +81,8 @@ export function expandChips(text: string, registry: Registry): string {
 /** Re-emit the cursor (inverse video + TUI marker) that a chip swallowed. */
 function keepCursor(span: string, label: string): string {
 	const marker = span.includes(CURSOR_MARKER) ? CURSOR_MARKER : "";
-	return span.includes("\x1b[7m")
+	// pi-tui <1.4 drew the cursor as inverse video; 1.4 wraps it in fake-cursor APC markers.
+	return span.includes("\x1b[7m") || span.includes("\x1b_pi:fc\x07")
 		? `${marker}\x1b[7m${label.replaceAll(RST, `${RST}\x1b[7m`)}\x1b[27m`
 		: marker + label;
 }
