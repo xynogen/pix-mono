@@ -98,6 +98,20 @@ describe.skipIf(process.platform === "win32")("ProcManager lifecycle", () => {
 		expect(mgr.list()).toContainEqual(meta);
 	});
 
+	test("a kept orphan keeps its name, cwd and start time in the next session", async () => {
+		const first = new ProcManager();
+		const started = first.start("sleep 5", "/tmp", "frontend");
+		mgr = new ProcManager();
+		try {
+			const orphan = (await mgr.findOrphans()).find((o) => o.handle === started.handle);
+			expect(orphan).toMatchObject({ name: "frontend", cwd: "/tmp", startTime: started.startTime });
+			if (!orphan) return;
+			expect(mgr.adoptOrphan(orphan)).toMatchObject({ name: "frontend", cwd: "/tmp" });
+		} finally {
+			await first.shutdown();
+		}
+	});
+
 	test("stop kills the whole process group (child + grandchild)", async () => {
 		mgr = new ProcManager();
 		// parent sh forks a child sleep; killing only the sh pid would orphan it.

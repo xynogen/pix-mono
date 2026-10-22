@@ -20,18 +20,18 @@ export const LFID_RE = /^[a-z][a-z0-9]*-[a-z]+-[a-z]+-\d{2}$/;
 // Small curated lists: common words, no ambiguous pairs, no profanity.
 // Sized at 100 × 100 so two digits complete a 1M namespace per prefix.
 const ADJECTIVES = (
-	"agate amber azure birch bold brave bright brisk calm cedar cinder clever cloudy coral crisp dawn drift dusk eager elm" +
-	"ember fair fern fleet flint fresh frost garnet glad golden grand green grove happy hazy heath iris ivory jade juniper" +
-	"keen kind lagoon larch light linden lively lotus lucid lunar maple meadow merry misty moss nectar nimble nimbus noble north" +
-	"ocean olive opal pearl pine plain plum proud quartz quick quiet rapid reef ridge river rocky round royal rusty sable" +
+	"agate amber azure birch bold brave bright brisk calm cedar cinder clever cloudy coral crisp dawn drift dusk eager elm " +
+	"ember fair fern fleet flint fresh frost garnet glad golden grand green grove happy hazy heath iris ivory jade juniper " +
+	"keen kind lagoon larch light linden lively lotus lucid lunar maple meadow merry misty moss nectar nimble nimbus noble north " +
+	"ocean olive opal pearl pine plain plum proud quartz quick quiet rapid reef ridge river rocky round royal rusty sable " +
 	"sage sandy sedge sharp shiny silent silver sleek small smart smooth solid sorrel spring steady stone sunny swift tango teal"
 ).split(" ");
 
 const NOUNS = (
-	"adder albatross anchovy badger beagle bear beaver boar bobcat cobra condor cougar coyote crane cricket deer dove drake duck eagle" +
-	"falcon ferret finch fisher fox frog gannet gazelle gecko goose gopher grouse gull hamster hare hawk heron hyena ibis impala" +
-	"indigo jackal jaguar jay kelp kestrel koala kudu lark lemur llama lynx magpie manatee marmot marten meerkat mink mole mongoose" +
-	"moose narwhal newt numbats ocelot okapi oriole osprey otter owl ox oyster panda pangolin parrot pelican penguin pigeon pika platypus" +
+	"adder albatross anchovy badger beagle bear beaver boar bobcat cobra condor cougar coyote crane cricket deer dove drake duck eagle " +
+	"falcon ferret finch fisher fox frog gannet gazelle gecko goose gopher grouse gull hamster hare hawk heron hyena ibis impala " +
+	"indigo jackal jaguar jay kelp kestrel koala kudu lark lemur llama lynx magpie manatee marmot marten meerkat mink mole mongoose " +
+	"moose narwhal newt numbats ocelot okapi oriole osprey otter owl ox oyster panda pangolin parrot pelican penguin pigeon pika platypus " +
 	"porpoise possum puffin python quail quokka rabbit raven rhea robin sable salmon saola seal shark shrew skunk sloth snail sparrow"
 ).split(" ");
 

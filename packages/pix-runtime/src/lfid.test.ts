@@ -50,4 +50,16 @@ describe("lfid", () => {
 	test("uniqueLfid throws on an exhausted namespace", () => {
 		expect(() => uniqueLfid(() => true)).toThrow("namespace exhausted");
 	});
+
+	test("each word list has 100 distinct short words", () => {
+		for (const at of [1, 2] as const) {
+			const words = new Set<string>();
+			for (let i = 0; i < 100; i++) {
+				const word = generateLfid({ rand: () => i }).split("-")[at];
+				words.add(word ?? "");
+			}
+			expect(words.size).toBe(100);
+			for (const word of words) expect(word).toMatch(/^[a-z]{2,9}$/);
+		}
+	});
 });

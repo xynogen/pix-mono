@@ -43,7 +43,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.13.1",
+		"@xynogen/pix-runtime": "^0.13.2",
 		"@xynogen/pix-data": "^0.5.4",
 		"@xynogen/pix-pretty": "^1.31.0",
 		"@xynogen/pix-welcome": "^0.2.7",

@@ -81,6 +81,9 @@ export interface Orphan {
 	handle: string;
 	pgid: number;
 	command: string;
+	name?: string;
+	cwd?: string;
+	startTime?: number;
 }
 
 export class ProcManager {
@@ -123,10 +126,11 @@ export class ProcManager {
 		const meta: ProcMeta = {
 			handle: orphan.handle,
 			command: orphan.command,
-			cwd: process.cwd(),
+			cwd: orphan.cwd ?? process.cwd(),
+			name: orphan.name,
 			pid: orphan.pgid,
 			pgid: orphan.pgid,
-			startTime: Date.now(),
+			startTime: orphan.startTime ?? Date.now(),
 			startTicks: readStartTicks(orphan.pgid),
 			status: "running",
 			capped: false,
@@ -190,7 +194,14 @@ export class ProcManager {
 		this.procs.set(handle, live);
 		writeFileSync(
 			this.pidPath(handle),
-			JSON.stringify({ pgid: meta.pgid, startTicks: meta.startTicks, command }),
+			JSON.stringify({
+				pgid: meta.pgid,
+				startTicks: meta.startTicks,
+				command,
+				name,
+				cwd,
+				startTime: meta.startTime,
+			}),
 		);
 		child.on("close", (code, signal) => {
 			meta.status = signal ? "killed" : "exited";
@@ -341,6 +352,9 @@ export class ProcManager {
 					pgid: number;
 					startTicks?: string;
 					command: string;
+					name?: string;
+					cwd?: string;
+					startTime?: number;
 				};
 				if (!pgidAlive(raw.pgid)) {
 					rmSync(join(PROC_DIR, f), { force: true }); // stale pidfile, group gone
@@ -352,7 +366,14 @@ export class ProcManager {
 					rmSync(join(PROC_DIR, f), { force: true }); // pgid recycled — not ours
 					continue;
 				}
-				orphans.push({ handle, pgid: raw.pgid, command: raw.command });
+				orphans.push({
+					handle,
+					pgid: raw.pgid,
+					command: raw.command,
+					name: raw.name,
+					cwd: raw.cwd,
+					startTime: raw.startTime,
+				});
 			} catch {
 				// unreadable/corrupt pidfile — skip it, do not fail the whole scan
 			}
