@@ -189,7 +189,8 @@ export function registerShellTool(
 				if (d?._type === "bashResult") {
 					const normalizedText = normalizeShellText(d.text as string);
 					const lc = normalizedText ? normalizedText.split("\n").length : 0;
-					const durationMs = Number(d.durationMs ?? 0);
+					// Host time (monotonic, persisted) wins; details keep old hosts and sessions working.
+					const durationMs = Number(renderCtx.durationMs ?? d.durationMs ?? 0);
 					const exitCode = d.exitCode as number | null;
 					const status = exitCode === null ? "warning" : exitCode === 0 ? "success" : "error";
 					const meta = dotJoin([

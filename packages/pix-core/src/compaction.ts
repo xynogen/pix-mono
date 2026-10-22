@@ -348,8 +348,9 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 		return { entries: [...event.entries, ...edits] };
 	});
 
-	pi.on("agent_settled", (_event, ctx) => {
-		if (compacting || triggerDisabled) return;
+	pi.on("agent_settled", (event, ctx) => {
+		// Escape means the user wants control back, not a surprise compaction.
+		if (event.aborted || compacting || triggerDisabled) return;
 		const { triggerPercent, minimumTokens } = config(compactionSection);
 		if (triggerPercent <= 0) return;
 

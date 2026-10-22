@@ -366,3 +366,13 @@ test("call header shows the total from the result state", async () => {
 	const header = capture(renderCall({ code: "return 1;" }, theme, withState), 80)[0] ?? "";
 	expect(header).toMatch(/codemode.*<muted>0\.3s/);
 });
+
+test("call total prefers the host duration over the parsed wall time", () => {
+	const total = (durationMs?: number) => {
+		const state: Record<string, unknown> = {};
+		renderResult(result(), options, theme, { ...context(state), durationMs });
+		return String(state.codemodeTotal ?? "");
+	};
+	expect(total(3_000)).toMatch(/^3(\.0)?s$/);
+	expect(total(undefined)).toMatch(/^0\.[23]s$/);
+});

@@ -139,6 +139,8 @@ type Context = {
 	executionStarted?: boolean;
 	invalidate: () => void;
 	lastComponent?: TextComponentLike;
+	/** Host-recorded execution time (Pi >= 1.1). */
+	durationMs?: number;
 };
 const PreviewText = viewportTextConstructor(Text);
 const costText = (cost: number) => `$${cost >= 0.01 ? cost.toFixed(2) : cost.toPrecision(2)}`;
@@ -266,7 +268,10 @@ export function renderResult(
 		0,
 	);
 	const cost = calls.reduce((sum, call) => sum + (call.cost ?? 0), 0);
-	const wall = display.wallTime === undefined ? "" : formatMs(display.wallTime * 1000);
+	// Host duration wins; the parsed "Wall time" header covers older hosts.
+	const wallMs =
+		ctx.durationMs ?? (display.wallTime === undefined ? undefined : display.wallTime * 1000);
+	const wall = wallMs === undefined ? "" : formatMs(wallMs);
 	// ponytail: the call header lives in renderCall. Pass totals through shared state, then redraw once.
 	const total = dotJoin([wall, cost ? costText(cost) : ""]);
 	if (!options.isPartial && (ctx.state.codemodeTotal ?? "") !== total) {

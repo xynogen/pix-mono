@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
+import registerCompaction, {
 	compactionThresholdTokens,
 	formatFileLists,
 	mergeFileLists,
@@ -160,5 +160,30 @@ describe("shrinkContent", () => {
 		const once = shrinkContent("z".repeat(500_000))?.content as string;
 		expect(shrinkContent(once)).toBeUndefined();
 		expect(shrinkContent("small")).toBeUndefined();
+	});
+});
+
+describe("auto-compaction trigger", () => {
+	function settle(aborted: boolean): number {
+		const handlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
+		const pi = {
+			on: (name: string, fn: (e: unknown, c: unknown) => unknown) => handlers.set(name, fn),
+		};
+		registerCompaction(pi as unknown as Parameters<typeof registerCompaction>[0]);
+		let compacts = 0;
+		const ctx = {
+			getContextUsage: () => ({ tokens: 10_000_000, contextWindow: 1_000_000 }),
+			ui: { notify: () => {} },
+			compact: () => {
+				compacts++;
+			},
+		};
+		handlers.get("agent_settled")?.({ aborted }, ctx);
+		return compacts;
+	}
+
+	it("compacts a completed run above threshold and leaves an aborted run alone", () => {
+		expect(settle(false)).toBe(1);
+		expect(settle(true)).toBe(0);
 	});
 });

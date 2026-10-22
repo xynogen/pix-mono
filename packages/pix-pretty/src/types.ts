@@ -72,6 +72,8 @@ export type RenderContextLike<
 	invalidate: () => void;
 	/** Stable id for this tool execution — used to key resize invalidators. */
 	toolCallId?: string;
+	/** Host-recorded execution time of the final result (Pi >= 1.1). Undefined while partial. */
+	durationMs?: number;
 };
 
 type SessionContextLike = ExtensionContext;

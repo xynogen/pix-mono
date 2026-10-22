@@ -147,6 +147,30 @@ describe("registerShellTool", () => {
 		expect(result?.render(24).join("\n")).toContain("…");
 	});
 
+	it("prefers the host-recorded duration over the stored one", () => {
+		const { pi, tool } = capturePi();
+		registerShellTool(pi, okFactory, makeToolContext({ terminalWidth: () => 120 }), bashOpts);
+		const ctx = makeRenderCtx({ state: { collapsed: true } });
+		const details = {
+			_type: "bashResult",
+			text: "one",
+			exitCode: 0,
+			command: "x",
+			durationMs: 2_450,
+		};
+		const row = (durationMs?: number) =>
+			tool
+				.renderResult?.(
+					{ content: [{ type: "text", text: "one" }], details },
+					undefined,
+					makeTheme({ tag: true }),
+					{ ...ctx, durationMs },
+				)
+				?.getText();
+		expect(row(7_000)).toMatch(/<muted>1 line · 7(\.0)?s<\/muted>/);
+		expect(row(undefined)).toMatch(/<muted>1 line · 2\.5s<\/muted>/);
+	});
+
 	it("restores full output when an elapsed card is expanded", () => {
 		const { pi, tool } = capturePi();
 		registerShellTool(pi, okFactory, makeToolContext(), bashOpts);
