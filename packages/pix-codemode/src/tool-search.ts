@@ -26,9 +26,8 @@ type Context = {
 	invalidate: () => void;
 };
 
-// Body aligns under the tool name: status glyph (2 cols) + space.
+// Body aligns under the tool name: status glyph (2 cols) + space. Rows share the heading column.
 const BODY = "   ";
-const INDENT = `${BODY}  `;
 
 /** Wrapped text, every row indented to the body column. */
 function bodyText(text: string) {
@@ -57,13 +56,13 @@ function toolTable(
 				Math.max(...rows.map((row) => visibleWidth(row.name))),
 				Math.floor(width / 2),
 			);
-			const lead = INDENT.length + visibleWidth(padIcon(icon("tools"))) + 1;
+			const lead = BODY.length + visibleWidth(padIcon(icon("tools"))) + 1;
 			const gutter = " ".repeat(lead + col + 2);
 			const descWidth = Math.max(10, width - gutter.length);
 			const out = [BODY + truncateToWidth(heading, width - BODY.length, "…")];
 			for (const { name, desc } of rows) {
 				const nameWidth = visibleWidth(name);
-				const head = `${INDENT}${glyph} ${theme.fg("accent", name)}`;
+				const head = `${BODY}${glyph} ${theme.fg("accent", name)}`;
 				const body = expanded
 					? wrapTextWithAnsi(theme.fg("dim", desc), descWidth)
 					: [truncateToWidth(theme.fg("dim", desc), descWidth, "…")];

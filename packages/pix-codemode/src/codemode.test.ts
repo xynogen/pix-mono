@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { createCodemodeExtension, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { capturePi, makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { roleTheme, semanticRow, withUiFixture } from "../../../scripts/ui-capture.ts";
@@ -301,11 +302,16 @@ test("tool_search renders query, one row per loaded tool, and a collapsed summar
 			expect(done.filter((row) => row.includes("sudo_run"))).toHaveLength(1);
 			expect(done.find((row) => row.includes("sudo_run"))).toContain("…");
 			card.setExpanded(true);
-			expect(
-				rows()
-					.join("")
-					.replace(/<[^>]+>|\s/g, ""),
-			).toContain("x".repeat(200));
+			const expanded = rows();
+			expect(expanded.join("").replace(/<[^>]+>|\s/g, "")).toContain("x".repeat(200));
+			// Heading and tool icons share one column; wrapped description rows sit under the description.
+			const plain = expanded.map((row) => row.replace(/<[^>]+>/g, ""));
+			const col = (row: string) => row.length - row.trimStart().length;
+			const heading = plain.find((row) => row.includes("Loaded 2 tools")) ?? "";
+			const sudo = plain.findIndex((row) => row.includes("sudo_run"));
+			expect(col(plain[sudo] ?? "")).toBe(col(heading));
+			const row = plain[sudo] ?? "";
+			expect(col(plain[sudo + 1] ?? "")).toBe(visibleWidth(row.slice(0, row.indexOf("Execute"))));
 		}
 	} finally {
 		await fixture.restore();
