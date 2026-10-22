@@ -834,6 +834,27 @@ describe("turn-based todo reminder", () => {
 		expect(prompt).toContain("2. b");
 	});
 
+	test("counts only user prompts, not triggerTurn runs", async () => {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		await run(host.execute, { action: "set", items: "a" });
+
+		for (let i = 1; i <= 9; i++) {
+			await host.emit("before_agent_start", { systemPrompt: "base", messageType: "user" });
+			const custom = await host.emit("before_agent_start", {
+				systemPrompt: "base",
+				messageType: "custom",
+			});
+			expect(custom).toBeUndefined();
+		}
+		const result = await host.emit("before_agent_start", {
+			systemPrompt: "base",
+			messageType: "user",
+		});
+		expect((result as { systemPrompt: string }).systemPrompt).toContain("Todo reminder");
+	});
+
 	test("does not inject when no todos exist", async () => {
 		const host = makeHost();
 		registerTodo(host.pi);

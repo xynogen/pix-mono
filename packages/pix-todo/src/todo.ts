@@ -501,13 +501,15 @@ export default function registerTodo(pi: ExtensionAPI): void {
 		});
 
 		// ── Turn-based reminder ─────────────────────────────────────────────
-		// Every TODO_REMINDER_INTERVAL turns, inject the current todo summary
+		// Every TODO_REMINDER_INTERVAL user prompts, inject the current todo summary
 		// into the system prompt so the model stays aware of pending work and
 		// can't hand-wave or ignore incomplete items.
 		const TODO_REMINDER_INTERVAL = 10;
 		let todoTurnCount = 0;
 
 		pi.on("before_agent_start", async (event) => {
+			// Runs started by sendMessage(triggerTurn) are extension follow-ups, not user turns.
+			if (event.messageType === "custom") return;
 			todoTurnCount++;
 			// Only inject when there are active (non-empty) todos
 			if (todos.length === 0) return;
