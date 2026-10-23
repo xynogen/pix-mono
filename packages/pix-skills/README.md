@@ -166,6 +166,7 @@ as `/skill:<name>` slash commands.
 | `harden` | Retrofit a fail-fast static-analysis gate onto an existing project |
 | `human` | Audit and rewrite text to remove AI writing patterns (bundle with references) |
 | `lint` | Select and run the project's linter (LSP diagnostics first) and fix findings |
+| `long-task` | Multi-session build state in files: `init.sh`, `features.json`, `PROGRESS.md`, one commit per feature |
 | `lsp` | Select, install with consent, and configure a language server in `.pi/lsp.json` |
 | `readme` | Create or update a deployment-focused README in a fixed style |
 | `review` | Strict code review by severity, ending in a Pass / Pass with suggestions / Fail verdict |
