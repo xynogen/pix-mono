@@ -48,7 +48,13 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { decodeLines, hashLine, parseAnchor, type SourceLine } from "@xynogen/pix-runtime/hashline";
+import {
+	anchor,
+	decodeLines,
+	hashLine,
+	parseAnchor,
+	type SourceLine,
+} from "@xynogen/pix-runtime/hashline";
 import { expandHome } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
 
@@ -206,12 +212,27 @@ function applyHashEdits(bytes: Buffer, input: unknown) {
 	if (Object.keys(args).some((key) => !["path", "edits"].includes(key)))
 		throw new Error("Legacy exact-text fields are not supported");
 	const source = decodeLines(bytes);
+	// Stale/out-of-bounds anchors carry the current lines around the target so the
+	// model can retry at once instead of spending a read round-trip.
+	const nearby = (line: number) => {
+		const from = Math.max(1, Math.min(line, source.lines.length) - 2);
+		const rows = source.lines.slice(from - 1, from + 4).map((l, i) => {
+			const text = l.text.length > 200 ? `${l.text.slice(0, 200)}…` : l.text;
+			return `${anchor(from + i, l.text)}|${text}`;
+		});
+		return rows.length ? `\nCurrent lines:\n${rows.join("\n")}` : "";
+	};
 	const check = (value: unknown) => {
 		const parsed = parseAnchor(value);
 		const line = source.lines[parsed.line - 1];
-		if (!line) throw new Error(`Anchor out of bounds: ${String(value)}`);
+		if (!line)
+			throw new Error(
+				`Anchor out of bounds: ${String(value)} (file has ${source.lines.length} lines).${nearby(parsed.line)}`,
+			);
 		if (hashLine(line.text) !== parsed.hash)
-			throw new Error(`Stale anchor: ${String(value)}. Read the file again.`);
+			throw new Error(
+				`Stale anchor: ${String(value)}. Use the current anchors below, or read again if the target moved.${nearby(parsed.line)}`,
+			);
 		return parsed.line;
 	};
 	const replacements: Array<{ start: number; end: number; lines: string[] }> = [];

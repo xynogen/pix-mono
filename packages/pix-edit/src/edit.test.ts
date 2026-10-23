@@ -382,6 +382,37 @@ describe("hashline acceptance", () => {
 			expect(await readFile(path)).toEqual(bytes);
 		}
 	});
+	it("stale and out-of-bounds anchors return the current anchored lines near the target", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-stale-"));
+		const path = join(cwd, "case.ts");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		await writeFile(path, "a\nb\nc\nd\ne\nf\ng");
+		const text = async (pos: string) =>
+			(
+				await executeTool(
+					tool,
+					"id",
+					{ path, edits: [{ op: "replace", pos, lines: ["x"] }] },
+					undefined,
+					undefined,
+					{ cwd },
+				)
+			).content
+				.map((c) => ("text" in c ? c.text : ""))
+				.join("");
+		const rows = (from: number, to: number) =>
+			"abcdefg"
+				.slice(from - 1, to)
+				.split("")
+				.map((c, i) => `${anchor(from + i, c)}|${c}`)
+				.join("\n");
+		expect(await text(anchor(4, "old"))).toContain(`Stale anchor: ${anchor(4, "old")}.`);
+		expect(await text(anchor(4, "old"))).toContain(`\nCurrent lines:\n${rows(2, 6)}`);
+		expect(await text(anchor(9, "z"))).toContain(
+			`(file has 7 lines).\nCurrent lines:\n${rows(5, 7)}`,
+		);
+	});
 	it("uses one delimiter choice and preserves untouched mixed endings", async () => {
 		const cwd = await mkdtemp(join(tempDir(), "hashline-mixed-"));
 		const path = join(cwd, "case.ts");
