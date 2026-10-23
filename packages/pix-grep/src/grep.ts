@@ -137,9 +137,14 @@ export function registerGrepTool(
 								notices.push(`${effectiveLimit} limit reached`);
 							if (grep.regexFallbackError)
 								notices.push(`Regex failed: ${grep.regexFallbackError}, used literal match`);
+							// SWE-agent ablation: paging through matches one window at a time cost
+							// 6 points on SWE-bench Lite; agents page exhaustively. Lead with a
+							// narrower query, keep the cursor as the fallback.
 							if (grep.nextCursor) {
 								const cursorId = cursorStore.store(grep.nextCursor);
-								notices.push(`More results available. Use cursor="${cursorId}" to continue`);
+								notices.push(
+									`More results available. Narrow the pattern, path or glob first; cursor="${cursorId}" continues only if you need every match`,
+								);
 							}
 
 							const textContent = appendNotices(
