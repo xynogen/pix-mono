@@ -9,6 +9,7 @@ import registerCompaction, {
 	staleReads,
 	summaryFailure,
 	summaryPrompt,
+	windowedMasks,
 } from "./compaction.ts";
 
 describe("summaryPrompt", () => {
@@ -225,6 +226,85 @@ describe("stale read masking", () => {
 		expect(notices).toEqual([
 			expect.stringMatching(/^Compaction: masked 1 stale read\(s\), trimmed 0/),
 		]);
+	});
+});
+
+describe("windowed output masking", () => {
+	const call = (id: string, args: Record<string, unknown>) => ({
+		sourceEntry: { id: `a-${id}`, type: "message" },
+		messages: [{ role: "assistant", content: [{ type: "toolCall", id, arguments: args }] }],
+	});
+	const result = (id: string, toolName: string, text: string, isError = false) => ({
+		sourceEntry: { id: `r-${id}`, type: "message" },
+		messages: [
+			{ role: "toolResult", toolCallId: id, toolName, isError, content: [{ type: "text", text }] },
+		],
+	});
+	const big = "x".repeat(40_000); // ~10k tok, over the 5k default gate
+	const entries = [
+		call("1", { command: "npm test\n  --verbose" }),
+		result("1", "bash", big), // old bash: masked
+		call("2", { pattern: "TODO" }),
+		result("2", "grep", "boom", true), // old error: kept
+		call("3", { path: "a.ts" }),
+		result("3", "edit", big), // edit output is not maskable
+		call("4", { pattern: "*.ts" }),
+		result("4", "find", "[pix compaction: output masked — find *.ts; run again]"), // already masked
+		call("5", { path: "b.ts" }),
+		result("5", "read", "short"), // newest two: inside the window
+		call("6", { command: "ls" }),
+		result("6", "bash", big),
+	];
+
+	it("masks only older, successful bash/grep/find/ls/read output outside the window", () => {
+		const out = windowedMasks(entries, 2);
+		expect(out.map((m) => m.id)).toEqual(["r-1"]);
+		expect(out[0]?.text).toMatch(
+			/^\[pix compaction: output masked — bash npm test --verbose; run again if needed\. Original kept in session file\.\]$/,
+		);
+		expect(out[0]?.saved).toBeGreaterThan(39_000);
+		expect(windowedMasks(entries, 2, new Set(["r-1"]))).toEqual([]);
+		expect(windowedMasks(entries, 10)).toEqual([]);
+	});
+
+	function settle(contextEntries: unknown[], tokens = 10_000_000) {
+		const handlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
+		registerCompaction({
+			on: (name: string, fn: (e: unknown, c: unknown) => unknown) => handlers.set(name, fn),
+		} as unknown as Parameters<typeof registerCompaction>[0]);
+		const notices: string[] = [];
+		const out = handlers.get("agent_before_settle")?.(
+			{ entries: [], context: { contextEntries } },
+			{
+				cwd: "/repo",
+				getContextUsage: () => ({ tokens, contextWindow: 1_000_000 }),
+				ui: { notify: (m: string) => notices.push(m) },
+			},
+		) as { entries: Array<{ targetId: string }> } | undefined;
+		return { ids: out?.entries.map((e) => e.targetId) ?? [], notices };
+	}
+
+	it("masks beyond the default window of 10 over threshold, with a visible notice", () => {
+		const many = Array.from({ length: 12 }, (_, i) => [
+			call(`m${i}`, { command: `cmd ${i}` }),
+			result(`m${i}`, "bash", big),
+		]).flat();
+		const { ids, notices } = settle(many);
+		expect(ids).toEqual(["r-m0", "r-m1"]);
+		expect(notices).toEqual([
+			expect.stringMatching(
+				/^Compaction: masked 0 stale read\(s\), masked 2 older tool output\(s\) beyond the last 10 \(~[\d,]+ tok\), trimmed 0/,
+			),
+		]);
+		expect(settle(many, 1_000).ids).toEqual([]); // under threshold: nothing runs
+	});
+
+	it("skips a pass that frees less than maskMinTokens", () => {
+		const small = Array.from({ length: 12 }, (_, i) => [
+			call(`s${i}`, { command: `cmd ${i}` }),
+			result(`s${i}`, "bash", "y".repeat(2_000)),
+		]).flat();
+		expect(settle(small).ids).toEqual([]);
 	});
 });
 

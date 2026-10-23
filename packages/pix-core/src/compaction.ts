@@ -263,6 +263,65 @@ export function maskedRead(path: string): string {
 	return `${MASK_PREFIX}: ${path} was edited later; read it again if needed. Original kept in session file.]`;
 }
 
+// Windowed masking (JetBrains M=10: about half the cost, solve rate on par with
+// summarization; Anthropic clear_tool_uses keeps the last N). Over threshold, tool
+// output older than the newest `keep` results is replaced by a restorable stub.
+// Errors stay: they carry what went wrong. Only pass when it frees enough tokens
+// (`minTokens`), because every pass breaks the prompt cache from that point on.
+const OUTPUT_MASK_PREFIX = "[pix compaction: output masked";
+const MASKABLE_TOOLS = new Set(["bash", "grep", "find", "ls", "read"]);
+
+/** Older tool output to mask: id, stub text, and chars freed. */
+export function windowedMasks(
+	entries: MaskEntry[],
+	keep: number,
+	skip: ReadonlySet<string> = new Set(),
+): Array<{ id: string; text: string; saved: number }> {
+	const callArgs = new Map<string, Record<string, unknown>>();
+	const results: Array<{ id: string; tool: string; callId: string; text: string }> = [];
+	for (const { sourceEntry, messages } of entries) {
+		const msg = messages[0];
+		if (msg?.role === "assistant" && Array.isArray(msg.content)) {
+			for (const part of msg.content as Array<{ type?: string; id?: string; arguments?: unknown }>)
+				if (part.type === "toolCall" && part.id)
+					callArgs.set(part.id, (part.arguments ?? {}) as Record<string, unknown>);
+		}
+		if (msg?.role !== "toolResult" || !msg.toolCallId) continue;
+		const text = Array.isArray(msg.content)
+			? (msg.content as TextOrImage[])
+					.map((p) => (p.type === "text" && typeof p.text === "string" ? p.text : ""))
+					.join("\n")
+			: typeof msg.content === "string"
+				? msg.content
+				: "";
+		// Errors count toward the window but are never masked.
+		results.push({
+			id: sourceEntry.id,
+			tool: msg.isError ? "" : (msg.toolName ?? ""),
+			callId: msg.toolCallId,
+			text,
+		});
+	}
+	const older = results.slice(0, Math.max(0, results.length - Math.max(0, keep)));
+	const out: Array<{ id: string; text: string; saved: number }> = [];
+	for (const r of older) {
+		if (!MASKABLE_TOOLS.has(r.tool) || skip.has(r.id)) continue;
+		if (r.text.startsWith(OUTPUT_MASK_PREFIX) || r.text.startsWith(MASK_PREFIX)) continue;
+		const args = callArgs.get(r.callId) ?? {};
+		const target = [args.command, args.pattern, args.path, args.paths]
+			.flat()
+			.find((v) => typeof v === "string" && v);
+		const label = String(target ?? "")
+			.replace(/\s+/g, " ")
+			.trim()
+			.slice(0, 120);
+		const text = `${OUTPUT_MASK_PREFIX} — ${r.tool}${label ? ` ${label}` : ""}; run again if needed. Original kept in session file.]`;
+		const saved = r.text.length - text.length;
+		if (saved > 0) out.push({ id: r.id, text, saved });
+	}
+	return out;
+}
+
 // Sent as a user message after a self-triggered compaction so the agent picks
 // its task back up on its own. Kept short — the freshly written summary already
 // carries the goal, progress, and next steps. Edit to taste.
@@ -373,7 +432,7 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 	// Runs before agent_settled; committed edits shrink the context the trigger
 	// below measures, so a single oversized message no longer blocks compaction.
 	pi.on("agent_before_settle", (event, ctx) => {
-		const { triggerPercent, minimumTokens } = config(compactionSection);
+		const { triggerPercent, minimumTokens, maskKeep, maskMinTokens } = config(compactionSection);
 		if (triggerPercent <= 0) return;
 		const usage = ctx.getContextUsage?.();
 		if (!usage || usage.tokens === null) return;
@@ -396,6 +455,24 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 				replacement: { content: [{ type: "text", text: maskedRead(path) }] },
 			});
 		}
+		// ponytail: chars/4 token estimate, like the trim notice below. Use a tokenizer if the
+		// maskMinTokens gate needs to be exact for a provider.
+		const windowed = windowedMasks(
+			event.context.contextEntries as unknown as MaskEntry[],
+			maskKeep,
+			masked,
+		);
+		const windowSaved = windowed.reduce((sum, w) => sum + w.saved, 0);
+		const windowCount = windowSaved / 4 >= maskMinTokens ? windowed.length : 0;
+		for (const w of windowed.slice(0, windowCount)) {
+			masked.add(w.id);
+			edits.push({
+				type: "context_edit",
+				targetId: w.id,
+				replacement: { content: [{ type: "text", text: w.text }] },
+			});
+		}
+		const stale = masked.size - windowCount;
 		for (const { sourceEntry, messages } of event.context.contextEntries) {
 			if (masked.has(sourceEntry.id)) continue;
 			const msg = messages[0];
@@ -414,10 +491,15 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 		}
 		if (edits.length === 0) return;
 		const trimmed = edits.length - masked.size;
-		ctx.ui.notify(
-			`Compaction: masked ${masked.size} stale read(s), trimmed ${trimmed} oversized message(s)${trimmed ? ` (~${Math.round(saved / 4).toLocaleString()} tok)` : ""}; originals stay in session file`,
-			"info",
+		const parts = [`masked ${stale} stale read(s)`];
+		if (windowCount)
+			parts.push(
+				`masked ${windowCount} older tool output(s) beyond the last ${maskKeep} (~${Math.round(windowSaved / 4).toLocaleString()} tok)`,
+			);
+		parts.push(
+			`trimmed ${trimmed} oversized message(s)${trimmed ? ` (~${Math.round(saved / 4).toLocaleString()} tok)` : ""}`,
 		);
+		ctx.ui.notify(`Compaction: ${parts.join(", ")}; originals stay in session file`, "info");
 		return { entries: [...event.entries, ...edits] };
 	});
 
