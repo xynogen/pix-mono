@@ -1,30 +1,19 @@
 /**
  * tools-nudge.ts — nudge the model toward dedicated tools over raw bash
  *
- * Hooks `tool_call` for the built-in `bash` tool. When a bash command merely
- * reimplements a first-class tool (read/ls/grep/find/edit/write), it emits a
- * YELLOW warning notification ONCE per command-category per session — the
- * command still runs. The nudge teaches the model to prefer the dedicated tool
- * next time (better token usage, stricter behavior) WITHOUT blocking: blocking
- * rendered red and forced a failed retry that wasted a turn. After the first
- * nudge for a category, subsequent bash calls in that category are silent (no
- * nag loop). Bash stays available for everything (pipes, compound, real work).
+ * Hooks `tool_result` for the built-in `bash` tool. When a bash command merely
+ * reimplements a first-class tool (read/ls/grep/find/edit), it appends ONE
+ * short line to that bash result — the only channel the model reads
+ * (`ctx.ui.notify` reaches the user only) — and mirrors it as a yellow notify.
+ * Once per category per session; the command always runs (blocking forced a
+ * wasted retry turn). Bash stays available for pipes and compound work.
  *
- * IMPORTANT: some target tools (e.g. `ls`, `find`) are GATED from the system
- * prompt — registered but prompt-hidden until the model discovers them via
- * toolbox. They ARE still in the function-calling definitions (always callable).
- * The nudge checks `pi.getActiveTools()` first: if the tool is prompt-visible,
- * recommend it directly; if it is gated, tell the model to enable it via toolbox
- * but note that all tools are always callable via function definitions.
- *
- * The nudge is deliberately SURGICAL: it names only the single tool that maps
- * to the command just blocked. It does NOT dump a full tool inventory — that
- * floods the model with gated tools it can't call and is the opposite of the
- * lazy-gate's purpose (a lean prompt). Point at the one right tool; don't list
- * the menu.
+ * Deferred tools (pix-core keeps only core tools in the prompt) are not active
+ * until loaded, so the line then points at `tool_search` instead of implying
+ * the tool is callable now. Names only the one matching tool — no inventory.
  */
 
-import { type ExtensionAPI, isToolCallEventType } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 /** In-bounds array access that satisfies noUncheckedIndexedAccess without casting. */
 function at<T>(arr: T[], i: number): T {
@@ -171,15 +160,14 @@ export function classifyCompound(command: string): Rule | undefined {
 }
 
 /**
- * Build the one-line guidance for a nudge. When the target tool is active, point
- * straight at it. When it's gated out, point at toolbox to enable it — never
- * imply a gated tool is callable now. Pure + exported for unit testing.
+ * One-line guidance for a nudge. Active tool → call it directly. Deferred tool
+ * → load it with `tool_search` first. Pure + exported for unit testing.
  */
 export function nudgeReason(baseReason: string, tool: string, toolActive: boolean): string {
 	const how = toolActive
-		? `Use \`${tool}\` instead — it's in the function definitions, call it directly.`
-		: `\`${tool}\` is prompt-hidden — enable it via toolbox(action:"enable", name:"${tool}") to make it known, then call it; bash is fine until then. (All tools are always callable via function definitions.)`;
-	return `${baseReason} ${how} (Fires once per category; bash stays available for pipes & compound commands.)`;
+		? `Use \`${tool}\` instead.`
+		: `Load \`${tool}\` with tool_search, then call it.`;
+	return `${baseReason} ${how} (Once per category; bash stays fine for pipes and compound commands.)`;
 }
 
 export default function registerToolsNudge(pi: ExtensionAPI): void {
@@ -197,26 +185,20 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 		}
 	}
 
-	pi.on("tool_call", async (event, ctx) => {
-		if (!isToolCallEventType("bash", event)) return;
-		const command = event.input.command;
+	pi.on("tool_result", (event, ctx) => {
+		if (event.toolName !== "bash") return;
+		const command = event.input?.command;
 		if (typeof command !== "string") return;
 
 		const rule = classifyCompound(command);
-		if (!rule) return;
-		if (nudged.has(rule.category)) return; // already taught — allow.
-
+		if (!rule || nudged.has(rule.category)) return;
 		nudged.add(rule.category);
 
-		// One short, targeted line: name only the tool that maps to THIS command,
-		// and route through toolbox when it's gated rather than implying it's
-		// callable now. No full-inventory dump — that's what confused the model.
 		const reason = nudgeReason(rule.reason, rule.tool, isActive(rule.tool));
-
-		// Surface the guidance as a YELLOW warning notification — non-blocking.
-		// Blocking the call rendered red AND forced a failed retry through the
-		// proper tool, wasting a turn. This nudge is corrective guidance, not a
-		// failure: let the command proceed and just teach for next time.
 		ctx.ui.notify(reason, "warning");
+		return {
+			content: [...(event.content ?? []), { type: "text" as const, text: `[pix-nudge] ${reason}` }],
+			structuredContent: event.structuredContent,
+		};
 	});
 }

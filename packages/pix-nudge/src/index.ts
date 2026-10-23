@@ -5,6 +5,7 @@ export {
 	graphifyHint,
 	partitionTools,
 } from "./capability.ts";
+export { createLoopTracker, LOOP_THRESHOLD, loopReason } from "./loop.ts";
 export {
 	classify,
 	classifyCompound,

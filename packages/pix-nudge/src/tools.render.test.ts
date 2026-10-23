@@ -43,9 +43,11 @@ test("captures active and hidden tool warnings through the actual host notificat
 					},
 				},
 			};
-			expect(
-				await handler({ toolName: "bash", input: { command: "cat src/auth.ts" } }, ctx),
-			).toBeUndefined();
+			const result = (await handler(
+				{ toolName: "bash", input: { command: "cat src/auth.ts" }, content: [] },
+				ctx,
+			)) as { content: Array<{ text: string }> };
+			expect(result.content[0]?.text).toMatch(/^\[pix-nudge\] Reading a file/);
 			expect(notices).toEqual(["warning"]);
 			captures[name] = captureRows(chatContainer, { width: 80, surface: "component" });
 		}

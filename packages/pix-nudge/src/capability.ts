@@ -3,22 +3,17 @@
  *
  * Models drift toward improvising mid-session, forgetting they can ask the
  * user, search the web, pull library docs (context7), use LSP, or invoke an
- * Agent Skill instead of guessing. Hooks `before_agent_start` and injects into
- * the system prompt on selected turns only (see REMINDER_INTERVAL).
+ * Agent Skill instead of guessing. Hooks `before_agent_start` and adds one visible
+ * custom message on selected turns only (see REMINDER_INTERVAL).
  *
  * Two modes:
- *   1. FIRST prompt of the session — an orientation block: a high-level
- *      description of WHAT is available (counts of tools / MCP tools / skills)
- *      and HOW to explore it. We deliberately do NOT dump the whole inventory
- *      every turn — the model should call read_skills() for skills and use /toolbox
- *      (slash command, user-facing) to discover/enable gated tools.
+ *   1. FIRST prompt of the session — an orientation block: counts of tools /
+ *      MCP tools / skills and HOW to explore them. No full inventory: deferred
+ *      tools are found with tool_search, skills with read_skills().
  *   2. Every REMINDER_INTERVAL-th turn thereafter (turns 11, 21, …) — the terse
- *      one-line CAPABILITY_REMINDER, a cheap (~40 tok) reinforcement that steers
- *      toward read_skills() and /toolbox. All other turns inject nothing.
+ *      one-line CAPABILITY_REMINDER (~40 tok). All other turns inject nothing.
  *
- * NOTE: `toolbox` is a slash command only (/toolbox) — NOT a model-callable
- * function tool. The model cannot call toolbox() in function definitions.
- * The `read_skills` tool IS model-callable: read_skills() lists/loads bundled skills.
+ * `/toolbox` is a user slash command, not model-callable; never name it here.
  */
 
 import { existsSync } from "node:fs";
@@ -119,10 +114,9 @@ export function buildOrientation(
 		inventory.push(`${skillNames.length} skill${skillNames.length === 1 ? "" : "s"}`);
 	const summary = inventory.length ? inventory.join(", ") : "your toolbelt";
 
-	// Lead with the gate — tools not described in the prompt are still callable
-	// via function definitions, but the model doesn't know about them.
+	// Lead with the gate: deferred tools are not callable until tool_search loads them.
 	const gateLine = gated
-		? `${gated} ${gated === 1 ? "is" : "are"} gated (kept out of the prompt to save context). All tools are always callable via function definitions.`
+		? `${gated} ${gated === 1 ? "is" : "are"} deferred (kept out of the prompt to save context). Find and load them with tool_search.`
 		: undefined;
 
 	const lines = [
@@ -152,6 +146,8 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 	let turnCount = 0;
 
 	pi.on("before_agent_start", async (event) => {
+		// Runs started by sendMessage(triggerTurn) are extension follow-ups, not user turns.
+		if (event.messageType === "custom") return;
 		const skills = event.systemPromptOptions?.skills;
 		turnCount++;
 
@@ -181,9 +177,9 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 			return; // no nudge this turn
 		}
 
-		const existing = event.systemPrompt ?? "";
-		const systemPrompt = existing ? `${existing}\n\n${content}` : content;
-
-		return { systemPrompt };
+		// A visible message, not a system-prompt rewrite: a returned systemPrompt
+		// becomes forceSystemPrompt for that one turn, so the prompt changes and then
+		// reverts, invalidating the cached prefix twice per nudge.
+		return { message: { customType: "pix-capability-nudge", content, display: true } };
 	});
 }

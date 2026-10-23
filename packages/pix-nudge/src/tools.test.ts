@@ -7,18 +7,19 @@ import registerToolsNudge, {
 } from "./tools.ts";
 
 /** Minimal fakes for the bits of ExtensionAPI / ctx the handler touches. */
-type ToolCallHandler = (
+type ToolResultHandler = (
 	event: unknown,
 	ctx: { ui: { notify: (msg: string, type?: string) => void } },
-) => Promise<unknown> | unknown;
+) => unknown;
+type Result = { content: Array<{ type: string; text: string }> } | undefined;
 
 function makeHandler(
 	activeTools: string[] = ["read", "ls", "grep", "find", "edit"],
-): ToolCallHandler {
-	let handler: ToolCallHandler | undefined;
+): ToolResultHandler {
+	let handler: ToolResultHandler | undefined;
 	const pi = {
-		on(eventName: string, h: ToolCallHandler) {
-			if (eventName === "tool_call") handler = h;
+		on(eventName: string, h: ToolResultHandler) {
+			if (eventName === "tool_result") handler = h;
 		},
 		getActiveTools: () => activeTools,
 	};
@@ -28,7 +29,7 @@ function makeHandler(
 }
 
 function bashEvent(command: string) {
-	return { toolName: "bash", input: { command } };
+	return { toolName: "bash", input: { command }, content: [{ type: "text", text: "out" }] };
 }
 
 function makeCtx() {
@@ -149,94 +150,67 @@ describe("classifyCompound", () => {
 });
 
 describe("nudgeReason", () => {
-	test("active tool: point straight at it, no toolbox", () => {
+	test("active tool: point straight at it", () => {
 		const msg = nudgeReason("Searching file contents via bash grep/rg.", "grep", true);
-		expect(msg).toContain("Use `grep` instead");
-		expect(msg).toContain("function definitions");
-		expect(msg).not.toContain("toolbox");
+		expect(msg).toMatch(/^Searching .* Use `grep` instead\. \(Once per category;/);
 	});
 
-	test("gated tool: route through toolbox enable, not a direct call", () => {
+	test("deferred tool: load through tool_search first", () => {
+		const msg = nudgeReason("Locating files via bash find/fd.", "find", false);
+		expect(msg).toMatch(/Load `find` with tool_search, then call it\./);
+	});
+
+	test("is a single short line", () => {
 		const msg = nudgeReason("Listing a directory via bash ls/tree.", "ls", false);
-		expect(msg).toContain('toolbox(action:"enable", name:"ls")');
-		expect(msg).toContain("prompt-hidden");
-		expect(msg).toContain("function definitions");
-		// Must NOT imply the tool is directly callable by name (it's prompt-hidden).
-		expect(msg).not.toContain("Use `ls` instead");
-	});
-
-	test("gated find tool names itself in the enable hint", () => {
-		expect(nudgeReason("Locating files via bash find/fd.", "find", false)).toContain(
-			'toolbox(action:"enable", name:"find")',
-		);
-	});
-
-	test("is a single short line — no inventory dump, no newlines", () => {
-		const msg = nudgeReason("Listing a directory via bash ls/tree.", "ls", false);
-		expect(msg).not.toContain("\n");
-		expect(msg).not.toContain("Available tools");
-		expect(msg.length).toBeLessThan(400);
+		expect(msg).toMatch(/^[^\n]{1,200}$/);
 	});
 });
 
 describe("registerToolsNudge handler", () => {
 	type Notice = { msg: string; type?: string };
-	test("warns yellow and does NOT block the command", async () => {
+	test("appends the nudge to the bash result the model reads, plus a yellow notice", async () => {
 		const handler = makeHandler();
 		const { ctx, notices } = makeCtx();
 
-		const result = await handler(bashEvent("cat foo.ts"), ctx);
+		const result = (await handler(bashEvent("cat foo.ts"), ctx)) as Result;
 
-		// Non-blocking: returns nothing, so the command proceeds.
-		expect(result).toBeUndefined();
-		// Surfaced as a single yellow warning.
-		expect(notices).toHaveLength(1);
-		const n0 = notices[0] as Notice;
-		expect(n0.type).toBe("warning");
-		expect(n0.msg).toContain("Use `read` instead");
+		expect(result?.content.map((c) => c.text)).toEqual([
+			"out",
+			expect.stringMatching(/^\[pix-nudge\] Reading .* Use `read` instead\./),
+		]);
+		expect(notices).toEqual([{ msg: expect.stringContaining("`read`"), type: "warning" }]);
 	});
 
-	test("warns once per category, silent thereafter", async () => {
+	test("nudges once per category, untouched thereafter", async () => {
 		const handler = makeHandler();
 		const { ctx, notices } = makeCtx();
 
 		await handler(bashEvent("cat a"), ctx);
-		await handler(bashEvent("head b"), ctx); // same `read` category
+		expect(await handler(bashEvent("head b"), ctx)).toBeUndefined(); // same `read` category
 		expect(notices).toHaveLength(1);
 
-		await handler(bashEvent("grep x y"), ctx); // new category → new warning
+		await handler(bashEvent("grep x y"), ctx); // new category → new nudge
 		expect(notices).toHaveLength(2);
 		expect((notices[1] as Notice).msg).toContain("Use `grep` instead");
 	});
 
-	test("ignores commands with no tool stand-in", async () => {
+	test("ignores commands with no tool stand-in and non-bash tools", async () => {
 		const handler = makeHandler();
 		const { ctx, notices } = makeCtx();
 
 		await handler(bashEvent("git status"), ctx);
 		await handler(bashEvent("cat a | grep b"), ctx); // compound — real shell work
+		await handler({ ...bashEvent("cat a"), toolName: "read" }, ctx);
+		await handler(bashEvent("sudo apt update"), ctx); // pix-gate's guard, not a nudge
 		expect(notices).toHaveLength(0);
 	});
 
-	test("never steers privileged sudo/ssh — those are pix-gate's guard, not a nudge", async () => {
-		const handler = makeHandler();
-		const { ctx, notices } = makeCtx();
+	test("deferred tool points at tool_search", async () => {
+		const handler = makeHandler([]); // nothing active → all deferred
+		const { ctx } = makeCtx();
 
-		await handler(bashEvent("sudo apt update"), ctx);
-		await handler(bashEvent("ssh deploy@host uptime"), ctx);
+		const result = (await handler(bashEvent("ls -la"), ctx)) as Result;
 
-		expect(notices).toHaveLength(0);
-	});
-
-	test("gated tool routes through toolbox enable, still non-blocking", async () => {
-		const handler = makeHandler([]); // nothing active → all gated
-		const { ctx, notices } = makeCtx();
-
-		const result = await handler(bashEvent("ls -la"), ctx);
-
-		expect(result).toBeUndefined();
-		const gn0 = notices[0] as Notice;
-		expect(gn0.type).toBe("warning");
-		expect(gn0.msg).toContain('toolbox(action:"enable", name:"ls")');
+		expect(result?.content[1]?.text).toMatch(/Load `ls` with tool_search/);
 	});
 });

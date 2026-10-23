@@ -4,17 +4,14 @@ exports[`captures active and hidden tool warnings through the actual host notifi
 {
   "active": [
     "",
-    " <warning>Warning: Reading a file via bash cat/head/tail. Use \`read\` instead — it's in   </warning>",
-    " <warning>the function definitions, call it directly. (Fires once per category; bash     </warning>",
-    " <warning>stays available for pipes & compound commands.)</warning>                                ",
+    " <warning>Warning: Reading a file via bash cat/head/tail. Use \`read\` instead. (Once per  </warning>",
+    " <warning>category; bash stays fine for pipes and compound commands.)</warning>                    ",
   ],
   "hidden": [
     "",
-    " <warning>Warning: Reading a file via bash cat/head/tail. \`read\` is prompt-hidden —      </warning>",
-    " <warning>enable it via toolbox(action:"enable", name:"read") to make it known, then     </warning>",
-    " <warning>call it; bash is fine until then. (All tools are always callable via function  </warning>",
-    " <warning>definitions.) (Fires once per category; bash stays available for pipes &       </warning>",
-    " <warning>compound commands.)</warning>                                                            ",
+    " <warning>Warning: Reading a file via bash cat/head/tail. Load \`read\` with tool_search,  </warning>",
+    " <warning>then call it. (Once per category; bash stays fine for pipes and compound       </warning>",
+    " <warning>commands.)</warning>                                                                     ",
   ],
 }
 `;

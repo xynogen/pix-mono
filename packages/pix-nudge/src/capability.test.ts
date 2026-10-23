@@ -138,14 +138,12 @@ describe("buildOrientation", () => {
 			[],
 			["read", "grep"], // active set: 2 gated out
 		);
-		expect(out).toContain("2 are gated");
-		expect(out).toContain("function definitions");
+		expect(out).toMatch(/2 are deferred \(.*\)\. Find and load them with tool_search\./);
 	});
 
 	test("singular phrasing when exactly one tool is gated", () => {
 		const out = buildOrientation([tool("read", "builtin"), tool("find", "builtin")], [], ["read"]);
-		expect(out).toContain("1 is gated");
-		expect(out).toContain("function definitions");
+		expect(out).toMatch(/1 is deferred \(.*\)\. Find and load them with tool_search\./);
 	});
 
 	test("no gate line when nothing is gated", () => {
@@ -154,12 +152,12 @@ describe("buildOrientation", () => {
 			[],
 			["read", "grep"],
 		);
-		expect(out).not.toContain("gated out of the prompt");
+		expect(out).not.toContain("deferred");
 	});
 
 	test("no gate line when active set is unknown", () => {
 		const out = buildOrientation([tool("read", "builtin"), tool("find", "builtin")], []);
-		expect(out).not.toContain("gated out of the prompt");
+		expect(out).not.toContain("deferred");
 	});
 
 	test("lists invocable skill names, sorted, excluding user-only", () => {
@@ -190,8 +188,8 @@ describe("buildOrientation", () => {
 });
 
 describe("registerCapabilityNudge", () => {
-	test("injects orientation into system prompt, not a custom message", async () => {
-		let handler: ((event: { systemPrompt?: string }) => unknown) | undefined;
+	test("sends orientation as a visible message and leaves the system prompt alone", async () => {
+		let handler: ((event: { systemPrompt?: string; messageType?: string }) => unknown) | undefined;
 		const pi = {
 			on(event: string, fn: typeof handler) {
 				if (event === "before_agent_start") handler = fn;
@@ -205,14 +203,19 @@ describe("registerCapabilityNudge", () => {
 		} as never;
 
 		registerCapabilityNudge(pi);
+		expect(await handler?.({ systemPrompt: "BASE", messageType: "custom" })).toBeUndefined();
 		const result = (await handler?.({ systemPrompt: "BASE" })) as {
 			systemPrompt?: string;
-			message?: unknown;
+			message: { customType: string; content: string; display: boolean };
 		};
 
-		expect(result.message).toBeUndefined();
-		expect(result.systemPrompt).toStartWith("BASE\n\nToolbelt:");
-		expect(result.systemPrompt).toContain("Orientation only");
+		expect(result.systemPrompt).toBeUndefined();
+		expect(result.message).toEqual({
+			customType: "pix-capability-nudge",
+			content: expect.stringMatching(/^Toolbelt:[\s\S]*Orientation only/),
+			display: true,
+		});
+		expect(await handler?.({ systemPrompt: "BASE" })).toBeUndefined(); // turn 2: nothing
 	});
 });
 
