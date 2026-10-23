@@ -114,6 +114,28 @@ describe("pix-diagnostics end-to-end", () => {
 		};
 		expect(response.content[1]?.text).toContain("Check unavailable: server stopped");
 		expect(response.isError).toBeUndefined();
+		const diag = (line: number, severity: "error" | "warning" | "hint") => ({
+			filePath: join(tempDir(), "a.ts"),
+			line,
+			column: 1,
+			severity,
+			message: `${severity} msg`,
+		});
+		h.manager.check = async () => [
+			{
+				filePath: join(tempDir(), "a.ts"),
+				diagnostics: [diag(1, "hint"), diag(2, "warning"), diag(3, "error")] as never,
+				checkedAt: Date.now(),
+				state: "clean",
+			},
+		];
+		const mixed = (await handler?.(event, {})) as { content: Array<{ text: string }> };
+		expect(mixed.content[1]?.text.split("\n")).toEqual([
+			"LSP after write:",
+			"a.ts:3:1 error error msg",
+			"2 warning/info/hint not shown (lsp_diagnostics lists them).",
+			"Check these diagnostics before the next change.",
+		]);
 		await h.manager.shutdown();
 	});
 	test("stays lazy, checks, caches, navigates, and shuts down", async () => {

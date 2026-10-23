@@ -115,8 +115,13 @@ export default function registerDiagnostics(
 		try {
 			const snapshots = await manager.check({ paths: [filePath], severity: "all" });
 			for (const snapshot of snapshots) store.set(snapshot);
-			const findings = collectFindings(cwd, snapshots, "all");
+			// Only errors ride along with edits (OpenCode's default too): warnings are
+			// noisy mid-refactor. The rest stay in the store and widget, and are
+			// counted so nothing is hidden silently.
+			const findings = collectFindings(cwd, snapshots, "error");
+			const hidden = collectFindings(cwd, snapshots, "all").length - findings.length;
 			report = findings.length ? findings.join("\n") : summarize(snapshots);
+			if (hidden) report += `\n${hidden} warning/info/hint not shown (lsp_diagnostics lists them).`;
 			if (findings.length) report += "\nCheck these diagnostics before the next change.";
 		} catch (error) {
 			store.set({ filePath, diagnostics: [], checkedAt: Date.now(), state: "unavailable" });
