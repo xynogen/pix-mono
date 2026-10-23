@@ -104,6 +104,17 @@ describe("pix-prompts host-aware injection", () => {
 		expect(occurrences).toBe(1);
 	});
 
+	it("renders a byte-identical prompt on consecutive turns (cache prefix stays stable)", async () => {
+		writeFileSync(join(dir, "GEMINI.md"), "gemini rules");
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		// Pi re-renders the base prompt each run, so each turn starts from the same input.
+		const turn1 = await getHandler()({ systemPrompt: "BASE" });
+		const turn2 = await getHandler()({ systemPrompt: "BASE" });
+		expect(turn2?.systemPrompt).toBe(turn1?.systemPrompt as string);
+	});
+
 	it("truncates oversized repo directive files at the byte cap", async () => {
 		writeFileSync(join(dir, "GEMINI.md"), "x".repeat(20 * 1024));
 		const { pi, getHandler } = fakePi();
