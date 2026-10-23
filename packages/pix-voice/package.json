@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-voice",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Provider-neutral speech-to-text and text-to-speech tools for Pi",
 	"type": "module",
 	"main": "src/index.ts",
@@ -54,6 +54,6 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-pretty": "^1.32.0",
-		"@xynogen/pix-runtime": "^0.14.0"
+		"@xynogen/pix-runtime": "^0.15.0"
 	}
 }

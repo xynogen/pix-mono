@@ -22,6 +22,7 @@ import type { PixRuntime } from "./runtime.ts";
 import { type DeepPartial, deepMerge, type SectionHandle } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { compactionSection } from "./sections/compaction.ts";
+import { editSection } from "./sections/edit.ts";
 import { gateSection } from "./sections/gate.ts";
 import { ioSection } from "./sections/io.ts";
 import { prettySection, type RenderSize } from "./sections/pretty.ts";
@@ -175,6 +176,14 @@ const SETTINGS: SettingRow<unknown>[] = [
 		values: ["25k", "50k", "100k", "150k", "200k", "300k", "400k", "600k", "800k", "1M"],
 		read: (v) => formatTokens(v.minimumTokens),
 		patch: (value) => ({ minimumTokens: parseTokens(value) }),
+	}),
+	row({
+		section: "Edit",
+		label: "syntax guard",
+		handle: editSection,
+		values: ["off", "on"],
+		read: (v) => (v.rejectNewSyntaxErrors ? "on" : "off"),
+		patch: (value) => ({ rejectNewSyntaxErrors: value === "on" }),
 	}),
 	row({
 		section: "Gate",

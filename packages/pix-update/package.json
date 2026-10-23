@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-update",
-	"version": "0.2.6",
+	"version": "0.2.7",
 	"description": "Pi extension \u2014 /update self-update command",
 	"type": "module",
 	"main": "src/index.ts",
@@ -44,7 +44,7 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-pretty": "^1.32.0",
-		"@xynogen/pix-runtime": "^0.14.0"
+		"@xynogen/pix-runtime": "^0.15.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

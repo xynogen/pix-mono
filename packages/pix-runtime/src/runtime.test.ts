@@ -9,6 +9,7 @@ import { createRuntime } from "./runtime.ts";
 import { stripDefaults } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { compactionSection } from "./sections/compaction.ts";
+import { editSection } from "./sections/edit.ts";
 import { gateSection } from "./sections/gate.ts";
 import { prettySection } from "./sections/index.ts";
 import { ioSection } from "./sections/io.ts";
@@ -71,6 +72,23 @@ describe("schema and normalization", () => {
 		writeFileSync(join(agentDir, "pix.json"), JSON.stringify({ io: { timeoutSec: 0 } }));
 		await runtime.reload();
 		expect(runtime.get(ioSection).timeoutSec).toBe(30);
+	});
+
+	it("keeps the edit syntax guard off unless set to true", async () => {
+		const { runtime, agentDir } = fresh();
+		await runtime.reload();
+		expect(runtime.get(editSection).rejectNewSyntaxErrors).toBe(false);
+		for (const [raw, want] of [
+			[true, true],
+			["yes", false],
+		] as const) {
+			writeFileSync(
+				join(agentDir, "pix.json"),
+				JSON.stringify({ edit: { rejectNewSyntaxErrors: raw } }),
+			);
+			await runtime.reload();
+			expect(runtime.get(editSection).rejectNewSyntaxErrors).toBe(want);
+		}
 	});
 
 	it("enforces a 25k minimum compaction floor", async () => {
@@ -304,10 +322,22 @@ describe("persistence", () => {
 		await runtime.update(compactionSection, { triggerPercent: 20, minimumTokens: 150_000 });
 		// Change only the percent — the token floor must survive untouched.
 		await runtime.update(compactionSection, { triggerPercent: 50 });
-		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 50, minimumTokens: 150_000 });
+		const mask = { maskKeep: 10, maskMinTokens: 5_000 };
+		expect(runtime.get(compactionSection)).toEqual({
+			triggerPercent: 50,
+			minimumTokens: 150_000,
+			...mask,
+		});
 		// Change only the floor — the percent must survive untouched.
 		await runtime.update(compactionSection, { minimumTokens: 300_000 });
-		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 50, minimumTokens: 300_000 });
+		expect(runtime.get(compactionSection)).toEqual({
+			triggerPercent: 50,
+			minimumTokens: 300_000,
+			...mask,
+		});
+		// Masking knobs: integers >= 0; junk falls back to the default.
+		await runtime.update(compactionSection, { maskKeep: 3.6, maskMinTokens: -5 });
+		expect(runtime.get(compactionSection)).toMatchObject({ maskKeep: 4, maskMinTokens: 0 });
 	});
 
 	it("a NaN patch on one field heals it without corrupting siblings", async () => {
@@ -316,9 +346,18 @@ describe("persistence", () => {
 		// A bad write (e.g. Number("") from a stale picker) must re-validate to the
 		// default, and must NOT blank the sibling into NaN.
 		await runtime.update(compactionSection, { triggerPercent: Number.NaN });
-		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 60, minimumTokens: 300_000 });
+		const mask = { maskKeep: 10, maskMinTokens: 5_000 };
+		expect(runtime.get(compactionSection)).toEqual({
+			triggerPercent: 60,
+			minimumTokens: 300_000,
+			...mask,
+		});
 		await runtime.update(compactionSection, { minimumTokens: Number.NaN });
-		expect(runtime.get(compactionSection)).toEqual({ triggerPercent: 60, minimumTokens: 100_000 });
+		expect(runtime.get(compactionSection)).toEqual({
+			triggerPercent: 60,
+			minimumTokens: 100_000,
+			...mask,
+		});
 	});
 });
 

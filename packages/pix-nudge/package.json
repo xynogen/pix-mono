@@ -46,6 +46,6 @@
 		"@earendil-works/pi-coding-agent": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.14.0"
+		"@xynogen/pix-runtime": "^0.15.0"
 	}
 }

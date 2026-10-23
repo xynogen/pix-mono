@@ -148,6 +148,7 @@ Owned by `pix-runtime` (init/reload/flush + the `/pix` settings command). Auto-c
 | `pretty` | pix-pretty (icons, preview/render limits, diff split thresholds) |
 | `io` | pix-9router, pix-data, pix-mcp, pix-skills, pix-update, pix-voice, pix-web (network timeout via `@xynogen/pix-runtime/io`) |
 | `compaction` | pix-core (auto-compaction trigger percent and token floor) |
+| `edit` | pix-diagnostics (opt-in syntax guard for edits) |
 | `optimizer` | pix-optimizer (caveman/rtk/ponytail state) |
 | `gate` | pix-gate (rules, auto-approve patterns) |
 

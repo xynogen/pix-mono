@@ -10,7 +10,7 @@ See `DESIGN.md` for the full contract.
 ## What it does
 
 - Versioned, sparse `pix.json` (`$version: 1`) — defaults resolve in code.
-- Typed sections: `collapse`, `pretty`, `io`, `compaction`, `optimizer`, `gate`, `fetch`, `search`, `voice`, `toolbox`.
+- Typed sections: `collapse`, `pretty`, `io`, `compaction`, `edit`, `optimizer`, `gate`, `fetch`, `search`, `voice`, `toolbox`.
 - `/pix` has a Footer tab for `pretty.footer` visibility.
 - Startup imports legacy service config files and archives them only after a successful save.
 - Atomic writes behind a serialized in-process queue and a short-lived
@@ -64,6 +64,17 @@ a 300K-context model at 10% waits for 100K tokens instead of compacting at 30K.
 The default floor is 100K and the hard minimum is 25K (values below clamp up);
 `/pix` offers 25K, 50K, 100K, 150K, 200K, 300K, 400K, 600K, 800K, and 1M.
 pix-core consumes both settings.
+
+Over that threshold, pix-core masks older tool output before it summarizes.
+`compaction.maskKeep` (default `10`) is the number of newest tool results kept as
+is. Older successful `bash`/`grep`/`find`/`ls`/`read` output becomes a one-line
+stub; errors stay. `compaction.maskMinTokens` (default `5000`) skips a pass that
+would free fewer tokens, because each pass breaks the prompt cache. Both are
+`pix.json` calibration knobs with no `/pix` picker.
+
+`edit.rejectNewSyntaxErrors` (default `false`, `/pix` → **Edit → syntax guard**)
+makes pix-diagnostics restore a file and fail the edit when LSP reports a syntax
+error that was not there before. Type errors never trigger it.
 
 Collapse policy helpers:
 
