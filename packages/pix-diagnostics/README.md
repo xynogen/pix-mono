@@ -8,6 +8,7 @@ Pi extension — an LSP client for project-selected language servers.
 - Starts a configured server only when a visible tool call needs it.
 - Reports diagnostics through `lsp_diagnostics`.
 - Supports definition, references, hover, symbols, rename preview, and call hierarchy through `lsp_navigation`.
+- Opt-in syntax guard (`edit.rejectNewSyntaxErrors` in `pix.json`): an edit that adds a syntax error is undone and fails with the errors and fresh anchors.
 
 Pix does not bundle, install, or select language servers. Use the `lsp` skill to
 choose a server for the project. The project owns the server and its version.

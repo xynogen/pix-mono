@@ -10,18 +10,23 @@
  * session lifecycle. Successful `write`/`edit` results include a fresh LSP check.
  */
 
+import { readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { rule } from "@xynogen/pix-pretty/utils";
+import { config } from "@xynogen/pix-runtime/config";
+import { editSection } from "@xynogen/pix-runtime/sections";
 import { DispositionStore } from "./dispositions.ts";
 import { createManager, type LspManager } from "./lsp/manager.ts";
 import { DiagnosticStore } from "./store.ts";
+import { newSyntaxErrors, rejectionText } from "./syntax-guard.ts";
 import { collectFindings, registerDiagnosticsTool, summarize } from "./tools/diagnostics-tool.ts";
 import { registerMarkTool } from "./tools/mark-tool.ts";
 import { registerNavigationTool } from "./tools/navigation-tool.ts";
+import type { PixDiagnostic } from "./types.ts";
 
 type ThemeLike = Pick<Theme, "fg">;
 
@@ -91,6 +96,8 @@ export default function registerDiagnostics(
 	const dispositions = new DispositionStore();
 	const manager = options.manager ?? createManager(cwd);
 	let unsubscribeWidget: (() => void) | null = null;
+	/** Syntax guard: file bytes and diagnostics before each pending edit, by tool call id. */
+	const beforeEdit = new Map<string, { bytes: Uint8Array; diagnostics: PixDiagnostic[] }>();
 
 	registerDiagnosticsTool(pi, { store, manager, cwd });
 	registerNavigationTool(pi, { manager, cwd });
@@ -105,7 +112,28 @@ export default function registerDiagnostics(
 		updateWidget(ctx, store);
 	});
 
+	pi.on("tool_call", async (event) => {
+		if (event.toolName !== "edit" || !config(editSection).rejectNewSyntaxErrors) return;
+		const path = event.input?.path;
+		if (typeof path !== "string" || !path.trim()) return;
+		const filePath = resolve(cwd, path);
+		try {
+			const bytes = readFileSync(filePath);
+			const snapshots = await manager.check({ paths: [filePath], severity: "all" });
+			// Without a confirmed check there is no baseline, so the guard stays out of the way.
+			if (snapshots.some((s) => s.state === "unconfirmed" || s.state === "unavailable")) return;
+			beforeEdit.set(event.toolCallId, {
+				bytes,
+				diagnostics: snapshots.flatMap((s) => [...s.diagnostics]),
+			});
+		} catch {
+			// Missing file or no LSP: the edit runs unguarded and reports its own errors.
+		}
+	});
+
 	pi.on("tool_result", async (event) => {
+		const before = beforeEdit.get(event.toolCallId);
+		beforeEdit.delete(event.toolCallId);
 		if (event.isError || !["write", "edit"].includes(event.toolName)) return;
 		const path = event.input?.path;
 		if (typeof path !== "string" || !path.trim()) return;
@@ -115,6 +143,23 @@ export default function registerDiagnostics(
 		try {
 			const snapshots = await manager.check({ paths: [filePath], severity: "all" });
 			for (const snapshot of snapshots) store.set(snapshot);
+			if (before) {
+				const added = newSyntaxErrors(
+					before.diagnostics,
+					snapshots.flatMap((s) => [...s.diagnostics]),
+				);
+				if (added.length) {
+					writeFileSync(filePath, before.bytes);
+					for (const snapshot of await manager.check({ paths: [filePath], severity: "all" }))
+						store.set(snapshot);
+					return {
+						content: [
+							{ type: "text" as const, text: await rejectionText(path, added, before.bytes) },
+						],
+						isError: true,
+					};
+				}
+			}
 			// Only errors ride along with edits (OpenCode's default too): warnings are
 			// noisy mid-refactor. The rest stay in the store and widget, and are
 			// counted so nothing is hidden silently.
