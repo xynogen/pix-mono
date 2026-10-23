@@ -143,9 +143,9 @@ describe("codemode tool discovery", () => {
 			},
 		};
 		const names = resolveCodemodeTools(config, cache).map((s) => s.prefixedName);
-		expect(names[2]).toBe("mcp__my_srv__list");
-		for (const name of names.slice(0, 2))
-			expect(name).toMatch(/^mcp__my_srv__read_file_[0-9a-f]{8}$/);
+		// Sorted by original name: list, read-file, read_file.
+		expect(names[0]).toBe("mcp__my_srv__list");
+		for (const name of names.slice(1)) expect(name).toMatch(/^mcp__my_srv__read_file_[0-9a-f]{8}$/);
 		expect(new Set(names).size).toBe(3);
 		expect(resolveCodemodeTools(config, cache)[0]?.serverDescription).toBe("Files, dirs");
 		expect(buildProxyDescription(config, cache, [])).toContain(
@@ -408,6 +408,29 @@ describe("excludeTools filtering", () => {
 		const specs = resolveDirectTools(config, cache, "server");
 
 		expect(specs.map((spec) => spec.prefixedName)).toEqual(["figma_get_nodes"]);
+	});
+
+	it("orders tools by name so a reordered server listing keeps the prompt prefix stable", () => {
+		const definition = { command: "npx", directTools: true } as const;
+		const config: McpConfig = { mcpServers: { s: definition } };
+		const names = (order: string[]) =>
+			resolveDirectTools(
+				config,
+				{
+					version: 1,
+					servers: {
+						s: {
+							configHash: computeServerHash(definition),
+							cachedAt: Date.now(),
+							tools: order.map((name) => ({ name, description: name })),
+							resources: [],
+						},
+					},
+				},
+				"server",
+			).map((spec) => spec.prefixedName);
+		expect(names(["b", "c", "a"])).toEqual(["s_a", "s_b", "s_c"]);
+		expect(names(["c", "a", "b"])).toEqual(names(["a", "b", "c"]));
 	});
 
 	it("exposes resource tools only when exposeResources is true", () => {

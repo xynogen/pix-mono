@@ -158,7 +158,12 @@ export function resolveDirectTools(
 			isSelected = (name) => isDirectTool(definition, name, legacy);
 		}
 
-		for (const tool of serverCache.tools ?? []) {
+		// Servers may list tools in any order between connects. A stable order keeps
+		// the declared tools, and so the provider's prompt cache prefix, unchanged.
+		const tools = [...(serverCache.tools ?? [])].sort((a, b) =>
+			a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+		);
+		for (const tool of tools) {
 			if (!isSelected(tool.name)) continue;
 			if (isToolHidden(tool.name, serverName, prefix, definition)) continue;
 			const prefixedName = capToolName(
