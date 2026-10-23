@@ -501,9 +501,11 @@ export default function registerTodo(pi: ExtensionAPI): void {
 		});
 
 		// ── Turn-based reminder ─────────────────────────────────────────────
-		// Every TODO_REMINDER_INTERVAL user prompts, inject the current todo summary
-		// into the system prompt so the model stays aware of pending work and
-		// can't hand-wave or ignore incomplete items.
+		// Every TODO_REMINDER_INTERVAL user prompts, recite the open items at the tail
+		// of context (Manus "recitation") so the model keeps the plan in view. A
+		// visible custom message, not a system-prompt rewrite: replacing the system
+		// prompt (forceSystemPrompt) invalidates the prompt cache for the whole
+		// conversation.
 		const TODO_REMINDER_INTERVAL = 10;
 		let todoTurnCount = 0;
 
@@ -511,21 +513,19 @@ export default function registerTodo(pi: ExtensionAPI): void {
 			// Runs started by sendMessage(triggerTurn) are extension follow-ups, not user turns.
 			if (event.messageType === "custom") return;
 			todoTurnCount++;
-			// Only inject when there are active (non-empty) todos
-			if (todos.length === 0) return;
-			// Check if any items are still incomplete
-			const hasIncomplete = todos.some((t) => t.status === "pending" || t.status === "in_progress");
-			if (!hasIncomplete) return;
-			// Fire on every Nth turn
 			if (todoTurnCount % TODO_REMINDER_INTERVAL !== 0) return;
+			if (!todos.some((t) => t.status === "pending" || t.status === "in_progress")) return;
 
-			const reminder =
-				"Todo reminder — incomplete items remain:\n" +
-				todoSummary() +
-				"\nCall `todo(action:'list')` to review, then continue working through pending items.";
-
-			const existing = event.systemPrompt ?? "";
-			return { systemPrompt: existing ? `${existing}\n\n${reminder}` : reminder };
+			return {
+				message: {
+					customType: "pix-todo-reminder",
+					content:
+						"Todo reminder — incomplete items remain:\n" +
+						todoSummary() +
+						"\nCall `todo(action:'list')` to review, then continue working through pending items.",
+					display: true,
+				},
+			};
 		});
 
 		// Restore the checklist from session entries so it survives restart.

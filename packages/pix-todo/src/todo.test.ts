@@ -824,14 +824,19 @@ describe("turn-based todo reminder", () => {
 			// before_agent_start returns undefined when no injection
 			expect(result).toBeUndefined();
 		}
-		// 10th turn should inject
-		const result = await host.emit("before_agent_start", { systemPrompt: "base" });
-		expect(result).toBeDefined();
-		const prompt = (result as { systemPrompt: string }).systemPrompt;
-		expect(prompt).toContain("base");
-		expect(prompt).toContain("Todo reminder");
-		expect(prompt).toContain("1. a");
-		expect(prompt).toContain("2. b");
+		// 10th turn recites the list as a visible message; the system prompt is untouched
+		const result = (await host.emit("before_agent_start", { systemPrompt: "base" })) as {
+			systemPrompt?: string;
+			message: { customType: string; content: string; display: boolean };
+		};
+		expect(result.systemPrompt).toBeUndefined();
+		expect(result.message).toEqual({
+			customType: "pix-todo-reminder",
+			content: expect.stringMatching(
+				/^Todo reminder[\s\S]*1\. a[\s\S]*2\. b[\s\S]*todo\(action:'list'\)/,
+			),
+			display: true,
+		});
 	});
 
 	test("counts only user prompts, not triggerTurn runs", async () => {
@@ -852,7 +857,7 @@ describe("turn-based todo reminder", () => {
 			systemPrompt: "base",
 			messageType: "user",
 		});
-		expect((result as { systemPrompt: string }).systemPrompt).toContain("Todo reminder");
+		expect((result as { message: { content: string } }).message.content).toContain("Todo reminder");
 	});
 
 	test("does not inject when no todos exist", async () => {
