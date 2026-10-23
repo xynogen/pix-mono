@@ -25,6 +25,7 @@
  * notify line with reason, model, and token counts.
  */
 
+import { resolve } from "node:path";
 import { contentText, retryAssistantCall, type ThinkingLevel } from "@earendil-works/pi-ai";
 import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { ContextEditableContent, ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -204,6 +205,64 @@ export function shrinkContent(
 	return saved > 0 ? { content: next, saved } : undefined;
 }
 
+// Observation masking (JetBrains, "The Complexity Trap", 2025): masking stale tool
+// output matches LLM summarization at about half the cost. A read result whose
+// file was later edited or written is provably stale: its anchors no longer
+// match. Masking these first can bring context under the threshold and skip the
+// summary call. Append-only context_edit; the original stays in the session file.
+const MASK_PREFIX = "[pix compaction: stale read masked";
+
+type MaskEntry = {
+	sourceEntry: { id: string };
+	messages: Array<{
+		role?: string;
+		content?: unknown;
+		toolCallId?: string;
+		toolName?: string;
+		isError?: boolean;
+	}>;
+};
+
+/** Read results superseded by a later successful edit/write of the same path. */
+export function staleReads(
+	entries: MaskEntry[],
+	resolvePath: (p: string) => string,
+): Array<{ id: string; path: string }> {
+	const callPath = new Map<string, string>();
+	const reads = new Map<string, Array<{ id: string; path: string }>>();
+	const stale: Array<{ id: string; path: string }> = [];
+	for (const { sourceEntry, messages } of entries) {
+		const msg = messages[0];
+		if (msg?.role === "assistant" && Array.isArray(msg.content)) {
+			for (const part of msg.content as Array<{
+				type?: string;
+				id?: string;
+				arguments?: { path?: unknown };
+			}>)
+				if (part.type === "toolCall" && part.id && typeof part.arguments?.path === "string")
+					callPath.set(part.id, resolvePath(part.arguments.path));
+		}
+		if (msg?.role !== "toolResult" || msg.isError || !msg.toolCallId) continue;
+		const path = callPath.get(msg.toolCallId);
+		if (!path) continue;
+		if (msg.toolName === "read") {
+			const text = Array.isArray(msg.content)
+				? (msg.content[0] as { text?: unknown })?.text
+				: undefined;
+			if (typeof text === "string" && text.startsWith(MASK_PREFIX)) continue;
+			reads.set(path, [...(reads.get(path) ?? []), { id: sourceEntry.id, path }]);
+		} else if (msg.toolName === "edit" || msg.toolName === "write") {
+			stale.push(...(reads.get(path) ?? []));
+			reads.delete(path);
+		}
+	}
+	return stale;
+}
+
+export function maskedRead(path: string): string {
+	return `${MASK_PREFIX}: ${path} was edited later; read it again if needed. Original kept in session file.]`;
+}
+
 // Sent as a user message after a self-triggered compaction so the agent picks
 // its task back up on its own. Kept short — the freshly written summary already
 // carries the goal, progress, and next steps. Edit to taste.
@@ -325,7 +384,20 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 
 		const edits: typeof event.entries = [];
 		let saved = 0;
+		const masked = new Set<string>();
+		for (const { id, path } of staleReads(
+			event.context.contextEntries as unknown as MaskEntry[],
+			(p) => resolve(ctx.cwd, p),
+		)) {
+			masked.add(id);
+			edits.push({
+				type: "context_edit",
+				targetId: id,
+				replacement: { content: [{ type: "text", text: maskedRead(path) }] },
+			});
+		}
 		for (const { sourceEntry, messages } of event.context.contextEntries) {
+			if (masked.has(sourceEntry.id)) continue;
 			const msg = messages[0];
 			const editable =
 				sourceEntry.type === "custom_message" ||
@@ -341,8 +413,9 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 			});
 		}
 		if (edits.length === 0) return;
+		const trimmed = edits.length - masked.size;
 		ctx.ui.notify(
-			`Compaction: trimmed ${edits.length} oversized message(s), ~${Math.round(saved / 4).toLocaleString()} tok (head+tail kept; originals stay in session file)`,
+			`Compaction: masked ${masked.size} stale read(s), trimmed ${trimmed} oversized message(s)${trimmed ? ` (~${Math.round(saved / 4).toLocaleString()} tok)` : ""}; originals stay in session file`,
 			"info",
 		);
 		return { entries: [...event.entries, ...edits] };

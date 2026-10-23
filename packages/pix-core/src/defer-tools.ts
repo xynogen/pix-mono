@@ -10,7 +10,16 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-export const CORE_TOOLS: ReadonlySet<string> = new Set(["read", "bash", "edit", "write"]);
+// grep/find stay direct: pix-nudge steers bash cat/grep/find toward them, and a
+// tool_search round-trip for the most common lookups costs more than their schemas.
+export const CORE_TOOLS: ReadonlySet<string> = new Set([
+	"read",
+	"bash",
+	"edit",
+	"write",
+	"grep",
+	"find",
+]);
 const TOOL_SEARCH = "tool_search";
 
 export default function deferNonCoreTools(pi: ExtensionAPI): void {

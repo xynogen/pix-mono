@@ -17,11 +17,13 @@ test("defers non-core direct tools and activates tool_search", async () => {
 	deferNonCoreTools(pi as never);
 	pi.registerTool({ name: "read" });
 	pi.registerTool({ name: "grep" });
+	pi.registerTool({ name: "ls" });
 	pi.registerTool({ name: "ask_user", exposure: "direct" });
 	pi.registerTool({ name: "voice", exposure: "codemode" });
 	expect(registered.map((t) => `${t.name}:${t.exposure ?? "direct"}`)).toEqual([
 		"read:direct",
-		"grep:deferred",
+		"grep:direct",
+		"ls:deferred",
 		"ask_user:deferred",
 		"voice:codemode",
 	]);

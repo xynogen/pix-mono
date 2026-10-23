@@ -2,9 +2,11 @@ import { describe, expect, it } from "bun:test";
 import registerCompaction, {
 	compactionThresholdTokens,
 	formatFileLists,
+	maskedRead,
 	mergeFileLists,
 	resumeDecisionAfterCompaction,
 	shrinkContent,
+	staleReads,
 	summaryFailure,
 	summaryPrompt,
 } from "./compaction.ts";
@@ -160,6 +162,69 @@ describe("shrinkContent", () => {
 		const once = shrinkContent("z".repeat(500_000))?.content as string;
 		expect(shrinkContent(once)).toBeUndefined();
 		expect(shrinkContent("small")).toBeUndefined();
+	});
+});
+
+describe("stale read masking", () => {
+	const call = (id: string, path: string) => ({
+		sourceEntry: { id: `a-${id}`, type: "message" },
+		messages: [{ role: "assistant", content: [{ type: "toolCall", id, arguments: { path } }] }],
+	});
+	const result = (id: string, toolName: string, text = "body", isError = false) => ({
+		sourceEntry: { id: `r-${id}`, type: "message" },
+		messages: [
+			{ role: "toolResult", toolCallId: id, toolName, isError, content: [{ type: "text", text }] },
+		],
+	});
+	const entries = [
+		call("1", "a.ts"),
+		result("1", "read", "A".repeat(1000)), // read a.ts → later edited: stale
+		call("2", "./b.ts"),
+		result("2", "read"), // read b.ts → never edited: kept
+		call("3", "/repo/a.ts"),
+		result("3", "edit"),
+		call("4", "a.ts"),
+		result("4", "read"), // re-read after the edit: fresh, kept
+		call("5", "b.ts"),
+		result("5", "write", "boom", true), // failed write does not stale b.ts
+	];
+	const resolvePath = (p: string) => (p.startsWith("/") ? p : `/repo/${p.replace(/^\.\//, "")}`);
+
+	it("masks only reads superseded by a later successful edit/write of the same path", () => {
+		expect(staleReads(entries, resolvePath)).toEqual([{ id: "r-1", path: "/repo/a.ts" }]);
+	});
+
+	it("is idempotent: an already-masked read is not masked again", () => {
+		const masked = [call("1", "a.ts"), result("1", "read", maskedRead("/repo/a.ts"))];
+		expect(staleReads([...masked, call("3", "a.ts"), result("3", "edit")], resolvePath)).toEqual(
+			[],
+		);
+	});
+
+	it("agent_before_settle emits a visible context_edit stub over the threshold", () => {
+		const handlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
+		registerCompaction({
+			on: (name: string, fn: (e: unknown, c: unknown) => unknown) => handlers.set(name, fn),
+		} as unknown as Parameters<typeof registerCompaction>[0]);
+		const notices: string[] = [];
+		const out = handlers.get("agent_before_settle")?.(
+			{ entries: [], context: { contextEntries: entries } },
+			{
+				cwd: "/repo",
+				getContextUsage: () => ({ tokens: 10_000_000, contextWindow: 1_000_000 }),
+				ui: { notify: (m: string) => notices.push(m) },
+			},
+		) as { entries: unknown[] };
+		expect(out.entries).toEqual([
+			{
+				type: "context_edit",
+				targetId: "r-1",
+				replacement: { content: [{ type: "text", text: maskedRead("/repo/a.ts") }] },
+			},
+		]);
+		expect(notices).toEqual([
+			expect.stringMatching(/^Compaction: masked 1 stale read\(s\), trimmed 0/),
+		]);
 	});
 });
 
