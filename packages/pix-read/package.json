@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-read",
-	"version": "0.4.5",
+	"version": "0.4.6",
 	"description": "Pi tool \u2014 file read with syntax highlight",
 	"type": "module",
 	"main": "src/index.ts",

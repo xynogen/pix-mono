@@ -14,7 +14,7 @@ import {
 	makeToolContext,
 } from "@xynogen/pix-pretty/test-utils";
 import type { ToolResultLike } from "@xynogen/pix-pretty/types";
-import { applyReadDefaults, DEFAULT_READ_LIMIT, registerReadTool } from "./read";
+import { applyReadDefaults, DEFAULT_READ_LIMIT, missingFileHint, registerReadTool } from "./read";
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
 const createReadToolDefinition =
@@ -32,6 +32,33 @@ describe("applyReadDefaults", () => {
 			path: "large.ts",
 			limit: 25,
 		});
+	});
+});
+
+describe("missingFileHint", () => {
+	it("suggests close names from the same directory, then falls back to find", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "read-hint-"));
+		for (const n of ["read.ts", "reed.md", "reader.ts", "index.ts"])
+			await writeFile(join(cwd, n), "");
+		// Nearest first, within ~1/3 of the name length; reader.ts (distance 3) is out.
+		expect(await missingFileHint(cwd, "reed.ts")).toBe(
+			" Similar names in the same directory: read.ts, reed.md.",
+		);
+		expect(await missingFileHint(cwd, "zzzzzzzz.md")).toBe(" Use find to locate the file.");
+		expect(await missingFileHint(cwd, "nope/x.ts")).toMatch(/directory does not exist.*find/);
+	});
+
+	it("read tool appends the hint to an ENOENT error", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "read-hint-tool-"));
+		await writeFile(join(cwd, "read.ts"), "x");
+		const { pi, tool } = capturePi();
+		registerReadTool(pi, createReadToolDefinition, { ...makeToolContext(), cwd });
+		const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+		const result = await execute("id", { path: "reed.ts" }, undefined, undefined, { cwd });
+		expect(result.isError).toBe(true);
+		expect((result.content?.[0] as { text: string }).text).toMatch(
+			/^ENOENT.*reed\.ts.* Similar names in the same directory: read\.ts\.$/,
+		);
 	});
 });
 

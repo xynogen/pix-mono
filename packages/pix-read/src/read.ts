@@ -1,5 +1,6 @@
 import { constants } from "node:fs";
-import { access, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
+import { basename, dirname, resolve } from "node:path";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,
@@ -80,6 +81,46 @@ type ReadImageDetails = {
 type ReadErrorDetails = { _type: "readError"; filePath: string; message: string };
 type ReadItem = ReadFileDetails | ReadImageDetails | ReadErrorDetails;
 type ReadBatchDetails = { _type: "readBatch"; items: ReadItem[]; index: string };
+
+/** Levenshtein distance between two short names. */
+function editDistance(a: string, b: string): number {
+	const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+	for (let i = 1; i <= a.length; i++) {
+		let diag = row[0]!;
+		row[0] = i;
+		for (let j = 1; j <= b.length; j++) {
+			const next = Math.min(row[j]! + 1, row[j - 1]! + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+			diag = row[j]!;
+			row[j] = next;
+		}
+	}
+	return row[b.length]!;
+}
+
+/**
+ * Recovery hint for a missing file: up to three similar names in the same
+ * directory (Anthropic tool guidance: errors should point at a valid next step).
+ */
+export async function missingFileHint(cwd: string, path: string): Promise<string> {
+	const abs = resolve(cwd, path);
+	const want = basename(abs).toLowerCase();
+	let names: string[];
+	try {
+		names = await readdir(dirname(abs));
+	} catch {
+		return " The directory does not exist either; use find to locate the file.";
+	}
+	const limit = Math.max(2, Math.floor(want.length / 3));
+	const close = names
+		.map((n) => ({ n, d: editDistance(n.toLowerCase(), want) }))
+		.filter(({ d }) => d <= limit)
+		.sort((a, b) => a.d - b.d || a.n.localeCompare(b.n))
+		.slice(0, 3)
+		.map(({ n }) => n);
+	return close.length
+		? ` Similar names in the same directory: ${close.join(", ")}.`
+		: " Use find to locate the file.";
+}
 
 export function applyReadDefaults(params: ReadParams): ReadParams {
 	return params.limit === undefined ? { ...params, limit: DEFAULT_READ_LIMIT } : params;
@@ -246,14 +287,20 @@ export function registerReadTool(
 				return result;
 			};
 
+			const withHint = async (message: string, path: string) =>
+				/ENOENT/.test(message)
+					? message + (await missingFileHint(toolCtx?.cwd || cwd, path))
+					: message;
+
 			// Single target → preserve the original single-file result/detail shape.
 			if (targets.length <= 1 && omitted === 0) {
 				const fp = targets[0] ?? params.path ?? "";
 				try {
 					return await runOne(fp, tid);
 				} catch (error) {
-					const text = getErrorMessage(error);
-					if (sig?.aborted || /aborted/i.test(text)) throw error;
+					const raw = getErrorMessage(error);
+					if (sig?.aborted || /aborted/i.test(raw)) throw error;
+					const text = await withHint(raw, fp);
 					return {
 						content: [{ type: "text" as const, text }],
 						details: {
@@ -275,7 +322,7 @@ export function registerReadTool(
 						return { path, result: await runOne(path, `${tid}:${i}`) };
 					} catch (error) {
 						if (sig?.aborted) throw error;
-						return { path, error: getErrorMessage(error) };
+						return { path, error: await withHint(getErrorMessage(error), path) };
 					}
 				}),
 			);
