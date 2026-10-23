@@ -276,6 +276,8 @@ function applyHashEdits(bytes: Buffer, input: unknown) {
 				throw new Error("Insertion overlaps a replacement range");
 	}
 	const output: SourceLine[] = [];
+	// 1-based output line spans each op wrote, for the fresh anchors in the result.
+	const spans: Array<[number, number]> = [];
 	const ops: Array<EditOperation & { editLine: number }> = [];
 	const append = (lines: string[]) =>
 		output.push(...lines.map((text) => ({ text, ending: source.delimiter })));
@@ -290,6 +292,7 @@ function applyHashEdits(bytes: Buffer, input: unknown) {
 					gap === 0 ? [...insertion, context].join("\n") : [context, ...insertion].join("\n"),
 				editLine: Math.max(1, output.length + (gap === 0 ? 1 : 0)),
 			});
+			spans.push([output.length + 1, output.length + insertion.length]);
 			append(insertion);
 		}
 		if (gap === source.lines.length) break;
@@ -303,6 +306,8 @@ function applyHashEdits(bytes: Buffer, input: unknown) {
 				newText: range.lines.join("\n"),
 				editLine: output.length + 1,
 			});
+			// A deletion has no new lines; mark the line that now sits in its place.
+			spans.push([output.length + 1, output.length + Math.max(1, range.lines.length)]);
 			append(range.lines);
 			gap = range.end;
 			rangeIndex++;
@@ -316,7 +321,11 @@ function applyHashEdits(bytes: Buffer, input: unknown) {
 			output[i]!.ending = source.finalNewline ? output[i]!.ending || source.delimiter : "";
 		else if (!output[i]!.ending) output[i]!.ending = source.delimiter;
 	}
-	return { content: source.bom + output.map((line) => line.text + line.ending).join(""), ops };
+	return {
+		content: source.bom + output.map((line) => line.text + line.ending).join(""),
+		ops,
+		spans,
+	};
 }
 
 function applyExactEdits(bytes: Buffer, args: ExactParams) {
@@ -349,18 +358,50 @@ function applyExactEdits(bytes: Buffer, args: ExactParams) {
 	let content = "";
 	let offset = 0;
 	const ops: Array<EditOperation & { editLine: number }> = [];
+	const spans: Array<[number, number]> = [];
+	const lineCount = (text: string) => text.match(/\r\n|\r|\n/g)?.length ?? 0;
 	for (const range of ranges) {
 		if (range.start < offset) throw new Error("Overlapping exact-text edits");
 		content += original.slice(offset, range.start);
-		ops.push({
-			oldText: range.oldText,
-			newText: range.newText,
-			editLine: (content.match(/\r\n|\r|\n/g)?.length ?? 0) + 1,
-		});
+		const editLine = lineCount(content) + 1;
+		ops.push({ oldText: range.oldText, newText: range.newText, editLine });
+		spans.push([editLine, editLine + lineCount(range.newText)]);
 		content += range.newText;
 		offset = range.end;
 	}
-	return { content: source.bom + content + original.slice(offset), ops };
+	return { content: source.bom + content + original.slice(offset), ops, spans };
+}
+
+/** Context lines around each changed span, and the cap on anchored lines per result. */
+const FRESH_CONTEXT = 2;
+const FRESH_MAX_LINES = 20;
+
+/**
+ * Current `LINE#HASH|text` rows around the changed spans, so a chained edit on
+ * the same file needs no `read` between calls (SWE-agent shows the edited
+ * window after every edit). Gaps between spans are marked with `…`.
+ */
+export function freshAnchors(content: string, spans: Array<[number, number]>): string {
+	const lines = decodeLines(Buffer.from(content, "utf8")).lines;
+	const wanted = new Set<number>();
+	for (const [from, to] of spans)
+		for (
+			let n = Math.max(1, from - FRESH_CONTEXT);
+			n <= Math.min(lines.length, to + FRESH_CONTEXT);
+			n++
+		)
+			wanted.add(n);
+	const picked = [...wanted].sort((a, b) => a - b);
+	const shown = picked.slice(0, FRESH_MAX_LINES);
+	const rows: string[] = [];
+	for (const [i, n] of shown.entries()) {
+		if (i && n !== (shown[i - 1] ?? 0) + 1) rows.push("…");
+		const text = lines[n - 1]?.text ?? "";
+		rows.push(`${anchor(n, text)}|${text.length > 200 ? `${text.slice(0, 200)}…` : text}`);
+	}
+	if (picked.length > shown.length)
+		rows.push(`… ${picked.length - shown.length} more changed lines; read for anchors`);
+	return rows.join("\n");
 }
 
 export function summarizeEditOperations(operations: EditOperation[]) {
@@ -437,8 +478,15 @@ export function registerEditTool(
 					// ponytail: in-place writes preserve links and mode, not crash atomicity. Use a separate atomic-write design if needed.
 					await writeFile(absolutePath, applied.content, "utf8");
 					abort();
+					const fresh = freshAnchors(applied.content, applied.spans);
+					const text = `Edited ${fp}: ${operations.length} operations.`;
 					return {
-						content: [{ type: "text", text: `Edited ${fp}: ${operations.length} operations.` }],
+						content: [
+							{
+								type: "text",
+								text: fresh ? `${text}\nCurrent anchors:\n${fresh}` : text,
+							},
+						],
 						details: undefined,
 					};
 				});

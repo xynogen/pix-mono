@@ -313,6 +313,56 @@ describe("exact-text acceptance", () => {
 });
 
 describe("hashline acceptance", () => {
+	it("returns fresh anchors so a chained edit needs no read in between", async () => {
+		const cwd = await mkdtemp(join(tempDir(), "hashline-chain-"));
+		const path = join(cwd, "chain.ts");
+		const { pi, tool } = capturePi();
+		registerEditTool(pi, noopFactory, { ...makeToolContext(), cwd }, noopTrack);
+		await writeFile(path, "function a() {}\nfunction b() {}\n");
+		const first = await executeTool(
+			tool,
+			"id",
+			{
+				path,
+				edits: [{ op: "insert_before", pos: anchor(1, "function a() {}"), lines: ["/** a */"] }],
+			},
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		const text = (first.content?.[0] as { text: string }).text;
+		expect(text).toMatch(/^Edited .*\nCurrent anchors:\n1#[0-9A-F]{3}\|\/\*\* a \*\/\n/);
+		// The insert shifted b() from line 2 to 3; take its anchor from the result, not a read.
+		const pos = /^(\d+#[0-9A-F]{3})\|function b\(\) \{\}$/m.exec(text)?.[1];
+		expect(pos).toBe(anchor(3, "function b() {}"));
+		const second = await executeTool(
+			tool,
+			"id",
+			{ path, edits: [{ op: "insert_before", pos, lines: ["/** b */"] }] },
+			undefined,
+			undefined,
+			{ cwd },
+		);
+		expect(second.isError).not.toBe(true);
+		expect(await readFile(path, "utf8")).toBe(
+			"/** a */\nfunction a() {}\n/** b */\nfunction b() {}\n",
+		);
+	});
+
+	it("caps fresh anchors and marks gaps between changed spans", async () => {
+		const { freshAnchors } = await import("./edit");
+		const content = `${Array.from({ length: 60 }, (_, i) => `L${i + 1}`).join("\n")}\n`;
+		const rows = freshAnchors(content, [
+			[5, 5],
+			[30, 50],
+		]).split("\n");
+		expect(rows.slice(0, 6)).toEqual(
+			[3, 4, 5, 6, 7].map((n) => `${anchor(n, `L${n}`)}|L${n}`).concat("…"),
+		);
+		expect(rows.at(-1)).toMatch(/^… \d+ more changed lines; read for anchors$/);
+		expect(rows.filter((r) => /^\d+#/.test(r))).toHaveLength(20);
+	});
+
 	it("preserves newline state, repeated positions, adjacent boundaries, and gutters", async () => {
 		const cwd = await mkdtemp(join(tempDir(), "hashline-cases-"));
 		const path = join(cwd, "case.ts");
