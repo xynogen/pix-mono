@@ -377,7 +377,8 @@ export function createAgentTool(
 
 		parameters: Type.Object({
 			prompt: Type.String({
-				description: "Compact, self-contained instructions; never rely on forked parent context.",
+				description:
+					"Self-contained brief: objective, output format, tools/sources to use, and scope limits (files, what not to touch). Never rely on forked parent context. Delegation suits reading and research; avoid parallel agents editing the same files.",
 			}),
 			description: Type.String({ description: "Short 3-5 word UI label." }),
 			type: Type.String({
