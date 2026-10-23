@@ -1,7 +1,20 @@
-import { describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { capturePi, makeToolContext } from "@xynogen/pix-pretty/test-utils";
 import type { ToolResultLike } from "@xynogen/pix-pretty/types";
-import { applyGrepDefaults, DEFAULT_GREP_LIMIT, grepHighlight, registerGrepTool } from "./grep";
+import { anchor, initHashline } from "@xynogen/pix-runtime/hashline";
+import { tempDir } from "@xynogen/pix-runtime/paths";
+import {
+	anchorGrepText,
+	applyGrepDefaults,
+	DEFAULT_GREP_LIMIT,
+	grepHighlight,
+	registerGrepTool,
+	stripGrepAnchors,
+} from "./grep";
+
+beforeAll(initHashline);
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
 
@@ -98,5 +111,42 @@ describe("registerGrepTool", () => {
 		expect(d._type).toBe("grepResult");
 		expect(d.pattern).toBe("solo");
 		expect(d.patterns).toBeUndefined();
+	});
+});
+
+describe("grep anchors", () => {
+	const source = "const a = 1;\nexport function target() {\n\treturn a;\n}\n";
+
+	it("match rows carry the same LINE#HASH as read, from the full source line", async () => {
+		const dir = mkdtempSync(join(tempDir(), "pix-grep-anchor-"));
+		try {
+			writeFileSync(join(dir, "src.ts"), source);
+			const want = `src.ts:${anchor(2, "export function target() {")}|export function target() {`;
+			// FFF rows: `path:LINE:text`; Pi ripgrep rows: `path:LINE: text` and `path-LINE- ctx`.
+			expect(await anchorGrepText("src.ts:2:export function target() {", dir, "")).toBe(want);
+			const sdk = await anchorGrepText(
+				"src.ts-1- const a = 1;\nsrc.ts:2: export function target() {",
+				dir,
+				" ",
+			);
+			expect(sdk.split("\n")).toEqual(["src.ts-1- const a = 1;", want]);
+			// A file search root names rows by basename.
+			expect(
+				await anchorGrepText("src.ts:2: export function target() {", join(dir, "src.ts"), " "),
+			).toBe(want);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("leaves rows it cannot resolve unchanged and the renderer strips hashes", async () => {
+		const dir = mkdtempSync(join(tempDir(), "pix-grep-anchor-"));
+		try {
+			const rows = "missing.ts:3:x\nNo matches found";
+			expect(await anchorGrepText(rows, dir, "")).toBe(rows);
+			expect(stripGrepAnchors("a/b.ts:12#ABC|text\nother")).toBe("a/b.ts:12:text\nother");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });

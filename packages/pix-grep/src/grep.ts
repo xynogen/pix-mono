@@ -1,3 +1,5 @@
+import { readFile, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import type {
 	ExtensionContext,
 	GrepToolInput,
@@ -46,6 +48,7 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { anchor, decodeLines, initHashline, type SourceLine } from "@xynogen/pix-runtime/hashline";
 
 export const DEFAULT_GREP_LIMIT = 30;
 
@@ -56,6 +59,53 @@ type GrepBatchParams = GrepParams & { patterns?: string[] };
 
 export function applyGrepDefaults(params: GrepParams): GrepParams {
 	return params.limit === undefined ? { ...params, limit: DEFAULT_GREP_LIMIT } : params;
+}
+
+/** Files above this size keep plain `path:LINE:` rows (anchoring reads the whole file). */
+const ANCHOR_MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Add read/edit anchors to grep match rows: `path:LINE:text` → `path:LINE#HASH|text`,
+ * so the model can call `edit` from a grep hit without a `read` first (The Harness
+ * Problem: anchors in read and grep). The hash is taken from the full source line,
+ * not grep's truncated text. A row whose file or line cannot be read stays as is.
+ * `sep` is what follows `LINE:` — FFF writes none, Pi's ripgrep writes one space.
+ * `base` is the search root; when it is a file, rows name only its basename.
+ */
+export async function anchorGrepText(text: string, base: string, sep: "" | " "): Promise<string> {
+	await initHashline();
+	const row = new RegExp(`^(.+?):(\\d+):${sep}(.*)$`);
+	const baseIsFile = await stat(base).then(
+		(s) => s.isFile(),
+		() => false,
+	);
+	const files = new Map<string, Promise<SourceLine[] | undefined>>();
+	const linesOf = (rel: string) => {
+		const path = baseIsFile ? base : join(base, rel);
+		let lines = files.get(path);
+		if (!lines) {
+			lines = stat(path)
+				.then(async (s) =>
+					s.size > ANCHOR_MAX_BYTES ? undefined : decodeLines(await readFile(path)).lines,
+				)
+				.catch(() => undefined);
+			files.set(path, lines);
+		}
+		return lines;
+	};
+	const out: string[] = [];
+	for (const line of text.split("\n")) {
+		const m = row.exec(line);
+		const n = Number(m?.[2]);
+		const source = m ? (await linesOf(m[1] ?? ""))?.[n - 1] : undefined;
+		out.push(source && m ? `${m[1]}:${anchor(n, source.text)}|${m[3]}` : line);
+	}
+	return out.join("\n");
+}
+
+/** Renderer view: drop the anchor hash, keep `path:LINE:text`. */
+export function stripGrepAnchors(text: string): string {
+	return text.replace(/^(.+?:\d+)#[0-9A-F]{3}\|/gm, "$1:");
 }
 
 /**
@@ -85,7 +135,7 @@ export function registerGrepTool(
 		...origGrep,
 		name: "grep",
 		description:
-			"Search file contents for a regex or literal pattern. Defaults to 30 matches; use limit to request more. Respects .gitignore and remains capped by Pi's 50KB hard limit. Pass `patterns` to search several known patterns in one call.",
+			"Search file contents for a regex or literal pattern. Defaults to 30 matches; use limit to request more. Respects .gitignore and remains capped by Pi's 50KB hard limit. Pass `patterns` to search several known patterns in one call. Match rows are `path:LINE#HASH|text`; `LINE#HASH` is a valid edit anchor.",
 		parameters: withOptionalStringArray(
 			origGrep.parameters,
 			"patterns",
@@ -108,6 +158,7 @@ export function registerGrepTool(
 			): Promise<ToolResultLike<GrepResultDetails>> => {
 				const { patterns: _patterns, ...rest } = params;
 				const effectiveParams = applyGrepDefaults({ ...rest, pattern });
+				const root = toolCtx?.cwd || cwd;
 
 				// Try FFF first (SIMD-accelerated).
 				// Constrained searches (path/glob) fall through to SDK — FFF 0.5.2
@@ -148,7 +199,7 @@ export function registerGrepTool(
 							}
 
 							const textContent = appendNotices(
-								fffFormatGrepText(grep.items, effectiveLimit),
+								await anchorGrepText(fffFormatGrepText(grep.items, effectiveLimit), root, ""),
 								notices,
 							);
 							return makeTextResult<GrepResultDetails>(textContent, {
@@ -168,18 +219,23 @@ export function registerGrepTool(
 
 				// SDK fallback
 				const result = await origGrep.execute(callId, effectiveParams, sig, upd as never, toolCtx);
-				const textContent = normalizeLineEndings(getTextContent(result));
-				if (result.content) {
-					for (const content of result.content) {
-						if (isTextContent(content)) content.text = normalizeLineEndings(content.text || "");
-					}
-				}
+				const raw = normalizeLineEndings(getTextContent(result));
+				const textContent = await anchorGrepText(
+					raw,
+					resolve(root, effectiveParams.path ?? "."),
+					" ",
+				);
+				if (result.content)
+					result.content = [
+						{ type: "text", text: textContent },
+						...result.content.filter((c) => !isTextContent(c)),
+					];
 				setResultDetails<GrepResultDetails>(result, {
 					_type: "grepResult",
 					text: textContent,
 					pattern,
 					path: effectiveParams.path,
-					matchCount: textContent ? countRipgrepMatches(textContent) : 0,
+					matchCount: raw ? countRipgrepMatches(raw) : 0,
 					literal: effectiveParams.literal,
 					ignoreCase: effectiveParams.ignoreCase,
 				});
@@ -332,7 +388,7 @@ export function registerGrepTool(
 				return completed();
 			}
 
-			const output = getTextContent(result) || "searched";
+			const output = stripGrepAnchors(getTextContent(result)) || "searched";
 			// One framed shape; rules follow status color. Count lives in the collapsed row.
 			text.setText(
 				renderDimPreview(output, theme, {
