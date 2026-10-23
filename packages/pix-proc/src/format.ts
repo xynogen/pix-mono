@@ -77,13 +77,31 @@ export function statusWord(m: ProcMeta): string {
 	return `exited(${m.exitCode ?? "?"})`;
 }
 
+const SECRET_KEY = /PASS|TOKEN|SECRET|KEY/i;
+
+/**
+ * UI label for a process: first non-empty command line, whitespace collapsed,
+ * ` …` when the command spans more lines, and secret-looking `KEY=value`
+ * assignments masked as `KEY=***`. Display only — the real command runs as is.
+ */
+export function procLabel(m: Pick<ProcMeta, "command" | "name">): string {
+	const lines = m.command.split("\n").filter((l) => l.trim());
+	const first = (lines[0] ?? "").replace(/\s+/g, " ").trim();
+	const masked = first.replace(
+		/\b([A-Za-z_][A-Za-z0-9_]*)=('[^']*'|"[^"]*"|\S+)/g,
+		(all, key: string) => (SECRET_KEY.test(key) ? `${key}=***` : all),
+	);
+	const command = lines.length > 1 ? `${masked} …` : masked;
+	return m.name ? `${m.name} (${command})` : command;
+}
+
 /**
  * One-line summary, e.g.
  * `proc-swift-otter-42 · npm run dev · 2m14s · running · Local: http://…`.
  * `lastLine` is the freshest output line (already trimmed by the caller).
  */
 export function statusLine(m: ProcMeta, now: number, lastLine?: string): string {
-	const label = m.name ? `${m.name} (${m.command})` : m.command;
+	const label = procLabel(m);
 	const parts = [m.handle, label, humanUptime(now - m.startTime), statusWord(m)];
 	if (m.capped) parts.push("capped");
 	if (lastLine) parts.push(lastLine.replace(/\s+/g, " ").trim());

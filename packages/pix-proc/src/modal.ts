@@ -22,7 +22,7 @@ import {
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { humanUptime, type ProcMeta, statusWord } from "./format.ts";
+import { humanUptime, type ProcMeta, procLabel, statusWord } from "./format.ts";
 
 export type ProcModalResult = { kind: "stop"; handle: string } | { kind: "rm"; handle: string };
 
@@ -59,7 +59,7 @@ export class ProcModal {
 			value: p.handle,
 			label: p.handle,
 			description: [
-				p.name ? `${p.name} (${p.command})` : p.command,
+				procLabel(p),
 				humanUptime(now - p.startTime),
 				statusWord(p),
 				...(p.capped ? ["capped"] : []),
@@ -185,7 +185,7 @@ export class ProcModal {
 				p.status === "running" ? t.fg("success", statusWord(p)) : t.fg("warning", statusWord(p));
 			header = [
 				`${title(p.handle)} ${status}`,
-				t.fg("dim", p.name ? `${p.name} (${p.command})` : p.command),
+				t.fg("dim", procLabel(p)),
 				hint(
 					`${p.cwd} · pid ${p.pid} · ${humanUptime(Date.now() - p.startTime)}${p.capped ? " · capped" : ""}`,
 				),

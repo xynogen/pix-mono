@@ -5,6 +5,7 @@ import {
 	logSince,
 	MAX_LOG_LINES,
 	type ProcMeta,
+	procLabel,
 	statusLine,
 	statusWord,
 	tailLines,
@@ -93,6 +94,21 @@ describe("statusWord / statusLine", () => {
 
 	test("capped flag appears when set", () => {
 		expect(statusLine({ ...base, capped: true }, 1000)).toContain(" · capped");
+	});
+});
+
+describe("procLabel", () => {
+	test("heredoc command → first line only, ends with ' …'", () => {
+		const label = procLabel({ command: "python -u - <<'PY'\nimport os\nprint(1)\nPY" });
+		expect(label).toMatch(/^python -u - <<'PY' …$/);
+	});
+
+	test("masks secret-looking env values, keeps other assignments", () => {
+		const label = procLabel({
+			name: "cam",
+			command: "CAMERA_TEST_PASSWORD='p w' API_KEY=abc PORT=3000 node x.js",
+		});
+		expect(label).toBe("cam (CAMERA_TEST_PASSWORD=*** API_KEY=*** PORT=3000 node x.js)");
 	});
 });
 

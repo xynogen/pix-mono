@@ -27,7 +27,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
-import { MAX_LOG_LINES, type ProcMeta, statusLine, statusWord } from "./format.ts";
+import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine, statusWord } from "./format.ts";
 import { ProcManager } from "./manager.ts";
 import { MODAL_LOG_LINES, ProcModal, type ProcModalResult } from "./modal.ts";
 
@@ -132,7 +132,7 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		ui = ctx.ui;
 		const orphans = await mgr.findOrphans();
 		if (orphans.length === 0) return;
-		const list = orphans.map((o) => `${o.handle} (${o.command})`).join(", ");
+		const list = orphans.map((o) => `${o.handle} (${procLabel(o)})`).join(", ");
 		// Never kill silently (§3): show, then ask.
 		const choice = await ctx.ui.select(
 			`pix-proc: ${orphans.length} orphaned process group(s) from a previous session — ${list}`,
