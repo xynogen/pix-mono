@@ -34,6 +34,8 @@ const PRETTY_CATALOG = {
 	"mode.normal": { nerd: "\u{F0174}", unicode: `\u276F${VS}`, ascii: ">" },
 	// ── model kind (pix-models picker) ─────────────────────────────────────
 	"model.classifier": { nerd: "\u{F05D1}", unicode: `\u2696${VS}`, ascii: "C" },
+	// ── steering hint (pix-nudge cards): advice, not a warning — keep it off `⚠` ──
+	nudge: { nerd: "\u{F0335}", unicode: `\u279C${VS}`, ascii: ">" },
 } as const satisfies Record<string, Record<IconMode, string>>;
 
 type PrettyIconKey = keyof typeof PRETTY_CATALOG;
