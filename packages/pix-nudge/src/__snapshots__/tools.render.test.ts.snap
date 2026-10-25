@@ -4,14 +4,15 @@ exports[`captures active and hidden tool warnings through the actual host notifi
 {
   "active": [
     "",
-    " <warning>Warning: Reading a file via bash cat/head/tail. Use \`read\` instead. (Once per  </warning>",
-    " <warning>category; bash stays fine for pipes and compound commands.)</warning>                    ",
+    " <warning>Warning: Reading a file via bash cat/head/tail/sed -n. Use \`read\`              </warning>",
+    " <warning>(offset/limit pick lines) instead. (Once per category; bash stays fine for     </warning>",
+    " <warning>real pipelines and compound commands.)</warning>                                         ",
   ],
   "hidden": [
     "",
-    " <warning>Warning: Reading a file via bash cat/head/tail. Load \`read\` with tool_search,  </warning>",
-    " <warning>then call it. (Once per category; bash stays fine for pipes and compound       </warning>",
-    " <warning>commands.)</warning>                                                                     ",
+    " <warning>Warning: Reading a file via bash cat/head/tail/sed -n. Load \`read\` with        </warning>",
+    " <warning>tool_search, then call it (offset/limit pick lines). (Once per category; bash  </warning>",
+    " <warning>stays fine for real pipelines and compound commands.)</warning>                          ",
   ],
 }
 `;

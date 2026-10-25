@@ -45,6 +45,19 @@ describe("createLoopTracker", () => {
 		const hits = [0, 1, 2].map(() => track("grep", { p: "x" }, out("none")));
 		expect(hits).toEqual([undefined, undefined, ["grep"]]);
 	});
+
+	test("a failing call loops on the same error even when the arguments change", () => {
+		const track = createLoopTracker(3);
+		const err = (detail: string) => out(`Edit without read\n${detail}`);
+		const hits = ["a", "b", "c"].map((p) => track("edit", { path: p }, err(p), true));
+		expect(hits).toEqual([undefined, undefined, ["edit"]]);
+	});
+
+	test("successful calls with changed arguments are not a loop", () => {
+		const track = createLoopTracker(3);
+		const hits = ["a", "b", "c"].map((p) => track("read", { path: p }, out("x"), false));
+		expect(hits).toEqual([undefined, undefined, undefined]);
+	});
 });
 
 describe("loopReason", () => {
@@ -52,6 +65,9 @@ describe("loopReason", () => {
 		expect(loopReason(["grep"], 3)).toMatch(/^Same `grep` call returned the same result 3 times/);
 		expect(loopReason(["edit", "bash"], 3)).toMatch(
 			/^Same 2-call cycle \(`edit` → `bash`\) returned/,
+		);
+		expect(loopReason(["edit"], 3, true)).toMatch(
+			/^Same `edit` call failed with the same error 3 times/,
 		);
 	});
 });

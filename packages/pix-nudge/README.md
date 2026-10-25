@@ -6,9 +6,9 @@ Pi extension — model-steering nudges (tools + capability).
 
 Registers three nudge hooks. All are surgical — they name only the relevant tool, not a full inventory, and none blocks a call.
 
-**Tools nudge** — catches `bash` calls that reimplement a first-class tool (`read`, `ls`, `grep`, `find`, `edit`):
+**Tools nudge** — catches `bash` calls that reimplement a first-class tool (`read`, `ls`, `grep`, `find`, `edit`), including `sed -n '10,40p'` reads, stand-ins with only a trailing `| head`/`| tail`, and commands that pix-optimizer has prefixed with `rtk`:
 
-- Appends one `[pix-nudge]` line to that bash result **once per command category per session** (the model reads tool results, not UI notices), plus a yellow notice for the user. Deferred tools are pointed at `tool_search`.
+- Appends one `[pix-nudge]` line to that bash result **once per command category per session** (the model reads tool results, not UI notices), plus a yellow notice for the user. The line names the tool options that replace the shell idiom (for example `read` offset/limit). Deferred tools are pointed at `tool_search`.
 - The command still runs — it teaches, doesn't block (early blocking wasted a turn on forced retry). Later calls in that category are silent.
 - Bash stays available for everything else (pipes, compound commands, real shell work).
 
@@ -16,12 +16,12 @@ Registers three nudge hooks. All are surgical — they name only the relevant to
 
 **Capability nudge** — steers the model toward tool discovery over guessing:
 
-- One-time orientation message on the **first prompt** (tool counts, MCP tools, available skills).
-- A one-line reminder every 10 turns pointing at `read_skills()`; deferred tools are found with `tool_search`.
-- When `graphify-out/graph.json` exists, both messages also route codebase questions to `graphify query`.
+- One-time orientation message on the **first prompt**: tool counts, the deferred-tool note, and a capability → tool map that lists only the tools registered in this session (`ask_user`, `read_skills()`, context7, `search`/`fetch`, `lsp_*`, `mcp`).
+- A one-line reminder every 10 turns pointing at `read_skills()` and `tool_search`.
+- When `.pi/graph/graph.json` exists and the `graph` tool is registered, both messages also route codebase questions to `graph(action:"query")`.
 - Delivered as visible custom messages, not system-prompt rewrites, so the cached prompt prefix stays intact.
 
-**Loop nudge** — catches a doom loop: the same tool, arguments and result **3 times in a row**, or the same cycle of up to 5 calls (A→B→A→B…) repeated 3 times. Appends one `[pix-nudge]` line to the third result plus a yellow notice. A changed argument or result resets the streak, so re-running tests after an edit is not a loop.
+**Loop nudge** — catches a doom loop: the same tool, arguments and result **3 times in a row**, or the same cycle of up to 5 calls (A→B→A→B…) repeated 3 times. A failing call counts by tool and first error line, so the same error with tweaked arguments also counts. Appends one `[pix-nudge]` line to the third result plus a yellow notice. A changed result resets the streak, so re-running tests after an edit is not a loop.
 
 ## Install
 

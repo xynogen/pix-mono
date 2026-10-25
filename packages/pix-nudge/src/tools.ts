@@ -35,48 +35,70 @@ interface Rule {
 	test: (cmd: string) => boolean;
 	tool: string;
 	reason: string;
+	/** The tool options that replace the shell idiom, so the model knows what to pass. */
+	hint: string;
 }
 
-/** First bare word of a command segment (strips env-var prefixes like FOO=bar). */
+/**
+ * First bare word of a command segment. Strips env-var prefixes (FOO=bar) and
+ * an `rtk` wrapper: pix-optimizer rewrites `grep x` to `rtk grep x` in place
+ * before tool_result fires, which otherwise hides every stand-in.
+ */
 const leadWord = (segment: string): string => {
 	const toks = segment.trim().split(/\s+/);
 	let i = 0;
 	while (i < toks.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[i] ?? "")) i++;
+	if (toks[i] === "rtk") i++;
 	return (toks[i] ?? "").replace(/^\\/, ""); // unalias e.g. \grep
 };
 
 const RULES: Rule[] = [
 	{
 		category: "read",
-		test: (c) => /^(cat|head|tail|less|more|bat)$/.test(leadWord(c)),
+		// `sed -n '10,40p' f` is a line-range read, not an edit.
+		test: (c) =>
+			/^(cat|head|tail|less|more|bat)$/.test(leadWord(c)) ||
+			(leadWord(c) === "sed" && /\s-n\b/.test(c) && /\d+(,\d+)?p\b/.test(c) && !/\s-i\b/.test(c)),
 		tool: "read",
-		reason: "Reading a file via bash cat/head/tail.",
+		reason: "Reading a file via bash cat/head/tail/sed -n.",
+		hint: "offset/limit pick lines",
 	},
 	{
 		category: "ls",
 		test: (c) => /^(ls|tree|exa|eza)$/.test(leadWord(c)),
 		tool: "ls",
 		reason: "Listing a directory via bash ls/tree.",
+		hint: "limit caps entries",
 	},
 	{
 		category: "grep",
 		test: (c) => /^(grep|rg|ag|ack)$/.test(leadWord(c)),
 		tool: "grep",
 		reason: "Searching file contents via bash grep/rg.",
+		hint: "glob, context, limit",
 	},
 	{
 		category: "find",
 		test: (c) => /^(find|fd|fdfind)$/.test(leadWord(c)),
 		tool: "find",
 		reason: "Locating files via bash find/fd.",
+		hint: "glob pattern, limit",
 	},
 	{
 		category: "edit",
-		test: (c) => /^sed$/.test(leadWord(c)) && /\s-i\b/.test(c),
+		test: (c) => leadWord(c) === "sed" && /\s-i\b/.test(c),
 		tool: "edit",
 		reason: "Editing a file in place via bash `sed -i`.",
+		hint: "exact replacements with a reviewable diff",
 	},
 ];
+
+/**
+ * Trailing `| head`/`| tail` stages only trim output, which the tools' limit and
+ * offset options already do. Strip them so `grep x | head` counts as a stand-in.
+ * Session data: stand-in | head/tail was the largest missed group (~220 calls).
+ */
+const TRAILING_TRIM = /(\s*\|\s*(head|tail)(\s+-n)?(\s+-?\d+)?)+\s*$/;
 
 /**
  * Pick a rule only when the command is a *simple* single-command invocation
@@ -135,7 +157,7 @@ export function splitSegments(command: string): Segment[] {
  * - `git log | cat`      → undefined   — no segment is a leading stand-in.
  */
 export function classifyCompound(command: string): Rule | undefined {
-	const cmd = command.trim();
+	const cmd = command.trim().replace(TRAILING_TRIM, "");
 	if (!cmd) return undefined;
 
 	// Fast path: a truly simple command (no operators/subshell/redirect).
@@ -161,13 +183,20 @@ export function classifyCompound(command: string): Rule | undefined {
 
 /**
  * One-line guidance for a nudge. Active tool → call it directly. Deferred tool
- * → load it with `tool_search` first. Pure + exported for unit testing.
+ * → load it with `tool_search` first. `hint` names the options that replace the
+ * shell idiom. Pure + exported for unit testing.
  */
-export function nudgeReason(baseReason: string, tool: string, toolActive: boolean): string {
+export function nudgeReason(
+	baseReason: string,
+	tool: string,
+	toolActive: boolean,
+	hint?: string,
+): string {
+	const opts = hint ? ` (${hint})` : "";
 	const how = toolActive
-		? `Use \`${tool}\` instead.`
-		: `Load \`${tool}\` with tool_search, then call it.`;
-	return `${baseReason} ${how} (Once per category; bash stays fine for pipes and compound commands.)`;
+		? `Use \`${tool}\`${opts} instead.`
+		: `Load \`${tool}\` with tool_search, then call it${opts}.`;
+	return `${baseReason} ${how} (Once per category; bash stays fine for real pipelines and compound commands.)`;
 }
 
 export default function registerToolsNudge(pi: ExtensionAPI): void {
@@ -194,7 +223,7 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 		if (!rule || nudged.has(rule.category)) return;
 		nudged.add(rule.category);
 
-		const reason = nudgeReason(rule.reason, rule.tool, isActive(rule.tool));
+		const reason = nudgeReason(rule.reason, rule.tool, isActive(rule.tool), rule.hint);
 		ctx.ui.notify(reason, "warning");
 		return {
 			content: [...(event.content ?? []), { type: "text" as const, text: `[pix-nudge] ${reason}` }],

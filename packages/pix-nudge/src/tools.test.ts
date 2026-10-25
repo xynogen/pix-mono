@@ -66,9 +66,16 @@ describe("classify", () => {
 		expect(classify("fd '*.ts'")?.category).toBe("find");
 	});
 
-	test("maps sed -i to edit, but plain sed is allowed", () => {
+	test("maps sed -i to edit, sed -n range print to read, other sed is allowed", () => {
 		expect(classify("sed -i 's/a/b/' f")?.category).toBe("edit");
+		expect(classify("sed -n '10,40p' f.ts")?.category).toBe("read");
 		expect(classify("sed 's/a/b/' f")).toBeUndefined();
+	});
+
+	test("sees through the rtk wrapper pix-optimizer adds before tool_result", () => {
+		expect(classify("rtk grep -rn foo src")?.category).toBe("grep");
+		expect(classify("rtk cat a.ts")?.category).toBe("read");
+		expect(classify("rtk git status")).toBeUndefined();
 	});
 
 	test("strips env-var prefix before matching", () => {
@@ -131,7 +138,13 @@ describe("classifyCompound", () => {
 
 	test("exempts a segment that feeds a pipe (legit producer)", () => {
 		expect(classifyCompound("cat x | jq .")).toBeUndefined();
-		expect(classifyCompound("grep foo a | head")).toBeUndefined();
+		expect(classifyCompound("grep foo a | sort | uniq -c")).toBeUndefined();
+	});
+
+	test("a trailing | head / | tail only trims output, so it is still a stand-in", () => {
+		expect(classifyCompound("grep -rn foo . | head")?.category).toBe("grep");
+		expect(classifyCompound("find . -name '*.ts' | head -n 20")?.category).toBe("find");
+		expect(classifyCompound("rtk grep x src | tail -5")?.category).toBe("grep");
 	});
 
 	test("exempts redirects per-segment", () => {
@@ -160,9 +173,24 @@ describe("nudgeReason", () => {
 		expect(msg).toMatch(/Load `find` with tool_search, then call it\./);
 	});
 
+	test("names the replacing options when a hint is given", () => {
+		const msg = nudgeReason(
+			"Searching file contents via bash grep/rg.",
+			"grep",
+			true,
+			"glob, limit",
+		);
+		expect(msg).toMatch(/Use `grep` \(glob, limit\) instead\./);
+	});
+
 	test("is a single short line", () => {
-		const msg = nudgeReason("Listing a directory via bash ls/tree.", "ls", false);
-		expect(msg).toMatch(/^[^\n]{1,200}$/);
+		const msg = nudgeReason(
+			"Listing a directory via bash ls/tree.",
+			"ls",
+			false,
+			"limit caps entries",
+		);
+		expect(msg).toMatch(/^[^\n]{1,220}$/);
 	});
 });
 
@@ -176,7 +204,9 @@ describe("registerToolsNudge handler", () => {
 
 		expect(result?.content.map((c) => c.text)).toEqual([
 			"out",
-			expect.stringMatching(/^\[pix-nudge\] Reading .* Use `read` instead\./),
+			expect.stringMatching(
+				/^\[pix-nudge\] Reading .* Use `read` \(offset\/limit[^)]*\) instead\./,
+			),
 		]);
 		expect(notices).toEqual([{ msg: expect.stringContaining("`read`"), type: "warning" }]);
 	});
@@ -191,7 +221,7 @@ describe("registerToolsNudge handler", () => {
 
 		await handler(bashEvent("grep x y"), ctx); // new category → new nudge
 		expect(notices).toHaveLength(2);
-		expect((notices[1] as Notice).msg).toContain("Use `grep` instead");
+		expect((notices[1] as Notice).msg).toMatch(/Use `grep` \(.*\) instead/);
 	});
 
 	test("ignores commands with no tool stand-in and non-bash tools", async () => {

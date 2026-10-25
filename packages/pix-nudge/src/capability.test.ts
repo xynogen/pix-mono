@@ -120,11 +120,20 @@ describe("buildOrientation", () => {
 		expect(out).toContain("2 skills");
 	});
 
-	test("explains how to use read_skills() without user-only toolbox", () => {
-		const out = buildOrientation([tool("read", "builtin")], []);
-		expect(out).toContain("read_skills()");
+	test("maps only registered capabilities to their tools, without user-only toolbox", () => {
+		const out = buildOrientation(
+			[tool("read_skills", "x"), tool("ask_user", "x"), tool("lsp_navigation", "x")],
+			[],
+		);
+		expect(out).toMatch(/^Before you improvise, use: ask_user .*read_skills\(\) .*lsp_\* .*\.$/m);
+		expect(out).not.toContain("search/fetch");
 		expect(out).not.toContain("/toolbox");
 		expect(out).not.toContain("toolbox(");
+	});
+
+	test("falls back to a generic line when no capability tool is registered", () => {
+		const out = buildOrientation([tool("read", "builtin")], []);
+		expect(out).toContain("Before you improvise, ask the user, search the web, or pull docs.");
 	});
 
 	test("calls out gated tools and points at toolbox to enable them", () => {
@@ -138,12 +147,14 @@ describe("buildOrientation", () => {
 			[],
 			["read", "grep"], // active set: 2 gated out
 		);
-		expect(out).toMatch(/2 are deferred \(.*\)\. Find and load them with tool_search\./);
+		expect(out).toMatch(
+			/2 are deferred \(.*\): load with tool_search\(.*\) before the first call\./,
+		);
 	});
 
 	test("singular phrasing when exactly one tool is gated", () => {
 		const out = buildOrientation([tool("read", "builtin"), tool("find", "builtin")], [], ["read"]);
-		expect(out).toMatch(/1 is deferred \(.*\)\. Find and load them with tool_search\./);
+		expect(out).toMatch(/1 is deferred \(.*\): load with tool_search/);
 	});
 
 	test("no gate line when nothing is gated", () => {

@@ -27,14 +27,32 @@ import { projectDir } from "@xynogen/pix-runtime/paths";
 
 type LoadedSkill = NonNullable<BuildSystemPromptOptions["skills"]>[number];
 
-/** The standing per-turn reminder. Kept terse — it ships on every turn. */
 /** How often (in turns after the first) to re-send the capability reminder. */
 const REMINDER_INTERVAL = 10;
 
+/** The periodic reminder. Kept terse — it re-ships every REMINDER_INTERVAL turns. */
 export const CAPABILITY_REMINDER =
-	"Reminder — check knowledge resources " +
-	"(skills/tools/MCP/web/user) before improvising. " +
-	"Matching skill? Call read_skills() first.";
+	"Reminder — before you improvise, check skills (read_skills()), deferred tools (tool_search), " +
+	"MCP, web, docs, or ask the user.";
+
+/**
+ * Capability → tool map. A row shows only when a registered tool matches, so the
+ * orientation never advertises a capability this session lacks.
+ */
+const CAPABILITIES: { match: (name: string) => boolean; label: string }[] = [
+	{ match: (n) => n === "ask_user", label: "ask_user (unclear intent)" },
+	{ match: (n) => n === "read_skills", label: "read_skills() (task-specific skills)" },
+	{ match: (n) => /context7/i.test(n), label: "context7 (library docs)" },
+	{ match: (n) => n === "search" || n === "fetch", label: "search/fetch (web)" },
+	{ match: (n) => n.startsWith("lsp_"), label: "lsp_* (types, refs, diagnostics)" },
+	{ match: (n) => n === "mcp", label: "mcp (MCP servers)" },
+];
+
+/** Labels of the capabilities present in `tools`, in CAPABILITIES order. */
+export function capabilityLabels(tools: ToolInfo[] | undefined): string[] {
+	const names = (tools ?? []).map((t) => t.name);
+	return CAPABILITIES.filter((c) => names.some(c.match)).map((c) => c.label);
+}
 
 /**
  * Build the optional graph hint line.
@@ -47,8 +65,8 @@ export function graphifyHint(cwd: string): string | undefined {
 	);
 	if (dir) {
 		return (
-			`${dir}/graph.json exists — for codebase questions (how does X work, ` +
-			'where is Y, trace Z) call graph(action:"query", question) before reading files.'
+			`${dir}/graph.json exists — for codebase questions (how does X work, where is Y), ` +
+			'call graph(action:"query", question:"<identifiers>") before reading files.'
 		);
 	}
 	return undefined;
@@ -62,7 +80,7 @@ export function countInvocableSkills(skills: LoadedSkill[] | undefined): number 
 /**
  * Split tools by source (MCP vs other) and, when an `active` set is supplied,
  * by gate status (active = schema in the prompt now; gated = registered but
- * gated out, reachable only via toolbox). Without `active`, everything counts
+ * deferred, reachable only via tool_search). Without `active`, everything counts
  * as active (gated = 0) so callers that don't track the gate are unaffected.
  */
 export function partitionTools(
@@ -90,10 +108,9 @@ export function partitionTools(
 }
 
 /**
- * Build the one-time orientation block shown on the FIRST prompt. Describes the
- * shape of the toolbelt (counts) and how to explore it via `toolbox`, plus the
- * sorted skill names so the model knows what exists by name without a dump of
- * descriptions (those live in the system prompt / are searchable via tools).
+ * Build the one-time orientation block shown on the FIRST prompt: toolbelt counts,
+ * the tool_search gate, a capability → tool map of what is actually registered,
+ * and sorted skill names (no descriptions — read_skills() returns those).
  */
 export function buildOrientation(
 	tools: ToolInfo[] | undefined,
@@ -115,24 +132,24 @@ export function buildOrientation(
 	const summary = inventory.length ? inventory.join(", ") : "your toolbelt";
 
 	// Lead with the gate: deferred tools are not callable until tool_search loads them.
-	const gateLine = gated
-		? `${gated} ${gated === 1 ? "is" : "are"} deferred (kept out of the prompt to save context). Find and load them with tool_search.`
-		: undefined;
-
+	const head = `Toolbelt: ${summary}.`;
 	const lines = [
-		`Toolbelt: ${summary}, plus LSP, MCP (context7 docs), web search/fetch, and the user.`,
+		gated
+			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context): load with tool_search("<exact name below, or the task>") before the first call.`
+			: head,
 	];
-	if (gateLine) lines.push(gateLine);
+	const caps = capabilityLabels(tools);
 	lines.push(
-		"Don't improvise what a capability covers — ask the user, search the web, or pull docs first.",
-		"`read_skills()` lists/loads bundled skills — call it when a skill matches your task.",
+		caps.length
+			? `Before you improvise, use: ${caps.join(" · ")}.`
+			: "Before you improvise, ask the user, search the web, or pull docs.",
 	);
 	if (skillNames.length) {
 		lines.push(`Skills: ${skillNames.join(", ")}.`);
 	}
-	// Graphify hint — only when a graph is already built for this project
+	// Graph hint — only when a graph is built and the graph tool can query it.
 	const gHint = graphifyHint(process.cwd());
-	if (gHint) lines.push(gHint);
+	if (gHint && (!tools || tools.some((t) => t.name === "graph"))) lines.push(gHint);
 	// Framing — this block is orientation context, not a task. Without it the
 	// model can mistake the first-turn orientation for the prompt and reply
 	// "Ready, waiting for task" instead of acting on the user's request.
