@@ -44,7 +44,7 @@
 	},
 	"overrides": {
 		"protobufjs": "7.6.5",
-		"fast-uri": "3.1.8",
+		"fast-uri": "3.1.9",
 		"hono": "4.13.13",
 		"brace-expansion": "5.0.12",
 		"undici": "8.12.3",
