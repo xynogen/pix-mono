@@ -11,11 +11,12 @@
  * repeats, but many runs of the same error with tweaked arguments (edit retries,
  * bash timeouts). Cycles up to MAX_CYCLE calls long are checked, shortest first.
  * It appends one visible line to the result that completes the pattern, mirrors
- * it as a warning notify, and never blocks: the user stays in charge.
+ * it as a collapsed nudge card (card.ts), and never blocks: the user stays in charge.
  */
 
 import { createHash } from "node:crypto";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { NUDGE_ENTRY, type NudgeCard } from "./card.ts";
 
 export const LOOP_THRESHOLD = 3;
 export const MAX_CYCLE = 5;
@@ -77,11 +78,15 @@ export function createLoopTracker(threshold = LOOP_THRESHOLD) {
 
 export default function registerLoopNudge(pi: ExtensionAPI): void {
 	const track = createLoopTracker();
-	pi.on("tool_result", (event, ctx) => {
+	pi.on("tool_result", (event) => {
 		const tools = track(event.toolName, event.input, event.content, event.isError);
 		if (!tools) return;
 		const reason = loopReason(tools, LOOP_THRESHOLD, event.isError);
-		ctx.ui.notify(reason, "warning");
+		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
+			kind: "loop",
+			summary: `${tools.join(" → ")} ×${LOOP_THRESHOLD}${event.isError ? " same error" : ""}`,
+			body: reason,
+		});
 		return {
 			content: [...(event.content ?? []), { type: "text" as const, text: `[pix-nudge] ${reason}` }],
 			structuredContent: event.structuredContent,

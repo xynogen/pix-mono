@@ -43,9 +43,11 @@
 		"access": "public"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": "*"
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
+		"@xynogen/pix-pretty": "^1.33.0",
 		"@xynogen/pix-runtime": "^0.15.0"
 	}
 }

@@ -24,6 +24,7 @@ import type {
 	ToolInfo,
 } from "@earendil-works/pi-coding-agent";
 import { projectDir } from "@xynogen/pix-runtime/paths";
+import { CAPABILITY_MESSAGE } from "./card.ts";
 
 type LoadedSkill = NonNullable<BuildSystemPromptOptions["skills"]>[number];
 
@@ -169,6 +170,7 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 		turnCount++;
 
 		let content: string;
+		let details: { kind: string; summary: string };
 		if (turnCount === 1) {
 			let tools: ToolInfo[] | undefined;
 			try {
@@ -185,18 +187,28 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 				activeToolNames = undefined;
 			}
 			content = buildOrientation(tools, skills, activeToolNames);
+			const { gated } = partitionTools(tools, activeToolNames);
+			const caps = capabilityLabels(tools).length;
+			details = {
+				kind: "orientation",
+				summary: `${tools?.length ?? 0} tools${gated ? `, ${gated} deferred` : ""}${caps ? ` · ${caps} capabilities mapped` : ""}`,
+			};
 		} else if (turnCount % REMINDER_INTERVAL === 1) {
 			// Fire reminder every REMINDER_INTERVAL turns (turn 11, 21, ...)
 			const cwd = process.cwd();
 			const gHint = graphifyHint(cwd);
 			content = gHint ? `${CAPABILITY_REMINDER}\n${gHint}` : CAPABILITY_REMINDER;
+			details = { kind: "reminder", summary: "check skills, tool_search, web, docs, user" };
 		} else {
 			return; // no nudge this turn
 		}
 
 		// A visible message, not a system-prompt rewrite: a returned systemPrompt
 		// becomes forceSystemPrompt for that one turn, so the prompt changes and then
+		// reverts, invalidating the cached prefix twice per nudge. `details` feeds the
+		// collapsed card row (see card.ts); the model reads only `content`.
+		// becomes forceSystemPrompt for that one turn, so the prompt changes and then
 		// reverts, invalidating the cached prefix twice per nudge.
-		return { message: { customType: "pix-capability-nudge", content, display: true } };
+		return { message: { customType: CAPABILITY_MESSAGE, content, display: true, details } };
 	});
 }

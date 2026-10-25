@@ -75,13 +75,14 @@ describe("loopReason", () => {
 describe("registerLoopNudge", () => {
 	test("appends a labelled line to the looping result and notifies", async () => {
 		let handler: ((event: unknown, ctx: unknown) => unknown) | undefined;
-		const notes: string[] = [];
+		const cards: Array<{ type: string; card: unknown }> = [];
 		registerLoopNudge({
 			on: (_e: string, fn: typeof handler) => {
 				handler = fn;
 			},
+			appendEntry: (type: string, card: unknown) => cards.push({ type, card }),
 		} as never);
-		const ctx = { ui: { notify: (m: string) => notes.push(m) } };
+		const ctx = {};
 		const event = { toolName: "grep", input: { pattern: "x" }, content: out("none") };
 		let result: unknown;
 		for (let i = 0; i < LOOP_THRESHOLD; i++) result = await handler?.(event, ctx);
@@ -90,6 +91,11 @@ describe("registerLoopNudge", () => {
 			content: [...out("none"), { type: "text", text: `[pix-nudge] ${loopReason(["grep"], 3)}` }],
 			structuredContent: undefined,
 		});
-		expect(notes).toEqual([loopReason(["grep"], 3)]);
+		expect(cards).toEqual([
+			{
+				type: "pix-nudge",
+				card: { kind: "loop", summary: "grep ×3", body: loopReason(["grep"], 3) },
+			},
+		]);
 	});
 });

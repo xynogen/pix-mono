@@ -4,7 +4,7 @@
  * Hooks `tool_result` for the built-in `bash` tool. When a bash command merely
  * reimplements a first-class tool (read/ls/grep/find/edit), it appends ONE
  * short line to that bash result — the only channel the model reads
- * (`ctx.ui.notify` reaches the user only) — and mirrors it as a yellow notify.
+ * — and shows the user a collapsed nudge card (card.ts, no model context).
  * Once per category per session; the command always runs (blocking forced a
  * wasted retry turn). Bash stays available for pipes and compound work.
  *
@@ -14,6 +14,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { NUDGE_ENTRY, type NudgeCard } from "./card.ts";
 
 /** In-bounds array access that satisfies noUncheckedIndexedAccess without casting. */
 function at<T>(arr: T[], i: number): T {
@@ -27,7 +28,7 @@ function at<T>(arr: T[], i: number): T {
  * stand-ins (bash `sudo`/`ssh`) are NOT here: they are *guarded* (hard block +
  * redirect) by pix-gate, a separate concern. Guard = stop; nudge = steer.
  */
-type Category = "read" | "ls" | "grep" | "find" | "edit";
+type Category = "read" | "ls" | "grep" | "find" | "edit" | "poll" | "heredoc";
 
 interface Rule {
 	category: Category;
@@ -100,6 +101,65 @@ const RULES: Rule[] = [
  */
 const TRAILING_TRIM = /(\s*\|\s*(head|tail)(\s+-n)?(\s+-?\d+)?)+\s*$/;
 
+/** Drop heredoc bodies and quoted strings so `&`, `sleep`, `>` inside them never match. */
+function shellSkeleton(command: string): string {
+	return command
+		.replace(/<<-?\s*['"]?(\w+)['"]?([^\n]*)\n[\s\S]*?\n\s*\1\s*(?=\n|$)/g, "<<H$2")
+		.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, "''")
+		.replace(/\\./g, "") // escaped chars, e.g. `\&` in a URL
+		.replace(/(^|\s)#[^\n]*/g, "$1"); // comments
+}
+
+const isScratchPath = (p: string) => /^(\/tmp\/|\/var\/tmp\/|\/dev\/|\$\{?TMP|&)/i.test(p);
+
+/** A heredoc whose output lands in a real file (`cat > f <<EOF`, `cat <<EOF > f`, `tee f <<EOF`). */
+function heredocToFile(command: string): boolean {
+	const head = shellSkeleton(command)
+		.split("\n")
+		.find((line) => line.includes("<<"));
+	if (!head || !/\b(cat|tee)\b/.test(head)) return false;
+	const targets = [
+		...head.replace(/<<-?\S*/, "").matchAll(/(?:>{1,2}|\btee(?:\s+-a)?)\s*([^\s;&|<>]+)/g),
+	].map((m) => m[1] ?? "");
+	return targets.some((t) => t && !isScratchPath(t));
+}
+
+/** `python - <<EOF` that opens a file for writing outside scratch dirs. */
+function scriptWritesFile(command: string): boolean {
+	if (!/\bpython3?\s+-\s*<</.test(command)) return false;
+	if (/\/tmp\//.test(command)) return false;
+	return /open\([^)]*['"][wa]\+?['"]|\.write_(text|bytes)\(/.test(command);
+}
+
+/**
+ * Whole-command patterns. Unlike RULES these look across the full command,
+ * because the idiom (heredoc body, trailing `&`) only shows up in compound
+ * commands. Replay of 17,757 session commands: 108 backgrounded processes
+ * (`&`/nohup) → `proc`; 230 heredoc/script writes to real files → `write`.
+ * `sleep` alone is NOT a rule: most hits were `sleep 2` after `pkill` or
+ * `sleep N && gh run list` (whose right fix is `gh run watch`, not `proc`).
+ */
+const WHOLE_RULES: Rule[] = [
+	{
+		category: "poll",
+		test: (c) => {
+			const s = shellSkeleton(c);
+			// A lone `&` (background), not `&&`, `2>&1`, `&>`, or `|&`.
+			return /\b(nohup|setsid|disown)\b/.test(s) || /(?<![&>|<])&(?![&>])/.test(s);
+		},
+		tool: "proc",
+		reason: "Backgrounding a process via bash &/nohup.",
+		hint: "start returns a handle, logs reads output, stop ends it; no sleep polling",
+	},
+	{
+		category: "heredoc",
+		test: (c) => heredocToFile(c) || scriptWritesFile(c),
+		tool: "write",
+		reason: "Writing a file via a bash heredoc/script.",
+		hint: "or `edit` for changes, so the user sees what changed",
+	},
+];
+
 /**
  * Pick a rule only when the command is a *simple* single-command invocation
  * standing in for a tool. Skip anything with pipes, redirects, command
@@ -157,6 +217,9 @@ export function splitSegments(command: string): Segment[] {
  * - `git log | cat`      → undefined   — no segment is a leading stand-in.
  */
 export function classifyCompound(command: string): Rule | undefined {
+	const whole = WHOLE_RULES.find((r) => r.test(command));
+	if (whole) return whole;
+
 	const cmd = command.trim().replace(TRAILING_TRIM, "");
 	if (!cmd) return undefined;
 
@@ -214,17 +277,30 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 		}
 	}
 
-	pi.on("tool_result", (event, ctx) => {
+	/** Skip nudges toward a tool this session does not have at all (e.g. no pix-proc). */
+	function isRegistered(name: string): boolean {
+		try {
+			return pi.getAllTools().some((t) => t.name === name);
+		} catch {
+			return true;
+		}
+	}
+
+	pi.on("tool_result", (event) => {
 		if (event.toolName !== "bash") return;
 		const command = event.input?.command;
 		if (typeof command !== "string") return;
 
 		const rule = classifyCompound(command);
-		if (!rule || nudged.has(rule.category)) return;
+		if (!rule || nudged.has(rule.category) || !isRegistered(rule.tool)) return;
 		nudged.add(rule.category);
 
 		const reason = nudgeReason(rule.reason, rule.tool, isActive(rule.tool), rule.hint);
-		ctx.ui.notify(reason, "warning");
+		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
+			kind: "tool",
+			summary: `bash ${rule.category} → ${rule.tool}`,
+			body: reason,
+		});
 		return {
 			content: [...(event.content ?? []), { type: "text" as const, text: `[pix-nudge] ${reason}` }],
 			structuredContent: event.structuredContent,

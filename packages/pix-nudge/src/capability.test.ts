@@ -217,7 +217,7 @@ describe("registerCapabilityNudge", () => {
 		expect(await handler?.({ systemPrompt: "BASE", messageType: "custom" })).toBeUndefined();
 		const result = (await handler?.({ systemPrompt: "BASE" })) as {
 			systemPrompt?: string;
-			message: { customType: string; content: string; display: boolean };
+			message: { customType: string; content: string; display: boolean; details: unknown };
 		};
 
 		expect(result.systemPrompt).toBeUndefined();
@@ -225,6 +225,7 @@ describe("registerCapabilityNudge", () => {
 			customType: "pix-capability-nudge",
 			content: expect.stringMatching(/^Toolbelt:[\s\S]*Orientation only/),
 			display: true,
+			details: { kind: "orientation", summary: expect.stringMatching(/^1 tools/) },
 		});
 		expect(await handler?.({ systemPrompt: "BASE" })).toBeUndefined(); // turn 2: nothing
 	});

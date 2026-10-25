@@ -351,10 +351,12 @@
       "name": "@xynogen/pix-nudge",
       "version": "0.3.6",
       "dependencies": {
+        "@xynogen/pix-pretty": "^1.33.0",
         "@xynogen/pix-runtime": "^0.15.0",
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
       },
     },
     "packages/pix-optimizer": {
@@ -383,7 +385,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "1.32.1",
+      "version": "1.33.0",
       "dependencies": {
         "@ff-labs/fff-node": "^0.10.6",
         "@xynogen/pix-runtime": "^0.15.0",

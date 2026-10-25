@@ -6,15 +6,19 @@ import registerToolsNudge, {
 	splitSegments,
 } from "./tools.ts";
 
-/** Minimal fakes for the bits of ExtensionAPI / ctx the handler touches. */
-type ToolResultHandler = (
-	event: unknown,
-	ctx: { ui: { notify: (msg: string, type?: string) => void } },
-) => unknown;
+/** Minimal fakes for the bits of ExtensionAPI the handler touches. */
+type ToolResultHandler = (event: unknown, ctx?: unknown) => unknown;
 type Result = { content: Array<{ type: string; text: string }> } | undefined;
+type Card = { kind: string; summary: string; body: string };
+
+/** Nudge cards the handler appended, keyed like the old notify list. */
+let notices: Array<{ msg: string; type: string }> = [];
+
+const ALL_TOOLS = ["read", "ls", "grep", "find", "edit", "write", "proc"];
 
 function makeHandler(
-	activeTools: string[] = ["read", "ls", "grep", "find", "edit"],
+	activeTools: string[] = ["read", "ls", "grep", "find", "edit", "write", "proc"],
+	registered: string[] = ALL_TOOLS,
 ): ToolResultHandler {
 	let handler: ToolResultHandler | undefined;
 	const pi = {
@@ -22,6 +26,9 @@ function makeHandler(
 			if (eventName === "tool_result") handler = h;
 		},
 		getActiveTools: () => activeTools,
+		getAllTools: () => registered.map((name) => ({ name })),
+		appendEntry: (customType: string, card: Card) =>
+			notices.push({ msg: card.body, type: `${customType}:${card.kind}` }),
 	};
 	registerToolsNudge(pi as unknown as Parameters<typeof registerToolsNudge>[0]);
 	if (!handler) throw new Error("handler not registered");
@@ -33,15 +40,8 @@ function bashEvent(command: string) {
 }
 
 function makeCtx() {
-	const notices: Array<{ msg: string; type?: string }> = [];
-	return {
-		ctx: {
-			ui: {
-				notify: (msg: string, type?: string) => notices.push({ msg, type }),
-			},
-		},
-		notices,
-	};
+	notices = [];
+	return { ctx: {}, notices };
 }
 
 describe("classify", () => {
@@ -162,6 +162,50 @@ describe("classifyCompound", () => {
 	});
 });
 
+describe("whole-command rules", () => {
+	test("backgrounded processes map to proc", () => {
+		for (const c of [
+			"npm run dev &",
+			"nohup vite > /tmp/v.log 2>&1 &",
+			"bun run dev & sleep 3; curl localhost:3000",
+			"setsid sh -c 'python app.py'",
+		])
+			expect(classifyCompound(c)?.category).toBe("poll");
+	});
+
+	test("&&, 2>&1, &>, quoted/escaped/commented & are not backgrounding", () => {
+		for (const c of [
+			"make && make install",
+			"bun test 2>&1",
+			"cmd &> out.log",
+			'git commit -m "a & b"',
+			"curl https://x.io/?a=1\\&b=2",
+			"echo hi # a & b",
+			"sleep 2; pgrep steam", // sleep alone is not a rule
+		])
+			expect(classifyCompound(c)?.category).not.toBe("poll");
+	});
+
+	test("heredoc or python script writing a real file maps to write", () => {
+		for (const c of [
+			"cat > src/a.ts <<'EOF'\nconst x = 1 & 2;\nEOF",
+			"cat <<EOF > config.json\n{}\nEOF",
+			"tee -a notes.md <<EOF\nhi\nEOF",
+			"python3 - <<'PY'\np='core.py'; s=open(p).read()\nopen(p,'w').write(s)\nPY",
+		])
+			expect(classifyCompound(c)?.category).toBe("heredoc");
+	});
+
+	test("scratch files, piped heredocs and read-only scripts are not file writes", () => {
+		for (const c of [
+			"cat > /tmp/p.py <<EOF\nx\nEOF",
+			"cat <<EOF | kubectl apply -f -\nx\nEOF",
+			"python3 - <<PY\nprint(open('x').read())\nPY",
+		])
+			expect(classifyCompound(c)).toBeUndefined();
+	});
+});
+
 describe("nudgeReason", () => {
 	test("active tool: point straight at it", () => {
 		const msg = nudgeReason("Searching file contents via bash grep/rg.", "grep", true);
@@ -196,7 +240,7 @@ describe("nudgeReason", () => {
 
 describe("registerToolsNudge handler", () => {
 	type Notice = { msg: string; type?: string };
-	test("appends the nudge to the bash result the model reads, plus a yellow notice", async () => {
+	test("appends the nudge to the bash result the model reads, plus a nudge card", async () => {
 		const handler = makeHandler();
 		const { ctx, notices } = makeCtx();
 
@@ -208,7 +252,7 @@ describe("registerToolsNudge handler", () => {
 				/^\[pix-nudge\] Reading .* Use `read` \(offset\/limit[^)]*\) instead\./,
 			),
 		]);
-		expect(notices).toEqual([{ msg: expect.stringContaining("`read`"), type: "warning" }]);
+		expect(notices).toEqual([{ msg: expect.stringContaining("`read`"), type: "pix-nudge:tool" }]);
 	});
 
 	test("nudges once per category, untouched thereafter", async () => {
@@ -242,5 +286,26 @@ describe("registerToolsNudge handler", () => {
 		const result = (await handler(bashEvent("ls -la"), ctx)) as Result;
 
 		expect(result?.content[1]?.text).toMatch(/Load `ls` with tool_search/);
+	});
+
+	test("whole-command nudge names the tool and its options", async () => {
+		const handler = makeHandler();
+		const { ctx, notices } = makeCtx();
+
+		await handler(bashEvent("npm run dev &"), ctx);
+		await handler(bashEvent("cat > a.ts <<EOF\nx\nEOF"), ctx);
+
+		expect(notices.map((n) => n.msg)).toEqual([
+			expect.stringMatching(/^Backgrounding .* Use `proc` \(start returns a handle.*\) instead\./),
+			expect.stringMatching(/^Writing a file .* Use `write` \(or `edit` .*\) instead\./),
+		]);
+	});
+
+	test("no nudge toward a tool this session does not have", async () => {
+		const handler = makeHandler(["read"], ["read"]); // no pix-proc installed
+		const { ctx, notices } = makeCtx();
+
+		expect(await handler(bashEvent("npm run dev &"), ctx)).toBeUndefined();
+		expect(notices).toHaveLength(0);
 	});
 });
