@@ -28,7 +28,7 @@ function at<T>(arr: T[], i: number): T {
  * stand-ins (bash `sudo`/`ssh`) are NOT here: they are *guarded* (hard block +
  * redirect) by pix-gate, a separate concern. Guard = stop; nudge = steer.
  */
-type Category = "read" | "ls" | "grep" | "find" | "edit" | "poll" | "heredoc";
+type Category = "read" | "ls" | "grep" | "find" | "edit" | "poll" | "heredoc" | "python";
 
 interface Rule {
 	category: Category;
@@ -158,6 +158,14 @@ const WHOLE_RULES: Rule[] = [
 		reason: "Writing a file via a bash heredoc/script.",
 		hint: "or `edit` for changes, so the user sees what changed",
 	},
+	{
+		category: "python",
+		// Only a standalone snippet: `cmd | python3 -c …` reads a pipe python_run cannot feed.
+		test: (c) => /^\s*(cd\s+\S+\s*&&\s*)?python3?\s+(-c\b|(-\s*)?<<)/.test(c),
+		tool: "python_run",
+		reason: "Running an inline Python snippet via bash.",
+		hint: "intent + code; tabs/indent repaired, no shell quoting",
+	},
 ];
 
 /**
@@ -245,6 +253,24 @@ export function classifyCompound(command: string): Rule | undefined {
 }
 
 /**
+ * Names of the tools registered this session, or undefined when the host cannot
+ * say. Every nudge checks names against this set so it never steers the model
+ * toward a tool that is not installed (a call to it would only fail).
+ */
+export function registeredToolNames(
+	pi: Pick<ExtensionAPI, "getAllTools">,
+): Set<string> | undefined {
+	try {
+		return new Set(pi.getAllTools().map((t) => t.name));
+	} catch {
+		return undefined;
+	}
+}
+
+/** Backticked tool ids in a hint, e.g. "or `edit` for changes" → ["edit"]. */
+const hintTools = (hint: string) => [...hint.matchAll(/`([a-z_]+)`/g)].map((m) => m[1] ?? "");
+
+/**
  * One-line guidance for a nudge. Active tool → call it directly. Deferred tool
  * → load it with `tool_search` first. `hint` names the options that replace the
  * shell idiom. Pure + exported for unit testing.
@@ -262,29 +288,27 @@ export function nudgeReason(
 	return `${baseReason} ${how} (Once per category; bash stays fine for real pipelines and compound commands.)`;
 }
 
+/**
+ * The nudge text for `rule`, or undefined when it would name a tool the session
+ * lacks: the target, `tool_search` for a deferred target, or a tool in the hint
+ * (then the hint is dropped, not the nudge). Unknown registry → no nudge.
+ */
+export function nudgeFor(
+	rule: Pick<Rule, "reason" | "tool" | "hint">,
+	registered: Set<string> | undefined,
+	active: string[] | undefined,
+): string | undefined {
+	if (!registered?.has(rule.tool)) return undefined;
+	// No active list → treat as active: the tool is registered, so naming it is safe.
+	const isActive = !active || active.includes(rule.tool);
+	if (!isActive && !registered.has("tool_search")) return undefined;
+	const hint = hintTools(rule.hint).every((t) => registered.has(t)) ? rule.hint : undefined;
+	return nudgeReason(rule.reason, rule.tool, isActive, hint);
+}
+
 export default function registerToolsNudge(pi: ExtensionAPI): void {
 	// Categories already nudged this session — warn once, then stay silent.
 	const nudged = new Set<Category>();
-
-	/** Is `name` in the host's current active set (i.e. callable right now)? */
-	function isActive(name: string): boolean {
-		try {
-			// getActiveTools() returns string[] (tool NAMES), not ToolInfo[].
-			return (pi.getActiveTools() ?? []).includes(name);
-		} catch {
-			// If we can't tell, assume active so we don't suppress a valid nudge.
-			return true;
-		}
-	}
-
-	/** Skip nudges toward a tool this session does not have at all (e.g. no pix-proc). */
-	function isRegistered(name: string): boolean {
-		try {
-			return pi.getAllTools().some((t) => t.name === name);
-		} catch {
-			return true;
-		}
-	}
 
 	pi.on("tool_result", (event) => {
 		if (event.toolName !== "bash") return;
@@ -292,10 +316,18 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 		if (typeof command !== "string") return;
 
 		const rule = classifyCompound(command);
-		if (!rule || nudged.has(rule.category) || !isRegistered(rule.tool)) return;
+		if (!rule || nudged.has(rule.category)) return;
+		let active: string[] | undefined;
+		try {
+			// getActiveTools() returns string[] (tool NAMES), not ToolInfo[].
+			active = pi.getActiveTools() ?? undefined;
+		} catch {
+			active = undefined;
+		}
+		const reason = nudgeFor(rule, registeredToolNames(pi), active);
+		if (!reason) return;
 		nudged.add(rule.category);
 
-		const reason = nudgeReason(rule.reason, rule.tool, isActive(rule.tool), rule.hint);
 		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
 			kind: "tool",
 			summary: `bash ${rule.category} → ${rule.tool}`,

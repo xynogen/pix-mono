@@ -5,6 +5,7 @@ import { projectDir } from "@xynogen/pix-runtime/paths";
 import registerCapabilityNudge, {
 	buildOrientation,
 	CAPABILITY_REMINDER,
+	capabilityReminder,
 	countInvocableSkills,
 	graphifyHint,
 	partitionTools,
@@ -52,6 +53,27 @@ describe("CAPABILITY_REMINDER", () => {
 	test("does not mention user-only toolbox command", () => {
 		expect(CAPABILITY_REMINDER).not.toContain("/toolbox");
 		expect(CAPABILITY_REMINDER).not.toContain("toolbox(");
+	});
+});
+
+describe("capabilityReminder", () => {
+	test("unknown registry keeps the full default reminder", () => {
+		expect(capabilityReminder(undefined)).toBe(CAPABILITY_REMINDER);
+	});
+
+	test("all tools registered: same text as the default", () => {
+		expect(capabilityReminder(new Set(["read_skills", "tool_search", "mcp"]))).toBe(
+			CAPABILITY_REMINDER,
+		);
+	});
+
+	test("names only registered tools; web, docs and the user always stay", () => {
+		expect(capabilityReminder(new Set(["tool_search"]))).toBe(
+			"Reminder — before you improvise, check deferred tools (tool_search), web, docs, or ask the user.",
+		);
+		expect(capabilityReminder(new Set())).toBe(
+			"Reminder — before you improvise, check web, docs, or ask the user.",
+		);
 	});
 });
 
@@ -136,16 +158,17 @@ describe("buildOrientation", () => {
 		expect(out).toContain("Before you improvise, ask the user, search the web, or pull docs.");
 	});
 
-	test("calls out gated tools and points at toolbox to enable them", () => {
+	test("calls out gated tools and points at tool_search to load them", () => {
 		const out = buildOrientation(
 			[
 				tool("read", "builtin"),
 				tool("grep", "builtin"),
+				tool("tool_search", "builtin"),
 				tool("find", "builtin"),
 				tool("ls", "builtin"),
 			],
 			[],
-			["read", "grep"], // active set: 2 gated out
+			["read", "grep", "tool_search"], // active set: 2 gated out
 		);
 		expect(out).toMatch(
 			/2 are deferred \(.*\): load with tool_search\(.*\) before the first call\./,
@@ -153,8 +176,18 @@ describe("buildOrientation", () => {
 	});
 
 	test("singular phrasing when exactly one tool is gated", () => {
-		const out = buildOrientation([tool("read", "builtin"), tool("find", "builtin")], [], ["read"]);
+		const out = buildOrientation(
+			[tool("read", "builtin"), tool("tool_search", "builtin"), tool("find", "builtin")],
+			[],
+			["read", "tool_search"],
+		);
 		expect(out).toMatch(/1 is deferred \(.*\): load with tool_search/);
+	});
+
+	test("no tool_search registered: never tells the model to call it", () => {
+		const out = buildOrientation([tool("read", "builtin"), tool("find", "builtin")], [], ["read"]);
+		expect(out).toMatch(/^Toolbelt: 2 tools\.$/m);
+		expect(out).not.toContain("tool_search");
 	});
 
 	test("no gate line when nothing is gated", () => {

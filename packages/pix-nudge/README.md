@@ -10,7 +10,8 @@ Registers three nudge hooks. All are surgical — they name only the relevant to
 
 - Appends one `[pix-nudge]` line to that bash result **once per command category per session** (the model reads tool results, not UI notices), plus a nudge card for the user. The line names the tool options that replace the shell idiom (for example `read` offset/limit). Deferred tools are pointed at `tool_search`.
 - The command still runs — it teaches, doesn't block (early blocking wasted a turn on forced retry). Later calls in that category are silent.
-- Two whole-command patterns too: a backgrounded process (`&`, `nohup`, `setsid`) points at `proc`, and a heredoc or `python - <<` script that writes a real file (not `/tmp`) points at `write`/`edit`, so the change shows as a diff. A pattern is skipped when its tool is not installed.
+- Three whole-command patterns too: a backgrounded process (`&`, `nohup`, `setsid`) points at `proc`; a heredoc or `python - <<` script that writes a real file (not `/tmp`) points at `write`/`edit`, so the change shows as a diff; any other standalone `python -c` / `python - <<` snippet points at `python_run` (piped `… | python -c` stays in bash).
+- **Only installed tools are named.** A nudge is skipped when its tool is not registered this session, or when it is deferred and `tool_search` is missing (it could not be loaded). A hint that names a missing tool (`or \`edit\``) is dropped and the nudge stays. If the host cannot list its tools, no tool nudge fires.
 - Bash stays available for everything else (pipes, compound commands, real shell work).
 
 > **Nudge steers; it does not guard.** Privileged auth stand-ins (bash `sudo`/`ssh`) are *not* nudged here — those are hard-blocked and redirected to `sudo_run`/`ssh_run` by [`pix-gate`](../pix-gate), which handles the auth safely. Guarding (stop) and steering (teach) are separate concerns in separate packages.
@@ -18,7 +19,7 @@ Registers three nudge hooks. All are surgical — they name only the relevant to
 **Capability nudge** — steers the model toward tool discovery over guessing:
 
 - One-time orientation message on the **first prompt**: tool counts, the deferred-tool note, and a capability → tool map that lists only the tools registered in this session (`ask_user`, `read_skills()`, context7, `search`/`fetch`, `lsp_*`, `mcp`).
-- A one-line reminder every 10 turns pointing at `read_skills()` and `tool_search`.
+- A one-line reminder every 10 turns pointing at `read_skills()`, `tool_search` and MCP, each only when registered. The orientation's deferred-tools line also needs `tool_search`.
 - When `.pi/graph/graph.json` exists and the `graph` tool is registered, both messages also route codebase questions to `graph(action:"query")`.
 - Delivered as visible custom messages, not system-prompt rewrites, so the cached prompt prefix stays intact.
 

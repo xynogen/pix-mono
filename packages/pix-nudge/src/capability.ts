@@ -25,6 +25,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { projectDir } from "@xynogen/pix-runtime/paths";
 import { CAPABILITY_MESSAGE } from "./card.ts";
+import { registeredToolNames } from "./tools.ts";
 
 type LoadedSkill = NonNullable<BuildSystemPromptOptions["skills"]>[number];
 
@@ -35,6 +36,22 @@ const REMINDER_INTERVAL = 10;
 export const CAPABILITY_REMINDER =
 	"Reminder — before you improvise, check skills (read_skills()), deferred tools (tool_search), " +
 	"MCP, web, docs, or ask the user.";
+
+/**
+ * The reminder for this session: names `read_skills()`, `tool_search` and `mcp`
+ * only when registered, so it never points at a tool the session lacks.
+ * Unknown registry (`undefined`) → the full default reminder.
+ */
+export function capabilityReminder(registered: Set<string> | undefined): string {
+	if (!registered) return CAPABILITY_REMINDER;
+	const checks = [
+		registered.has("read_skills") && "skills (read_skills())",
+		registered.has("tool_search") && "deferred tools (tool_search)",
+		registered.has("mcp") && "MCP",
+		"web, docs, or ask the user",
+	].filter(Boolean);
+	return `Reminder — before you improvise, check ${checks.join(", ")}.`;
+}
 
 /**
  * Capability → tool map. A row shows only when a registered tool matches, so the
@@ -133,9 +150,11 @@ export function buildOrientation(
 	const summary = inventory.length ? inventory.join(", ") : "your toolbelt";
 
 	// Lead with the gate: deferred tools are not callable until tool_search loads them.
+	// Without tool_search (or an unknown registry) there is no way to load them, so skip it.
 	const head = `Toolbelt: ${summary}.`;
+	const canLoad = tools?.some((t) => t.name === "tool_search") ?? false;
 	const lines = [
-		gated
+		gated && canLoad
 			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context): load with tool_search("<exact name below, or the task>") before the first call.`
 			: head,
 	];
@@ -195,9 +214,11 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 			};
 		} else if (turnCount % REMINDER_INTERVAL === 1) {
 			// Fire reminder every REMINDER_INTERVAL turns (turn 11, 21, ...)
-			const cwd = process.cwd();
-			const gHint = graphifyHint(cwd);
-			content = gHint ? `${CAPABILITY_REMINDER}\n${gHint}` : CAPABILITY_REMINDER;
+			const registered = registeredToolNames(pi);
+			const gHint =
+				registered && !registered.has("graph") ? undefined : graphifyHint(process.cwd());
+			const reminder = capabilityReminder(registered);
+			content = gHint ? `${reminder}\n${gHint}` : reminder;
 			details = { kind: "reminder", summary: "check skills, tool_search, web, docs, user" };
 		} else {
 			return; // no nudge this turn
@@ -207,8 +228,6 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 		// becomes forceSystemPrompt for that one turn, so the prompt changes and then
 		// reverts, invalidating the cached prefix twice per nudge. `details` feeds the
 		// collapsed card row (see card.ts); the model reads only `content`.
-		// becomes forceSystemPrompt for that one turn, so the prompt changes and then
-		// reverts, invalidating the cached prefix twice per nudge.
 		return { message: { customType: CAPABILITY_MESSAGE, content, display: true, details } };
 	});
 }

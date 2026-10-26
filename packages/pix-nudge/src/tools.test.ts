@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import registerToolsNudge, {
 	classify,
 	classifyCompound,
+	nudgeFor,
 	nudgeReason,
 	splitSegments,
 } from "./tools.ts";
@@ -14,7 +15,7 @@ type Card = { kind: string; summary: string; body: string };
 /** Nudge cards the handler appended, keyed like the old notify list. */
 let notices: Array<{ msg: string; type: string }> = [];
 
-const ALL_TOOLS = ["read", "ls", "grep", "find", "edit", "write", "proc"];
+const ALL_TOOLS = ["read", "ls", "grep", "find", "edit", "write", "proc", "tool_search"];
 
 function makeHandler(
 	activeTools: string[] = ["read", "ls", "grep", "find", "edit", "write", "proc"],
@@ -196,13 +197,23 @@ describe("whole-command rules", () => {
 			expect(classifyCompound(c)?.category).toBe("heredoc");
 	});
 
-	test("scratch files, piped heredocs and read-only scripts are not file writes", () => {
-		for (const c of [
-			"cat > /tmp/p.py <<EOF\nx\nEOF",
-			"cat <<EOF | kubectl apply -f -\nx\nEOF",
-			"python3 - <<PY\nprint(open('x').read())\nPY",
-		])
+	test("scratch files and piped heredocs are not file writes", () => {
+		for (const c of ["cat > /tmp/p.py <<EOF\nx\nEOF", "cat <<EOF | kubectl apply -f -\nx\nEOF"])
 			expect(classifyCompound(c)).toBeUndefined();
+	});
+
+	test("standalone inline python maps to python_run; piped python stays in bash", () => {
+		for (const c of [
+			"python3 - <<PY\nprint(open('x').read())\nPY",
+			'python3 -c "print(1+1)"',
+			"cd src && python <<'EOF'\nprint(2)\nEOF",
+		])
+			expect(classifyCompound(c)?.tool).toBe("python_run");
+		for (const c of [
+			"cat a.json | python3 -c 'import json,sys; print(json.load(sys.stdin))'",
+			"python3 app.py",
+		])
+			expect(classifyCompound(c)?.tool).not.toBe("python_run");
 	});
 });
 
@@ -235,6 +246,36 @@ describe("nudgeReason", () => {
 			"limit caps entries",
 		);
 		expect(msg).toMatch(/^[^\n]{1,220}$/);
+	});
+});
+
+describe("nudgeFor: never names a tool the session lacks", () => {
+	const rule = { reason: "Writing a file.", tool: "write", hint: "or `edit` for changes" };
+	const set = (...names: string[]) => new Set(names);
+
+	test("target, deferred loader and hint tools all registered → full nudge", () => {
+		expect(nudgeFor(rule, set("write", "edit", "tool_search"), [])).toMatch(
+			/^Writing a file\. Load `write` with tool_search, then call it \(or `edit` for changes\)\./,
+		);
+	});
+
+	test("target missing or registry unknown → no nudge", () => {
+		expect(nudgeFor(rule, set("edit", "tool_search"), ["edit"])).toBeUndefined();
+		expect(nudgeFor(rule, undefined, ["write"])).toBeUndefined();
+	});
+
+	test("deferred target without tool_search → no nudge (it could not be loaded)", () => {
+		expect(nudgeFor(rule, set("write", "edit"), ["edit"])).toBeUndefined();
+	});
+
+	test("active target without tool_search → direct nudge", () => {
+		expect(nudgeFor(rule, set("write", "edit"), ["write"])).toMatch(/Use `write` \(or `edit`/);
+	});
+
+	test("hint names a missing tool → hint dropped, nudge kept", () => {
+		expect(nudgeFor(rule, set("write"), ["write"])).toMatch(
+			/^Writing a file\. Use `write` instead\./,
+		);
 	});
 });
 
