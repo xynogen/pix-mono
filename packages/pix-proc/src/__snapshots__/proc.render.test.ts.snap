@@ -4,8 +4,8 @@ exports[`proc registered self shell, modal, and widget with a fake manager 1`] =
 "wrapped call
 
 <muted>○︎ </muted> <toolTitle+bold>proc</toolTitle+bold> <dim>start</dim><muted> · </muted>
-  <dim>serve --port 5173 --host localhost --config fixture/config.ts --watch</dim>
-  <dim>fixture/source</dim>
+   <dim>serve --port 5173 --host localhost --config fixture/config.ts --watch</dim>
+   <dim>fixture/source</dim>
 partial
 
 ready                                                                           

@@ -2,9 +2,9 @@
 
 exports[`sudo self-shell calls and all result states 1`] = `
 "call: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted><syntaxType>printf</syntaxType> <syntaxString>'fixture'</syntaxString>                                                      "]
-wrap80: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","  <syntaxType>printf</syntaxType> <syntaxString>'a quoted fixture value that stays intact across command wrapping'</syntaxString> &&","  <syntaxType>printf</syntaxType> <syntaxString>'done'</syntaxString>"]
+wrap80: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","   <syntaxType>printf</syntaxType> <syntaxString>'a quoted fixture value that stays intact across command wrapping'</syntaxString> &&","   <syntaxType>printf</syntaxType> <syntaxString>'done'</syntaxString>"]
 wrap120: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted><syntaxType>printf</syntaxType> <syntaxString>'a quoted fixture value that stays intact across command wrapping'</syntaxString> && <syntaxType>printf</syntaxType> <syntaxString>'done'</syntaxString>                    "]
-multiline: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","  <syntaxType>printf</syntaxType> <syntaxString>'first'</syntaxString>","  <syntaxType>printf</syntaxType> <syntaxString>'second'</syntaxString>"]
+multiline: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted>","   <syntaxType>printf</syntaxType> <syntaxString>'first'</syntaxString>","   <syntaxType>printf</syntaxType> <syntaxString>'second'</syntaxString>"]
 hiddenCall: []
 expandedCall: ["","<warning>◐︎ </warning> <toolTitle+bold>sudo</toolTitle+bold><muted> · </muted><syntaxType>id</syntaxType>                                                                    "]
 success: ["","   done                                                                         ","<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"]

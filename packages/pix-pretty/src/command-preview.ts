@@ -10,7 +10,8 @@ export function commandPreview(
 	state: Record<string, unknown>,
 	invalidate: () => void,
 	expanded = false,
-	indent = 2,
+	/** Body column: under the tool name (2-col status glyph + space). */
+	indent = 3,
 ) {
 	type Slot = { code: string; language: string | undefined; theme: typeof theme; styled: string };
 	let slot = state.commandPreview as Slot | undefined;
