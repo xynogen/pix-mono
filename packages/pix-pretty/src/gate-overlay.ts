@@ -38,6 +38,8 @@ export interface OverlayResult {
 	password?: string;
 	/** True when password validation exhausted every allowed attempt. */
 	passwordAttemptsExhausted?: boolean;
+	/** Value of the picked choice (absent on timeout or esc). */
+	choice?: string;
 }
 
 export interface OverlayChoice {
@@ -68,12 +70,12 @@ interface BaseConfig {
 	timeoutMs?: number;
 	/**
 	 * Choices shown in the SelectList.
-	 * The choice whose value === approveValue counts as approval.
+	 * A choice whose value is in approveValue counts as approval.
 	 * Default: [{ value:"yes", label:"Allow" }, { value:"no", label:"Deny" }]
 	 */
 	choices?: OverlayChoice[];
-	/** Which choice value means "approved". Default "yes". */
-	approveValue?: string;
+	/** Choice value(s) that mean "approved". Default "yes". `OverlayResult.choice` tells them apart. */
+	approveValue?: string | readonly string[];
 }
 
 export interface ConfirmConfig extends BaseConfig {
@@ -266,7 +268,7 @@ function buildSections(opts: {
 export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<OverlayResult> {
 	const accent = config.accent ?? "accent";
 	const choices = config.choices ?? DEFAULT_CHOICES;
-	const approveVal = config.approveValue ?? "yes";
+	const approveVals = [config.approveValue ?? "yes"].flat();
 
 	return new Promise((resolve) => {
 		ui.custom<OverlayResult>(
@@ -335,13 +337,13 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 
 				// ── event wiring ─────────────────────────────────────────────────
 				selectList.onSelect = (item) => {
-					if (item.value !== approveVal) {
-						finish({ action: "denied" });
+					if (!approveVals.includes(item.value)) {
+						finish({ action: "denied", choice: item.value });
 					} else if (config.mode === "sudo") {
 						stage = "password";
 						tui.requestRender();
 					} else {
-						finish({ action: "approved" });
+						finish({ action: "approved", choice: item.value });
 					}
 				};
 				selectList.onCancel = () => finish({ action: "denied" });

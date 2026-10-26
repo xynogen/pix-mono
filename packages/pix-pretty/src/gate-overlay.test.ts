@@ -118,6 +118,27 @@ describe("showOverlay — confirm mode", () => {
 		expect(result.action).toBe("denied");
 	});
 
+	test("several approve values: result.choice tells them apart", async () => {
+		const result = await showOverlay(
+			makeUI((comp) => {
+				comp.handleInput(DOWN);
+				comp.handleInput(ENTER);
+			}),
+			{
+				mode: "confirm",
+				title: "T",
+				timeoutMs: 0,
+				approveValue: ["yes", "session"],
+				choices: [
+					{ value: "yes", label: "Allow", description: "once" },
+					{ value: "session", label: "Allow for session", description: "session" },
+					{ value: "no", label: "Deny", description: "deny" },
+				],
+			},
+		);
+		expect(result).toEqual({ action: "approved", choice: "session" });
+	});
+
 	test("renders title and body lines", async () => {
 		let captured: string[] = [];
 		await showOverlay(

@@ -181,6 +181,18 @@ export const CATALOG = {
 		hint: { darwin: "brew install sshpass", default: "install sshpass" },
 	},
 	sudo: { usedBy: ["pix-sudo"], os: UNIX, hint: { default: "install sudo" } },
+	python3: {
+		usedBy: ["pix-python"],
+		os: ALL,
+		// ponytail: Windows may hit the Store `python3` alias stub first. Set binary.json `python3` to a real path.
+		names: ["python3", "python", "py"],
+		hint: {
+			win32: "winget install Python.Python.3.13",
+			darwin: "brew install python",
+			android: "pkg install python",
+			default: "install python3",
+		},
+	},
 	"wl-paste": { usedBy: ["pix-ask"], os: LINUX, hint: { default: "install wl-clipboard" } },
 	xclip: {
 		usedBy: ["pix-ask"],
