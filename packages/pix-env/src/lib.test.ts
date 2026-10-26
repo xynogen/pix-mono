@@ -16,7 +16,7 @@ import { makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import type { TSchema } from "typebox";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
-import registerEnv from "./extension.ts";
+import registerEnv, { secretTarget } from "./extension.ts";
 import {
 	allRefsIn,
 	collectRefs,
@@ -554,6 +554,11 @@ describe("env writes", () => {
 		for (const text of ['TOKEN="first\nAPP_PORT=1\nlast"', "TOKEN='unterminated"])
 			expect(() => editEnvText(text, "NEW", "x", "add")).toThrow(/multiline|unterminated/);
 	});
+});
+
+test("secretTarget shows the unresolved command, else the raw input", () => {
+	expect(secretTarget({ command: "curl -H $TOKEN x" })).toBe("curl -H $TOKEN x");
+	expect(secretTarget({ url: "https://h/$TOKEN" })).toBe('{"url":"https://h/$TOKEN"}');
 });
 
 describe("parseEnv", () => {

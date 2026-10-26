@@ -203,10 +203,17 @@ function normalizeOperation(params: SshParams): SshOperation {
 	};
 }
 
+/** The model's reason heads the modal; the action name is only the fallback. */
+function approvalTitle({ action, direction, reason }: SshOperation): string {
+	if (reason?.trim()) return reason.trim();
+	if (action !== "file") return "SSH Command Request";
+	return `SSH ${direction === "download" ? "Download" : "Upload"}`;
+}
+
 function approvalBody(operation: SshOperation, host: string, port?: number): string[] {
 	const { action, command, destination, direction, reason, recursive, source, sudo } = operation;
 	return [
-		reason?.trim() ? `Intent: ${reason.trim()}` : "No reason provided by AI",
+		...(reason?.trim() ? [] : ["No reason provided by AI"]),
 		`Host: ${host}${port ? ` (port ${port})` : ""}`,
 		...(action === "command"
 			? [`Command: ${sudo ? "sudo " : ""}${command}`]
@@ -465,11 +472,9 @@ export default function (pi: ExtensionAPI): void {
 					description: "[file] Optional, default false. Copy a directory recursively.",
 				}),
 			),
-			reason: Type.Optional(
-				Type.String({
-					description: "All actions. Short plain-English intent, shown to the user.",
-				}),
-			),
+			reason: Type.String({
+				description: "Short plain-English intent, shown to the user as the approval title.",
+			}),
 		}),
 
 		async execute(_toolCallId, params, sig, onUpdate, ctx) {
@@ -619,6 +624,7 @@ export default function (pi: ExtensionAPI): void {
 				};
 			}
 
+			const title = approvalTitle(operation);
 			const body = [
 				...approvalBody(operation, host, spec.port),
 				...(keyOk && !creds.loginPassword ? ["Auth: SSH key (no password)"] : []),
@@ -659,10 +665,7 @@ export default function (pi: ExtensionAPI): void {
 						return showOverlay(ctx.ui, {
 							mode: "confirm",
 							icon: action === "file" ? icon("warn") : icon("lock"),
-							title:
-								action === "file"
-									? `SSH ${direction === "download" ? "Download" : "Upload"}`
-									: "SSH Command Request",
+							title,
 							body,
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
@@ -688,10 +691,7 @@ export default function (pi: ExtensionAPI): void {
 						last = await showOverlay(ctx.ui, {
 							mode: "sudo",
 							icon: action === "file" ? icon("warn") : icon("lock"),
-							title:
-								action === "file"
-									? `SSH ${direction === "download" ? "Download" : "Upload"}`
-									: "SSH Command Request",
+							title,
 							body: [...body, `Enter: ${label}`],
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,

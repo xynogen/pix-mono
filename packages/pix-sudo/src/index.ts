@@ -180,13 +180,11 @@ export default function (pi: ExtensionAPI): void {
 			command: Type.String({
 				description: "Shell command to run as root (passed to `sh -c`).",
 			}),
-			reason: Type.Optional(
-				Type.String({
-					description:
-						"Short plain-English explanation of why root is needed. " +
-						"Shown to the user so they can make an informed decision.",
-				}),
-			),
+			reason: Type.String({
+				description:
+					"Short plain-English explanation of why root is needed. " +
+					"Shown to the user as the approval title.",
+			}),
 		}),
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
@@ -226,10 +224,9 @@ export default function (pi: ExtensionAPI): void {
 			// A valid PAM ticket lets us skip the password stage (confirm only).
 			const cached = await hasValidTicket();
 
-			const body = [
-				reason?.trim() ? `Intent: ${reason.trim()}` : "No reason provided by AI",
-				`Command: ${command}`,
-			];
+			const intent = reason?.trim();
+			const title = intent || "Root Command Request";
+			const body = [...(intent ? [] : ["No reason provided by AI"]), `Command: ${command}`];
 
 			let result: { stdout: string; stderr: string; code: number } | undefined;
 			let executionError: unknown;
@@ -252,7 +249,7 @@ export default function (pi: ExtensionAPI): void {
 						return showOverlay(ctx.ui, {
 							mode: "confirm",
 							icon: icon("lock"),
-							title: "Root Command Request",
+							title,
 							body: [...body, "(sudo session active — no password needed)"],
 							accent: "error",
 							timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
@@ -265,7 +262,7 @@ export default function (pi: ExtensionAPI): void {
 					return showOverlay(ctx.ui, {
 						mode: "sudo",
 						icon: icon("lock"),
-						title: "Root Command Request",
+						title,
 						body,
 						accent: "error",
 						timeoutMs: ROOT_PROMPT_TIMEOUT_MS,

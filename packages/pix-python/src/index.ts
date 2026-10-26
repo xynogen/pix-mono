@@ -5,7 +5,7 @@
  * through `bash` (`python3 -c "…"` / `python3 - <<EOF`). Not a sandbox: the
  * code runs as the user with the local `python3`, in the session cwd.
  *
- * - `intent` is required and shown everywhere (approval, call row, collapsed row).
+ * - `intent` is required: approval modal title and collapsed row (not the call card).
  * - Indentation is repaired before running (tabs, CRLF, fences, shared indent).
  * - The script goes in on stdin, so there is no shell quoting to get wrong.
  * - Approval overlay like sudo_run: Allow · Allow for this session · Deny.
@@ -80,7 +80,7 @@ const trimBlank = (s: string) => normalizeLineEndings(s).replace(/^\n+|\n+$/g, "
 type CodeSlot = { key: string; rows?: string[] };
 
 /**
- * Call card: `○ python <intent> (venv)` then the code in pix-pretty's code
+ * Call card: `○ python (venv)` then the code in pix-pretty's code
  * viewer (the `read` look: rules, line-number gutter, highlighting). Numbers
  * match traceback lines: the viewer shows exactly the normalized script.
  * Rendering is async and cached per width; plain dim lines until it lands.
@@ -217,12 +217,11 @@ function register(pi: ExtensionAPI): void {
 					showOverlay(ctx.ui, {
 						mode: "confirm",
 						icon: icon("process"),
-						title: "Run Python",
+						title: intent,
 						accent: "warning",
 						timeoutMs: PROMPT_TIMEOUT_MS,
 						approveValue: ["yes", "session"],
 						body: [
-							`Intent: ${intent}`,
 							`Cwd: ${ctx.cwd}`,
 							...(python ? [`Python: ${interpreter}`] : []),
 							"",
@@ -293,9 +292,8 @@ function register(pi: ExtensionAPI): void {
 			const text = rc.lastComponent ?? new Text("", 0, 0);
 			if (hideCollapsedToolCall(rc.state as CollapseState, rc.expanded, (v) => text.setText(v)))
 				return text;
-			const intent = oneLine(args.intent ?? "");
 			const py = args.python?.trim() ? ` ${theme.fg("muted", `(${args.python.trim()})`)}` : "";
-			const header = `${formatToolCallTitle(theme, LABEL, rc)}${intent ? ` ${theme.fg("dim", intent)}` : ""}${py}`;
+			const header = `${formatToolCallTitle(theme, LABEL, rc)}${py}`;
 			// While the model streams `code`, show one stable row; render the viewer once at the end.
 			if (rc.argsComplete === false) {
 				const n = (args.code ?? "").split("\n").length;

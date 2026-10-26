@@ -400,6 +400,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 					title: `Inject Secret${keys.length > 1 ? "s" : ""} — ${list}`,
 					body: [
 						`Tool "${event.toolName}" will receive the real value of: ${list}`,
+						...`Command: ${secretTarget(event.input)}`.split("\n"),
 						"Value is not shown here and stays out of your transcript unless the tool echoes it.",
 						`${icon("status.warn")} Warning: a tool that prints or logs its input (echo, cat, curl -v, error output) can leak the value into the transcript, files, or the network. Only inject into commands you trust with the real secret.`,
 					],
@@ -444,4 +445,10 @@ function inject(
 		}
 	}
 	resolveInput(event.input, reg, shell);
+}
+
+/** What the secret flows into, still holding `$KEY` refs (no value leaks into the modal). */
+export function secretTarget(input: unknown): string {
+	const command = (input as { command?: unknown } | null)?.command;
+	return typeof command === "string" ? command : JSON.stringify(input);
 }

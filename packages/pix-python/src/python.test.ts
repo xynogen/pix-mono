@@ -230,7 +230,7 @@ describe("python_run", () => {
 			if (!component) throw new Error("missing renderer");
 			const rows = captureRows(component, { width: 80, surface: "component" });
 			expect(rows).toHaveLength(1);
-			expect(rows[0]).toMatch(/python.*Add.*writing 2 lines…/);
+			expect(rows[0]).toMatch(/python.*· writing 2 lines…/);
 		} finally {
 			await fixture.restore();
 		}
@@ -254,7 +254,7 @@ describe("python_run", () => {
 			captureRows(component, { width: 80, surface: "component" }); // starts the async render
 			await ready;
 			const rows = captureRows(component, { width: 80, surface: "component" });
-			expect(rows[0]).toMatch(/<toolTitle[^>]*>python<\/toolTitle[^>]*> <dim>Add<\/dim>/);
+			expect(rows[0]).toMatch(/<toolTitle[^>]*>python<\/toolTitle[^>]*>$/);
 			// Viewer shape: rule, numbered rows of the exact script, rule.
 			const plain = rows.slice(1).map((r) => r.replace(/<\/?[\w.+]+>/g, "").trimEnd());
 			expect(plain).toEqual([
