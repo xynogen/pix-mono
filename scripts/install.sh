@@ -84,6 +84,7 @@ npm:@xynogen/pix-voice|Provider-neutral push-to-talk dictation plus the transcri
 npm:@xynogen/pix-env|Secret broker — reads local .env values and injects approved references into tool calls, so enable it explicitly.
 npm:@xynogen/pix-ssh|ssh_run — remote command execution with optional root access, so enable this privileged capability explicitly.
 npm:@xynogen/pix-sudo|sudo_run — root execution via a PAM password overlay; a privileged capability you opt into explicitly (blocked in non-interactive mode).
+npm:@xynogen/pix-python|python_run — run local Python snippets behind an approval prompt (not sandboxed), so enable it explicitly.
 npm:@xynogen/pix-toolbox|/toolbox — fuzzy-search picker to enable/disable tools at runtime; a power-user utility, not needed for normal use.
 npm:@xynogen/pix-graph|Native-TS code knowledge graph (build/query via CLI); a standalone tool you invoke on demand, not part of the always-on distro.
 npm:@xynogen/pix-astgrep|ast_search / ast_read_symbol / symbol_search — structural code search and symbol reads via the @ast-grep/napi native addon, so enable it explicitly.

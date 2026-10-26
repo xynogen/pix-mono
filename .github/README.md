@@ -124,6 +124,7 @@ Not bundled by `pix-core`. Install each one only if you want it. Each one stays 
 | [`@xynogen/pix-voice`](https://www.npmjs.com/package/@xynogen/pix-voice) | Provider-neutral push-to-talk dictation (`Ctrl+Alt+Z`) plus the `transcribe` and `speak` tools, with 9Router, OpenAI, Groq, Deepgram, ElevenLabs, Gemini, and more adapters |
 | [`@xynogen/pix-9router`](https://www.npmjs.com/package/@xynogen/pix-9router) | 9Router LLM provider — needs a 9Router API key |
 | [`@xynogen/pix-sudo`](https://www.npmjs.com/package/@xynogen/pix-sudo) | `sudo_run` — root execution via a PAM password overlay (blocked in non-interactive mode) |
+| [`@xynogen/pix-python`](https://www.npmjs.com/package/@xynogen/pix-python) | `python_run` — run local Python snippets with intent, indentation repair and an approval prompt (not sandboxed) |
 | [`@xynogen/pix-ssh`](https://www.npmjs.com/package/@xynogen/pix-ssh) | `ssh_run` — run commands on a remote host over SSH (key/password auth + remote `sudo`) |
 | [`@xynogen/pix-env`](https://www.npmjs.com/package/@xynogen/pix-env) | Broker `.env` secrets to tools via `$KEY` references, keeping the values out of the model's context |
 | [`@xynogen/pix-toolbox`](https://www.npmjs.com/package/@xynogen/pix-toolbox) | `/toolbox` — fuzzy-search picker to enable/disable tools at runtime |

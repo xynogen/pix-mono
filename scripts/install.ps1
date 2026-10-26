@@ -49,6 +49,7 @@ $__pixInstaller = {
 		@{ Spec = "npm:@xynogen/pix-env"; Reason = "Secret broker - reads local .env values and injects approved references into tool calls, so enable it explicitly." }
 		@{ Spec = "npm:@xynogen/pix-ssh"; Reason = "ssh_run - remote command execution with optional root access, so enable this privileged capability explicitly." }
 		@{ Spec = "npm:@xynogen/pix-sudo"; Reason = "sudo_run - root execution via a PAM password overlay; a privileged capability you opt into explicitly (blocked in non-interactive mode)." }
+		@{ Spec = "npm:@xynogen/pix-python"; Reason = "python_run - run local Python snippets behind an approval prompt (not sandboxed), so enable it explicitly." }
 		@{ Spec = "npm:@xynogen/pix-toolbox"; Reason = "/toolbox - fuzzy-search picker to enable/disable tools at runtime; a power-user utility, not needed for normal use." }
 		@{ Spec = "npm:@xynogen/pix-graph"; Reason = "Native-TS code knowledge graph (build/query via CLI); a standalone tool you invoke on demand, not part of the always-on distro." }
 		@{ Spec = "npm:@xynogen/pix-astgrep"; Reason = "ast_search / ast_read_symbol / symbol_search - structural code search and symbol reads via the @ast-grep/napi native addon, so enable it explicitly." }

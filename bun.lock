@@ -421,6 +421,19 @@
         "@earendil-works/pi-coding-agent": "*",
       },
     },
+    "packages/pix-python": {
+      "name": "@xynogen/pix-python",
+      "version": "0.1.0",
+      "dependencies": {
+        "@xynogen/pix-pretty": "^1.33.0",
+        "@xynogen/pix-runtime": "^0.15.1",
+      },
+      "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*",
+        "typebox": "*",
+      },
+    },
     "packages/pix-read": {
       "name": "@xynogen/pix-read",
       "version": "0.4.6",
@@ -435,7 +448,7 @@
     },
     "packages/pix-runtime": {
       "name": "@xynogen/pix-runtime",
-      "version": "0.15.0",
+      "version": "0.15.1",
       "dependencies": {
         "xxhash-wasm": "1.1.0",
       },
@@ -876,6 +889,8 @@
     "@xynogen/pix-proc": ["@xynogen/pix-proc@workspace:packages/pix-proc"],
 
     "@xynogen/pix-prompts": ["@xynogen/pix-prompts@workspace:packages/pix-prompts"],
+
+    "@xynogen/pix-python": ["@xynogen/pix-python@workspace:packages/pix-python"],
 
     "@xynogen/pix-read": ["@xynogen/pix-read@workspace:packages/pix-read"],
 

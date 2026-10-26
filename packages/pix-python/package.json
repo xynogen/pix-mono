@@ -1,0 +1,50 @@
+{
+	"name": "@xynogen/pix-python",
+	"version": "0.1.0",
+	"description": "Pi tool \u2014 python_run: run a local Python snippet behind an approval prompt, with indentation repair and a clean card",
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./lib": "./src/lib.ts"
+	},
+	"scripts": {
+		"test": "bun test"
+	},
+	"files": [
+		"src",
+		"!src/**/*.test.*",
+		"README.md",
+		"LICENSE"
+	],
+	"pi": {
+		"extensions": [
+			"src/index.ts"
+		]
+	},
+	"keywords": [
+		"pi",
+		"pi-package",
+		"pi-extension",
+		"python"
+	],
+	"author": "xynogen",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/xynogen/pix-mono.git",
+		"directory": "packages/pix-python"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@xynogen/pix-pretty": "^1.33.0",
+		"@xynogen/pix-runtime": "^0.15.1"
+	},
+	"peerDependencies": {
+		"typebox": "*",
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	}
+}

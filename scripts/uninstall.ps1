@@ -61,6 +61,7 @@ $__pixUninstaller = {
 		"npm:@xynogen/pix-ls"
 		"npm:@xynogen/pix-ssh"
 		"npm:@xynogen/pix-sudo"
+		"npm:@xynogen/pix-python"
 		"npm:@xynogen/pix-todo"
 		"npm:@xynogen/pix-ask"
 		"npm:@xynogen/pix-toolbox"
