@@ -219,6 +219,23 @@ describe("python_run", () => {
 		}
 	});
 
+	test("while args stream: one stable header row, no code viewer", async () => {
+		const fixture = await withUiFixture();
+		try {
+			const { tool } = host();
+			const component = tool.renderCall?.({ intent: "Add", code: "x = 1\nprint(" }, roleTheme(), {
+				...makeRenderCtx({ isPartial: true }),
+				argsComplete: false,
+			});
+			if (!component) throw new Error("missing renderer");
+			const rows = captureRows(component, { width: 80, surface: "component" });
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatch(/python.*Add.*writing 2 lines…/);
+		} finally {
+			await fixture.restore();
+		}
+	});
+
 	test("call card shows the script in the pix-pretty code viewer, numbered like the traceback", async () => {
 		const fixture = await withUiFixture();
 		try {

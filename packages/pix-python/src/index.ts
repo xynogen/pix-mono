@@ -296,6 +296,14 @@ function register(pi: ExtensionAPI): void {
 			const intent = oneLine(args.intent ?? "");
 			const py = args.python?.trim() ? ` ${theme.fg("muted", `(${args.python.trim()})`)}` : "";
 			const header = `${formatToolCallTitle(theme, LABEL, rc)}${intent ? ` ${theme.fg("dim", intent)}` : ""}${py}`;
+			// While the model streams `code`, show one stable row; render the viewer once at the end.
+			if (rc.argsComplete === false) {
+				const n = (args.code ?? "").split("\n").length;
+				text.setText(
+					`${header} ${theme.fg("muted", `· writing ${n} ${n === 1 ? "line" : "lines"}…`)}`,
+				);
+				return text;
+			}
 			return codeCard(
 				header,
 				normalizeCode(args.code ?? ""),
