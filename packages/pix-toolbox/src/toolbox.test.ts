@@ -33,16 +33,17 @@ const mcpToolInfo = (name: string) => toolInfo(name, "mcp:context7");
 // ─── buildRows ──────────────────────────────────────────────────────────────
 
 describe("buildRows", () => {
-	test("excludes core tools (bash, edit, read, write)", () => {
+	test("excludes always-on tools (read, bash, edit, write, tool_search, codemode)", () => {
 		const rows = buildRows([
 			toolInfo("bash"),
 			toolInfo("edit"),
 			toolInfo("read"),
 			toolInfo("write"),
+			toolInfo("tool_search"),
+			toolInfo("codemode"),
 			toolInfo("grep"),
-			toolInfo("ls"),
 		]);
-		expect(rows.map((r) => r.name)).toEqual(["grep", "ls"]);
+		expect(rows.map((r) => r.name)).toEqual(["grep"]);
 		expect(rows.every((r) => !r.mcp)).toBe(true);
 	});
 
@@ -52,9 +53,9 @@ describe("buildRows", () => {
 	});
 
 	test("separates deferred tools from direct tools", () => {
-		const rows = buildRows([toolInfo("hunk", "extension", "deferred"), toolInfo("grep")]);
+		const rows = buildRows([toolInfo("hunk", "extension", "deferred"), toolInfo("ls")]);
 		expect(rows.map((row) => [row.name, row.exposure])).toEqual([
-			["grep", "direct"],
+			["ls", "direct"],
 			["hunk", "deferred"],
 		]);
 	});
@@ -157,7 +158,7 @@ describe("renderList", () => {
 describe("toggleTool", () => {
 	const rows: ToolRow[] = [
 		{ name: "read", description: "Read.", mcp: false },
-		{ name: "grep", description: "Search.", mcp: false },
+		{ name: "ls", description: "List.", mcp: false },
 		{ name: "hunk", description: "Review.", mcp: false, exposure: "deferred" },
 	];
 	const makeOps = (current: ToolState) => {
@@ -175,21 +176,21 @@ describe("toggleTool", () => {
 	test("sets each state and reports it", () => {
 		const { ops, calls } = makeOps("enabled");
 		expect(toggleTool("deferred", "hunk", rows, ops)).toMatch(/^hunk deferred — tool_search/);
-		expect(toggleTool("disabled", "grep", rows, ops)).toMatch(/^grep disabled — blocked/);
-		expect(calls).toEqual(["hunk:deferred", "grep:disabled"]);
+		expect(toggleTool("disabled", "ls", rows, ops)).toMatch(/^ls disabled — blocked/);
+		expect(calls).toEqual(["hunk:deferred", "ls:disabled"]);
 	});
 
-	test("refuses to defer a direct tool or change a core tool", () => {
+	test("refuses to defer a direct tool or change an always-on tool", () => {
 		const { ops, calls } = makeOps("enabled");
-		expect(toggleTool("deferred", "grep", rows, ops)).toMatch(/cannot be deferred/);
-		expect(toggleTool("disabled", "read", rows, ops)).toMatch(/core tool/);
+		expect(toggleTool("deferred", "ls", rows, ops)).toMatch(/cannot be deferred/);
+		expect(toggleTool("disabled", "read", rows, ops)).toBe("read is always on.");
 		expect(calls).toEqual([]);
 	});
 
 	test("unknown tool and same state", () => {
 		const { ops } = makeOps("enabled");
 		expect(toggleTool("enabled", "nope", rows, ops)).toBe('Unknown tool "nope".');
-		expect(toggleTool("enabled", "grep", rows, ops)).toBe("grep is already enabled.");
+		expect(toggleTool("enabled", "ls", rows, ops)).toBe("ls is already enabled.");
 	});
 });
 
@@ -299,7 +300,7 @@ function makeCtx() {
 
 describe("/toolbox command", () => {
 	type Note = { text: string; level?: string };
-	const ALL = ["read", "write", "bash", "grep", "find"];
+	const ALL = ["read", "write", "bash", "ls", "fetch"];
 	const statePath = () => join(tmpAgentDir, "pix.json");
 
 	async function boot(
@@ -327,7 +328,7 @@ describe("/toolbox command", () => {
 		const { ctx, notes } = makeCtx();
 		await host.command("toolbox")?.handler("list", ctx);
 		expect((notes[0] as Note).text).toMatch(
-			/^Tools:\n✓ enabled {2}find .*\n✓ enabled {2}grep .*\n~ deferred {2}hunk [^\n]*$/,
+			/^Tools:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n~ deferred {2}hunk [^\n]*$/,
 		);
 	});
 
@@ -365,7 +366,7 @@ describe("/toolbox command", () => {
 			block?: boolean;
 		}>;
 		expect(block?.block).toBe(true);
-		const [allow] = await host.emit("tool_call", { toolName: "grep" });
+		const [allow] = await host.emit("tool_call", { toolName: "ls" });
 		expect(allow).toBeUndefined();
 
 		(host.pi as { setActiveTools(n: string[]): void }).setActiveTools([...ALL, "hunk"]); // what tool_search does
@@ -374,29 +375,29 @@ describe("/toolbox command", () => {
 	});
 
 	test("keeps a direct tool the host left inactive off until the user enables it", async () => {
-		const host = await boot([...ALL, "codemode"], [], [], ["codemode"]);
+		const host = await boot([...ALL, "powershell"], [], [], ["powershell"]);
 		expect(host.getActive()).toEqual(ALL);
 		await host.emit("session_tree", {}, {});
 		expect(host.getActive()).toEqual(ALL);
-		await host.command("toolbox")?.handler("enable codemode", makeCtx().ctx);
-		expect(host.getActive()).toEqual([...ALL, "codemode"]);
+		await host.command("toolbox")?.handler("enable powershell", makeCtx().ctx);
+		expect(host.getActive()).toEqual([...ALL, "powershell"]);
 	});
 
 	test("bare /toolbox falls back to listing when no custom UI", async () => {
 		const host = await boot();
 		const { ctx, notes } = makeCtx();
 		await host.command("toolbox")?.handler("", ctx);
-		// core tools are excluded; the rest start enabled
+		// always-on tools are excluded; the rest start enabled
 		expect((notes[0] as Note).text).toMatch(
-			/^Tools:\n✓ enabled {2}find .*\n✓ enabled {2}grep [^\n]*$/,
+			/^Tools:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls [^\n]*$/,
 		);
 	});
 
 	test("/toolbox list <query> filters", async () => {
 		const host = await boot();
 		const { ctx, notes } = makeCtx();
-		await host.command("toolbox")?.handler("list fin", ctx);
-		expect((notes[0] as Note).text).toMatch(/^Tools:\n✓ enabled {2}find [^\n]*$/);
+		await host.command("toolbox")?.handler("list fet", ctx);
+		expect((notes[0] as Note).text).toMatch(/^Tools:\n✓ enabled {2}fetch [^\n]*$/);
 	});
 
 	test("opens interactive picker when ctx.ui.custom exists", async () => {
@@ -421,7 +422,7 @@ describe("/toolbox command", () => {
 
 	test("W1 capture: real picker states, tabs, filter and completed save", async () => {
 		const host = await boot([...ALL, "hunk", "ctx_docs"], ["hunk"], ["ctx_docs"]);
-		await host.command("toolbox")?.handler("disable grep", makeCtx().ctx);
+		await host.command("toolbox")?.handler("disable ls", makeCtx().ctx);
 		await fixture.runtime.flush();
 		let renders = 0;
 		let completed = false;
@@ -478,7 +479,7 @@ describe("/toolbox command", () => {
 			await fixture.runtime.flush();
 			expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox.disabledTools).toEqual([
 				"ctx_docs",
-				"grep",
+				"ls",
 			]);
 		} finally {
 			await fixture.runtime.flush();
@@ -513,7 +514,7 @@ describe("/toolbox command", () => {
 		expect(screen()).toMatch(/ctx_docs/);
 		v.handleInput("\t");
 
-		// Rows: find, grep, hunk (deferred last). Move to hunk.
+		// Rows: fetch, ls, hunk (deferred last). Move to hunk.
 		v.handleInput("\x1b[B");
 		v.handleInput("\x1b[B");
 		expect(selected()).toMatch(/→ ~ hunk/);
@@ -552,43 +553,47 @@ describe("pix.json toolbox persistence", () => {
 
 	test("first run activates every tool and writes no file", async () => {
 		await clear();
-		const host = await bootWith(["read", "grep", "find"]);
-		expect(host.getActive()).toEqual(["read", "grep", "find"]);
+		const host = await bootWith(["read", "ls", "fetch"]);
+		expect(host.getActive()).toEqual(["read", "ls", "fetch"]);
 		expect(existsSync(statePath())).toBe(false);
 	});
 
 	test("disable saves only the disabled tool; a tool installed later is active", async () => {
 		await clear();
-		const first = await bootWith(["read", "grep", "find"]);
-		await first.command("toolbox")?.handler("disable grep", makeCtx().ctx);
+		const first = await bootWith(["read", "ls", "fetch"]);
+		await first.command("toolbox")?.handler("disable ls", makeCtx().ctx);
 		await pixRuntime().flush();
 		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
-			disabledTools: ["grep"],
+			disabledTools: ["ls"],
 		});
 
-		const next = await bootWith(["read", "grep", "find", "newtool"]);
-		expect(next.getActive()).toEqual(["read", "find", "newtool"]);
+		const next = await bootWith(["read", "ls", "fetch", "newtool"]);
+		expect(next.getActive()).toEqual(["read", "fetch", "newtool"]);
 	});
 
 	test("legacy enabledTools file migrates to disabledTools", async () => {
 		await clear();
 		writeFileSync(
 			statePath(),
-			JSON.stringify({ $version: 1, toolbox: { enabledTools: ["read", "grep"] } }),
+			JSON.stringify({ $version: 1, toolbox: { enabledTools: ["read", "ls"] } }),
 		);
 		await pixRuntime().reload();
-		const host = await bootWith(["read", "grep", "find"]);
-		expect(host.getActive()).toEqual(["read", "grep"]);
+		const host = await bootWith(["read", "ls", "fetch"]);
+		expect(host.getActive()).toEqual(["read", "ls"]);
 		await pixRuntime().flush();
 		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
-			disabledTools: ["find"],
+			disabledTools: ["fetch"],
 		});
 	});
 
-	test("core tools cannot be stored as disabled", () => {
-		expect(disabledFromState({ disabledTools: ["bash", "grep"] }, [])).toEqual(["grep"]);
-		expect(disabledFromState({ enabledTools: [] }, ["read", "grep"])).toEqual(["grep"]);
-		expect(disabledFromState({}, ["grep"])).toBeUndefined();
+	test("always-on tools cannot be stored as disabled", () => {
+		expect(disabledFromState({ disabledTools: ["bash", "codemode", "grep"] }, [])).toEqual([
+			"grep",
+		]);
+		expect(disabledFromState({ enabledTools: [] }, ["read", "tool_search", "find"])).toEqual([
+			"find",
+		]);
+		expect(disabledFromState({}, ["ls"])).toBeUndefined();
 	});
 
 	test("saved MCP names migrate to codemode identifiers", () => {

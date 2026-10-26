@@ -43,8 +43,15 @@ import { toolboxSection } from "@xynogen/pix-runtime/sections";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-/** Tools that can never be disabled — always prompt-visible. */
-export const CORE_TOOLS: ReadonlySet<string> = new Set(["bash", "edit", "read", "write"]);
+/** Always-on tools: declared in every prompt, so the toolbox neither lists nor toggles them. Keep in sync with pix-core `ALWAYS_ON_TOOLS`. */
+export const ALWAYS_ON_TOOLS: ReadonlySet<string> = new Set([
+	"read",
+	"bash",
+	"edit",
+	"write",
+	"tool_search",
+	"codemode",
+]);
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -87,7 +94,7 @@ function isMcpTool(info: ToolInfo): boolean {
  */
 export function buildRows(tools: ToolInfo[], stateOf?: (name: string) => ToolState): ToolRow[] {
 	const rows = tools
-		.filter((t) => !CORE_TOOLS.has(t.name))
+		.filter((t) => !ALWAYS_ON_TOOLS.has(t.name))
 		.map((t) => ({
 			name: t.name,
 			description: firstSentence(t.description ?? ""),
@@ -171,8 +178,7 @@ export function toggleTool(
 ): string {
 	const row = rows.find((r) => r.name === name);
 	if (!row) return `Unknown tool "${name}".`;
-	if (CORE_TOOLS.has(name) && state !== "enabled")
-		return `${name} is a core tool. It stays enabled.`;
+	if (ALWAYS_ON_TOOLS.has(name) && state !== "enabled") return `${name} is always on.`;
 	if (state === "deferred" && !canDefer(row))
 		return `${name} has direct exposure. tool_search cannot find it, so it cannot be deferred.`;
 	if (!ops.setState(name, state)) return `${name} is already ${state}.`;
@@ -220,7 +226,7 @@ export function migrateToolName(name: string, known?: ReadonlySet<string>): stri
 
 /**
  * Disabled tool names from a saved state, or undefined when it holds none.
- * A legacy allow-list maps to "every known non-core tool not in it".
+ * A legacy allow-list maps to "every known tool not in it", minus always-on tools.
  */
 export function disabledFromState(raw: unknown, allNames: string[]): string[] | undefined {
 	const state = raw as ToolboxState | undefined;
@@ -228,11 +234,11 @@ export function disabledFromState(raw: unknown, allNames: string[]): string[] | 
 		const known = new Set(allNames);
 		return state.disabledTools
 			.map((n) => migrateToolName(n, known))
-			.filter((n) => !CORE_TOOLS.has(n));
+			.filter((n) => !ALWAYS_ON_TOOLS.has(n));
 	}
 	if (isStringArray(state?.enabledTools)) {
 		const enabled = new Set(state.enabledTools);
-		return allNames.filter((n) => !enabled.has(n) && !CORE_TOOLS.has(n));
+		return allNames.filter((n) => !enabled.has(n) && !ALWAYS_ON_TOOLS.has(n));
 	}
 	return undefined;
 }
@@ -373,7 +379,7 @@ function createState(pi: ExtensionAPI) {
 
 	function setState(name: string, next: ToolState): boolean {
 		if (!initialized || stateOf(name) === next) return false;
-		if (CORE_TOOLS.has(name) && next !== "enabled") return false;
+		if (ALWAYS_ON_TOOLS.has(name) && next !== "enabled") return false;
 		if (next === "deferred" && !isDeferred(name)) return false;
 		if (next === "disabled") disabledTools.add(name);
 		else disabledTools.delete(name);

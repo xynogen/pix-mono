@@ -1,5 +1,5 @@
 /**
- * Keep the prompt lean: only the core tools are declared up front. Every other
+ * Keep the prompt lean: only the always-on tools are declared up front. Every other
  * `direct` tool a bundled member registers becomes `deferred`, and `tool_search`
  * is activated so the model can find and load them on demand.
  *
@@ -10,32 +10,31 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-// grep/find stay direct: pix-nudge steers bash cat/grep/find toward them, and a
-// tool_search round-trip for the most common lookups costs more than their schemas.
-export const CORE_TOOLS: ReadonlySet<string> = new Set([
+// Always-on tools. Keep in sync with pix-toolbox `ALWAYS_ON_TOOLS`.
+export const ALWAYS_ON_TOOLS: ReadonlySet<string> = new Set([
 	"read",
 	"bash",
 	"edit",
 	"write",
-	"grep",
-	"find",
+	"tool_search",
+	"codemode",
 ]);
-const TOOL_SEARCH = "tool_search";
+// Pi registers these inactive. Without them, deferred tools are unreachable.
+const ACTIVATE_ON_START = ["tool_search", "codemode"];
 
 export default function deferNonCoreTools(pi: ExtensionAPI): void {
 	const register = pi.registerTool.bind(pi);
 	pi.registerTool = (tool) =>
 		register(
-			CORE_TOOLS.has(tool.name) || (tool.exposure ?? "direct") !== "direct"
+			ALWAYS_ON_TOOLS.has(tool.name) || (tool.exposure ?? "direct") !== "direct"
 				? tool
 				: { ...tool, exposure: "deferred" },
 		);
 
-	// Pi registers tool_search inactive. Without it, deferred tools are unreachable.
 	pi.on("session_start", () => {
 		const active = pi.getActiveTools();
-		if (active.includes(TOOL_SEARCH)) return;
-		if (!pi.getAllTools().some((t) => t.name === TOOL_SEARCH)) return;
-		pi.setActiveTools([...active, TOOL_SEARCH]);
+		const registered = new Set(pi.getAllTools().map((t) => t.name));
+		const missing = ACTIVATE_ON_START.filter((n) => registered.has(n) && !active.includes(n));
+		if (missing.length) pi.setActiveTools([...active, ...missing]);
 	});
 }

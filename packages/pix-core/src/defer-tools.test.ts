@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import deferNonCoreTools from "./defer-tools.ts";
 
-test("defers non-core direct tools and activates tool_search", async () => {
+test("defers non-core direct tools and activates tool_search and codemode", async () => {
 	const registered: Array<{ name: string; exposure?: string }> = [];
 	const handlers: Array<() => void> = [];
 	let active = ["read", "bash"];
@@ -9,7 +9,7 @@ test("defers non-core direct tools and activates tool_search", async () => {
 		registerTool: (tool: { name: string; exposure?: string }) => registered.push(tool),
 		on: (_ev: string, fn: () => void) => handlers.push(fn),
 		getActiveTools: () => active,
-		getAllTools: () => [{ name: "tool_search" }],
+		getAllTools: () => [{ name: "tool_search" }, { name: "codemode" }],
 		setActiveTools: (names: string[]) => {
 			active = names;
 		},
@@ -22,11 +22,11 @@ test("defers non-core direct tools and activates tool_search", async () => {
 	pi.registerTool({ name: "voice", exposure: "codemode" });
 	expect(registered.map((t) => `${t.name}:${t.exposure ?? "direct"}`)).toEqual([
 		"read:direct",
-		"grep:direct",
+		"grep:deferred",
 		"ls:deferred",
 		"ask_user:deferred",
 		"voice:codemode",
 	]);
 	for (const fn of handlers) fn();
-	expect(active).toEqual(["read", "bash", "tool_search"]);
+	expect(active).toEqual(["read", "bash", "tool_search", "codemode"]);
 });

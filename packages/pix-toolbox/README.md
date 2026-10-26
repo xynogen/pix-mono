@@ -14,7 +14,7 @@ Registers a `/toolbox` slash command — a TUI fuzzy-search picker listing every
 
 Keys: `tab` switch tab · `↑↓` navigate · `ctrl+e` enable · `ctrl+f` defer · `ctrl+d` disable · `space` cycle · any other key types into the search.
 
-- Four tools (`bash`, `edit`, `read`, `write`) are protected and stay enabled.
+- Always-on tools (`read`, `bash`, `edit`, `write`, `tool_search`, `codemode`) are in every prompt. The toolbox does not list or toggle them.
 - State persists to `~/.pi/agent/pix.json` under `toolbox`. Only changes from the default are saved: `disabledTools` (tools you disabled) and `loadedTools` (deferred tools you enabled). A newly installed tool keeps its default. A legacy `enabledTools` file is migrated on the next session start.
 - Headless subcommands: `/toolbox enable|defer|disable <names>`, `/toolbox list [query]`.
 
