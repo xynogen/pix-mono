@@ -30,7 +30,11 @@ import { Text } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
-import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import {
+	type OverlayChoice,
+	type OverlayResult,
+	showOverlay,
+} from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
@@ -405,7 +409,16 @@ async function infoResult(host: string | undefined, sig?: AbortSignal) {
 
 // ── Extension entry point ─────────────────────────────────────────────────────
 
+/** "Allow for this session" choice. Offered only for non-privileged commands. */
+const SESSION_CHOICE: OverlayChoice[] = [
+	{ value: "session", label: "Allow for this session", description: "Host, until /new; sudo asks" },
+];
+
 export default function (pi: ExtensionAPI): void {
+	// "Allow for this session" hosts. Lives in the factory: Pi hands each new session a fresh `pi`,
+	// so this resets on /new. Privileged commands never use it (see `privileged` below).
+	const sessionHosts = new Set<string>();
+	const approved = (key: string) => sessionHosts.has(key) || hostApproved(approvedHosts, key);
 	pi.registerTool({
 		name: "ssh_run",
 		...({ exposure: "deferred" } as const),
@@ -642,10 +655,7 @@ export default function (pi: ExtensionAPI): void {
 			// auto-approved — they always re-confirm.
 			const privileged = action === "command" && (sudo || commandEscalatesPrivilege(command));
 			const alreadyApproved =
-				action === "command" &&
-				!privileged &&
-				hostApproved(approvedHosts, key) &&
-				promptFor.length === 0;
+				action === "command" && !privileged && approved(key) && promptFor.length === 0;
 			if (alreadyApproved) {
 				ctx.ui.notify(`ssh_run: reused session approval for ${host}`, "info");
 			} else if (transferDecision === "allow") {
@@ -654,6 +664,8 @@ export default function (pi: ExtensionAPI): void {
 					"warning",
 				);
 			}
+
+			const sessionChoices = action === "command" && !privileged ? SESSION_CHOICE : [];
 
 			const runOverlay = (): Promise<OverlayResult> =>
 				withAgentBlock(pi.events, "ssh_run", "SSH approval required", async () => {
@@ -669,6 +681,7 @@ export default function (pi: ExtensionAPI): void {
 							body,
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
+							approveValue: ["yes", "session"],
 							choices: [
 								{
 									value: "yes",
@@ -676,6 +689,7 @@ export default function (pi: ExtensionAPI): void {
 									description:
 										action === "file" ? "Copy to destination (may overwrite)" : "Run the command",
 								},
+								...sessionChoices,
 								{
 									value: "no",
 									label: "Deny",
@@ -696,6 +710,7 @@ export default function (pi: ExtensionAPI): void {
 							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
 							timeoutMs: PROMPT_TIMEOUT_MS,
 							maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+							approveValue: ["yes", "session"],
 							passwordLabel: `${label}:`,
 							// Login stage: actually test the password against the host so a
 							// wrong one re-prompts (up to MAX_PASSWORD_ATTEMPTS), mirroring
@@ -708,6 +723,7 @@ export default function (pi: ExtensionAPI): void {
 									label: "Allow",
 									description: `Enter ${label.toLowerCase()}`,
 								},
+								...sessionChoices,
 								{ value: "no", label: "Deny", description: "Block the command" },
 							],
 						});
@@ -731,6 +747,11 @@ export default function (pi: ExtensionAPI): void {
 			// File transfers remain warning-level: normal mode asks every time,
 			// AFK denies above, and YOLO may approve when no password is missing.
 			if (action === "command") approvedHosts.set(key, Date.now() + APPROVAL_TTL_MS);
+			// "session" is only offered for non-privileged commands (sessionChoices).
+			if (overlayResult.choice === "session") {
+				sessionHosts.add(key);
+				ctx.ui.notify(`ssh_run: ${host} allowed for this session (sudo still asks)`, "info");
+			}
 
 			// Persist newly-entered passwords in the session cache.
 			const loginPassword = creds.loginPassword ?? collected.login;
