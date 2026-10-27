@@ -431,6 +431,8 @@ export type ProbeResult = "ok" | "auth" | "unreachable";
  * clean connect (ok), auth rejected but host reachable (auth), and
  * connection/DNS failure (unreachable) — the last must NOT trigger a password
  * prompt, since a login password can't fix an unreachable host.
+ * Pass `controlPath = "none"` to bypass a live master: a password-authed master
+ * answers `ok` for any probe, which hides whether the key itself works.
  */
 export function probeKeyAuth(
 	spec: HostSpec,
@@ -450,6 +452,27 @@ export function probeKeyAuth(
 			if (isUnreachable(stderr)) return resolve("unreachable");
 			resolve("auth");
 		});
+		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
+	});
+}
+
+/** argv that asks the live master on `controlPath` to stop accepting new
+ * sessions. `stop` (not `exit`) lets in-flight sessions finish. */
+export function closeMasterArgs(spec: HostSpec, controlPath: string): string[] {
+	return ["-o", `ControlPath=${controlPath}`, "-O", "stop", hostTarget(spec)];
+}
+
+/** Stop the multiplexed master so the next call opens (and authenticates) a
+ * fresh connection. No master = no-op; errors are ignored for the same reason. */
+export function closeMaster(
+	spec: HostSpec,
+	controlPath: string,
+	signal?: AbortSignal,
+): Promise<void> {
+	return new Promise((resolve) => {
+		const proc = spawnTool("ssh", closeMasterArgs(spec, controlPath), { stdio: "ignore" });
+		proc.on("error", () => resolve());
+		proc.on("close", () => resolve());
 		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
 	});
 }

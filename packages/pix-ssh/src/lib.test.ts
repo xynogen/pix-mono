@@ -5,6 +5,7 @@ import {
 	baseScpArgs,
 	baseSshArgs,
 	buildRunSshArgs,
+	closeMasterArgs,
 	commandEscalatesPrivilege,
 	controlPathFor,
 	detectSshFailure,
@@ -151,6 +152,18 @@ describe("baseSshArgs", () => {
 		const withPort = baseSshArgs({ host: "h", port: 2222 }, "s");
 		expect(withPort).toContain("-p");
 		expect(withPort).toContain("2222");
+	});
+});
+
+describe("closeMasterArgs", () => {
+	it("asks the master on the given socket to stop", () => {
+		expect(closeMasterArgs({ user: "u", host: "h" }, "/tmp/x.sock")).toEqual([
+			"-o",
+			"ControlPath=/tmp/x.sock",
+			"-O",
+			"stop",
+			"u@h",
+		]);
 	});
 });
 

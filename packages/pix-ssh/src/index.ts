@@ -16,7 +16,8 @@
  *
  * Connection reuse: OpenSSH ControlMaster multiplexing keeps one authenticated
  * connection per host alive (ControlPersist window), so repeat calls skip
- * re-auth.
+ * re-auth. `fresh: true` stops that master first, and every result reports the
+ * auth method (key/password) and whether the connection was new or reused.
  *
  * Security notes:
  *   - Passwords never leave JS memory; never written to disk; never in argv.
@@ -25,6 +26,7 @@
  *   - Output truncated to 50 KB / 2000 lines.
  */
 
+import { existsSync } from "node:fs";
 import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
@@ -63,6 +65,7 @@ import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse"
 import { Type } from "typebox";
 import {
 	APPROVAL_TTL_MS,
+	closeMaster,
 	commandEscalatesPrivilege,
 	controlPathFor,
 	detectSshFailure,
@@ -91,6 +94,9 @@ import {
 const PROMPT_TIMEOUT_MS = 60_000;
 const MAX_PASSWORD_ATTEMPTS = 3;
 const SPINNER_INTERVAL_MS = 120;
+/** Min gap between key re-checks on a host whose login password is cached.
+ * Each failed probe is one auth failure in the server log (fail2ban counts it). */
+const KEY_RECHECK_MS = 60_000;
 
 // In-memory per-host credential cache (session-scoped, never persisted).
 // Key = canonical "user@host:port". Cleared on process exit.
@@ -99,6 +105,8 @@ interface HostCreds {
 	sudoPassword?: string;
 }
 const credCache = new Map<string, HostCreds>();
+// Per-host epoch ms before which the cached-password key re-check is skipped.
+const keyRecheckAt = new Map<string, number>();
 
 // Per-host allow-memory (on by default): once the user approves any command on
 // a host, later calls to that host skip the confirm overlay until the approval
@@ -110,6 +118,53 @@ const approvedHosts = new Map<string, number>();
 
 function cacheKey(spec: HostSpec): string {
 	return `${spec.user ?? ""}@${spec.host}:${spec.port ?? 22}`;
+}
+
+/** Pre-run connection prep: honor `fresh`, re-check the key, and report
+ * whether the run will reuse a live master. Checked before the auth probes,
+ * which open a master themselves. */
+async function prepareConnection(
+	spec: HostSpec,
+	controlPath: string,
+	key: string,
+	creds: HostCreds,
+	fresh: boolean | undefined,
+	sig?: AbortSignal,
+): Promise<{ creds: HostCreds; connection: "new" | "reused" }> {
+	if (fresh === true) await closeMaster(spec, controlPath, sig);
+	const next = await recheckKey(spec, controlPath, key, creds, fresh === true, sig);
+	return { creds: next, connection: existsSync(controlPath) ? "reused" : "new" };
+}
+
+function authVia(loginPassword: string | undefined, connection: "new" | "reused") {
+	return { auth: loginPassword ? "password" : "key", connection } as const;
+}
+
+/**
+ * A cached login password means the live master is likely password-authed, so a
+ * normal probe would ride it and never test the key. Re-check the key with
+ * multiplexing off (rate-limited by KEY_RECHECK_MS unless `force`); on success
+ * drop the password and its master so this call and later ones use the key.
+ */
+async function recheckKey(
+	spec: HostSpec,
+	controlPath: string,
+	key: string,
+	creds: HostCreds,
+	force: boolean,
+	sig?: AbortSignal,
+): Promise<HostCreds> {
+	if (!creds.loginPassword) return creds;
+	if (!force && (keyRecheckAt.get(key) ?? 0) > Date.now()) return creds;
+	if ((await probeKeyAuth(spec, "none", sig)) !== "ok") {
+		keyRecheckAt.set(key, Date.now() + KEY_RECHECK_MS);
+		return creds;
+	}
+	const next = creds.sudoPassword ? { sudoPassword: creds.sudoPassword } : {};
+	credCache.set(key, next);
+	keyRecheckAt.delete(key);
+	await closeMaster(spec, controlPath, sig);
+	return next;
 }
 
 /**
@@ -153,6 +208,10 @@ export interface SshResultDetails {
 	truncated?: boolean;
 	cancellationKind?: SshCancellationKind;
 	errorKind?: SshErrorKind;
+	/** How this call authenticated: SSH key/agent, or a login password. */
+	auth?: "key" | "password";
+	/** Whether this call opened a new connection or reused a live master. */
+	connection?: "new" | "reused";
 	_render?: string;
 }
 
@@ -168,6 +227,7 @@ type SshParams = {
 	destination?: string;
 	recursive?: boolean;
 	reason?: string;
+	fresh?: boolean;
 };
 
 interface SshOperation {
@@ -294,6 +354,8 @@ function terminalMeta(details: SshResultDetails): string {
 	const hasLines = typeof details.lineCount === "number" && details.lineCount > 0;
 	return dotJoin([
 		typeof details.exitCode === "number" && `exit ${details.exitCode}`,
+		details.auth && `${details.auth} auth`,
+		details.connection && `${details.connection} connection`,
 		hasLines && `${details.lineCount} ${details.lineCount === 1 ? "line" : "lines"}`,
 		details.truncated && "truncated",
 	]);
@@ -485,6 +547,12 @@ export default function (pi: ExtensionAPI): void {
 					description: "[file] Optional, default false. Copy a directory recursively.",
 				}),
 			),
+			fresh: Type.Optional(
+				Type.Boolean({
+					description:
+						"[command|file] Optional, default false. Close the reused connection first so this call re-authenticates (e.g. to prove key login).",
+				}),
+			),
 			reason: Type.String({
 				description: "Short plain-English intent, shown to the user as the approval title.",
 			}),
@@ -568,7 +636,7 @@ export default function (pi: ExtensionAPI): void {
 			// ProxyJump, and other SSH config options still apply.
 			const controlPath = controlPathFor(effectiveSpec);
 			const key = cacheKey(effectiveSpec);
-			const creds = credCache.get(key) ?? {};
+			let creds = credCache.get(key) ?? {};
 
 			const mode = getUnattendedMode(pi.events);
 			const yolo = mode === "yolo";
@@ -596,6 +664,10 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			updatePresentation(onUpdate, command, host, sudo, reason, "awaiting-approval");
+
+			const prep = await prepareConnection(spec, controlPath, key, creds, params.fresh, sig);
+			creds = prep.creds;
+			const connection = prep.connection;
 
 			// Probe key/agent/existing-master auth (no password needed on success).
 			// Only prompt for a login password when the host is reachable but rejects
@@ -755,6 +827,7 @@ export default function (pi: ExtensionAPI): void {
 
 			// Persist newly-entered passwords in the session cache.
 			const loginPassword = creds.loginPassword ?? collected.login;
+			const via = authVia(loginPassword, connection);
 			const sudoPassword = creds.sudoPassword ?? collected.sudo;
 			credCache.set(key, {
 				...(loginPassword ? { loginPassword } : {}),
@@ -859,6 +932,7 @@ export default function (pi: ExtensionAPI): void {
 					details: makeDetails(command, host, sudo, reason, {
 						outcome: "error",
 						exitCode: result.code,
+						...via,
 						lineCount: outputLineCount(result.stderr),
 						errorKind: "auth-sudo",
 						_render: normalizeLineEndings(result.stderr),
@@ -877,10 +951,16 @@ export default function (pi: ExtensionAPI): void {
 				.replace(/^\n+|\n+$/g, "");
 
 			return {
-				content: [{ type: "text", text: `Exit code: ${result.code}\n\n${truncatedText}${suffix}` }],
+				content: [
+					{
+						type: "text",
+						text: `Exit code: ${result.code} (auth: ${via.auth}, ${via.connection} connection)\n\n${truncatedText}${suffix}`,
+					},
+				],
 				details: makeDetails(command, host, sudo, reason, {
 					outcome: result.code === 0 ? "success" : "error",
 					exitCode: result.code,
+					...via,
 					lineCount: outputLineCount(rendered),
 					truncated,
 					...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
