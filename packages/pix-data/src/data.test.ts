@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
-import { rm, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { pixRuntime } from "@xynogen/pix-runtime/config";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { ioSection } from "@xynogen/pix-runtime/sections";
@@ -101,6 +101,36 @@ describe("DataSource", () => {
 			expect(seenTimeout).toBe(120_000);
 		} finally {
 			await pixRuntime().update(ioSection, { timeoutSec: 30 });
+			await rm(cachePath, { force: true });
+		}
+	});
+
+	it("refetches instead of throwing when a fresh cache has an old shape", async () => {
+		const cachePath = `${tempDir()}/pix-data-shape-${process.pid}-${Date.now()}.json`;
+		try {
+			await writeFile(cachePath, JSON.stringify({ ts: Date.now(), data: { legacy: true } }));
+			let fetches = 0;
+			const source = new DataSource<string[]>({
+				label: "test",
+				url: "https://example.test/data",
+				cachePath,
+				ttlMs: 60_000,
+				fetchRaw: async () => {
+					fetches++;
+					return ["fresh"];
+				},
+				parse: (raw) => raw as string[],
+				parseCache: (data) => {
+					if (!Array.isArray(data)) throw new Error("old cache shape");
+					return data as string[];
+				},
+				empty: [],
+			});
+
+			expect(await source.get()).toEqual(["fresh"]);
+			expect(fetches).toBe(1);
+			expect(JSON.parse(await readFile(cachePath, "utf8"))).toMatchObject({ data: ["fresh"] });
+		} finally {
 			await rm(cachePath, { force: true });
 		}
 	});

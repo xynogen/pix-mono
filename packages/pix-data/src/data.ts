@@ -20,8 +20,9 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { cacheDir } from "@xynogen/pix-runtime/paths";
 
@@ -152,9 +153,11 @@ export class DataSource<T> {
 		}
 		const cached = await this._readCache();
 		if (cached !== undefined && Date.now() - cached.ts < this.opts.ttlMs) {
-			const val = this.opts.parseCache(cached.data);
-			this._mem = val;
-			return val;
+			const val = this.safeParseCache(cached.data);
+			if (val !== undefined) {
+				this._mem = val;
+				return val;
+			}
 		}
 		try {
 			const url = typeof this.opts.url === "function" ? this.opts.url() : this.opts.url;
@@ -170,12 +173,21 @@ export class DataSource<T> {
 		} catch {
 			// ponytail: cache refresh is best-effort; callers already receive stale or empty data.
 			// Raw console output corrupts Pi's active TUI editor, so fallback stays silent.
-			if (cached !== undefined) {
-				const val = this.opts.parseCache(cached.data);
+			const val = cached === undefined ? undefined : this.safeParseCache(cached.data);
+			if (val !== undefined) {
 				this._mem = val;
 				return val;
 			}
 			return this.opts.empty;
+		}
+	}
+
+	/** A cache in an old or broken shape counts as absent: refetch, never throw. */
+	private safeParseCache(data: unknown): T | undefined {
+		try {
+			return this.opts.parseCache(data);
+		} catch {
+			return undefined;
 		}
 	}
 
@@ -192,8 +204,9 @@ export class DataSource<T> {
 
 	private async _writeCache(data: unknown): Promise<void> {
 		try {
-			await mkdir(dirname(this.opts.cachePath), { recursive: true });
-			await writeFile(this.opts.cachePath, JSON.stringify({ ts: Date.now(), data }));
+			// Atomic (creates parent dirs): two Pi processes refreshing at once must
+			// not leave torn JSON.
+			writeFileAtomicSync(this.opts.cachePath, JSON.stringify({ ts: Date.now(), data }), 0o644);
 		} catch {
 			// Write failure is non-fatal — stale cache used on next run
 		}
