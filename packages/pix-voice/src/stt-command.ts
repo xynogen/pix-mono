@@ -274,7 +274,11 @@ function listen(ctx: ExtensionContext): () => void {
 		}
 		const starting = !phase;
 		void toggleDictation(ctx);
-		heldSince = starting && isKittyProtocolActive() ? Date.now() : undefined;
+		// startRecording runs synchronously, so `phase` already shows whether the
+		// start worked. A failed start must not arm hold-to-talk, or the key release
+		// would call toggleDictation again and start a recording.
+		const recording = phase?.kind === "recording";
+		heldSince = starting && recording && isKittyProtocolActive() ? Date.now() : undefined;
 		return { consume: true };
 	});
 }
