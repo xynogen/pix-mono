@@ -193,11 +193,18 @@ export async function runBtw(options: BtwRunOptions): Promise<BtwRunResult> {
 		tools,
 		resourceLoader: loader,
 	});
-	session.setSessionName("btw");
-	await session.bindExtensions({
-		mode: ctx.mode,
-		onError: () => {},
-	});
+	try {
+		session.setSessionName("btw");
+		await session.bindExtensions({
+			mode: ctx.mode,
+			onError: () => {},
+		});
+	} catch (error) {
+		// Setup failed before the caller ever saw the session: dispose it here,
+		// or its extensions and model client leak for the rest of the process.
+		session.dispose();
+		throw error;
+	}
 	options.onSession?.(session);
 
 	let text = "";

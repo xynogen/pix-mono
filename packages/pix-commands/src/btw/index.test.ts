@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { registerBtw, shortModelName } from "./index.ts";
+import * as session from "./session.ts";
 
 describe("BTW display helpers", () => {
 	test("prefers model display name and falls back to id", () => {
@@ -43,4 +44,40 @@ describe("BTW display helpers", () => {
 		// strip — the old pi.on("context", filterBtwMessages) hack is gone.
 		expect(events).not.toContain("context");
 	});
+});
+
+test("a publish that throws does not re-publish the same answer as an error", async () => {
+	const done = Promise.withResolvers<void>();
+	const runner = spyOn(session, "runBtw").mockImplementation(async () => {
+		setTimeout(done.resolve, 10);
+		return { text: "ok", thinking: "", session: undefined as never };
+	});
+	try {
+		const published: Array<{ error?: string }> = [];
+		let handler!: (args: string, ctx: unknown) => Promise<void>;
+		registerBtw({
+			on() {},
+			registerEntryRenderer() {},
+			registerCommand: (_n: string, c: { handler: typeof handler }) => {
+				handler = c.handler;
+			},
+			getThinkingLevel: () => "off",
+			getActiveTools: () => [],
+			appendEntry: (_name: string, details: { error?: string }) => {
+				published.push(details);
+				throw new Error("stale runtime");
+			},
+		} as never);
+		await handler("--no-ctx q", {
+			cwd: "/x",
+			model: { provider: "p", id: "m" },
+			sessionManager: { buildContextEntries: () => [] },
+			ui: { notify() {}, setStatus() {}, setWidget() {} },
+		});
+		await done.promise;
+		expect(published).toHaveLength(1);
+		expect(published[0]?.error).toBeUndefined();
+	} finally {
+		runner.mockRestore();
+	}
 });

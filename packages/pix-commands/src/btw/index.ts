@@ -71,6 +71,13 @@ export function registerBtw(pi: ExtensionAPI): void {
 		const now = Date.now();
 		const allJobs = [...jobs.values()];
 		const baseMs = collapseDelayMs();
+		// Drop finished jobs once their card has been published and the widget
+		// row has lingered; otherwise a long session grows the map without bound.
+		for (const [id, job] of jobs) {
+			if (job.status !== "running" && job.completedAt && now - job.completedAt > baseMs * 2) {
+				jobs.delete(id);
+			}
+		}
 		if (!hasVisibleJobs(allJobs.map(toWidgetJob), now, baseMs)) {
 			latestUi.setStatus(STATUS_KEY, undefined);
 			latestUi.setWidget(WIDGET_KEY, undefined);
@@ -203,36 +210,44 @@ export function registerBtw(pi: ExtensionAPI): void {
 					job.contextUsage = getSessionContextUsage(job.session) ?? job.contextUsage;
 				},
 			})
-				.then(({ text, thinking, session }) => {
-					job.status = "completed";
-					job.completedAt = Date.now();
-					job.text = text;
-					job.session = session;
-					job.contextUsage = getSessionContextUsage(session) ?? job.contextUsage;
-					publish(job, {
-						question,
-						answer: text || "No answer returned.",
-						thinking,
-						model: job.model,
-						thinkingLevel: snapshot.thinkingLevel,
-						durationMs: Date.now() - job.startedAt,
-						toolUses: job.toolUses,
-					});
-				})
-				.catch((error) => {
-					job.status = "error";
-					job.completedAt = Date.now();
-					job.error = getErrorMessage(error);
-					publish(job, {
-						question,
-						answer: "",
-						thinking: "",
-						model: job.model,
-						thinkingLevel: snapshot.thinkingLevel,
-						durationMs: Date.now() - job.startedAt,
-						toolUses: job.toolUses,
-						error: job.error,
-					});
+				// .then(ok, err), not .then().catch(): a throw inside the success
+				// handler (e.g. appendEntry on a stale runtime) must not re-publish
+				// the same job as an error.
+				.then(
+					({ text, thinking, session }) => {
+						job.status = "completed";
+						job.completedAt = Date.now();
+						job.text = text;
+						job.session = session;
+						job.contextUsage = getSessionContextUsage(session) ?? job.contextUsage;
+						publish(job, {
+							question,
+							answer: text || "No answer returned.",
+							thinking,
+							model: job.model,
+							thinkingLevel: snapshot.thinkingLevel,
+							durationMs: Date.now() - job.startedAt,
+							toolUses: job.toolUses,
+						});
+					},
+					(error) => {
+						job.status = "error";
+						job.completedAt = Date.now();
+						job.error = getErrorMessage(error);
+						publish(job, {
+							question,
+							answer: "",
+							thinking: "",
+							model: job.model,
+							thinkingLevel: snapshot.thinkingLevel,
+							durationMs: Date.now() - job.startedAt,
+							toolUses: job.toolUses,
+							error: job.error,
+						});
+					},
+				)
+				.catch(() => {
+					// publish() failed after a shutdown/reload race; nothing left to report to.
 				});
 		},
 	});
@@ -254,7 +269,7 @@ export function registerBtw(pi: ExtensionAPI): void {
 		for (const job of jobs.values()) {
 			if (job.status === "running") {
 				job.status = "stopped";
-				void job.session?.abort();
+				job.session?.abort().catch(() => {});
 			}
 			job.session?.dispose();
 		}
