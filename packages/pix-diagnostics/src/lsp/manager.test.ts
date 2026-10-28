@@ -90,11 +90,13 @@ interface Harness {
 	starts: number;
 	stops: number;
 	resolveStart(): void;
+	/** Most recently started transport, so a test can simulate a crash. */
+	last?: TransportLike;
 }
 
 function createManagerHarness(options: HarnessOptions = {}): Harness {
 	const clock = options.clock ?? new FakeClock();
-	const state = { starts: 0, stops: 0 };
+	const state: { starts: number; stops: number; last?: TransportLike } = { starts: 0, stops: 0 };
 	// Deferred created upfront so resolveStart works before deps.start is reached.
 	let release!: () => void;
 	const gate = new Promise<void>((r) => {
@@ -119,6 +121,7 @@ function createManagerHarness(options: HarnessOptions = {}): Harness {
 				state.stops++;
 				await originalStop();
 			};
+			state.last = t;
 			return t;
 		},
 		readFile: async () => "const x = 1;\n",
@@ -136,6 +139,9 @@ function createManagerHarness(options: HarnessOptions = {}): Harness {
 			return state.stops;
 		},
 		resolveStart: () => release(),
+		get last() {
+			return state.last;
+		},
 	};
 }
 
@@ -160,6 +166,20 @@ describe("LazyLspManager", () => {
 			harness.manager.check({ paths: ["/repo/b.ts"], waitMs: 1000, severity: "all" }),
 		]);
 		expect(harness.starts).toBe(1);
+	});
+
+	test("restarts a server that crashed instead of reusing the dead connection", async () => {
+		const harness = createManagerHarness();
+		await harness.manager.check({ paths: ["/repo/a.ts"], severity: "all" });
+		const crashed = harness.last;
+		if (!crashed) throw new Error("no transport started");
+		crashed.state = () => "failed";
+
+		const [snapshot] = await harness.manager.check({ paths: ["/repo/a.ts"], severity: "all" });
+		expect(snapshot?.state).toBe("clean");
+		expect({ starts: harness.starts, stops: harness.stops }).toEqual({ starts: 2, stops: 1 });
+		expect(harness.last).not.toBe(crashed);
+		await harness.manager.shutdown();
 	});
 
 	test("forwards cancellation to a pending request", async () => {

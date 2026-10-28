@@ -30,6 +30,10 @@ export interface StartOptions {
 	rootUri: string;
 	serverId: string;
 	env?: NodeJS.ProcessEnv;
+	/** Deadline for the initialize handshake. Default {@link INIT_TIMEOUT_MS}. */
+	initTimeoutMs?: number;
+	/** Local deadline per request. Default {@link REQUEST_TIMEOUT_MS}. */
+	requestTimeoutMs?: number;
 }
 
 export interface LspDiagnostic {
@@ -66,6 +70,28 @@ type TransportState = "starting" | "ready" | "failed" | "stopped";
 
 const MAX_OPEN = 32;
 const STDERR_CAP = 8 * 1024;
+// A server that never answers must not hang a tool call. $/cancelRequest is
+// only advisory, so both deadlines are enforced locally.
+export const INIT_TIMEOUT_MS = 15_000;
+export const REQUEST_TIMEOUT_MS = 30_000;
+
+/** Reject `p` after `ms`; `onTimeout` runs first so callers can tear down. */
+function withDeadline<T>(
+	p: Promise<T>,
+	ms: number,
+	label: string,
+	onTimeout?: () => void,
+): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const deadline = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			onTimeout?.();
+			reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`));
+		}, ms);
+		timer.unref?.();
+	});
+	return Promise.race([p, deadline]).finally(() => clearTimeout(timer));
+}
 
 class AbortError extends Error {
 	override name = "AbortError";
@@ -166,6 +192,7 @@ export class LspTransport {
 	private stderr = "";
 	private exitReason: string | undefined;
 	private ewmaMs = 0;
+	private requestTimeoutMs = REQUEST_TIMEOUT_MS;
 
 	private constructor(
 		private readonly child: ChildProcess,
@@ -179,6 +206,14 @@ export class LspTransport {
 			stdio: ["pipe", "pipe", "pipe"],
 			env: options.env ?? process.env,
 		});
+		// A spawn failure (ENOENT, EACCES) arrives as an async 'error' event. Without
+		// a listener Node rethrows it and takes Pi down; with one, it fails start().
+		const spawnFailed = new Promise<never>((_, reject) => {
+			child.once("error", (err) =>
+				reject(new Error(`LSP ${options.serverId}: failed to start: ${err.message}`)),
+			);
+		});
+		spawnFailed.catch(() => {}); // late errors after a successful start are not fatal
 		if (!child.stdin || !child.stdout || !child.stderr) {
 			child.kill();
 			throw new Error(`LSP ${options.serverId}: failed to open stdio pipes`);
@@ -189,10 +224,15 @@ export class LspTransport {
 		);
 		const transport = new LspTransport(child, connection, options.serverId);
 		transport.wire(options);
+		transport.requestTimeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
 		connection.listen();
 
 		try {
-			await transport.initialize(options.rootUri);
+			await withDeadline(
+				Promise.race([transport.initialize(options.rootUri), spawnFailed]),
+				options.initTimeoutMs ?? INIT_TIMEOUT_MS,
+				`LSP ${options.serverId}: initialize`,
+			);
 			transport.stateValue = "ready";
 			return transport;
 		} catch (error) {
@@ -443,10 +483,24 @@ export class LspTransport {
 	async request<T>(method: string, params: unknown, signal?: AbortSignal): Promise<T> {
 		if (signal?.aborted) throw new AbortError(`LSP ${this.serverId}: request aborted`);
 		const source = new CancellationTokenSource();
-		const onAbort = (): void => source.cancel();
+		// $/cancelRequest is advisory; reject locally so the caller is freed at once.
+		let onAbort = (): void => {};
+		const aborted = new Promise<never>((_, reject) => {
+			onAbort = () => {
+				source.cancel();
+				reject(new AbortError(`LSP ${this.serverId}: request aborted`));
+			};
+		});
+		aborted.catch(() => {});
 		signal?.addEventListener("abort", onAbort, { once: true });
 		try {
-			return (await this.connection.sendRequest(method, params, source.token)) as T;
+			const reply = this.connection.sendRequest(method, params, source.token) as Promise<T>;
+			return await withDeadline(
+				Promise.race([reply, aborted]),
+				this.requestTimeoutMs,
+				`LSP ${this.serverId}: ${method}`,
+				() => source.cancel(),
+			);
 		} finally {
 			signal?.removeEventListener("abort", onAbort);
 			source.dispose();

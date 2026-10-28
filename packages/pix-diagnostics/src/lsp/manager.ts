@@ -454,8 +454,14 @@ class LazyLspManager implements LspManager {
 	): Promise<{ server: ManagedServer } | { unavailable: string }> {
 		const existing = this.live.get(key);
 		if (existing) {
-			this.clearIdle(existing);
-			return { server: existing };
+			const state = existing.transport.state();
+			if (state === "ready" || state === "starting") {
+				this.clearIdle(existing);
+				return { server: existing };
+			}
+			// The server crashed or exited. Drop it and fall through to a restart,
+			// instead of serving a dead connection until the idle timer fires.
+			await this.stopServer(existing);
 		}
 
 		const back = this.backoff.get(key);

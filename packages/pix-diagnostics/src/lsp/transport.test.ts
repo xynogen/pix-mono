@@ -111,6 +111,64 @@ describe("LspTransport", () => {
 	});
 });
 
+describe("LspTransport deadlines and failures", () => {
+	test("a server that never answers initialize fails start within the deadline", async () => {
+		const started = Date.now();
+		const start = LspTransport.start({
+			command: process.execPath,
+			args: [fakeServerPath, "--hang-init"],
+			cwd: root,
+			rootUri: pathToFileURL(root).href,
+			serverId: "fake",
+			initTimeoutMs: 300,
+		});
+		await expect(start).rejects.toThrow(/LSP fake: initialize timed out after \d+s/);
+		expect(Date.now() - started).toBeLessThan(3_000);
+	});
+
+	test("a missing server binary fails start instead of crashing the host", async () => {
+		const start = LspTransport.start({
+			command: join(root, "no-such-lsp"),
+			args: [],
+			cwd: root,
+			rootUri: pathToFileURL(root).href,
+			serverId: "ghost",
+			initTimeoutMs: 2_000,
+		});
+		await expect(start).rejects.toThrow(/LSP ghost: failed to start: .*ENOENT/);
+	});
+
+	test("a request the server never answers hits the local deadline", async () => {
+		const client = await LspTransport.start({
+			command: process.execPath,
+			args: [fakeServerPath],
+			cwd: root,
+			rootUri: pathToFileURL(root).href,
+			serverId: "fake",
+			requestTimeoutMs: 200,
+		});
+		try {
+			await expect(client.request("pix/hang", {})).rejects.toThrow(
+				/LSP fake: pix\/hang timed out after \d+s/,
+			);
+		} finally {
+			await client.stop();
+		}
+	});
+
+	test("aborting a pending request rejects at once, without waiting for the server", async () => {
+		const client = await startClient();
+		try {
+			const controller = new AbortController();
+			const pending = client.request("pix/hang", {}, controller.signal);
+			controller.abort();
+			await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+		} finally {
+			await client.stop();
+		}
+	});
+});
+
 afterAll(() => {
 	// temp dir cleaned by the OS; nothing persistent to remove
 });

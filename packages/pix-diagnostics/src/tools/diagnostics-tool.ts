@@ -210,7 +210,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			return frameToolResult(body, theme, isError);
 		},
 
-		async execute(_id, params) {
+		async execute(_id, params, signal) {
 			const source = params.source as "session" | "lsp";
 			const severity = (params.severity as Severity | undefined) ?? "all";
 			const paths = params.paths as string[] | undefined;
@@ -227,6 +227,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 					paths: paths.map((p) => resolve(cwd, p)),
 					severity,
 					waitMs: params.waitMs as number | undefined,
+					signal,
 				};
 				snapshots = await manager.check(request);
 				for (const snap of snapshots) store.set(snap);

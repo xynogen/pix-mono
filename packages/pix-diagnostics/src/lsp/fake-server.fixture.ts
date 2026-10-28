@@ -72,13 +72,21 @@ function sendPublish(uri: string, version: number): void {
 	});
 }
 
-connection.onRequest("initialize", () => ({
-	capabilities: {
-		textDocumentSync: has("--incremental") ? 2 : 1,
-		definitionProvider: true,
-		positionEncoding: "utf-16",
-	},
-}));
+connection.onRequest("initialize", () =>
+	// --hang-init: never answer, to exercise the client's handshake deadline.
+	has("--hang-init")
+		? new Promise(() => {})
+		: {
+				capabilities: {
+					textDocumentSync: has("--incremental") ? 2 : 1,
+					definitionProvider: true,
+					positionEncoding: "utf-16",
+				},
+			},
+);
+
+// Never answers: exercises the client's per-request deadline and abort.
+connection.onRequest("pix/hang", () => new Promise(() => {}));
 
 connection.onNotification("initialized", () => {});
 

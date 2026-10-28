@@ -178,11 +178,11 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 			return frameToolResult(body, theme, isError);
 		},
 
-		async execute(_id, params) {
+		async execute(_id, params, signal) {
 			const operation = params.operation as NavigationOperation;
 			const limit = Math.min(MAX_LIMIT, (params.limit as number | undefined) ?? DEFAULT_LIMIT);
 
-			const request: NavigationRequest = { operation, limit };
+			const request: NavigationRequest = { operation, limit, signal };
 
 			if (operation === "workspaceSymbol") {
 				if (!params.query) throw new Error("workspaceSymbol requires query");

@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-diagnostics",
-	"version": "0.4.3",
+	"version": "0.4.4",
 	"description": "Pi extension \u2014 lazy LSP diagnostics, navigation, and a compact session widget",
 	"type": "module",
 	"main": "src/index.ts",
