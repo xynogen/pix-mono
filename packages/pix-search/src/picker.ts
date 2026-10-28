@@ -63,6 +63,8 @@ export class FilePicker {
 	setFiles(files: string[]): void {
 		this.files = files;
 		this.invalidate();
+		// The list arrives async after the overlay is drawn; ask the host to repaint.
+		this.opts.onChange?.();
 	}
 
 	private results() {

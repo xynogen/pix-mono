@@ -46,3 +46,18 @@ test("omits the bg fill when the theme has no bg method (mock/partial themes)", 
 	expect(lines.length).toBeGreaterThan(0);
 	expect(lines.some((l) => l.includes(BG_OPEN))).toBe(false);
 });
+
+test("setFiles repaints once the async file list arrives", () => {
+	let repaints = 0;
+	const picker = new FilePicker({
+		files: [],
+		recency: new Map(),
+		theme,
+		cwd: "/tmp",
+		done: () => {},
+		onChange: () => repaints++,
+	});
+	picker.setFiles(["src/late.ts"]);
+	expect(repaints).toBe(1);
+	expect(picker.render(100).join("\n")).toContain("late.ts");
+});
