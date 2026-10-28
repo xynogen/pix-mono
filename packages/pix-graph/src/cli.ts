@@ -2,6 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { parseArgs } from "node:util";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { projectDir } from "@xynogen/pix-runtime/paths";
 import type { GraphData } from "./analyzer.ts";
@@ -16,9 +17,21 @@ Usage:
   pix-graph path "<from>" "<to>" [--graph FILE]      Shortest path between two nodes
 `;
 
-function flag(args: string[], name: string): string | undefined {
-	const i = args.indexOf(name);
-	return i >= 0 ? args[i + 1] : undefined;
+// Value flags must be declared, or a flag's value (`--out X`) is taken as the
+// first positional (the input path / the question).
+function parse(args: string[]) {
+	const { values, positionals } = parseArgs({
+		args,
+		allowPositionals: true,
+		options: {
+			out: { type: "string" },
+			root: { type: "string" },
+			graph: { type: "string" },
+			depth: { type: "string" },
+			dfs: { type: "boolean" },
+		},
+	});
+	return { values, positionals };
 }
 
 function loadGraph(path: string): GraphData {
@@ -31,16 +44,17 @@ function loadGraph(path: string): GraphData {
 }
 
 function main(argv: string[]): void {
-	const [command, ...args] = argv;
+	const [command, ...rest] = argv;
 	if (!command || command === "--help" || command === "-h") {
 		process.stdout.write(USAGE);
 		return;
 	}
+	const { values, positionals } = parse(rest);
 
 	if (command === "build") {
-		const input = args.find((a) => !a.startsWith("--")) ?? ".";
-		const root = resolve(flag(args, "--root") ?? process.cwd());
-		const out = resolve(flag(args, "--out") ?? `${projectDir()}/graph`);
+		const input = positionals[0] ?? ".";
+		const root = resolve(values.root ?? process.cwd());
+		const out = resolve(values.out ?? `${projectDir()}/graph`);
 		const result = buildCodeGraph(input, root, out);
 		process.stdout.write(
 			`Graph: ${result.nodes} nodes, ${result.links} links, ${result.communities} communities → ${result.outputDir}\n`,
@@ -48,14 +62,14 @@ function main(argv: string[]): void {
 		return;
 	}
 
-	const graphPath = flag(args, "--graph") ?? `${projectDir()}/graph/graph.cleaned.json`;
+	const graphPath = values.graph ?? `${projectDir()}/graph/graph.cleaned.json`;
 
 	if (command === "query") {
-		const question = args.find((a) => !a.startsWith("--"));
+		const question = positionals[0];
 		if (!question) throw new Error('query requires a question, e.g. query "how does auth work"');
-		const depth = Number(flag(args, "--depth") ?? "2");
+		const depth = Number(values.depth ?? "2");
 		const hits = query(loadGraph(graphPath), question, {
-			mode: args.includes("--dfs") ? "dfs" : "bfs",
+			mode: values.dfs ? "dfs" : "bfs",
 			maxDepth: Number.isFinite(depth) ? depth : 2,
 		});
 		if (hits.length === 0) {
@@ -72,8 +86,7 @@ function main(argv: string[]): void {
 	}
 
 	if (command === "path") {
-		const positional = args.filter((a) => !a.startsWith("--"));
-		const [from, to] = positional;
+		const [from, to] = positionals;
 		if (!from || !to) throw new Error('path requires two arguments: path "A" "B"');
 		const nodes = shortestPath(loadGraph(graphPath), from, to);
 		if (nodes.length === 0) {

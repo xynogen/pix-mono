@@ -37,6 +37,8 @@ test("captures graph query and analysis CLI streams in process without a runner"
 		for (const [name, args] of Object.entries({
 			bfs: ["query", "authenticate", "--graph", graphPath],
 			dfs: ["query", "authenticate", "--graph", graphPath, "--dfs"],
+			// A flag BEFORE the positional: its value must not become the question.
+			flagFirst: ["query", "--graph", graphPath, "authenticate"],
 			empty: ["query", "unmatched", "--graph", graphPath],
 			path: ["path", "authenticate", "cache", "--graph", graphPath],
 			invalid: ["query"],
@@ -58,7 +60,9 @@ test("captures graph query and analysis CLI streams in process without a runner"
 		expect(JSON.parse(readFileSync(join(root, "graph.cleaned.json"), "utf8")).nodes).toHaveLength(
 			3,
 		);
-		expect(captures).toMatchSnapshot();
+		const { flagFirst, ...snapshotted } = captures;
+		expect(flagFirst?.stdout).toBe(captures.bfs?.stdout);
+		expect(snapshotted).toMatchSnapshot();
 	} finally {
 		stdout.mockRestore();
 		stderr.mockRestore();

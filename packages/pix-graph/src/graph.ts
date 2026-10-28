@@ -13,8 +13,8 @@
  * schema; kept minimal (single tool, two modes) per the token-budget rule.
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
@@ -182,6 +182,8 @@ export default function registerGraph(pi: ExtensionAPI): void {
 							ctx.ui.notify('No graph yet. Ask the agent to run graph(action:"build").', "warning");
 							return;
 						}
+						// A legacy graphify-out graph has no .pi/graph/ dir yet.
+						mkdirSync(dirname(html), { recursive: true });
 						writeFileSync(html, renderGraphHtml(graph));
 					}
 					await openTarget(html);

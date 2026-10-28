@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-graph",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"description": "Pi extension — native code knowledge graph (TS/JS exact, other languages via ast-grep)",
 	"type": "module",
 	"main": "src/index.ts",
