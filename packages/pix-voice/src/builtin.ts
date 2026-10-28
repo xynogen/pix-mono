@@ -20,6 +20,7 @@ import {
 	parseTranscriptionResponse,
 	pcmToWav,
 	request,
+	requireRouterBase,
 	routerBaseUrl,
 	routerKey,
 	splitModel,
@@ -83,9 +84,9 @@ const stt: SttProvider[] = [
 		id: "9router",
 		defaultModel: "dg/nova-3",
 		env: ["NINEROUTER_URL", "NINEROUTER_KEY"],
-		isConfigured: () => Boolean(routerKey()),
+		isConfigured: () => Boolean(routerBaseUrl() && routerKey()),
 		transcribe: (req) =>
-			openaiTranscribe(`${routerBaseUrl()}/audio/transcriptions`, routerKey(), req),
+			openaiTranscribe(`${requireRouterBase()}/audio/transcriptions`, routerKey(), req),
 	},
 	{
 		id: "openai",
@@ -308,10 +309,10 @@ const tts: TtsProvider[] = [
 		id: "9router",
 		defaultModel: "edge-tts/en-US-AriaNeural",
 		env: ["NINEROUTER_URL", "NINEROUTER_KEY"],
-		isConfigured: () => Boolean(routerKey()),
+		isConfigured: () => Boolean(routerBaseUrl() && routerKey()),
 		async synthesize(req) {
 			const response = await request(
-				`${routerBaseUrl()}/audio/speech?response_format=${req.format}`,
+				`${requireRouterBase()}/audio/speech?response_format=${req.format}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json", ...bearer(routerKey()) },
