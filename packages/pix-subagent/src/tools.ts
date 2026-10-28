@@ -628,6 +628,10 @@ export function createAgentTool(
 					signal,
 				);
 				if (!record) return textResult(`Failed to resume agent "${params.resume}".`);
+				if (record === "busy")
+					return textResult(
+						`Agent "${params.resume}" is still running (or still stopping). Use steer to redirect it, or wait for it to finish, then resume.`,
+					);
 				return textResult(
 					record.result?.trim() || record.error?.trim() || "No output.",
 					buildDetails(detailBase, record),

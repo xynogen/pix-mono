@@ -95,15 +95,17 @@ afterEach(() => {
 interface DeferredResumeAgent {
 	resolve(text?: string): void;
 	reject(err: Error): void;
+	signal?: AbortSignal;
 }
 
 function installFakeResumeAgent(): DeferredResumeAgent[] {
 	const calls: DeferredResumeAgent[] = [];
 
-	__setResumeAgentForTests((_session, _prompt, _opts): Promise<ResumeResult> => {
+	__setResumeAgentForTests((_session, _prompt, opts): Promise<ResumeResult> => {
 		const deferred: DeferredResumeAgent = {
 			resolve: () => {},
 			reject: () => {},
+			signal: opts?.signal,
 		};
 		const promise = new Promise<ResumeResult>((resolve, reject) => {
 			deferred.resolve = (text = "resumed") =>
@@ -434,9 +436,7 @@ describe("AgentManager", () => {
 		resumeCalls[0]!.resolve("resumed output");
 		const record = await resumed;
 
-		expect(record).toBeDefined();
-		expect(record?.status).toBe("completed");
-		expect(record?.result).toBe("resumed output");
+		expect(record).toMatchObject({ status: "completed", result: "resumed output" });
 	});
 
 	test("resume() sets error status on rejection", async () => {
@@ -456,9 +456,64 @@ describe("AgentManager", () => {
 		resumeCalls[0]!.reject(new Error("resume failed"));
 		const record = await resumed;
 
-		expect(record).toBeDefined();
-		expect(record?.status).toBe("error");
-		expect(record?.error).toBe("resume failed");
+		expect(record).toMatchObject({ status: "error", error: "resume failed" });
+	});
+
+	test("resume() is refused while the agent is still running", async () => {
+		const runCalls = installFakeRunAgent();
+		const resumeCalls = installFakeResumeAgent();
+		manager = new AgentManager(undefined, 4);
+		const id = manager.spawn(pi, ctx, "general", "task", { description: "t", isBackground: true });
+
+		expect(await manager.resume(id, "too early")).toBe("busy");
+		expect(resumeCalls).toHaveLength(0);
+		runCalls[0]!.resolve();
+	});
+
+	test("resume() is refused after a stop until the old run settles", async () => {
+		const runCalls = installFakeRunAgent();
+		const resumeCalls = installFakeResumeAgent();
+		manager = new AgentManager(undefined, 4);
+		const id = manager.spawn(pi, ctx, "general", "task", { description: "t", isBackground: true });
+
+		manager.abort(id); // status flips to stopped; the run promise is still pending
+		expect(manager.getRecord(id)?.status).toBe("stopped");
+		expect(await manager.resume(id, "race")).toBe("busy");
+
+		runCalls[0]!.resolve();
+		await manager.getRecord(id)?.promise;
+		const resumed = manager.resume(id, "now");
+		resumeCalls[0]!.resolve("ok");
+		expect(await resumed).toMatchObject({ status: "completed", result: "ok" });
+	});
+
+	test("stopping a resumed agent aborts that run and stays stopped", async () => {
+		const runCalls = installFakeRunAgent();
+		const resumeCalls = installFakeResumeAgent();
+		manager = new AgentManager(undefined, 4);
+		const id = manager.spawn(pi, ctx, "general", "task", { description: "t", isBackground: true });
+		runCalls[0]!.resolve();
+		await manager.getRecord(id)?.promise;
+
+		const resumed = manager.resume(id, "long job");
+		expect(manager.abort(id)).toBe(true);
+		expect(resumeCalls[0]!.signal?.aborted).toBe(true);
+		resumeCalls[0]!.resolve("partial");
+		expect(await resumed).toMatchObject({ status: "stopped", result: "partial" });
+	});
+
+	test("a resume that fails after a stop keeps the stopped status", async () => {
+		const runCalls = installFakeRunAgent();
+		const resumeCalls = installFakeResumeAgent();
+		manager = new AgentManager(undefined, 4);
+		const id = manager.spawn(pi, ctx, "general", "task", { description: "t", isBackground: true });
+		runCalls[0]!.resolve();
+		await manager.getRecord(id)?.promise;
+
+		const resumed = manager.resume(id, "job");
+		manager.abort(id);
+		resumeCalls[0]!.reject(new Error("aborted"));
+		expect(await resumed).toMatchObject({ status: "stopped", error: "aborted" });
 	});
 
 	// ── hasRunning ──────────────────────────────────────────────────────────

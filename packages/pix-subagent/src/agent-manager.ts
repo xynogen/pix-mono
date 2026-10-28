@@ -133,6 +133,8 @@ export class AgentManager {
 	/** Monotonic finish counter — eviction order tiebreaker when completedAt collides. */
 	private finishSeq = 0;
 	private finishOrder = new Map<string, number>();
+	/** Agents whose spawn or resume promise has not settled yet (abort() flips status first). */
+	private inFlight = new Set<string>();
 	private onComplete?: OnAgentComplete;
 	private onStart?: OnAgentStart;
 	private onCompact?: OnAgentCompact;
@@ -381,7 +383,8 @@ export class AgentManager {
 				return "";
 			});
 
-		record.promise = promise;
+		this.inFlight.add(id);
+		record.promise = promise.finally(() => this.inFlight.delete(id));
 	}
 
 	/** Start queued agents up to the concurrency limit. */
@@ -407,11 +410,25 @@ export class AgentManager {
 
 	/**
 	 * Resume an existing agent session with a new prompt.
+	 *
+	 * Returns `"busy"` while a previous run is still in flight. `stopped` is set by
+	 * abort() before that run settles, so status alone cannot tell; we track the
+	 * invocation itself and wait for it.
 	 */
-	async resume(id: string, prompt: string, signal?: AbortSignal): Promise<AgentRecord | undefined> {
+	async resume(
+		id: string,
+		prompt: string,
+		signal?: AbortSignal,
+	): Promise<AgentRecord | "busy" | undefined> {
 		const record = this.agents.get(id);
 		if (!record?.session) return undefined;
+		if (this.inFlight.has(id)) return "busy";
+		if (record.status === "running" || record.status === "queued") return "busy";
 
+		// A fresh controller per run: the spawn's controller may already be aborted,
+		// and abort(id) must reach THIS session.
+		const controller = new AbortController();
+		record.abortController = controller;
 		record.status = "running";
 		record.startedAt = Date.now();
 		record.completedAt = undefined;
@@ -421,34 +438,49 @@ export class AgentManager {
 		// run is ranked by its NEW completion, not treated as the oldest.
 		this.finishOrder.delete(id);
 
-		try {
-			const { responseText, aborted, steered } = await _resumeAgentImpl(record.session, prompt, {
-				// Re-apply the original spawn's turn cap for this resume window.
-				maxTurns: record.maxTurns,
-				onTurnEnd: (turnCount) => {
-					record.turnCount = turnCount;
-				},
-				onToolActivity: (activity) => {
-					if (activity.type === "end") record.toolUses++;
-				},
-				onAssistantUsage: (usage, generationMs) => {
-					addUsage(record.lifetimeUsage, usage);
-					record.streamingMs += generationMs;
-				},
-				onCompaction: (info) => {
-					record.compactionCount++;
-					this.onCompact?.(record, info);
-				},
-				signal,
-			});
-			record.status = aborted ? "aborted" : steered ? "steered" : "completed";
-			record.result = responseText;
-		} catch (err) {
-			record.status = "error";
-			record.error = getErrorMessage(err);
-		}
-		this.finalize(record);
-
+		const run = (async () => {
+			try {
+				const { responseText, aborted, steered } = await _resumeAgentImpl(
+					record.session as AgentSession,
+					prompt,
+					{
+						// Re-apply the original spawn's turn cap for this resume window.
+						maxTurns: record.maxTurns,
+						onTurnEnd: (turnCount) => {
+							record.turnCount = turnCount;
+						},
+						onToolActivity: (activity) => {
+							if (activity.type === "end") record.toolUses++;
+						},
+						onAssistantUsage: (usage, generationMs) => {
+							addUsage(record.lifetimeUsage, usage);
+							record.streamingMs += generationMs;
+						},
+						onCompaction: (info) => {
+							record.compactionCount++;
+							this.onCompact?.(record, info);
+						},
+						signal: signal ? AbortSignal.any([controller.signal, signal]) : controller.signal,
+					},
+				);
+				// Don't overwrite status if externally stopped via abort()
+				if (record.status !== "stopped") {
+					record.status = aborted ? "aborted" : steered ? "steered" : "completed";
+				}
+				record.result = responseText;
+				return responseText;
+			} catch (err) {
+				if (record.status !== "stopped") record.status = "error";
+				record.error = getErrorMessage(err);
+				return "";
+			} finally {
+				this.finalize(record);
+				this.inFlight.delete(id);
+			}
+		})();
+		this.inFlight.add(id);
+		record.promise = run;
+		await run;
 		return record;
 	}
 
