@@ -323,8 +323,11 @@ export function buildRules(cfg: UserConfig): {
 	pathRules: PathRule[];
 } {
 	const base = cfg.guardrails === "off" ? [] : DEFAULT_RULES.slice();
+	// `g`/`y` make RegExp.test() stateful (lastIndex), so the same command would
+	// match on one call and slip through on the next. Strip them.
+	const stateless = (flags: string) => flags.replace(/[gy]/g, "");
 	const extra = (cfg.extraRules ?? []).map((r) => ({
-		pattern: new RegExp(r.pattern, r.flags ?? "i"),
+		pattern: new RegExp(r.pattern, stateless(r.flags ?? "i")),
 		severity: (r.severity ?? "dangerous") as Severity,
 		reason: r.reason ?? "user-defined rule",
 	}));

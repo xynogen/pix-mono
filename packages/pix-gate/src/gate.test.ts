@@ -373,6 +373,16 @@ describe("buildRules", () => {
 		expect(classify("foo bar", rules)?.reason).toBe("test");
 	});
 
+	test("a g/y flag on a user rule does not make matching flaky", () => {
+		const { rules } = buildRules({
+			guardrails: "off",
+			extraRules: [{ pattern: "deploy", flags: "gi", severity: "dangerous", reason: "ship" }],
+		});
+		const hits = [1, 2, 3].map(() => classify("deploy prod", rules)?.reason);
+		expect(hits).toEqual(["ship", "ship", "ship"]);
+		expect(rules[0]?.pattern.flags).toBe("i");
+	});
+
 	test("autoApprove strings compile to regexes", () => {
 		const { autoApprove } = buildRules({ autoApprove: ["^npm publish"] });
 		const rule0 = autoApprove[0] as RegExp;
