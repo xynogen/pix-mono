@@ -592,6 +592,11 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						void reload();
 						return;
 					}
+					// Esc must always close, even while a slow reload is in flight.
+					if (matchesKey(data, "escape")) {
+						done(null);
+						return;
+					}
 					if (reloading) return;
 					const shiftTab = matchesKey(data, Key.shift(Key.tab));
 					if (shiftTab || matchesKey(data, Key.tab)) {
@@ -615,8 +620,6 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					} else if (isNav || matchesKey(data, "enter")) {
 						list.handleInput?.(data);
 						if (isNav) pager.followSelection();
-					} else if (matchesKey(data, "escape")) {
-						done(null);
 					} else {
 						search.handleInput?.(data);
 						applyFuzzy(search.getValue?.() ?? "");
