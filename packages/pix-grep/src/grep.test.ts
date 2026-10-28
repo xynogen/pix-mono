@@ -80,6 +80,37 @@ describe("grepHighlight", () => {
 	});
 });
 
+describe("case handling matches the ripgrep fallback", () => {
+	it("FFF runs case-sensitive; ignoreCase goes to the SDK, which honours it", async () => {
+		const seen: Array<{ smartCase?: boolean }> = [];
+		const finder = {
+			isDestroyed: false,
+			grep: (_pattern: string, opts: { smartCase?: boolean }) => {
+				seen.push(opts);
+				return { ok: true, value: { items: [], totalMatched: 0 } };
+			},
+		};
+		const sdkCalls: Array<{ ignoreCase?: boolean }> = [];
+		const factory = (() => ({
+			execute: async (_id: string, params: { ignoreCase?: boolean }) => {
+				sdkCalls.push(params);
+				return { content: [{ type: "text", text: "" }], details: undefined };
+			},
+		})) as unknown as typeof noopFactory;
+		const { pi, tool } = capturePi();
+		registerGrepTool(pi, factory, { ...makeToolContext(), fffState: { finder } } as never);
+		const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+
+		await execute("t1", { pattern: "todo" }, undefined, undefined, {});
+		expect(seen).toEqual([expect.objectContaining({ smartCase: false })]);
+		expect(sdkCalls).toHaveLength(0);
+
+		await execute("t2", { pattern: "TODO", ignoreCase: true }, undefined, undefined, {});
+		expect(seen).toHaveLength(1); // FFF skipped: it cannot do ignoreCase
+		expect(sdkCalls).toEqual([expect.objectContaining({ ignoreCase: true })]);
+	});
+});
+
 describe("registerGrepTool", () => {
 	it("registers a tool named 'grep'", () => {
 		const { pi, names } = capturePi();

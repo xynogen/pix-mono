@@ -163,17 +163,21 @@ export function registerGrepTool(
 				// Try FFF first (SIMD-accelerated).
 				// Constrained searches (path/glob) fall through to SDK — FFF 0.5.2
 				// can abort the process on constrained searches with Unicode filenames.
+				// ignoreCase also falls through: FFF only has smartCase (insensitive
+				// for an all-lowercase query only), so it cannot honour ignoreCase.
 				if (
 					fffState.finder &&
 					!fffState.finder.isDestroyed &&
 					!effectiveParams.path &&
-					!effectiveParams.glob
+					!effectiveParams.glob &&
+					!effectiveParams.ignoreCase
 				) {
 					try {
 						const effectiveLimit = Math.max(1, effectiveParams.limit ?? DEFAULT_GREP_LIMIT);
 						const grepResult = fffState.finder.grep(effectiveParams.pattern, {
 							mode: effectiveParams.literal ? "plain" : "regex",
-							smartCase: !effectiveParams.ignoreCase,
+							// Match the ripgrep fallback: case-sensitive unless ignoreCase.
+							smartCase: false,
 							maxMatchesPerFile: Math.min(effectiveLimit, 50),
 							cursor: null,
 							beforeContext: effectiveParams.context ?? 0,
