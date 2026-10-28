@@ -11,6 +11,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { getAgentPath } from "./agent-dir.ts";
 
 /** OAuth token storage format */
@@ -93,11 +94,12 @@ function readAuthEntry(serverName: string): AuthEntry | undefined {
 
 /**
  * Write the auth entry for a server to disk with secure permissions.
+ * Atomic (temp file + rename): a crash mid-write used to leave a truncated
+ * tokens.json that readAuthEntry then dropped, silently losing refresh tokens.
  */
 function writeAuthEntry(serverName: string, entry: AuthEntry): void {
 	ensureServerDir(serverName);
-	const filePath = getAuthEntryFilePath(serverName);
-	writeFileSync(filePath, JSON.stringify(entry, null, 2), { mode: 0o600 });
+	writeFileAtomicSync(getAuthEntryFilePath(serverName), JSON.stringify(entry, null, 2), 0o600);
 }
 
 /**

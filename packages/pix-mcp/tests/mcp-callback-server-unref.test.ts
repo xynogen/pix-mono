@@ -27,9 +27,16 @@ const runtime = {
 		onListen();
 	},
 	servers: [] as MockServer[],
+	handler: undefined as
+		| ((
+				req: { url?: string; headers: Record<string, string> },
+				res: { writeHead(code: number): void; end(body?: string): void },
+		  ) => void)
+		| undefined,
 };
 
-const createServer = mock((_handler: unknown) => {
+const createServer = mock((handler: unknown) => {
+	runtime.handler = handler as typeof runtime.handler;
 	const handlers = new Map<string, (error?: NodeJS.ErrnoException) => void>();
 	const server: MockServer = {
 		handlers,
@@ -306,5 +313,27 @@ describe("mcp-callback-server", () => {
 
 		cancelPendingCallback("pending-state");
 		await expect(pending).rejects.toThrow(/Authorization cancelled/);
+	});
+
+	it("answers 400 to a malformed Host header instead of throwing", async () => {
+		const { ensureCallbackServer } = await import("../src/mcp-callback-server.ts");
+		await ensureCallbackServer();
+		const handler = mocks.runtime.handler;
+		if (!handler) throw new Error("handler not captured");
+
+		let status = 0;
+		const res = {
+			writeHead: (code: number) => {
+				status = code;
+			},
+			end: () => {},
+		};
+		expect(() =>
+			handler({ url: "/callback?state=s&code=c", headers: { host: "bad host:x" } }, res),
+		).not.toThrow();
+		expect(status).toBeGreaterThanOrEqual(200);
+
+		handler({ url: "//[", headers: { host: "127.0.0.1" } }, res);
+		expect(status).toBe(400);
 	});
 });

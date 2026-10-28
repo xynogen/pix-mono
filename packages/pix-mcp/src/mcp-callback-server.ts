@@ -108,7 +108,17 @@ let callbackServerHost = DEFAULT_OAUTH_CALLBACK_HOST;
  * Handle incoming HTTP requests to the callback server.
  */
 function handleRequest(req: IncomingMessage, res: ServerResponse): void {
-	const url = new URL(req.url || "/", `http://${req.headers.host}`);
+	// Only the path and query matter, so use a fixed base: building it from the
+	// client's Host header let a malformed header throw inside the listener,
+	// which is an uncaught exception in the Pi process.
+	let url: URL;
+	try {
+		url = new URL(req.url || "/", "http://127.0.0.1");
+	} catch {
+		res.writeHead(400, { "Content-Type": "text/plain" });
+		res.end("Bad request");
+		return;
+	}
 
 	// Only handle the callback path
 	if (url.pathname !== getOAuthCallbackPath()) {
