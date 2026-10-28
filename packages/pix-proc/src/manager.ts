@@ -67,8 +67,22 @@ function readStartTicks(pid: number): string | undefined {
 	}
 }
 
+/**
+ * A group id we may signal. `kill(-1)` hits every process the user owns and
+ * `kill(-0)` our own group, so anything <= 1 (or a corrupt pidfile value) is
+ * refused before it reaches process.kill.
+ */
+function safeGroupId(pgid: unknown): pgid is number {
+	return Number.isSafeInteger(pgid) && (pgid as number) > 1;
+}
+
+function killGroup(pgid: number, signal: NodeJS.Signals): void {
+	if (safeGroupId(pgid)) silent(() => process.kill(-pgid, signal));
+}
+
 /** Is a process group still alive? signal 0 tests existence without killing. */
 function pgidAlive(pgid: number): boolean {
+	if (!safeGroupId(pgid)) return false;
 	try {
 		process.kill(-pgid, 0);
 		return true;
@@ -162,8 +176,25 @@ export class ProcManager {
 			rmSync(logPath, { force: true });
 			throw err;
 		}
+		// Spawn failures (bad cwd, missing shell) arrive as an async 'error' event;
+		// without a listener Node rethrows it and takes Pi down.
+		child.on("error", (err) => {
+			const live = this.procs.get(handle);
+			if (!live) return; // failed before registration; start() already threw
+			live.meta.status = "exited";
+			live.meta.logError ??= err.message;
+			this.closeFd(live);
+			silent(() => rmSync(this.pidPath(handle), { force: true }));
+		});
+		const pid = child.pid;
+		if (!safeGroupId(pid)) {
+			closeSync(fd);
+			rmSync(logPath, { force: true });
+			throw new Error(
+				existsSync(cwd) ? `failed to start: ${command}` : `cwd does not exist: ${cwd}`,
+			);
+		}
 		child.unref();
-		const pid = child.pid ?? -1;
 		const meta: ProcMeta = {
 			handle,
 			command,
@@ -181,11 +212,20 @@ export class ProcManager {
 			stream?.on("data", (chunk: Buffer) => {
 				const length = Math.min(chunk.length, this.logMaxBytes - live.bytes);
 				let offset = 0;
-				while (offset < length && live.fd !== undefined) {
-					const written = writeSync(live.fd, chunk, offset, length - offset);
-					if (!written) throw new Error("process log write made no progress");
-					offset += written;
-					live.bytes += written;
+				try {
+					while (offset < length && live.fd !== undefined) {
+						const written = writeSync(live.fd, chunk, offset, length - offset);
+						if (!written) throw new Error("process log write made no progress");
+						offset += written;
+						live.bytes += written;
+					}
+				} catch (err) {
+					// A throw here would be uncaught (stream listener). Stop recording
+					// (disk full, fd closed) and say why; the process keeps running.
+					meta.capped = true;
+					meta.logError = err instanceof Error ? err.message : String(err);
+					this.closeFd(live);
+					return;
 				}
 				if (live.bytes >= this.logMaxBytes) meta.capped = true;
 			});
@@ -240,24 +280,29 @@ export class ProcManager {
 	/** Cursor read — new complete lines since the model's last call. */
 	async logsSince(
 		handle: string,
-	): Promise<(LogView & { logPath: string; capped: boolean }) | undefined> {
+	): Promise<(LogView & { logPath: string; capped: boolean; logError?: string }) | undefined> {
 		const live = this.procs.get(handle);
 		if (!live) return undefined;
 		const text = await this.readLog(live.logPath);
 		const view = logSince(text, live.cursor);
 		live.cursor = view.offset;
-		return { ...view, logPath: live.logPath, capped: live.meta.capped };
+		return {
+			...view,
+			logPath: live.logPath,
+			capped: live.meta.capped,
+			logError: live.meta.logError,
+		};
 	}
 
 	/** Forced tail read — last n lines, does NOT move the model cursor. */
 	async logsTail(
 		handle: string,
 		n: number,
-	): Promise<{ lines: string[]; logPath: string; capped: boolean } | undefined> {
+	): Promise<{ lines: string[]; logPath: string; capped: boolean; logError?: string } | undefined> {
 		const live = this.procs.get(handle);
 		if (!live) return undefined;
 		const lines = await this.readTail(live.logPath, n);
-		return { lines, logPath: live.logPath, capped: live.meta.capped };
+		return { lines, logPath: live.logPath, capped: live.meta.capped, logError: live.meta.logError };
 	}
 
 	/** Freshest complete line, for the widget/list. Does not move any cursor. */
@@ -313,10 +358,10 @@ export class ProcManager {
 				note: `already ${live.meta.status === "killed" ? "killed" : `exited(${live.meta.exitCode ?? "?"})`}`,
 			};
 		}
-		silent(() => process.kill(-live.meta.pgid, "SIGTERM"));
+		killGroup(live.meta.pgid, "SIGTERM");
 		await new Promise((r) => setTimeout(r, graceMs));
 		if (live.meta.status === "running") {
-			silent(() => process.kill(-live.meta.pgid, "SIGKILL"));
+			killGroup(live.meta.pgid, "SIGKILL");
 		}
 		return { ok: true, note: `${handle} stopped` };
 	}
@@ -356,8 +401,8 @@ export class ProcManager {
 					cwd?: string;
 					startTime?: number;
 				};
-				if (!pgidAlive(raw.pgid)) {
-					rmSync(join(PROC_DIR, f), { force: true }); // stale pidfile, group gone
+				if (!safeGroupId(raw.pgid) || !pgidAlive(raw.pgid)) {
+					rmSync(join(PROC_DIR, f), { force: true }); // stale or corrupt pidfile
 					continue;
 				}
 				// PID-reuse guard: the leader's current start ticks must match.
@@ -383,7 +428,7 @@ export class ProcManager {
 
 	/** Kill a specific orphan group (used after the user approves the reap prompt). */
 	killOrphan(o: Orphan): void {
-		silent(() => process.kill(-o.pgid, "SIGKILL"));
+		killGroup(o.pgid, "SIGKILL");
 		silent(() => rmSync(this.pidPath(o.handle), { force: true }));
 	}
 

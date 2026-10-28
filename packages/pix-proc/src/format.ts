@@ -16,6 +16,8 @@ export interface ProcMeta {
 	status: "running" | "exited" | "killed";
 	exitCode?: number;
 	capped: boolean;
+	/** Why output stopped being recorded, or why the spawn failed. */
+	logError?: string;
 }
 
 export const MAX_LOG_LINES = 1000;

@@ -291,7 +291,8 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			const t = await mgr.logsTail(p.handle, p.tail);
 			if (!t) return fail("logs", `unknown handle ${p.handle}`);
 			const head = [`full log: ${t.logPath}`];
-			if (t.capped)
+			if (t.logError) head.push(`log stopped: ${t.logError} — process may still be running`);
+			else if (t.capped)
 				head.push("log capped at 50 MB — process still running, output no longer recorded");
 			return ok("logs", ...head, ...(t.lines.length ? t.lines : ["(no output)"]));
 		}
@@ -299,7 +300,8 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		if (!view) return fail("logs", `unknown handle ${p.handle}`);
 		const head = [`full log: ${view.logPath}`];
 		if (view.more > 0) head.push(`+${view.more} more, offset ${view.offset}`);
-		if (view.capped)
+		if (view.logError) head.push(`log stopped: ${view.logError} — process may still be running`);
+		else if (view.capped)
 			head.push("log capped at 50 MB — process still running, output no longer recorded");
 		return ok("logs", ...head, ...(view.lines.length ? view.lines : ["(no new output)"]));
 	}

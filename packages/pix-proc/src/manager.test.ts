@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, statSync } from "node:fs";
-import { ProcManager } from "./manager.ts";
+import { existsSync, statSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { PROC_DIR, ProcManager } from "./manager.ts";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -162,5 +163,26 @@ describe.skipIf(process.platform === "win32")("ProcManager lifecycle", () => {
 		expect(await mgr.logsSince("proc-nope-nope-00")).toBeUndefined();
 		expect((await mgr.stop("proc-nope-nope-00")).ok).toBe(false);
 		expect(mgr.rm("proc-nope-nope-00").ok).toBe(false);
+	});
+
+	test("a missing cwd throws a clear error and does not crash the host", async () => {
+		mgr = new ProcManager();
+		expect(() => mgr.start("echo hi", "/definitely/not/here")).toThrow(
+			"cwd does not exist: /definitely/not/here",
+		);
+		await wait(100); // the async 'error' event fires here; an unhandled one fails the test
+		expect(mgr.list()).toHaveLength(0);
+	});
+
+	test("pidfiles with unsafe group ids are discarded, never signalled", async () => {
+		mgr = new ProcManager();
+		const bad = [-1, 0, 1, "x", 1.5].map((pgid, i) => {
+			const handle = `proc-bad-pgid-${i}`;
+			writeFileSync(join(PROC_DIR, `${handle}.pid`), JSON.stringify({ pgid, command: "x" }));
+			return handle;
+		});
+		const orphans = await mgr.findOrphans();
+		expect(orphans.filter((o) => bad.includes(o.handle))).toEqual([]);
+		for (const h of bad) expect(existsSync(join(PROC_DIR, `${h}.pid`))).toBe(false);
 	});
 });
