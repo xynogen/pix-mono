@@ -6,15 +6,18 @@ function blockedIpv4(address: string): boolean {
 	const parts = address.split(".").map(Number);
 	if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255))
 		return false;
-	const [a, b] = parts as [number, number, number, number];
+	const [a, b, c] = parts as [number, number, number, number];
 	return (
-		a === 0 ||
+		a === 0 || // "this" network
 		a === 10 ||
 		a === 127 ||
-		(a === 100 && b >= 64 && b <= 127) ||
-		(a === 169 && b === 254) ||
+		(a === 100 && b >= 64 && b <= 127) || // carrier-grade NAT
+		(a === 169 && b === 254) || // link-local, cloud metadata
 		(a === 172 && b >= 16 && b <= 31) ||
-		(a === 192 && b === 168)
+		(a === 192 && b === 168) ||
+		(a === 192 && b === 0 && c === 0) || // IETF protocol assignments
+		(a === 198 && (b === 18 || b === 19)) || // benchmarking
+		a >= 224 // multicast, reserved, broadcast
 	);
 }
 
@@ -39,9 +42,11 @@ function blockedIp(address: string): boolean {
 	if (isIP(value) !== 6) return false;
 	const groups = ipv6Groups(value);
 	if (!groups) return false;
+	const first = groups[0] ?? 0;
 	if (groups.slice(0, 7).every((group) => group === 0) && (groups[7] ?? 0) <= 1) return true;
-	if ((groups[0] ?? 0) >= 0xfc00 && (groups[0] ?? 0) <= 0xfdff) return true;
-	if (((groups[0] ?? 0) & 0xffc0) === 0xfe80) return true;
+	if (first >= 0xfc00 && first <= 0xfdff) return true; // unique local
+	if ((first & 0xffc0) === 0xfe80) return true; // link-local
+	if (first >= 0xff00) return true; // multicast
 	if (groups.slice(0, 5).every((group) => group === 0) && groups[5] === 0xffff) {
 		return blockedIpv4(
 			`${(groups[6] ?? 0) >> 8}.${(groups[6] ?? 0) & 255}.${(groups[7] ?? 0) >> 8}.${(groups[7] ?? 0) & 255}`,
@@ -50,6 +55,9 @@ function blockedIp(address: string): boolean {
 	return false;
 }
 
+// ponytail: checks the address, then fetch() resolves again, so a DNS-rebinding
+// host can still swap to an internal IP between the two. Pin the checked IP with
+// a custom-lookup dispatcher if this guards anything more sensitive than reads.
 async function assertPublicUrl(url: string): Promise<void> {
 	const parsed = new URL(url);
 	if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
@@ -70,8 +78,11 @@ async function assertPublicUrl(url: string): Promise<void> {
 	let addresses: { address: string; family: number }[];
 	try {
 		addresses = await dns.lookup(host, { all: true, verbatim: true });
-	} catch {
-		return;
+	} catch (err) {
+		// Fail closed: an unverified host must not be fetched. fetch() would hit
+		// the same resolver, so this only blocks what could not be checked.
+		const code = (err as NodeJS.ErrnoException).code ?? "lookup failed";
+		throw new Error(`Blocked URL: could not resolve ${host} (${code})`);
 	}
 	if (addresses.some(({ address }) => blockedIp(address)))
 		throw new Error("Blocked URL: hostname resolves to an internal host");

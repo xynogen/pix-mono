@@ -19,6 +19,8 @@ const originalYoucomKey = process.env.YDC_API_KEY;
 const originalNineRouterKey = process.env.NINEROUTER_KEY;
 const originalLegacyRouterKey = process.env.ROUTER_API_KEY;
 const originalNineRouterModel = fetchConfig.nineRouterModel;
+const originalNineRouterUrl = process.env.NINEROUTER_URL;
+process.env.NINEROUTER_URL = "https://router.test";
 
 afterEach(() => {
 	globalThis.fetch = originalFetch;
@@ -35,10 +37,15 @@ afterEach(() => {
 	if (originalLegacyRouterKey === undefined) delete process.env.ROUTER_API_KEY;
 	else process.env.ROUTER_API_KEY = originalLegacyRouterKey;
 	fetchConfig.nineRouterModel = originalNineRouterModel;
+	process.env.NINEROUTER_URL = "https://router.test";
+});
+afterAll(() => {
+	if (originalNineRouterUrl === undefined) delete process.env.NINEROUTER_URL;
+	else process.env.NINEROUTER_URL = originalNineRouterUrl;
 });
 
 describe("built-in fetch providers", () => {
-	test("requires a 9Router API key", () => {
+	test("requires a 9Router URL and API key", () => {
 		delete process.env.NINEROUTER_KEY;
 		delete process.env.ROUTER_API_KEY;
 		registerBuiltinProviders();
@@ -46,6 +53,10 @@ describe("built-in fetch providers", () => {
 
 		process.env.NINEROUTER_KEY = "router-key";
 		expect(getFetchProvider("9router")?.isConfigured?.()).toBe(true);
+
+		// No default host: a key alone is not enough.
+		delete process.env.NINEROUTER_URL;
+		expect(getFetchProvider("9router")?.isConfigured?.()).toBe(false);
 	});
 
 	test("uses the 9Router model from the standalone fetch config", async () => {
@@ -185,6 +196,37 @@ describe("built-in fetch providers", () => {
 		const error = await fetchPublic("http://127.0.0.1/private", {}).catch((cause) => cause);
 		expect(error).toBeInstanceOf(Error);
 		expect((error as Error).message).toBe("Blocked URL: internal host");
+		expect(requested).toBe(false);
+	});
+
+	test("blocks reserved, multicast and broadcast addresses", async () => {
+		let requested = false;
+		globalThis.fetch = (async () => {
+			requested = true;
+			return new Response();
+		}) as unknown as typeof fetch;
+
+		for (const host of ["192.0.0.8", "198.18.0.1", "224.0.0.1", "255.255.255.255", "[ff02::1]"]) {
+			const error = await fetchPublic(`http://${host}/`, {}).catch((cause) => cause);
+			expect((error as Error).message).toBe("Blocked URL: internal host");
+		}
+		expect(requested).toBe(false);
+	});
+
+	test("fails closed when the hostname cannot be resolved", async () => {
+		let requested = false;
+		globalThis.fetch = (async () => {
+			requested = true;
+			return new Response();
+		}) as unknown as typeof fetch;
+
+		lookup.mockImplementationOnce(async () => {
+			throw Object.assign(new Error("getaddrinfo ENOTFOUND"), { code: "ENOTFOUND" });
+		});
+		const error = await fetchPublic("http://no-such-host.invalid/", {}).catch((cause) => cause);
+		expect((error as Error).message).toMatch(
+			/^Blocked URL: could not resolve no-such-host\.invalid \(\w+\)$/,
+		);
 		expect(requested).toBe(false);
 	});
 

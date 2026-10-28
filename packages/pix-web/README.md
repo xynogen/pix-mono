@@ -41,7 +41,7 @@ The settings live in `~/.pi/agent/pix.json` under `fetch`. This example shows th
 Set the 9Router URL and API key in the shell environment:
 
 ```bash
-export NINEROUTER_URL="https://9router.example.com/v1"
+export NINEROUTER_URL="https://your-router-host/v1"  # required; there is no default
 export NINEROUTER_KEY="your-api-key"
 ```
 

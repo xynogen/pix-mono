@@ -8,6 +8,7 @@ const originalSearxngUrl = process.env.SEARXNG_URL;
 const originalNineRouterKey = process.env.NINEROUTER_KEY;
 const originalLegacyRouterKey = process.env.ROUTER_API_KEY;
 const originalModel = searchConfig.nineRouterModel;
+const originalNineRouterUrl = process.env.NINEROUTER_URL;
 
 afterEach(() => {
 	globalThis.fetch = originalFetch;
@@ -18,6 +19,8 @@ afterEach(() => {
 	if (originalLegacyRouterKey === undefined) delete process.env.ROUTER_API_KEY;
 	else process.env.ROUTER_API_KEY = originalLegacyRouterKey;
 	searchConfig.nineRouterModel = originalModel;
+	if (originalNineRouterUrl === undefined) delete process.env.NINEROUTER_URL;
+	else process.env.NINEROUTER_URL = originalNineRouterUrl;
 });
 
 describe("built-in search providers", () => {
@@ -143,6 +146,7 @@ describe("built-in search providers", () => {
 
 	test("uses the separate 9Router search model", async () => {
 		process.env.NINEROUTER_KEY = "router-key";
+		process.env.NINEROUTER_URL = "https://router.test";
 		searchConfig.nineRouterModel = "tavily";
 		let body: Record<string, unknown> = {};
 		globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {

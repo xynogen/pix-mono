@@ -69,7 +69,7 @@ function envExample(name: string): string {
 	if (name === "SEARXNG_URL") return `export ${name}="https://search.example.com"`;
 	if (name === "GOOGLE_PSE_CX") return `export ${name}="your-search-engine-id"`;
 	return name.endsWith("_URL")
-		? `export ${name}="https://9router.example.com/v1"`
+		? `export ${name}="https://your-router-host/v1"`
 		: `export ${name}="your-api-key"`;
 }
 
