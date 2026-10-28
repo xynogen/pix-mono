@@ -56,6 +56,10 @@ class DownloadManager {
 			this.starting = startDaemon({ dir: ctx.cwd, onStatus: reportToolStatus(this.ui) }).then(
 				(d) => {
 					this.daemon = d;
+					// A crashed daemon must not stay cached: the next call respawns it.
+					d.proc.once("exit", () => {
+						if (this.daemon === d) this.daemon = undefined;
+					});
 					return d;
 				},
 			);

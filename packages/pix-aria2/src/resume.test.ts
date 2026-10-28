@@ -42,7 +42,7 @@ test("W1 capture: resume restarts progress polling after paused downloads clear 
 			startDaemon: async () => ({
 				conn: {},
 				port: 1,
-				proc: {},
+				proc: { once: () => {} },
 				secret: "fixture",
 				shutdown: async () => {},
 			}),

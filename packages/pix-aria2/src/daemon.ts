@@ -100,7 +100,16 @@ export async function startDaemon(options: StartDaemonOptions = {}): Promise<Dae
 
 	const url = `ws://127.0.0.1:${port}/jsonrpc` as const;
 	const timeout = options.readyTimeoutMs ?? 5000;
-	const conn = await Promise.race([connectWithRetry(url, secret, timeout), exited]);
+	let conn: Conn;
+	try {
+		conn = await Promise.race([connectWithRetry(url, secret, timeout), exited]);
+	} catch (err) {
+		// Never leave an orphan daemon holding the port when RPC did not come up.
+		proc.removeAllListeners("exit");
+		proc.kill("SIGTERM");
+		throw err;
+	}
+	exited.catch(() => {}); // a later exit is handled by the caller's onExit
 
 	let stopped = false;
 	const shutdown = async (): Promise<void> => {

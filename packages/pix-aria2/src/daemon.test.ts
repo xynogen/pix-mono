@@ -4,7 +4,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { join } from "node:path";
 import { resolveTool } from "@xynogen/pix-runtime/binaries";
@@ -90,3 +90,18 @@ else
 			else process.env.PI_OFFLINE = offline;
 		}
 	});
+
+test.skipIf(process.platform === "win32")(
+	"kills the child when RPC never comes up (no orphan daemon)",
+	async () => {
+		// A stand-in "aria2c" that ignores its args and never opens the RPC port.
+		const fake = join(dir, "fake-aria2c");
+		const pidFile = join(dir, "fake.pid");
+		writeFileSync(fake, `#!/bin/sh\necho $$ > "${pidFile}"\nexec sleep 30\n`, { mode: 0o755 });
+
+		await expect(startDaemon({ dir, binary: fake, readyTimeoutMs: 300 })).rejects.toThrow();
+		const pid = Number(readFileSync(pidFile, "utf8"));
+		await new Promise((r) => setTimeout(r, 100));
+		expect(() => process.kill(pid, 0)).toThrow(); // ESRCH: the child is gone
+	},
+);
