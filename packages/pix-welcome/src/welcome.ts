@@ -9,7 +9,7 @@
  *   · models       — count of loaded models
  *   · tools        — count of active tools
  *   · skills       — count of loaded skills
- *   · gitignore    — auto-ignore Pi emissions (.pi/) in git repos
+ *   · gitignore    — offer once per repo to ignore Pi emissions (.pi/)
  *
  * Each check updates the banner live as results arrive.
  * Banner auto-dismisses on the first user turn (turn_start).
@@ -31,12 +31,13 @@
  *   ✓ Ignore  up to date
  */
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { padIcon } from "@xynogen/pix-pretty/utils";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import { runGit } from "@xynogen/pix-runtime/os";
 import { agentDir, homeDir } from "@xynogen/pix-runtime/paths";
@@ -100,7 +101,52 @@ async function checkPiVersion(): Promise<CheckResult> {
 	}
 }
 
-async function checkPiIgnore(cwd: string): Promise<CheckResult> {
+/**
+ * Add `missing` rules without touching any existing line: insert them right
+ * after an existing `# Pix Agent` header, else append a new block. Keeps the
+ * file's line ending (CRLF or LF).
+ */
+export function appendIgnoreRules(existing: string, missing: readonly string[]): string {
+	const eol = existing.includes("\r\n") ? "\r\n" : "\n";
+	const lines = existing.split(/\r?\n/);
+	const header = lines.findIndex((line) => line.trim() === PI_IGNORE_SECTION_HEADER);
+	if (header >= 0) {
+		lines.splice(header + 1, 0, ...missing);
+		return lines.join(eol);
+	}
+	const base = existing && !existing.endsWith("\n") ? `${existing}${eol}` : existing;
+	const gap = base.trim() ? eol : "";
+	return `${base}${gap}${[PI_IGNORE_SECTION_HEADER, ...missing].join(eol)}${eol}`;
+}
+
+// Repos where the user said no. A yes needs no record: the rules then exist.
+function declinedFile(): string {
+	return join(agentDir(), "pix-welcome.json");
+}
+
+function declinedRepos(): string[] {
+	try {
+		const data = JSON.parse(readFileSync(declinedFile(), "utf8")) as { ignoreDeclined?: unknown };
+		return Array.isArray(data.ignoreDeclined)
+			? data.ignoreDeclined.filter((r) => typeof r === "string")
+			: [];
+	} catch {
+		return [];
+	}
+}
+
+function rememberDecline(repoRoot: string): void {
+	const ignoreDeclined = [...new Set([...declinedRepos(), repoRoot])];
+	writeFileAtomicSync(declinedFile(), `${JSON.stringify({ ignoreDeclined }, null, 2)}\n`);
+}
+
+export type ConfirmFn = (title: string, message: string) => Promise<boolean>;
+
+/**
+ * Offer once per repo to add Pi's ignore rules. `confirm` is undefined without
+ * a UI (print/RPC): then only report what is missing and never edit.
+ */
+export async function checkPiIgnore(cwd: string, confirm?: ConfirmFn): Promise<CheckResult> {
 	try {
 		// Find repo root — avoids creating .gitignore in a subfolder
 		const root = await runGit(["rev-parse", "--show-toplevel"], { cwd, timeoutMs: 2_000 });
@@ -111,7 +157,8 @@ async function checkPiIgnore(cwd: string): Promise<CheckResult> {
 		// (CRLF, trailing whitespace, grep exit-code 2, or grep/node off PATH all
 		// silently degraded to "missing", so the panel rewrote every session).
 		const gitignorePath = `${repoRoot}/.gitignore`;
-		const existing = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf8") : "";
+		const exists = existsSync(gitignorePath);
+		const existing = exists ? readFileSync(gitignorePath, "utf8") : "";
 
 		// Whitespace-tolerant whole-line match (handles CRLF + trailing spaces).
 		const presentLines = new Set(existing.split(/\r?\n/).map((line) => line.trim()));
@@ -120,13 +167,25 @@ async function checkPiIgnore(cwd: string): Promise<CheckResult> {
 		if (missing.length === 0) {
 			return { label: "Ignore", status: "ok", detail: "up to date" };
 		}
+		if (declinedRepos().includes(repoRoot)) {
+			return { label: "Ignore", status: "ok", detail: "skipped (declined)" };
+		}
+		if (!confirm) {
+			return { label: "Ignore", status: "warn", detail: `${missing.join(", ")} not ignored` };
+		}
 
-		// Rewrite .gitignore — strip any existing Pix Agent section, then append
-		// a clean block with all rules under a single header.
-		const stripped = existing.replace(/(?:^|\n)# Pix Agent\n(?:[^\n]*\n)*/g, "\n").trimEnd();
-		const block = [PI_IGNORE_SECTION_HEADER, ...PI_IGNORE_RULES].join("\n");
-		const content = `${stripped ? `${stripped}\n\n` : ""}${block}\n`;
-		writeFileSync(gitignorePath, content, "utf8");
+		const ok = await confirm(
+			`Add ${missing.join(", ")} to .gitignore?`,
+			`Pix keeps plans and caches in .pi/. This appends to ${gitignorePath}:\n\n${[PI_IGNORE_SECTION_HEADER, ...missing].join("\n")}\n\nAsked once per repo.`,
+		);
+		if (!ok) {
+			rememberDecline(repoRoot);
+			return { label: "Ignore", status: "ok", detail: "skipped (declined)" };
+		}
+
+		// Keep the user's permissions; the atomic helper defaults to 0o600.
+		const mode = exists ? statSync(gitignorePath).mode & 0o777 : 0o644;
+		writeFileAtomicSync(gitignorePath, appendIgnoreRules(existing, missing), mode);
 
 		return {
 			label: "Ignore",
@@ -449,7 +508,10 @@ export default function (pi: ExtensionAPI) {
 		_updateSkills = (r: CheckResult) => update(4, r);
 
 		void checkPiVersion().then((r) => update(0, r));
-		void checkPiIgnore(ctx.cwd).then((r) => update(5, r));
+		const confirm: ConfirmFn | undefined = ctx.hasUI
+			? (title, message) => ctx.ui.confirm(title, message)
+			: undefined;
+		void checkPiIgnore(ctx.cwd, confirm).then((r) => update(5, r));
 		// auth already filled synchronously above; no async needed
 
 		// Tools register during session_start (incl. other extensions); read on

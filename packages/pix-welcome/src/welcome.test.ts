@@ -1,10 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { visibleWidth } from "@earendil-works/pi-tui";
+import { runGit } from "@xynogen/pix-runtime/os";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerWelcome, {
+	appendIgnoreRules,
 	type CheckResult,
+	checkPiIgnore,
 	countSkillsInDirs,
 	LABEL_WIDTH,
 	LOGO_ROWS,
@@ -247,5 +250,80 @@ describe("countSkillsInDirs", () => {
 describe("PI_IGNORE_RULES", () => {
 	it("includes only the current Pi directory", () => {
 		expect(PI_IGNORE_RULES).toEqual([".pi/"]);
+	});
+});
+
+describe("appendIgnoreRules", () => {
+	it("keeps every user line after an existing Pix header", () => {
+		const before = "node_modules/\n# Pix Agent\n.old/\ndist/\n*.log\n";
+		const after = appendIgnoreRules(before, [".pi/"]);
+		expect(after).toBe("node_modules/\n# Pix Agent\n.pi/\n.old/\ndist/\n*.log\n");
+	});
+
+	it("keeps CRLF line endings", () => {
+		expect(appendIgnoreRules("dist/\r\n", [".pi/"])).toBe("dist/\r\n\r\n# Pix Agent\r\n.pi/\r\n");
+	});
+
+	it("adds a newline before the block when the file lacks one", () => {
+		expect(appendIgnoreRules("dist/", [".pi/"])).toBe("dist/\n\n# Pix Agent\n.pi/\n");
+	});
+
+	it("writes only the block into an empty file", () => {
+		expect(appendIgnoreRules("", [".pi/"])).toBe("# Pix Agent\n.pi/\n");
+	});
+});
+
+describe("checkPiIgnore", () => {
+	async function repo(gitignore: string): Promise<string> {
+		const dir = mkdtempSync(join(tempDir(), "pix-welcome-ignore-"));
+		await runGit(["init", "-q"], { cwd: dir, timeoutMs: 5_000 });
+		writeFileSync(join(dir, ".gitignore"), gitignore);
+		return dir;
+	}
+
+	it("edits only after the user confirms, and keeps user rules", async () => {
+		const dir = await repo("# Pix Agent\nsecret.env\n");
+		try {
+			const asked: string[] = [];
+			const result = await checkPiIgnore(dir, async (title) => {
+				asked.push(title);
+				return true;
+			});
+			expect(asked).toEqual(["Add .pi/ to .gitignore?"]);
+			expect(result).toMatchObject({ status: "ok", detail: "1 added" });
+			expect(readFileSync(join(dir, ".gitignore"), "utf8")).toBe("# Pix Agent\n.pi/\nsecret.env\n");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("remembers a decline and does not ask again", async () => {
+		const dir = await repo("dist/\n");
+		try {
+			let asks = 0;
+			const no = async () => {
+				asks++;
+				return false;
+			};
+			expect(await checkPiIgnore(dir, no)).toMatchObject({ detail: "skipped (declined)" });
+			expect(await checkPiIgnore(dir, no)).toMatchObject({ detail: "skipped (declined)" });
+			expect(asks).toBe(1);
+			expect(readFileSync(join(dir, ".gitignore"), "utf8")).toBe("dist/\n");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("never edits without a UI", async () => {
+		const dir = await repo("dist/\n");
+		try {
+			expect(await checkPiIgnore(dir)).toMatchObject({
+				status: "warn",
+				detail: ".pi/ not ignored",
+			});
+			expect(readFileSync(join(dir, ".gitignore"), "utf8")).toBe("dist/\n");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
