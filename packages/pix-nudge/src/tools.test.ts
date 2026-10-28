@@ -337,8 +337,12 @@ describe("registerToolsNudge handler", () => {
 		await handler(bashEvent("cat > a.ts <<EOF\nx\nEOF"), ctx);
 
 		expect(notices.map((n) => n.msg)).toEqual([
-			expect.stringMatching(/^Backgrounding .* Use `proc` \(start returns a handle.*\) instead\./),
-			expect.stringMatching(/^Writing a file .* Use `write` \(or `edit` .*\) instead\./),
+			expect.stringMatching(
+				/^\[pix-nudge\] Backgrounding .* Use `proc` \(start returns a handle.*\) instead\./,
+			),
+			expect.stringMatching(
+				/^\[pix-nudge\] Writing a file .* Use `write` \(or `edit` .*\) instead\./,
+			),
 		]);
 	});
 

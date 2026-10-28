@@ -94,7 +94,7 @@ describe("registerLoopNudge", () => {
 		expect(cards).toEqual([
 			{
 				type: "pix-nudge",
-				card: { kind: "loop", summary: "grep ×3", body: loopReason(["grep"], 3) },
+				card: { kind: "loop", summary: "grep ×3", body: `[pix-nudge] ${loopReason(["grep"], 3)}` },
 			},
 		]);
 	});

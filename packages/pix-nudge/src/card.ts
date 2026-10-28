@@ -24,7 +24,7 @@ export interface NudgeCard {
 	kind: string;
 	/** One-line gist shown while collapsed. */
 	summary: string;
-	/** Full text shown when expanded. */
+	/** Full text shown when expanded — exactly what the model received. */
 	body: string;
 }
 

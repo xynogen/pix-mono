@@ -328,13 +328,15 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 		if (!reason) return;
 		nudged.add(rule.category);
 
+		// Card body = the exact text appended to the model's tool result.
+		const text = `[pix-nudge] ${reason}`;
 		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
 			kind: "tool",
 			summary: `bash ${rule.category} → ${rule.tool}`,
-			body: reason,
+			body: text,
 		});
 		return {
-			content: [...(event.content ?? []), { type: "text" as const, text: `[pix-nudge] ${reason}` }],
+			content: [...(event.content ?? []), { type: "text" as const, text }],
 			structuredContent: event.structuredContent,
 		};
 	});

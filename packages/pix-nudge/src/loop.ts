@@ -82,13 +82,15 @@ export default function registerLoopNudge(pi: ExtensionAPI): void {
 		const tools = track(event.toolName, event.input, event.content, event.isError);
 		if (!tools) return;
 		const reason = loopReason(tools, LOOP_THRESHOLD, event.isError);
+		// Card body = the exact text appended to the model's tool result.
+		const text = `[pix-nudge] ${reason}`;
 		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
 			kind: "loop",
 			summary: `${tools.join(" → ")} ×${LOOP_THRESHOLD}${event.isError ? " same error" : ""}`,
-			body: reason,
+			body: text,
 		});
 		return {
-			content: [...(event.content ?? []), { type: "text" as const, text: `[pix-nudge] ${reason}` }],
+			content: [...(event.content ?? []), { type: "text" as const, text }],
 			structuredContent: event.structuredContent,
 		};
 	});
