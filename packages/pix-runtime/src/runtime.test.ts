@@ -130,13 +130,14 @@ describe("schema and normalization", () => {
 			join(agentDir, "pix.json"),
 			JSON.stringify({
 				pretty: { icons: "bogus", maxRenderLines: -5 },
-				gate: { extraRules: [{ pattern: "(" }, { pattern: "ok" }] },
+				gate: { extraRules: [{ pattern: "(" }, { pattern: "ok" }], autoApprove: ["[", "^ls$"] },
 			}),
 		);
 		runtime.reload();
 		expect(runtime.get(prettySection).icons).toBe("nerd");
 		expect(runtime.get(prettySection).maxRenderLines).toBe(150);
 		expect(runtime.get(gateSection).extraRules).toHaveLength(1);
+		expect(runtime.get(gateSection).autoApprove).toEqual(["^ls$"]);
 		expect(runtime.diagnostics().some((d) => d.code === "INVALID_VALUE")).toBe(true);
 	});
 

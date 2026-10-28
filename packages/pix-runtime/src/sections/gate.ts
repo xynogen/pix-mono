@@ -65,7 +65,18 @@ export const gateSection = defineSection<"gate", GateConfig>({
 		}
 		return {
 			guardrails: enumOr(raw.guardrails, ["on", "off"], DEFAULTS.guardrails),
-			autoApprove: strArr(raw.autoApprove),
+			autoApprove: strArr(raw.autoApprove).filter((pattern, i) => {
+				const err = regexError(pattern);
+				if (err) {
+					ctx.diagnostic({
+						code: "INVALID_VALUE",
+						severity: "warning",
+						path: `gate.autoApprove[${i}]`,
+						message: `invalid regex: ${err}`,
+					});
+				}
+				return !err;
+			}),
 			extraRules,
 		};
 	},
