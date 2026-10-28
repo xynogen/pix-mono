@@ -487,4 +487,49 @@ describe("registerAsk", () => {
 		expect(states).toContain("blocked");
 		expect(states.at(-1)).toBe("idle");
 	});
+
+	test("headless: a cancel after answers keeps the partial answers", async () => {
+		let tool: { execute: (...args: any[]) => Promise<unknown> } | undefined;
+		const { default: registerAsk } = await import("./index.ts");
+		registerAsk({
+			events: createEventBus(),
+			registerTool(definition: typeof tool) {
+				tool = definition;
+			},
+		} as never);
+		if (!tool) throw new Error("ask_user not registered");
+
+		const second = { ...qSingle, question: "Second?", header: "Second" };
+		const replies = [
+			`${qSingle.options[0]?.label} — ${qSingle.options[0]?.description}`,
+			undefined,
+		];
+		const result = (await tool.execute(
+			"id",
+			{ questions: [qSingle, second] },
+			undefined,
+			undefined,
+			{
+				hasUI: false,
+				ui: { select: async () => replies.shift(), input: async () => undefined },
+			},
+		)) as { content: Array<{ text: string }> };
+
+		const text = result.content[0]?.text ?? "";
+		expect(text).toContain(String(qSingle.options[0]?.label));
+		expect(text).not.toBe("User cancelled the questionnaire");
+	});
+
+	test("headless multi-select ignores duplicates and non-integers", async () => {
+		const { rpcFallback } = await import("./rpc.ts");
+		const multi = { ...qSingle, multiSelect: true };
+		const result = await rpcFallback(
+			{ select: async () => undefined, input: async () => "1, 1, 1.5, 2" },
+			{ questions: [multi] } as never,
+		);
+		expect(result.answers[0]?.selected).toEqual([
+			multi.options[0]?.label ?? "",
+			multi.options[1]?.label ?? "",
+		]);
+	});
 });

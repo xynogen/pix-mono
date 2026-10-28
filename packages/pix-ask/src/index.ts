@@ -72,9 +72,11 @@ export default function registerAsk(pi: ExtensionAPI): void {
 
 				if (!ctx.hasUI) {
 					const result = await rpcFallback(ctx.ui, typed);
-					const text = result.cancelled
-						? "User cancelled the questionnaire"
-						: buildResponseText(result.answers, typed.questions);
+					// Same rule as the TUI path: keep partial answers, decline only when empty.
+					const text =
+						result.cancelled && !result.answers.length
+							? "User cancelled the questionnaire"
+							: buildResponseText(result.answers, typed.questions);
 					return { content: [{ type: "text", text }], details: result };
 				}
 
