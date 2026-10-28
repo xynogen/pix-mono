@@ -7,7 +7,7 @@ exports[`captures BTW card and widget with fixed settings, clock, and spinner 1`
 <bg:selectedBg> </bg:selectedBg><success+bg:selectedBg>✓︎</success+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>BTW</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· Selected model · high · 2.1s · 2 tools</muted+bg:selectedBg><bg:selectedBg>                                 </bg:selectedBg>
 <bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>Why does this file need a lock?</dim+bg:selectedBg><bg:selectedBg>                                              </bg:selectedBg>
 <bg:selectedBg>                                                                                </bg:selectedBg>
-<bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>› reasoning hidden — expand to view</muted+bg:selectedBg><bg:selectedBg>                                            </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>› reasoning hidden — click or expand to view</muted+bg:selectedBg><bg:selectedBg>                                   </bg:selectedBg>
 <bg:selectedBg>                                                                                </bg:selectedBg>
 <bg:selectedBg> </bg:selectedBg><mdHeading+bg:selectedBg+bold>Answer</mdHeading+bg:selectedBg+bold><bg:selectedBg>                                                                         </bg:selectedBg>
 <bg:selectedBg>                                                                                </bg:selectedBg>

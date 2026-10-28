@@ -1,12 +1,6 @@
 import { expect, test } from "bun:test";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
-import {
-	CAPABILITY_MESSAGE,
-	clickableNudgeCard,
-	NUDGE_ENTRY,
-	nudgeCard,
-	registerNudgeRenderers,
-} from "./card.ts";
+import { CAPABILITY_MESSAGE, NUDGE_ENTRY, nudgeCard, registerNudgeRenderers } from "./card.ts";
 
 const card = {
 	kind: "tool",
@@ -86,10 +80,24 @@ test("entry and capability message share the card renderer", async () => {
 	}
 });
 
-test("left click toggles the card body; other clicks are ignored", async () => {
+test("a left click on a rendered nudge card toggles its body", async () => {
 	const fixture = await withUiFixture();
 	try {
-		const c = clickableNudgeCard(card, false, roleTheme() as never);
+		let entry: ((item: never, opts: never, theme: never) => unknown) | undefined;
+		registerNudgeRenderers({
+			registerEntryRenderer: (_type: string, fn: never) => {
+				entry = fn;
+			},
+			registerMessageRenderer: () => {},
+		} as never);
+		const c = entry?.(
+			{ data: card } as never,
+			{ expanded: false } as never,
+			roleTheme() as never,
+		) as {
+			render(w: number): string[];
+			handleMouse(e: unknown): unknown;
+		};
 		const click = (button: string) => c.handleMouse({ type: "click", button, x: 0, y: 0 } as never);
 		const height = () => c.render(80).length;
 

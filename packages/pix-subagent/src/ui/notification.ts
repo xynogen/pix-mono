@@ -7,7 +7,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
-import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, clickToggle, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
 import {
 	formatContext,
 	formatMs,
@@ -83,18 +83,19 @@ export function registerNotificationRenderer(pi: ExtensionAPI): void {
 			const details = message.details;
 			if (!details) return undefined;
 
-			let output = formatNotificationLine(details, theme);
-			if (expanded) {
-				for (const line of details.resultPreview.split("\n").slice(0, 30)) {
-					output += `\n${theme.fg("dim", `  ${line}`)}`;
+			return clickToggle(expanded, (open) => {
+				let output = formatNotificationLine(details, theme);
+				if (open) {
+					for (const line of details.resultPreview.split("\n").slice(0, 30)) {
+						output += `\n${theme.fg("dim", `  ${line}`)}`;
+					}
+					if (details.resultTruncated) {
+						output += `\n${theme.fg("muted", "  … preview truncated; use agent_control action=result for full output")}`;
+					}
+					if (details.error) output += `\n${theme.fg("error", `  ${details.error}`)}`;
 				}
-				if (details.resultTruncated) {
-					output += `\n${theme.fg("muted", "  … preview truncated; use agent_control action=result for full output")}`;
-				}
-				if (details.error) output += `\n${theme.fg("error", `  ${details.error}`)}`;
-			}
-
-			return new Text(output, 0, 0);
+				return new Text(output, 0, 0);
+			});
 		},
 	);
 }

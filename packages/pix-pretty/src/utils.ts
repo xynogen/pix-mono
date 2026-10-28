@@ -1,6 +1,13 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { getCapabilities, hyperlink, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	type Component,
+	getCapabilities,
+	hyperlink,
+	MouseRegion,
+	truncateToWidth,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 
 import {
 	ANSI_CAPTURE_RE,
@@ -597,15 +604,39 @@ export function sectionRule(line: string, theme: MutedTheme, width: number): str
 }
 
 /**
- * One tool-result body line, aligned under the tool title. An `=== label ===` line
- * becomes a full-width section rule. Other lines go through `paint`.
+ * Make a custom message/entry card toggle on left click, like Pi's tool results.
+ * Pi gives custom renderers no click handling, so a renderer returns
+ * `clickToggle(expanded, (open) => card(open))`: a left click rebuilds the card
+ * with the flipped state. A host Ctrl+O rebuild resets it to the host `expanded`.
+ * Other mouse events are left unhandled (drag selects text, wheel scrolls).
  */
+export function clickToggle(
+	expanded: boolean,
+	build: (expanded: boolean) => Component,
+): MouseRegion {
+	let open = expanded;
+	let view = build(open);
+	return new MouseRegion(
+		{ render: (width) => view.render(width), invalidate: () => view.invalidate() },
+		(event) => {
+			if (event.type !== "click" || event.button !== "left") return undefined;
+			open = !open;
+			view = build(open);
+			return { handled: true };
+		},
+	);
+}
+
 /**
  * Body indent: one tab. pi-tui renders `\t` as 3 cells, the title column after
  * the 2-cell status icon + space.
  */
 export const BODY_PAD = "\t";
 
+/**
+ * One tool-result body line, aligned under the tool title. An `=== label ===` line
+ * becomes a full-width section rule. Other lines go through `paint`.
+ */
 export function bodyLine(
 	line: string,
 	theme: MutedTheme,

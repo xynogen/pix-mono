@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import { join } from "node:path";
-import { getCapabilities, setCapabilities, visibleWidth } from "@earendil-works/pi-tui";
+import { getCapabilities, setCapabilities, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { icon } from "./icon-catalog.ts";
 import type { FgTheme } from "./types.ts";
 import {
 	BODY_PAD,
 	bodyLine,
+	clickToggle,
 	dotJoin,
 	fillToolBackground,
 	formatCollapsedToolRow,
@@ -633,6 +634,23 @@ describe("sectionRule", () => {
 		const out = sectionRule("=== x ===", tag, 400) ?? "";
 		const visible = out.replace(/<\/?[a-z]+>/g, "");
 		expect([...visible].length).toBe(400);
+	});
+});
+
+describe("clickToggle", () => {
+	it("left click rebuilds with the flipped state; other events stay unhandled", () => {
+		const card = clickToggle(false, (open) => new Text(open ? "head\nbody" : "head", 0, 0));
+		const click = (button: string, type = "click") =>
+			card.handleMouse({ type, button, x: 0, y: 0 } as never);
+
+		expect(card.render(40)).toHaveLength(1);
+		expect(click("right")).toBeUndefined();
+		expect(click("left", "press")).toBeUndefined();
+		expect(card.render(40)).toHaveLength(1);
+		expect(click("left")).toEqual({ handled: true });
+		expect(card.render(40)).toHaveLength(2);
+		click("left");
+		expect(card.render(40)).toHaveLength(1);
 	});
 });
 

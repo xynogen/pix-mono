@@ -1,7 +1,7 @@
 import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import { Box, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { dotJoin } from "@xynogen/pix-pretty/utils";
+import { clickToggle, dotJoin } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 
 export interface BtwMessageDetails {
@@ -42,42 +42,50 @@ export function registerBtwRenderer(
 		// keeps this isolated side thread visually distinct from the main thread.
 		// Keep chrome as Text and render only the answer as Markdown; ANSI-styled
 		// header text embedded inside Markdown can confuse wrapping and parsing.
-		const card = new Box(1, 1, (text) => theme.bg("selectedBg", text));
-		card.addChild(
-			new Text(`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("muted", `· ${meta}`)}`, 0, 0),
-		);
-		card.addChild(
-			new Text(`${theme.fg("accent", "▐")} ${theme.fg("dim", details.question)}`, 0, 0),
-		);
-		card.addChild(new Spacer(1));
-
-		if (failed) {
-			card.addChild(new Text(theme.fg("error", details.error ?? "Unknown error"), 0, 0));
-			return card;
-		}
-
-		// Reasoning is preserved but collapsed by default: shown only when the host
-		// requests the expanded view, never discarded (see AGENTS.md §1.3).
-		if (details.thinking) {
-			if (options.expanded) {
-				card.addChild(new Text(theme.fg("dim", theme.bold("Reasoning")), 0, 0));
-				card.addChild(new Text(theme.fg("thinkingText", details.thinking), 0, 0));
-				card.addChild(new Spacer(1));
-			} else {
-				card.addChild(new Text(theme.fg("muted", "› reasoning hidden — expand to view"), 0, 0));
-				card.addChild(new Spacer(1));
-			}
-		}
-
-		try {
+		const build = (expanded: boolean) => {
+			const card = new Box(1, 1, (text) => theme.bg("selectedBg", text));
 			card.addChild(
-				new Markdown(details.answer, 0, 0, getMarkdownTheme(), {
-					color: (text) => theme.fg("customMessageText", text),
-				}),
+				new Text(`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("muted", `· ${meta}`)}`, 0, 0),
 			);
-		} catch {
-			card.addChild(new Text(theme.fg("customMessageText", details.answer), 0, 0));
-		}
-		return card;
+			card.addChild(
+				new Text(`${theme.fg("accent", "▐")} ${theme.fg("dim", details.question)}`, 0, 0),
+			);
+			card.addChild(new Spacer(1));
+
+			if (failed) {
+				card.addChild(new Text(theme.fg("error", details.error ?? "Unknown error"), 0, 0));
+				return card;
+			}
+
+			// Reasoning is preserved but collapsed by default: shown only when the host
+			// requests the expanded view, never discarded (see AGENTS.md §1.3).
+			if (details.thinking) {
+				if (expanded) {
+					card.addChild(new Text(theme.fg("dim", theme.bold("Reasoning")), 0, 0));
+					card.addChild(new Text(theme.fg("thinkingText", details.thinking), 0, 0));
+					card.addChild(new Spacer(1));
+				} else {
+					card.addChild(
+						new Text(theme.fg("muted", "› reasoning hidden — click or expand to view"), 0, 0),
+					);
+					card.addChild(new Spacer(1));
+				}
+			}
+
+			try {
+				card.addChild(
+					new Markdown(details.answer, 0, 0, getMarkdownTheme(), {
+						color: (text) => theme.fg("customMessageText", text),
+					}),
+				);
+			} catch {
+				card.addChild(new Text(theme.fg("customMessageText", details.answer), 0, 0));
+			}
+			return card;
+		};
+		// Only the reasoning section depends on `expanded`; a card without it stays static.
+		return details.thinking && !failed
+			? clickToggle(options.expanded, build)
+			: build(options.expanded);
 	});
 }
