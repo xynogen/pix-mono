@@ -156,9 +156,24 @@ async function fetchBytes(
 	if (!response.ok) throw new Error(`Remote request failed (${response.status}): ${url}`);
 	const declared = Number(response.headers.get("content-length") ?? "0");
 	if (declared > maxBytes) throw new Error(`Remote file exceeds ${maxBytes} byte limit`);
-	const bytes = Buffer.from(await response.arrayBuffer());
-	if (bytes.byteLength > maxBytes) throw new Error(`Remote file exceeds ${maxBytes} byte limit`);
-	return bytes;
+	// Stream with a running cap: content-length can be absent or wrong, and
+	// arrayBuffer() would buffer an unbounded body before any check.
+	if (!response.body) return Buffer.alloc(0);
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	const reader = response.body.getReader();
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			total += value.byteLength;
+			if (total > maxBytes) throw new Error(`Remote file exceeds ${maxBytes} byte limit`);
+			chunks.push(value);
+		}
+	} finally {
+		reader.cancel().catch(() => {});
+	}
+	return Buffer.concat(chunks);
 }
 
 async function fetchText(

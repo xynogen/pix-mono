@@ -144,6 +144,34 @@ describe("remote skill fetching", () => {
 		expect(calls).toHaveLength(callCount);
 	});
 
+	it("stops reading a body without content-length once it passes the cap", async () => {
+		const root = await mkdtemp(join(tempDir(), "pix-remote-skill-"));
+		roots.push(root);
+		let pulled = 0;
+		// Endless stream, no content-length: only a streaming cap can stop it.
+		const endless = () =>
+			new Response(
+				new ReadableStream<Uint8Array>({
+					pull(controller) {
+						pulled++;
+						controller.enqueue(new Uint8Array(64 * 1024));
+					},
+				}),
+			);
+		const fetcher = async (input: string | URL | Request) => {
+			const url = String(input);
+			if (url.includes("/git/trees/HEAD")) {
+				return jsonResponse({ tree: [{ path: "skills/big/SKILL.md", type: "blob" }] });
+			}
+			return endless();
+		};
+
+		await expect(
+			fetchRemoteSkill("o/r", "big", { cacheRoot: root, fetcher: fetcher as typeof fetch }),
+		).rejects.toThrow(/byte limit/);
+		expect(pulled).toBeLessThan(200); // bounded, not until memory runs out
+	});
+
 	it("times out a stalled remote fetch", async () => {
 		const root = await mkdtemp(join(tempDir(), "pix-remote-skill-"));
 		roots.push(root);
