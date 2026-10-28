@@ -1,6 +1,12 @@
 import { expect, test } from "bun:test";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
-import { CAPABILITY_MESSAGE, NUDGE_ENTRY, nudgeCard, registerNudgeRenderers } from "./card.ts";
+import {
+	CAPABILITY_MESSAGE,
+	clickableNudgeCard,
+	NUDGE_ENTRY,
+	nudgeCard,
+	registerNudgeRenderers,
+} from "./card.ts";
 
 const card = {
 	kind: "tool",
@@ -75,6 +81,25 @@ test("entry and capability message share the card renderer", async () => {
 		// No details (older session) → first content line becomes the summary; body stays expandable.
 		expect(messageOpen[0]).toMatch(/<dim>Toolbelt: 3 tools\.<\/dim>/);
 		expect(messageOpen.at(-1)).toMatch(/Orientation only/);
+	} finally {
+		await fixture.restore();
+	}
+});
+
+test("left click toggles the card body; other clicks are ignored", async () => {
+	const fixture = await withUiFixture();
+	try {
+		const c = clickableNudgeCard(card, false, roleTheme() as never);
+		const click = (button: string) => c.handleMouse({ type: "click", button, x: 0, y: 0 } as never);
+		const height = () => c.render(80).length;
+
+		expect(height()).toBe(1);
+		expect(click("right")).toBeUndefined();
+		expect(height()).toBe(1);
+		expect(click("left")).toEqual({ handled: true });
+		expect(height()).toBeGreaterThan(1);
+		click("left");
+		expect(height()).toBe(1);
 	} finally {
 		await fixture.restore();
 	}
