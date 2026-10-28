@@ -239,7 +239,11 @@ describe("registerCapabilityNudge", () => {
 				if (event === "before_agent_start") handler = fn;
 			},
 			getAllTools() {
-				return [tool("read", "builtin")];
+				return [
+					tool("read", "builtin"),
+					tool("ask_user", "builtin"),
+					tool("tool_search", "builtin"),
+				];
 			},
 			getActiveTools() {
 				return ["read"];
@@ -258,7 +262,7 @@ describe("registerCapabilityNudge", () => {
 			customType: "pix-capability-nudge",
 			content: expect.stringMatching(/^Toolbelt:[\s\S]*Orientation only/),
 			display: true,
-			details: { kind: "orientation", summary: expect.stringMatching(/^1 tools/) },
+			details: { kind: "orientation", summary: "3 tools · 2 deferred · 1 capabilities" },
 		});
 		expect(await handler?.({ systemPrompt: "BASE" })).toBeUndefined(); // turn 2: nothing
 	});

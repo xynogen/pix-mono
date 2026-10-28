@@ -210,7 +210,14 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 			const caps = capabilityLabels(tools).length;
 			details = {
 				kind: "orientation",
-				summary: `${tools?.length ?? 0} tools${gated ? `, ${gated} deferred` : ""}${caps ? ` · ${caps} capabilities mapped` : ""}`,
+				summary: [
+					`${tools?.length ?? 0} tools`,
+					gated && `${gated} deferred`,
+					// caps = helper tools named in the "Before you improvise" line (ask_user, search, mcp…).
+					caps && `${caps} capabilities`,
+				]
+					.filter(Boolean)
+					.join(" · "),
 			};
 		} else if (turnCount % REMINDER_INTERVAL === 1) {
 			// Fire reminder every REMINDER_INTERVAL turns (turn 11, 21, ...)
