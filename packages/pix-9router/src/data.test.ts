@@ -27,10 +27,17 @@ describe("routerBaseUrl", () => {
 		else process.env.NINEROUTER_URL = ORIGINAL_NINEROUTER_URL;
 	});
 
-	it("returns default when env unset", () => {
+	it("returns undefined when no URL is configured (no default host)", () => {
 		delete process.env.ROUTER_API_BASE;
 		delete process.env.NINEROUTER_URL;
-		expect(routerBaseUrl()).toBe("https://9router.example.com/v1");
+		expect(routerBaseUrl()).toBeUndefined();
+		process.env.NINEROUTER_URL = "   ";
+		expect(routerBaseUrl()).toBeUndefined();
+	});
+
+	it("appends /v1 to a bare base URL", () => {
+		process.env.NINEROUTER_URL = "https://router.test/";
+		expect(routerBaseUrl()).toBe("https://router.test/v1");
 	});
 
 	it("uses ROUTER_API_BASE when set", () => {

@@ -2,10 +2,10 @@
  * provider.ts — 9Router model provider
  *
  * Registers the "9router" provider in Pi, pulling live model list from the
- * router API. Falls back to an empty model list if ROUTER_API_KEY is unset.
+ * router API. Falls back to an empty model list until both URL and key are set.
  *
  * Environment:
- *   ROUTER_API_BASE  — override API base URL (default: https://9router.example.com/v1)
+ *   ROUTER_API_BASE  — API base URL (required; no default)
  *   ROUTER_API_KEY   — bearer token (required for live model list)
  */
 
@@ -79,7 +79,7 @@ export function toModelConfig(devIndex: Map<string, ModelsDevModel>) {
 				id,
 				name: getModelName(model, devModel),
 				api: "typesafe-system-one",
-				baseUrl: routerBaseUrl(),
+				baseUrl: routerBaseUrl() ?? "",
 				input: ["text" as const],
 				cost: ZERO_COST,
 				contextWindow: getContextWindow(model, devModel),
@@ -145,12 +145,13 @@ export function getReasoning(model: RouterModel, devModel?: ModelsDevModel): boo
 
 export default async function registerProvider(pi: ExtensionAPI): Promise<void> {
 	const apiKey = process.env.NINEROUTER_KEY || process.env.ROUTER_API_KEY;
+	const baseUrl = routerBaseUrl();
 
-	if (!apiKey) {
+	if (!apiKey || !baseUrl) {
 		// Register shell provider so the name is known; no models available yet.
 		pi.registerProvider("9router", {
 			name: "9Router",
-			baseUrl: routerBaseUrl(),
+			baseUrl: baseUrl ?? "",
 			apiKey: "$NINEROUTER_KEY",
 			api: "openai-completions",
 			models: [],
@@ -163,7 +164,7 @@ export default async function registerProvider(pi: ExtensionAPI): Promise<void> 
 
 	// Register from disk cache only — startup must not block on network.
 	const cached = routerModels.getCached();
-	pi.registerProvider("9router", providerConfig(apiKey, cached, new Map()));
+	pi.registerProvider("9router", providerConfig(apiKey, baseUrl, cached, new Map()));
 
 	// Background refresh; re-registering after startup applies immediately.
 	void Promise.all([
@@ -171,7 +172,7 @@ export default async function registerProvider(pi: ExtensionAPI): Promise<void> 
 		fetchModelsDevIndex().catch(() => new Map<string, ModelsDevModel>()),
 	])
 		.then(([models, devIndex]) =>
-			pi.registerProvider("9router", providerConfig(apiKey, models, devIndex)),
+			pi.registerProvider("9router", providerConfig(apiKey, baseUrl, models, devIndex)),
 		)
 		.catch(() => {});
 }
@@ -205,12 +206,13 @@ export async function classifySystemOne(
 
 function providerConfig(
 	apiKey: string,
+	baseUrl: string,
 	models: RouterModel[],
 	devIndex: Map<string, ModelsDevModel>,
 ) {
 	return {
 		name: "9Router",
-		baseUrl: routerBaseUrl(),
+		baseUrl,
 		apiKey,
 		api: "openai-completions",
 		models: models.map(toModelConfig(devIndex)),
@@ -221,7 +223,7 @@ function providerConfig(
 		// there; serve the registered snapshot instead.
 		async refreshModels({ signal, allowNetwork }: RefreshModelsContext) {
 			if (!allowNetwork) return models.map(toModelConfig(devIndex));
-			const res = await fetch(`${routerBaseUrl()}/models`, {
+			const res = await fetch(`${baseUrl}/models`, {
 				signal: ioTimeoutSignal(signal),
 				headers: {
 					Authorization: `Bearer ${apiKey}`,
