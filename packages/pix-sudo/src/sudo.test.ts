@@ -936,3 +936,25 @@ describe("sudo_run tool execute()", () => {
 		expect(rendered.join("\n")).toContain("No reason provided");
 	});
 });
+
+describe("platform guard", () => {
+	test("registers sudo_run on POSIX and skips it on Windows", () => {
+		const original = Object.getOwnPropertyDescriptor(process, "platform");
+		const registered = (platform: string) => {
+			Object.defineProperty(process, "platform", { value: platform, configurable: true });
+			const names: string[] = [];
+			registerSudo({
+				events: createEventBus(),
+				registerTool: (d: { name: string }) => names.push(d.name),
+			} as never);
+			return names;
+		};
+		try {
+			expect(registered("linux")).toEqual(["sudo_run"]);
+			expect(registered("darwin")).toEqual(["sudo_run"]);
+			expect(registered("win32")).toEqual([]);
+		} finally {
+			if (original) Object.defineProperty(process, "platform", original);
+		}
+	});
+});

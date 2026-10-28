@@ -156,6 +156,9 @@ function isTerminal(details: SudoResultDetails): boolean {
 // ── Extension entry point ─────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI): void {
+	// sudo does not exist on Windows (catalog: UNIX only). Registering the tool
+	// there only offers the model a command that can never run.
+	if (process.platform === "win32") return;
 	pi.registerTool({
 		name: "sudo_run",
 		...({ exposure: "deferred" } as const),
