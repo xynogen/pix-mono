@@ -285,7 +285,7 @@ export function nudgeReason(
 	const how = toolActive
 		? `Use \`${tool}\`${opts} instead.`
 		: `Load \`${tool}\` with tool_search, then call it${opts}.`;
-	return `${baseReason} ${how} (Once per category; bash stays fine for real pipelines and compound commands.)`;
+	return `${baseReason} ${how} (Use bash for genuine shell pipelines, not chained tool replacements.)`;
 }
 
 /**

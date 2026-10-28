@@ -34,23 +34,20 @@ const REMINDER_INTERVAL = 10;
 
 /** The periodic reminder. Kept terse — it re-ships every REMINDER_INTERVAL turns. */
 export const CAPABILITY_REMINDER =
-	"Reminder — before you improvise, check skills (read_skills()), deferred tools (tool_search), " +
-	"MCP, web, docs, or ask the user.";
+	"Reminder — before you improvise, check available tools and relevant skills; ask the user only if needed.";
 
 /**
- * The reminder for this session: names `read_skills()`, `tool_search` and `mcp`
- * only when registered, so it never points at a tool the session lacks.
- * Unknown registry (`undefined`) → the full default reminder.
+ * Name discovery tools only when registered. Unknown registries use generic guidance.
  */
 export function capabilityReminder(registered: Set<string> | undefined): string {
 	if (!registered) return CAPABILITY_REMINDER;
 	const checks = [
-		registered.has("read_skills") && "skills (read_skills())",
-		registered.has("tool_search") && "deferred tools (tool_search)",
-		registered.has("mcp") && "MCP",
-		"web, docs, or ask the user",
+		"available tools and relevant skills",
+		registered.has("read_skills") && "read_skills()",
+		registered.has("tool_search") && "tool_search",
+		registered.has("mcp") && "mcp",
 	].filter(Boolean);
-	return `Reminder — before you improvise, check ${checks.join(", ")}.`;
+	return `Reminder — before you improvise, check ${checks.join(", ")}; ask the user only if needed.`;
 }
 
 /**
@@ -60,9 +57,10 @@ export function capabilityReminder(registered: Set<string> | undefined): string 
 const CAPABILITIES: { match: (name: string) => boolean; label: string }[] = [
 	{ match: (n) => n === "ask_user", label: "ask_user (unclear intent)" },
 	{ match: (n) => n === "read_skills", label: "read_skills() (task-specific skills)" },
-	{ match: (n) => /context7/i.test(n), label: "context7 (library docs)" },
-	{ match: (n) => n === "search" || n === "fetch", label: "search/fetch (web)" },
-	{ match: (n) => n.startsWith("lsp_"), label: "lsp_* (types, refs, diagnostics)" },
+	{ match: (n) => /context7/i.test(n), label: "context7 tool family (library docs)" },
+	{ match: (n) => n === "search", label: "search (web)" },
+	{ match: (n) => n === "fetch", label: "fetch (web pages)" },
+	{ match: (n) => n.startsWith("lsp_"), label: "lsp_* tool family (types, refs, diagnostics)" },
 	{ match: (n) => n === "mcp", label: "mcp (MCP servers)" },
 ];
 
@@ -155,21 +153,21 @@ export function buildOrientation(
 	const canLoad = tools?.some((t) => t.name === "tool_search") ?? false;
 	const lines = [
 		gated && canLoad
-			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context): load with tool_search("<exact name below, or the task>") before the first call.`
+			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context): load with tool_search("<tool name or task>") before the first call.`
 			: head,
 	];
 	const caps = capabilityLabels(tools);
 	lines.push(
 		caps.length
 			? `Before you improvise, use: ${caps.join(" · ")}.`
-			: "Before you improvise, ask the user, search the web, or pull docs.",
+			: "Before you improvise, check available tools and relevant skills; ask the user only if needed.",
 	);
 	if (skillNames.length) {
 		lines.push(`Skills: ${skillNames.join(", ")}.`);
 	}
 	// Graph hint — only when a graph is built and the graph tool can query it.
 	const gHint = graphifyHint(process.cwd());
-	if (gHint && (!tools || tools.some((t) => t.name === "graph"))) lines.push(gHint);
+	if (gHint && tools?.some((t) => t.name === "graph")) lines.push(gHint);
 	// Framing — this block is orientation context, not a task. Without it the
 	// model can mistake the first-turn orientation for the prompt and reply
 	// "Ready, waiting for task" instead of acting on the user's request.
@@ -222,11 +220,10 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 		} else if (turnCount % REMINDER_INTERVAL === 1) {
 			// Fire reminder every REMINDER_INTERVAL turns (turn 11, 21, ...)
 			const registered = registeredToolNames(pi);
-			const gHint =
-				registered && !registered.has("graph") ? undefined : graphifyHint(process.cwd());
+			const gHint = registered?.has("graph") ? graphifyHint(process.cwd()) : undefined;
 			const reminder = capabilityReminder(registered);
 			content = gHint ? `${reminder}\n${gHint}` : reminder;
-			details = { kind: "reminder", summary: "check skills, tool_search, web, docs, user" };
+			details = { kind: "reminder", summary: "check available tools and relevant skills" };
 		} else {
 			return; // no nudge this turn
 		}

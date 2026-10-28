@@ -31,48 +31,22 @@ const tool = (name: string, source: string) =>
 		sourceInfo: { source, path: "", scope: "user", origin: "package" },
 	}) as never;
 
-describe("CAPABILITY_REMINDER", () => {
-	test("is terse — fires every turn, must stay cheap", () => {
+describe("capabilityReminder", () => {
+	test("unknown or empty registries use terse, conditional guidance", () => {
+		expect(capabilityReminder(undefined)).toBe(CAPABILITY_REMINDER);
+		expect(capabilityReminder(new Set())).toBe(CAPABILITY_REMINDER);
+		expect(CAPABILITY_REMINDER).toMatch(
+			/^Reminder — before you improvise, check available tools and relevant skills; ask the user only if needed\.$/,
+		);
 		expect(CAPABILITY_REMINDER.split(/\s+/).length).toBeLessThanOrEqual(28);
 	});
 
-	test("names the core capability surfaces", () => {
-		for (const cap of ["skill", "tool", "MCP", "web", "user"]) {
-			expect(CAPABILITY_REMINDER).toContain(cap);
-		}
-	});
-
-	test("steers away from improvising", () => {
-		expect(CAPABILITY_REMINDER.toLowerCase()).toContain("improvis");
-	});
-
-	test("nudges model to call read_skills() when a skill matches", () => {
-		expect(CAPABILITY_REMINDER).toContain("read_skills()");
-	});
-
-	test("does not mention user-only toolbox command", () => {
-		expect(CAPABILITY_REMINDER).not.toContain("/toolbox");
-		expect(CAPABILITY_REMINDER).not.toContain("toolbox(");
-	});
-});
-
-describe("capabilityReminder", () => {
-	test("unknown registry keeps the full default reminder", () => {
-		expect(capabilityReminder(undefined)).toBe(CAPABILITY_REMINDER);
-	});
-
-	test("all tools registered: same text as the default", () => {
-		expect(capabilityReminder(new Set(["read_skills", "tool_search", "mcp"]))).toBe(
-			CAPABILITY_REMINDER,
+	test("names only registered discovery tools", () => {
+		expect(capabilityReminder(new Set(["read_skills", "tool_search", "mcp"]))).toMatch(
+			/check available tools and relevant skills, read_skills\(\), tool_search, mcp; ask the user only if needed\.$/,
 		);
-	});
-
-	test("names only registered tools; web, docs and the user always stay", () => {
-		expect(capabilityReminder(new Set(["tool_search"]))).toBe(
-			"Reminder — before you improvise, check deferred tools (tool_search), web, docs, or ask the user.",
-		);
-		expect(capabilityReminder(new Set())).toBe(
-			"Reminder — before you improvise, check web, docs, or ask the user.",
+		expect(capabilityReminder(new Set(["tool_search"]))).toMatch(
+			/check available tools and relevant skills, tool_search; ask the user only if needed\.$/,
 		);
 	});
 });
@@ -153,9 +127,23 @@ describe("buildOrientation", () => {
 		expect(out).not.toContain("toolbox(");
 	});
 
+	test("web labels name only registered tools; wildcard labels are explicit families", () => {
+		for (const name of ["search", "fetch"]) {
+			const out = buildOrientation([tool(name, "x")], []);
+			expect(out.split("\n")[1]).toBe(
+				`Before you improvise, use: ${name} (${name === "search" ? "web" : "web pages"}).`,
+			);
+		}
+		const out = buildOrientation([tool("context7-docs", "x"), tool("lsp_navigation", "x")], []);
+		expect(out).toContain("context7 tool family (library docs)");
+		expect(out).toContain("lsp_* tool family (types, refs, diagnostics)");
+	});
+
 	test("falls back to a generic line when no capability tool is registered", () => {
 		const out = buildOrientation([tool("read", "builtin")], []);
-		expect(out).toContain("Before you improvise, ask the user, search the web, or pull docs.");
+		expect(out).toContain(
+			"Before you improvise, check available tools and relevant skills; ask the user only if needed.",
+		);
 	});
 
 	test("calls out gated tools and points at tool_search to load them", () => {
@@ -171,7 +159,7 @@ describe("buildOrientation", () => {
 			["read", "grep", "tool_search"], // active set: 2 gated out
 		);
 		expect(out).toMatch(
-			/2 are deferred \(.*\): load with tool_search\(.*\) before the first call\./,
+			/2 are deferred \(.*\): load with tool_search\("<tool name or task>"\) before the first call\./,
 		);
 	});
 
@@ -221,6 +209,10 @@ describe("buildOrientation", () => {
 	test("steers away from improvising", () => {
 		const out = buildOrientation([tool("read", "builtin")], []);
 		expect(out.toLowerCase()).toContain("improvis");
+	});
+
+	test("unknown registry does not advertise a graph tool", () => {
+		expect(buildOrientation(undefined, [])).not.toContain('graph(action:"query"');
 	});
 
 	test("frames the block as non-actionable so the model acts on the prompt", () => {

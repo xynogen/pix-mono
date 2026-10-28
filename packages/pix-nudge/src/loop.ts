@@ -24,11 +24,11 @@ export const MAX_CYCLE = 5;
 export function loopReason(tools: string[], repeats: number, failing = false): string {
 	const what =
 		tools.length === 1
-			? `Same \`${tools[0]}\` call`
+			? `${failing ? "Calls to" : "Same call to"} \`${tools[0]}\``
 			: `Same ${tools.length}-call cycle (${tools.map((t) => `\`${t}\``).join(" → ")})`;
 	return failing
-		? `${what} failed with the same error ${repeats} times in a row. Tweaking arguments is not working: read the error, change the approach, or ask the user.`
-		: `${what} returned the same result ${repeats} times in a row. Repeating it will not change the outcome: change the arguments, try another approach, or ask the user.`;
+		? `Possible loop: ${what} matched error signatures ${repeats} times. Read the error and change approach; ask the user only if needed.`
+		: `Possible loop: ${what} returned the same result ${repeats} times. If this is intentional polling, wait for a relevant change; otherwise try another approach.`;
 }
 
 /** First line of the first text block: the error signature, without volatile detail. */

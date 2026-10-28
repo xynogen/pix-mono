@@ -220,7 +220,9 @@ describe("whole-command rules", () => {
 describe("nudgeReason", () => {
 	test("active tool: point straight at it", () => {
 		const msg = nudgeReason("Searching file contents via bash grep/rg.", "grep", true);
-		expect(msg).toMatch(/^Searching .* Use `grep` instead\. \(Once per category;/);
+		expect(msg).toMatch(
+			/^Searching .* Use `grep` instead\. \(Use bash for genuine shell pipelines, not chained tool replacements\.\)$/,
+		);
 	});
 
 	test("deferred tool: load through tool_search first", () => {

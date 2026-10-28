@@ -62,12 +62,17 @@ describe("createLoopTracker", () => {
 
 describe("loopReason", () => {
 	test("names a single tool or the whole cycle", () => {
-		expect(loopReason(["grep"], 3)).toMatch(/^Same `grep` call returned the same result 3 times/);
+		expect(loopReason(["grep"], 3)).toMatch(
+			/^Possible loop: Same call to `grep` returned the same result 3 times\. If this is intentional polling, wait for a relevant change; otherwise try another approach\.$/,
+		);
 		expect(loopReason(["edit", "bash"], 3)).toMatch(
-			/^Same 2-call cycle \(`edit` → `bash`\) returned/,
+			/^Possible loop: Same 2-call cycle \(`edit` → `bash`\) returned/,
 		);
 		expect(loopReason(["edit"], 3, true)).toMatch(
-			/^Same `edit` call failed with the same error 3 times/,
+			/^Possible loop: Calls to `edit` matched error signatures 3 times\. Read the error and change approach; ask the user only if needed\.$/,
+		);
+		expect(loopReason(["read", "bash"], 3, true)).toMatch(
+			/^Possible loop: Same 2-call cycle \(`read` → `bash`\) matched error signatures 3 times\./,
 		);
 	});
 });
