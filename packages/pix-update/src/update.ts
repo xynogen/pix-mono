@@ -101,6 +101,19 @@ export interface ExecOutput {
 	stdout: string;
 	stderr: string;
 	code?: number | null;
+	timedOut?: boolean;
+}
+
+// A killed or timed-out run reports `code: null`; only an explicit 0 (or the
+// legacy undefined from pi.exec) counts as success.
+function succeeded(result: ExecOutput): boolean {
+	return !result.timedOut && result.code !== null && (result.code ?? 0) === 0;
+}
+
+// `pi update` installs packages, so the per-request network timeout (30 s by
+// default) is too short. pix.json io.timeoutSec still wins when it is larger.
+function updateTimeoutMs(): number {
+	return Math.max(ioTimeoutMs(), 300_000);
 }
 
 /**
@@ -139,9 +152,17 @@ export async function runWithRetry(
 	const exec = asExec(runner);
 	let lastOutput = "";
 	for (let attempt = 1; attempt <= 3; attempt++) {
-		const result = await exec(spec.command, spec.args, { timeout: ioTimeoutMs() });
+		const result = await exec(spec.command, spec.args, { timeout: updateTimeoutMs() });
 		lastOutput = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
-		if ((result.code ?? 0) === 0) return { ok: true, output: lastOutput, attempts: attempt };
+		if (result.timedOut) {
+			const note = `Timed out after ${Math.round(updateTimeoutMs() / 1000)}s.`;
+			return {
+				ok: false,
+				output: [lastOutput, note].filter(Boolean).join("\n"),
+				attempts: attempt,
+			};
+		}
+		if (succeeded(result)) return { ok: true, output: lastOutput, attempts: attempt };
 		if (attempt === 3 || !isTransient(lastOutput))
 			return { ok: false, output: lastOutput, attempts: attempt };
 		await sleep(attempt * 1500);
@@ -176,16 +197,19 @@ async function updatePi(ctx: ExtensionCommandContext, progress?: ProgressHandle)
 
 async function updatePackages(ctx: ExtensionCommandContext, progress?: ProgressHandle) {
 	progress?.setLabel("Updating extensions (pi update --extensions)…");
-	const result = await runtimeExec("pi", ["update", "--extensions"], {
-		timeout: ioTimeoutMs(),
+	const result: ExecOutput = await runtimeExec("pi", ["update", "--extensions"], {
+		timeout: updateTimeoutMs(),
 	}).catch((err: unknown) => ({
 		stdout: "",
 		stderr: getErrorMessage(err),
 		code: 1,
 	}));
 	const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
-	if ((result.code ?? 0) !== 0) {
-		ctx.ui.notify(`Pi package update failed. ${output || "No output."}`, "error");
+	if (!succeeded(result)) {
+		const timedOut = result.timedOut
+			? ` Timed out after ${Math.round(updateTimeoutMs() / 1000)}s.`
+			: "";
+		ctx.ui.notify(`Pi package update failed.${timedOut} ${output || "No output."}`, "error");
 		return;
 	}
 	ctx.ui.notify("Pi packages updated.", "info");

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { Exec } from "./update.ts";
 import {
 	currentVersion,
 	formatUpdateSummary,
@@ -263,5 +264,23 @@ describe("runWithRetry", () => {
 		}));
 		const result = await runWithRetry(pi, spec);
 		expect(result.ok).toBe(true);
+	});
+
+	it("fails a timed-out run without retrying it", async () => {
+		let calls = 0;
+		const exec: Exec = async () => {
+			calls++;
+			return { stdout: "partial", stderr: "", code: null, timedOut: true };
+		};
+		const result = await runWithRetry(exec, spec, noSleep);
+		expect(result).toMatchObject({ ok: false, attempts: 1 });
+		expect(result.output).toMatch(/^partial\nTimed out after \d+s\.$/);
+		expect(calls).toBe(1);
+	});
+
+	it("fails a run killed by a signal (code=null)", async () => {
+		const exec: Exec = async () => ({ stdout: "", stderr: "killed", code: null });
+		const result = await runWithRetry(exec, spec, noSleep);
+		expect(result.ok).toBe(false);
 	});
 });
