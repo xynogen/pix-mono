@@ -89,6 +89,7 @@ export function parseHost(spec: string): HostSpec {
 	const colons = rest.split(":").length - 1;
 	if (rest.startsWith("[")) {
 		const end = rest.indexOf("]");
+		if (end === -1) throw new Error(`Invalid host: ${spec} (missing "]")`);
 		const hostPart = rest.slice(1, end);
 		const tail = rest.slice(end + 1);
 		if (tail.startsWith(":")) port = parsePort(tail.slice(1));
@@ -100,6 +101,11 @@ export function parseHost(spec: string): HostSpec {
 	}
 
 	if (!rest) throw new Error(`Invalid host: ${spec}`);
+	// The target is a positional argv entry; a leading "-" would make ssh/scp
+	// read it as an option (e.g. -oProxyCommand=...), which runs a local command.
+	if (rest.startsWith("-") || user?.startsWith("-")) {
+		throw new Error(`Invalid host: ${spec} (host and user must not start with "-")`);
+	}
 	return { user, host: rest, ...(port !== undefined ? { port } : {}) };
 }
 

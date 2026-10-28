@@ -26,6 +26,14 @@ import {
 } from "./lib.ts";
 
 describe("parseHost", () => {
+	it("rejects a host or user that ssh would read as an option", () => {
+		for (const spec of ["-oProxyCommand=touch /tmp/x", "u@-oProxyCommand=x", "-l@host"]) {
+			expect(() => parseHost(spec)).toThrow(/must not start with "-"/);
+		}
+	});
+	it("rejects an unclosed IPv6 bracket", () => {
+		expect(() => parseHost("[::1:22")).toThrow(/missing "]"/);
+	});
 	it("parses bare host", () => {
 		expect(parseHost("example.com")).toEqual({ host: "example.com" });
 	});
