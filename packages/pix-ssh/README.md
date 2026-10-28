@@ -9,8 +9,8 @@ Pi tool — `ssh_run`: run a command through a remote host's configured SSH shel
 
 Registers the `ssh_run` tool — run a command through the configured SSH shell on a remote machine, behind the same permission dialog pix-sudo uses (shared overlay from `@xynogen/pix-pretty`).
 
-- **Initial + privileged calls** → Allow/Deny approval, 60-second auto-deny timeout.
-- **Non-privileged calls** → may auto-approve during the 15-minute per-host window, or in YOLO mode when no password is missing; each auto-approval emits a notification.
+- **Every call** → Allow / Allow for this session / Deny approval, 60-second auto-deny timeout. Plain Allow covers that one call only.
+- **Non-privileged calls** → auto-approve only after "Allow for this session" on that host (until `/new`), or in YOLO mode when no password is missing; each auto-approval emits a notification. Privileged calls always ask.
 
 Output is truncated to 50 KB / 2000 lines. Non-interactive (RPC/JSON) mode blocks the tool immediately.
 

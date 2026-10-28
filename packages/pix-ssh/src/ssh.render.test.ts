@@ -175,9 +175,22 @@ test("SSH self-shell command, file, info and result states", async () => {
 		}));
 		captures.collapsed = render(output, false, false, true);
 		captures.collapsedError = render(result("denied"), false, false, true);
+		captures.collapsedInfo = render(
+			{
+				content: [{ type: "text", text: "x" }],
+				details: { _type: "sshInfo", host: "node.invalid" },
+			},
+			false,
+			false,
+			true,
+		);
 		captures.reopened = render(output, true, false, true);
 		expect(captures.success?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
 		expect(captures.error?.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+		// Every info body row shares one indent, so keys line up under the header.
+		const configBody = captures.config?.slice(1, -1) ?? [];
+		expect(configBody.length).toBeGreaterThan(1);
+		for (const row of configBody) expect(row).toMatch(/^ {3}<muted>\S/);
 		// ponytail: one JSON row array per state keeps the capture small without changing any row bytes.
 		expect(
 			Object.entries(captures)

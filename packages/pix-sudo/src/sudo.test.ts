@@ -573,6 +573,11 @@ describe("sudo_run tool execute()", () => {
 			attempts += 1;
 			return { stdout: "", stderr: "sudo: incorrect password", code: 1 };
 		};
+		let ran = false;
+		sudoMock = async () => {
+			ran = true;
+			return { stdout: "root", stderr: "", code: 0 };
+		};
 		const host = makeHost();
 		let overlayCount = 0;
 		const result = await host.execute(
@@ -592,6 +597,7 @@ describe("sudo_run tool execute()", () => {
 			}),
 		);
 		expect(attempts).toBe(3);
+		expect(ran).toBe(false);
 		expect(overlayCount).toBe(1);
 		expect(text(result)).toContain("authentication failed after 3 attempts");
 		expect(result.isError).toBe(true);

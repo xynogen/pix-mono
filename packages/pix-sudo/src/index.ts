@@ -298,6 +298,17 @@ export default function (pi: ExtensionAPI): void {
 				},
 			);
 
+			// Checked before anything runs: a wrong password must never reach sudo.
+			if (overlayResult.passwordAttemptsExhausted) {
+				const text = `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
+				ctx.ui.notify(`🔐 ${text}`, "error");
+				return {
+					content: [{ type: "text", text }],
+					details: makeDetails(command, reason, { outcome: "error", errorKind: "authentication" }),
+					isError: true,
+				};
+			}
+
 			// Cached ticket needs no password; otherwise a blank password is a cancel.
 			const missingPassword = !cached && !overlayResult.password?.trim();
 			if (overlayResult.action !== "approved" || missingPassword) {
@@ -370,10 +381,7 @@ export default function (pi: ExtensionAPI): void {
 				};
 			}
 
-			if (
-				overlayResult.passwordAttemptsExhausted ||
-				detectAuthFailure(result.code, result.stderr)
-			) {
+			if (detectAuthFailure(result.code, result.stderr)) {
 				ctx.ui.notify(
 					`🔐 sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts`,
 					"error",

@@ -11,7 +11,6 @@ import {
 	detectSshFailure,
 	detectSudoFailure,
 	filterSudoPrompt,
-	hostApproved,
 	hostTarget,
 	isUnreachable,
 	parseHost,
@@ -296,21 +295,6 @@ describe("filterSudoPrompt", () => {
 	});
 	it("keeps normal lines", () => {
 		expect(filterSudoPrompt("line one\nline two")).toBe("line one\nline two");
-	});
-});
-
-describe("hostApproved", () => {
-	it("is false for an unknown host", () => {
-		expect(hostApproved(new Map(), "u@h:22")).toBe(false);
-	});
-	it("is true within the TTL window", () => {
-		const m = new Map([["u@h:22", 1000]]);
-		expect(hostApproved(m, "u@h:22", 500)).toBe(true);
-	});
-	it("expires and self-prunes at/after the deadline", () => {
-		const m = new Map([["u@h:22", 1000]]);
-		expect(hostApproved(m, "u@h:22", 1000)).toBe(false);
-		expect(m.has("u@h:22")).toBe(false);
 	});
 });
 

@@ -36,7 +36,7 @@ export interface OverlayResult {
 	action: OverlayAction;
 	/** Only present when action === "approved" and mode === "sudo". */
 	password?: string;
-	/** True when password validation exhausted every allowed attempt. */
+	/** True when password validation exhausted every allowed attempt (action is "denied"). */
 	passwordAttemptsExhausted?: boolean;
 	/** Value of the picked choice (absent on timeout or esc). */
 	choice?: string;
@@ -368,7 +368,8 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 					passwordAttempts += 1;
 					const maxAttempts = config.maxPasswordAttempts ?? 3;
 					if (passwordAttempts >= maxAttempts) {
-						finish({ action: "approved", password: pw, passwordAttemptsExhausted: true });
+						// Fail closed: a caller that ignores the flag must not run anything.
+						finish({ action: "denied", passwordAttemptsExhausted: true });
 						return;
 					}
 					maskedInput.setValue("");

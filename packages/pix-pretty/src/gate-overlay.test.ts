@@ -336,6 +336,32 @@ describe("showOverlay — sudo mode", () => {
 		expect(overlayCount).toBe(1);
 	});
 
+	test("exhausted password attempts resolve as denied", async () => {
+		let component: { handleInput(data: string): void } | undefined;
+		const ui: OverlayUI = {
+			custom: <T>(cb: Parameters<OverlayUI["custom"]>[0]): Promise<T | undefined> =>
+				new Promise((resolve) => {
+					component = cb({ requestRender: () => {} }, theme, undefined, (value) =>
+						resolve(value as T),
+					);
+				}),
+		};
+		const pending = showOverlay(ui, {
+			mode: "sudo",
+			title: "ROOT",
+			timeoutMs: 0,
+			maxPasswordAttempts: 2,
+			validatePassword: async () => false,
+		});
+		component?.handleInput(ENTER);
+		for (const pw of ["bad-1", "bad-2"]) {
+			component?.handleInput(pw);
+			component?.handleInput(ENTER);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		}
+		expect(await pending).toEqual({ action: "denied", passwordAttemptsExhausted: true });
+	});
+
 	test("renders password checking as neutral and incorrect password as error", async () => {
 		const colors: string[] = [];
 		const coloredTheme = {

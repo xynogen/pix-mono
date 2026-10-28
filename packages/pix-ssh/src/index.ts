@@ -53,6 +53,7 @@ import {
 	hideCollapsedToolCall,
 	moreLines,
 	normalizeLineEndings,
+	renderCollapsedToolRow,
 	renderToolError,
 	ruleFrame,
 	termW,
@@ -64,7 +65,6 @@ import { requireTool } from "@xynogen/pix-runtime/binaries";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import {
-	APPROVAL_TTL_MS,
 	closeMaster,
 	commandEscalatesPrivilege,
 	controlPathFor,
@@ -73,7 +73,6 @@ import {
 	type HostAlias,
 	type HostInfo,
 	type HostSpec,
-	hostApproved,
 	hostTarget,
 	MAX_OUTPUT_BYTES,
 	MAX_OUTPUT_LINES,
@@ -107,14 +106,6 @@ interface HostCreds {
 const credCache = new Map<string, HostCreds>();
 // Per-host epoch ms before which the cached-password key re-check is skipped.
 const keyRecheckAt = new Map<string, number>();
-
-// Per-host allow-memory (on by default): once the user approves any command on
-// a host, later calls to that host skip the confirm overlay until the approval
-// expires — mirroring sudo's PAM ticket window (~15 min), not the whole session.
-// Password prompts are NOT skipped — a still-missing login or sudo password
-// always re-prompts. Each auto-approve emits a visible notify so the decision is
-// never silent. Map value = epoch ms when the approval lapses (see APPROVAL_TTL_MS).
-const approvedHosts = new Map<string, number>();
 
 function cacheKey(spec: HostSpec): string {
 	return `${spec.user ?? ""}@${spec.host}:${spec.port ?? 22}`;
@@ -401,7 +392,7 @@ function formatHostInfo(host: string, info: HostInfo): string {
 		["IdentityFile", info.identityFile],
 	].filter((r): r is [string, string] => Boolean(r[1]));
 	if (rows.length === 0) return `No SSH config found for ${host}.`;
-	return [`Effective SSH config for ${host}:`, ...rows.map(([k, v]) => `  ${k} ${v}`)].join("\n");
+	return [`Effective SSH config for ${host}:`, ...rows.map(([k, v]) => `${k} ${v}`)].join("\n");
 }
 
 function formatAliasList(aliases: HostAlias[]): string {
@@ -421,15 +412,14 @@ function formatAliasList(aliases: HostAlias[]): string {
 			target = `${userPart}${a.hostname}${portPart}`;
 		}
 		const via = a.proxyJump && a.proxyJump !== "none" ? ` via ${a.proxyJump}` : "";
-		lines.push(`  ${a.alias}${target ? ` → ${target}` : ""}${via}`);
+		lines.push(`${a.alias}${target ? ` → ${target}` : ""}${via}`);
 	}
 	return [`SSH host aliases (${lines.length}):`, ...lines].join("\n");
 }
 
 /** Build the info-action result: per-host effective config when `host` is
  * given, otherwise the alias inventory from ~/.ssh/config. Read-only.
- * Details carry `_type: "sshInfo"` so renderResult falls to its generic
- * plain-text branch (no collapse, no exit-code framing). */
+ * Details carry `_type: "sshInfo"` + `host` for the collapsed row. */
 /**
  * The pix-runtime lookup message for the first missing binary this action
  * needs (ssh, plus scp for file transfers), or undefined when all resolve.
@@ -447,7 +437,7 @@ export function missingSshTools(action: "command" | "file"): string | undefined 
 }
 
 async function infoResult(host: string | undefined, sig?: AbortSignal) {
-	const details = { _type: "sshInfo" as const };
+	const details = { _type: "sshInfo" as const, host: host?.trim() || "aliases" };
 	if (host?.trim()) {
 		let spec: HostSpec;
 		try {
@@ -480,7 +470,7 @@ export default function (pi: ExtensionAPI): void {
 	// "Allow for this session" hosts. Lives in the factory: Pi hands each new session a fresh `pi`,
 	// so this resets on /new. Privileged commands never use it (see `privileged` below).
 	const sessionHosts = new Set<string>();
-	const approved = (key: string) => sessionHosts.has(key) || hostApproved(approvedHosts, key);
+	const approved = (key: string) => sessionHosts.has(key);
 	pi.registerTool({
 		name: "ssh_run",
 		...({ exposure: "deferred" } as const),
@@ -807,6 +797,18 @@ export default function (pi: ExtensionAPI): void {
 				});
 
 			const overlayResult = await runOverlay();
+			if (overlayResult.passwordAttemptsExhausted) {
+				const text = `SSH authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
+				ctx.ui.notify(`🔐 ${text}`, "error");
+				return {
+					content: [{ type: "text", text }],
+					details: makeDetails(command, host, sudo, reason, {
+						outcome: "error",
+						errorKind: "auth-ssh",
+					}),
+					isError: true,
+				};
+			}
 			const missing =
 				overlayResult.action === "approved" &&
 				((needLogin && !collected.login) || (needSudo && !collected.sudo));
@@ -816,10 +818,8 @@ export default function (pi: ExtensionAPI): void {
 				return r;
 			}
 
-			// File transfers remain warning-level: normal mode asks every time,
-			// AFK denies above, and YOLO may approve when no password is missing.
-			if (action === "command") approvedHosts.set(key, Date.now() + APPROVAL_TTL_MS);
-			// "session" is only offered for non-privileged commands (sessionChoices).
+			// Plain "Allow" approves this call only. "session" (offered only for
+			// non-privileged commands) is the sole way to skip later prompts.
 			if (overlayResult.choice === "session") {
 				sessionHosts.add(key);
 				ctx.ui.notify(`ssh_run: ${host} allowed for this session (sudo still asks)`, "info");
@@ -1016,13 +1016,40 @@ export default function (pi: ExtensionAPI): void {
 			const completed = (isError: boolean) => frameToolResult(text, theme, isError);
 
 			if (details?._type !== "sshResult") {
-				if (renderCtx.isError) {
-					text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				} else {
+				const info = (result.details as { _type?: string; host?: string } | undefined) ?? {};
+				if (
+					!isPartial &&
+					info._type === "sshInfo" &&
+					tickCollapse(
+						"ssh",
+						renderCtx.state as CollapseState,
+						renderCtx.invalidate,
+						renderCtx.expanded,
+					)
+				) {
+					const status = renderCtx.isError ? "error" : "success";
 					text.setText(
-						fillToolBackground(`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "done")}`),
+						renderCollapsedToolRow(
+							theme,
+							"ssh info",
+							info.host ?? "",
+							renderCtx.isError ? "failed" : "",
+							status,
+						),
 					);
+					return text;
 				}
+				const body = getTextContent(result) || "done";
+				text.setText(
+					renderCtx.isError
+						? renderToolError(body, theme)
+						: fillToolBackground(
+								body
+									.split("\n")
+									.map((line) => `${BODY_PAD}${theme.fg("muted", line)}`)
+									.join("\n"),
+							),
+				);
 				return isPartial ? text : completed(renderCtx.isError);
 			}
 
