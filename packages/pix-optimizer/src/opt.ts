@@ -126,7 +126,14 @@ export function registerOptCommand(
 						const values = handles[tool].values;
 						const cur = values.indexOf(handles[tool].current());
 						const next = (cur + direction + values.length) % values.length;
-						handles[tool].run(values[next] ?? "", ctx);
+						// run() applies the value synchronously, then persists async. Catch the
+						// async tail so a failed save is reported, not an unhandled rejection.
+						void Promise.resolve(handles[tool].run(values[next] ?? "", ctx)).catch(
+							(err: unknown) => {
+								const message = err instanceof Error ? err.message : String(err);
+								ctx.ui.notify(`${tool}: ${message}`, "error");
+							},
+						);
 					};
 
 					const move = (direction: -1 | 1) => {
