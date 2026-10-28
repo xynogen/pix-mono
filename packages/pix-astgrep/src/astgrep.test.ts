@@ -132,6 +132,27 @@ describe("pix-astgrep tools", () => {
 		expect(readFileSync(join(dir, "a.ts"), "utf8")).toContain("welcome('a')");
 	});
 
+	test("ast_replace keeps captured `$NAME` text and diffs line-count changes correctly", async () => {
+		const dir = mkdtempSync(join(tempDir(), "pix-astgrep-rewrite-"));
+		writeFileSync(join(dir, "b.ts"), "log('$B');\nconst tail = 1;\n");
+		const tool = capture(dir).get("ast_replace");
+		if (!tool) throw new Error("tool missing");
+		const res = await tool.execute("t", {
+			pattern: "log($A)",
+			rewrite: "debug($A);\nlog($A)",
+			paths: ["b.ts"],
+			apply: true,
+		});
+		// The capture `'$B'` is inserted verbatim, not re-substituted as a metavariable.
+		expect(readFileSync(join(dir, "b.ts"), "utf8")).toBe(
+			"debug('$B');\nlog('$B');\nconst tail = 1;\n",
+		);
+		// One inserted line: the unchanged tail is context, not a delete/add pair.
+		const text = res.content[0]?.text ?? "";
+		expect(text).toMatch(/^--- b\.ts\n\+\+\+ b\.ts\n\+1: debug\('\$B'\);\n 2: log\('\$B'\);$/m);
+		expect(text).not.toContain("const tail");
+	});
+
 	test("ast_search finds every call of a pattern", async () => {
 		const dir = fixture();
 		const tool = capture(dir).get("ast_search");

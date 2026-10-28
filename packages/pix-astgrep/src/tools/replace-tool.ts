@@ -12,11 +12,12 @@
  * It does not evaluate ast-grep transforms. Upgrade if a transform is needed.
  */
 
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { parseDiff } from "@xynogen/pix-pretty/diff";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
@@ -33,6 +34,7 @@ import {
 	type SgEdit,
 	type SgNode,
 } from "@xynogen/pix-runtime/ast";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import { grammarErrorResult } from "../grammar-result.ts";
@@ -69,33 +71,34 @@ function collectFiles(root: string, out: string[]): void {
 	}
 }
 
-/** Resolve $A and $$$ARGS tokens in `rewrite` from one match's captures. */
+/**
+ * Resolve $A and $$$ARGS tokens in `rewrite` from one match's captures.
+ * One pass: captured text that itself contains `$NAME` is inserted verbatim,
+ * never substituted again.
+ */
 function fillRewrite(match: SgNode, rewrite: string): string {
-	// $$$NAME → joined multi-match text; $NAME → single-match text.
-	return rewrite
-		.replace(/\$\$\$([A-Z_][A-Z0-9_]*)/g, (_m, name: string) => {
-			return match
-				.getMultipleMatches(name)
-				.map((n) => n.text())
-				.join(", ");
-		})
-		.replace(/\$([A-Z_][A-Z0-9_]*)/g, (_m, name: string) => {
-			const n = match.getMatch(name);
-			return n ? n.text() : `$${name}`;
-		});
+	return rewrite.replace(
+		/\$(\$\$)?([A-Z_][A-Z0-9_]*)/g,
+		(token, multi: string | undefined, name: string) => {
+			if (multi) {
+				return match
+					.getMultipleMatches(name)
+					.map((n) => n.text())
+					.join(", ");
+			}
+			return match.getMatch(name)?.text() ?? token;
+		},
+	);
 }
 
-/** A minimal per-file unified-ish diff: changed lines only, with context. */
+/** Changed lines with 1 line of context; a real line diff, so an insert shifts nothing. */
 function summarizeChange(rel: string, before: string, after: string): string {
-	const b = before.split("\n");
-	const a = after.split("\n");
 	const out: string[] = [`--- ${rel}`, `+++ ${rel}`];
-	const max = Math.max(b.length, a.length);
-	for (let i = 0; i < max; i++) {
-		if (b[i] !== a[i]) {
-			if (b[i] !== undefined) out.push(`-${i + 1}: ${b[i]}`);
-			if (a[i] !== undefined) out.push(`+${i + 1}: ${a[i]}`);
-		}
+	for (const line of parseDiff(before, after, 1).lines) {
+		if (line.type === "sep") out.push("…");
+		else if (line.type === "add") out.push(`+${line.newNum}: ${line.content}`);
+		else if (line.type === "del") out.push(`-${line.oldNum}: ${line.content}`);
+		else out.push(` ${line.newNum}: ${line.content}`);
 	}
 	return out.join("\n");
 }
@@ -220,7 +223,12 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 			}
 
 			// Validate all grammars before writing, so an unavailable language cannot leave partial edits.
-			if (apply) for (const { file, after } of changes) writeFileSync(file, after);
+			// Atomic per file and keep the file's permissions (the helper defaults to 0o600).
+			if (apply) {
+				for (const { file, after } of changes) {
+					writeFileAtomicSync(file, after, statSync(file).mode & 0o777);
+				}
+			}
 			const head = apply
 				? `Applied ${totalEdits} edit(s) in ${changedFiles} file(s).`
 				: `Preview: ${totalEdits} edit(s) in ${changedFiles} file(s). Set apply=true to write.`;
