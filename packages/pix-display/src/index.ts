@@ -12,12 +12,17 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerChips } from "@xynogen/pix-pretty/chips";
+import { once } from "@xynogen/pix-runtime/once";
 
 import codeBlocksExtension from "./code-blocks.ts";
 import thinkingExtension from "./thinking.ts";
+import workingExtension from "./working.ts";
 
 export default function pixDisplayExtension(pi: ExtensionAPI): void {
-	registerChips(pi);
-	thinkingExtension(pi);
-	codeBlocksExtension(pi);
+	once(pi, "pix-display", () => {
+		registerChips(pi);
+		thinkingExtension(pi);
+		codeBlocksExtension(pi);
+		workingExtension(pi);
+	});
 }

@@ -38,6 +38,7 @@ interface TodoResultDetails {
 	action: TodoAction;
 	outcome: "success" | "error";
 	snapshot: TodoItem[];
+	remind: boolean;
 }
 
 /** Resolve the status glyph at render time so a live /pix mode switch applies. */
@@ -215,6 +216,10 @@ export default function registerTodo(pi: ExtensionAPI): void {
 		// earlier items and warn on out-of-order completion; unordered lists treat
 		// every item as independent. Default true — plans are usually sequential.
 		let ordered = true;
+		let remind = false;
+		let lastReminderState = "";
+		let reminderCount = 0;
+		let runFailed = false;
 
 		// Single-open policy: only the newest todo card stays expanded. When a new
 		// card first renders (its state bag is unseen), collapse the previously
@@ -237,7 +242,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 		}
 
 		function persistTodos() {
-			pi.appendEntry("todo-state", { todos, nextTodoId, ordered });
+			pi.appendEntry("todo-state", { todos, nextTodoId, ordered, remind });
 		}
 
 		function todoSummary(): string {
@@ -269,13 +274,14 @@ export default function registerTodo(pi: ExtensionAPI): void {
 			description:
 				"Track BUILD-phase execution progress. Durable across context compaction. Actions: list, set (replace all items from newline/numbered text), add, update (change one or more items' status — batch via `updates`), clear.",
 			promptSnippet:
-				"todo(action, items?, updates?, id?, status?, text?) — action: list|set|add|update|clear. Use to track implementation progress, especially when executing a plan.",
+				"todo(action, items?, updates?, id?, status?, text?, remind?) — action: list|set|add|update|clear. Use to track implementation progress, especially when executing a plan.",
 			promptGuidelines: [
 				"When you start executing a multi-step plan in BUILD mode, seed the todo list with `todo(action:'set', items: <plan Implementation Phases>)`.",
 				"Batch status changes in ONE call: `todo(action:'update', updates:'3:done,4:in_progress')`. Opening an item auto-closes earlier ones (ordered lists), so do not send per-item update calls.",
 				"When marking an item done, the tool checks for earlier incomplete items and warns you — resolve each skipped item (mark done or blocked) before moving on.",
 				"If the list is NOT a sequential run (items independent, done in any order), pass `ordered:false` on `set` — that disables the cascade-close and skip warning.",
 				"Call `todo(action:'list')` to recover your place after long runs or context compaction.",
+				"Set `remind:true` to opt into visible continue reminders while tasks remain; `remind:false` disables them. Reminders stop on interruption, error, blocked work, or 3 nudges without progress.",
 			],
 			parameters: Type.Object({
 				action: Type.Enum(["list", "set", "add", "update", "clear"] as const, {
@@ -311,6 +317,12 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					Type.Boolean({
 						description:
 							"For set: true (default) = sequential run (opening/completing an item cascades to earlier ones and warns on skips); false = independent items done in any order.",
+					}),
+				),
+				remind: Type.Optional(
+					Type.Boolean({
+						description:
+							"Continue reminders when unfinished (TUI only). Default false on set; omitted on other actions keeps current value. Clear disables.",
 					}),
 				),
 			}),
@@ -381,16 +393,37 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					action,
 					outcome,
 					snapshot: todos.map((item) => ({ ...item })),
+					remind,
 				});
-				const ok = (text: string) => ({
-					content: [{ type: "text" as const, text }],
-					details: details("success"),
-				});
+				const ok = (text: string) => {
+					if (action === "set" || action === "clear" || params.remind !== undefined) {
+						remind = action !== "clear" && (params.remind ?? false);
+						lastReminderState = "";
+						reminderCount = 0;
+					}
+					if (action !== "list" || params.remind !== undefined) persistTodos();
+					return {
+						content: [
+							{
+								type: "text" as const,
+								text:
+									text +
+									(params.remind !== undefined || remind
+										? ` · remind:${remind ? "on" : "off"}`
+										: ""),
+							},
+						],
+						details: details("success"),
+					};
+				};
 				const fail = (text: string) => ({
 					content: [{ type: "text" as const, text }],
 					details: details("error"),
 					isError: true,
 				});
+				if (params.remind !== undefined && typeof params.remind !== "boolean") {
+					return fail("remind must be a boolean.");
+				}
 				switch (params.action) {
 					case "list":
 						return ok(todoSummary());
@@ -405,7 +438,6 @@ export default function registerTodo(pi: ExtensionAPI): void {
 							text,
 							status: "pending" as TodoStatus,
 						}));
-						persistTodos();
 						return ok(todoSummary());
 					}
 
@@ -413,7 +445,6 @@ export default function registerTodo(pi: ExtensionAPI): void {
 						const texts = parseItems(params.items ?? "");
 						if (!texts.length) return fail("add requires non-empty `items`.");
 						for (const text of texts) todos.push({ id: nextTodoId++, text, status: "pending" });
-						persistTodos();
 						return ok(todoSummary());
 					}
 
@@ -440,7 +471,6 @@ export default function registerTodo(pi: ExtensionAPI): void {
 							if (!t) return fail(`No todo with id ${params.id}.`);
 							if (params.text) {
 								t.text = params.text;
-								persistTodos();
 							}
 							return ok(`#${t.id} ${t.status} · ${todoHint()}`);
 						}
@@ -475,7 +505,6 @@ export default function registerTodo(pi: ExtensionAPI): void {
 							const t = todos.find((x) => x.id === only.id) as TodoItem;
 							t.text = params.text;
 						}
-						persistTodos();
 
 						// Delta-only echo: the model already holds the list; re-sending it on
 						// every update is pure token waste. The TUI card still renders the
@@ -491,13 +520,49 @@ export default function registerTodo(pi: ExtensionAPI): void {
 						todos = [];
 						nextTodoId = 1;
 						ordered = true;
-						persistTodos();
 						return ok("Todos cleared.");
 
 					default:
 						return fail(`Unknown action: ${String(params.action)}`);
 				}
 			},
+		});
+
+		pi.on("agent_end", (event) => {
+			const last = [...event.messages].reverse().find((message) => message.role === "assistant");
+			runFailed = last?.role === "assistant" && last.stopReason === "error";
+		});
+
+		pi.on("agent_settled", (event, ctx) => {
+			if (!remind || ctx.mode !== "tui" || event.aborted || runFailed) return;
+			if (!ctx.isIdle() || ctx.hasPendingMessages()) return;
+			if (todos.some((todo) => todo.status === "blocked")) return;
+			const next =
+				todos.find((todo) => todo.status === "in_progress") ??
+				todos.find((todo) => todo.status === "pending");
+			if (!next) return;
+
+			const state = JSON.stringify(todos.map(({ id, status }) => [id, status]));
+			if (state !== lastReminderState) reminderCount = 0;
+			if (reminderCount >= 3) {
+				remind = false;
+				persistTodos();
+				ctx.ui.notify(
+					"Todo reminders paused after 3 nudges without progress. Set remind:true to resume.",
+					"warning",
+				);
+				return;
+			}
+			pi.sendMessage(
+				{
+					customType: "pix-todo-reminder",
+					content: `Todo reminder — continue #${next.id} ${next.text}. Update status when done; mark blocked if you cannot proceed.`,
+					display: true,
+				},
+				{ triggerTurn: true },
+			);
+			lastReminderState = state;
+			reminderCount++;
 		});
 
 		// ── Turn-based reminder ─────────────────────────────────────────────
@@ -512,6 +577,8 @@ export default function registerTodo(pi: ExtensionAPI): void {
 		pi.on("before_agent_start", async (event) => {
 			// Runs started by sendMessage(triggerTurn) are extension follow-ups, not user turns.
 			if (event.messageType === "custom") return;
+			reminderCount = 0;
+			lastReminderState = "";
 			todoTurnCount++;
 			if (todoTurnCount % TODO_REMINDER_INTERVAL !== 0) return;
 			if (!todos.some((t) => t.status === "pending" || t.status === "in_progress")) return;
@@ -530,10 +597,18 @@ export default function registerTodo(pi: ExtensionAPI): void {
 
 		// Restore the checklist from session entries so it survives restart.
 		pi.on("session_start", async (_event, ctx) => {
+			todos = [];
+			nextTodoId = 1;
+			ordered = true;
+			remind = false;
+			lastReminderState = "";
+			reminderCount = 0;
+			runFailed = false;
+			todoTurnCount = 0;
 			const entries = ctx.sessionManager.getEntries() as Array<{
 				type: string;
 				customType?: string;
-				data?: { todos?: TodoItem[]; nextTodoId?: number; ordered?: boolean };
+				data?: { todos?: TodoItem[]; nextTodoId?: number; ordered?: boolean; remind?: boolean };
 			}>;
 			const lastTodo = entries
 				.filter((e) => e.type === "custom" && e.customType === "todo-state")
@@ -542,6 +617,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				todos = lastTodo.data.todos;
 				nextTodoId = lastTodo.data.nextTodoId ?? todos.reduce((m, t) => Math.max(m, t.id + 1), 1);
 				ordered = lastTodo.data.ordered ?? true;
+				remind = lastTodo.data.remind === true;
 			}
 		});
 	});

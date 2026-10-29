@@ -148,6 +148,8 @@ export interface AgentInvocation {
 	maxTurns?: number;
 	isolated?: boolean;
 	inheritContext?: boolean;
+	/** Opt in to waking the idle parent when this background agent finishes. */
+	remind?: boolean;
 }
 
 export type TerminalAgentStatus = "completed" | "steered" | "aborted" | "stopped" | "error";

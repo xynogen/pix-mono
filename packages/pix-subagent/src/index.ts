@@ -11,7 +11,7 @@
  *   - pix twist: model name ALWAYS visible in widget + notification
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { AgentManager } from "./agent-manager.ts";
 import { registerAgents } from "./agent-types.ts";
 import { loadCustomAgents } from "./custom-agents.ts";
@@ -56,6 +56,8 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 
 	// ── State ──────────────────────────────────────────────────────────────────
 	const agentActivity = new Map<string, AgentActivity>();
+	let parentContext: ExtensionContext | undefined;
+	let parentInterrupted = false;
 
 	// Debounce: brief hold so agent_control can cancel a notification it just consumed
 	const pendingNudges = new Map<string, ReturnType<typeof setTimeout>>();
@@ -138,18 +140,20 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 				pi.sendMessage<NotificationDetails>(
 					{
 						customType: "subagent-notification",
-						content: `Agent "${record.description}" ${record.status}.`,
+						content: `Agent ${record.id} "${record.description}" ${record.status}.\n${record.error ?? resultPreview}${resultTruncated ? `\nUse agent_control(action:"result", agent_id:"${record.id}") for full output.` : ""}${record.invocation?.remind && (record.status === "completed" || record.status === "steered") ? "\nContinue the main task using this result." : ""}`,
 						display: true,
 						details,
 					},
-					// A background agent completes asynchronously, usually while the
-					// parent is idle. "followUp" parks the notification in the follow-up
-					// queue and only flushes it on the NEXT user prompt — so the result
-					// appears to "only show up after you poke it with a chat". "steer"
-					// delivers at the next tool-call boundary while streaming, and
-					// triggerTurn fires an immediate turn when idle, so the notification
-					// surfaces consistently in both cases (cf. the file-trigger example).
-					{ deliverAs: "steer", triggerTurn: true },
+					{
+						deliverAs: "steer",
+						triggerTurn:
+							record.invocation?.remind === true &&
+							parentContext?.mode === "tui" &&
+							parentContext.isIdle() &&
+							!parentContext.hasPendingMessages() &&
+							!parentInterrupted &&
+							(record.status === "completed" || record.status === "steered"),
+					},
 				);
 			});
 
@@ -185,6 +189,8 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 
 	// ── Lifecycle ──────────────────────────────────────────────────────────────
 	pi.on("session_start", (_event, ctx) => {
+		parentContext = ctx;
+		parentInterrupted = false;
 		manager.clearCompleted();
 		agentActivity.clear();
 		// Capture the session-stable UI ctx (like pix-commands /btw). turn_start
@@ -192,6 +198,22 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 		// once that turn ends the turn_start-captured ctx goes stale — setWidget/
 		// requestRender then no-op and the live agent row vanishes though it runs.
 		widget.setUICtx(ctx.ui as Parameters<typeof widget.setUICtx>[0]);
+	});
+
+	pi.on("before_agent_start", (event) => {
+		if (event.messageType === "user") parentInterrupted = false;
+	});
+	pi.on("agent_end", (event) => {
+		const last = [...event.messages].reverse().find((message) => message.role === "assistant");
+		if (
+			last?.role === "assistant" &&
+			(last.stopReason === "aborted" || last.stopReason === "error")
+		) {
+			parentInterrupted = true;
+		}
+	});
+	pi.on("agent_settled", (event) => {
+		if (event.aborted) parentInterrupted = true;
 	});
 
 	pi.on("turn_start", () => {
@@ -206,6 +228,7 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 	const runtimeCleanup = () => {
 		if (disposed) return;
 		disposed = true;
+		parentContext = undefined;
 		for (const t of pendingNudges.values()) clearTimeout(t);
 		pendingNudges.clear();
 		manager.abortAll();

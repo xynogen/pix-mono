@@ -404,6 +404,13 @@ export function createAgentTool(
 			background: Type.Optional(
 				Type.Boolean({ description: "Run asynchronously. Default true.", default: true }),
 			),
+			remind: Type.Optional(
+				Type.Boolean({
+					description:
+						"Wake idle main agent on background completion. Default false; respects Esc.",
+					default: false,
+				}),
+			),
 		}),
 
 		renderCall(args, theme, renderCtx) {
@@ -509,6 +516,9 @@ export function createAgentTool(
 		},
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
+			if (params.remind !== undefined && typeof params.remind !== "boolean") {
+				return { ...textResult("remind must be a boolean."), isError: true };
+			}
 			reloadCustomAgents();
 
 			// Resolve agent type — accept the new `type` key, with the legacy
@@ -594,6 +604,7 @@ export function createAgentTool(
 				maxTurns: effectiveMaxTurns,
 				isolated,
 				inheritContext,
+				remind: runsInBackground(params.background) && params.remind === true,
 			};
 
 			const detailBase = {
@@ -612,6 +623,7 @@ export function createAgentTool(
 			if (fellBack) detailBase.tags.push("(unknown type → general)");
 			if (thinking) detailBase.tags.push(`thinking: ${thinking}`);
 			if (isolated) detailBase.tags.push("isolated");
+			if (agentInvocation.remind) detailBase.tags.push("remind:on");
 
 			// Resume existing agent
 			if (params.resume) {
@@ -695,7 +707,7 @@ export function createAgentTool(
 				return textResult(
 					`Launched ${bgId}. To steer or stop it while it runs: agent_control action:"steer"/"stop". ` +
 						`Its result is delivered automatically when it finishes — do NOT poll, sleep-wait, or call agent_control just to fetch it. ` +
-						`Stop is gentle by default: the agent summarizes its progress first, so partial work is never lost. Continue with other work or respond to the user.`,
+						`Idle continuation: remind:${agentInvocation.remind ? "on" : "off"}. Stop is gentle by default: the agent summarizes its progress first, so partial work is never lost. Continue with other work or respond to the user.`,
 					{
 						...detailBase,
 						toolUses: 0,

@@ -711,7 +711,7 @@ test("captures registered lifecycle delivery and consumption without a real runn
 			hooks.set(name, callback);
 		},
 		sendMessage(message: { details: NotificationDetails; content: string }, options: unknown) {
-			expect(options).toEqual({ deliverAs: "steer", triggerTurn: true });
+			expect(options).toEqual({ deliverAs: "steer", triggerTurn: false });
 			notifications.push(message);
 		},
 	};

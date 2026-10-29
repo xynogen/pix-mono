@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-todo",
-	"version": "0.4.9",
+	"version": "0.4.10",
 	"description": "Pi tool \u2014 durable execution checklist (todo)",
 	"type": "module",
 	"main": "src/index.ts",

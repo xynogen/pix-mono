@@ -41,6 +41,10 @@ function makeHost(
 		  }>)
 		| null = null;
 	const appendCalls: Array<{ type: string; data: unknown }> = [];
+	const messages: Array<{
+		message: { customType: string; content: string; display: boolean };
+		options: unknown;
+	}> = [];
 	const handlers: Record<string, Array<(event: unknown, ctx?: unknown) => unknown>> = {};
 
 	let capturedRender:
@@ -72,6 +76,12 @@ function makeHost(
 		},
 		appendEntry(type: string, data: unknown) {
 			appendCalls.push({ type, data });
+		},
+		sendMessage(
+			message: { customType: string; content: string; display: boolean },
+			options: unknown,
+		) {
+			messages.push({ message, options });
 		},
 		on(ev: string, fn: (event: unknown, ctx?: unknown) => unknown) {
 			if (!handlers[ev]) handlers[ev] = [];
@@ -116,6 +126,7 @@ function makeHost(
 			return capturedRender;
 		},
 		appendCalls,
+		messages,
 		async emit(ev: string, event?: unknown, ctx?: unknown): Promise<unknown> {
 			let last: unknown;
 			for (const fn of handlers[ev] ?? []) {
@@ -176,6 +187,141 @@ test("todo exposes action and status as guided string enums", () => {
 	expect(status?.enum).toEqual(["pending", "in_progress", "done", "blocked"]);
 	expect(status?.description).toContain('"pending" = not started');
 	expect(status?.description).toContain('"blocked" = cannot proceed');
+});
+
+describe("continue reminders", () => {
+	const ctx = {
+		mode: "tui",
+		isIdle: () => true,
+		hasPendingMessages: () => false,
+		ui: { notify: () => {} },
+	};
+	async function setup(remind?: boolean) {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await run(host.execute, { action: "set", items: "alpha\nbravo", remind });
+		return host;
+	}
+
+	test("opt-in flag persists and sends a visible next-task continuation", async () => {
+		const host = await setup(true);
+		expect(
+			(host.parameters as { properties: { remind: { type: string } } }).properties.remind.type,
+		).toBe("boolean");
+		expect(host.appendCalls.at(-1)?.data).toMatchObject({ remind: true });
+		await host.emit("agent_settled", { aborted: false }, ctx);
+		expect(host.messages).toEqual([
+			{
+				message: {
+					customType: "pix-todo-reminder",
+					content: expect.stringMatching(/continue #1 alpha/),
+					display: true,
+				},
+				options: { triggerTurn: true },
+			},
+		]);
+	});
+
+	test("off by default, toggleable via list, and reset by set or clear", async () => {
+		const host = await setup();
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(0);
+		for (const params of [
+			{ action: "list", remind: true },
+			{ action: "list", remind: false },
+			{ action: "list", remind: true },
+			{ action: "set", items: "new list" },
+			{ action: "list", remind: true },
+			{ action: "clear" },
+		]) {
+			await run(host.execute, params);
+			await host.emit("agent_settled", {}, ctx);
+		}
+		expect(host.messages).toHaveLength(3);
+		expect(host.appendCalls.at(-1)?.data).toMatchObject({ remind: false, todos: [] });
+	});
+
+	test("invalid flag or failed update leaves reminder state unchanged", async () => {
+		const host = await setup();
+		for (const params of [
+			{ action: "list", remind: "true" },
+			{ action: "update", id: 99, status: "done", remind: true },
+		]) {
+			expect((await run(host.execute, params)).isError).toBe(true);
+		}
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(0);
+	});
+
+	test("skips interrupted, busy, queued and non-TUI runs", async () => {
+		const host = await setup(true);
+		await host.emit("agent_settled", { aborted: true }, ctx);
+		for (const extra of [
+			{ isIdle: () => false },
+			{ hasPendingMessages: () => true },
+			...["rpc", "json", "print"].map((mode) => ({ mode })),
+		]) {
+			await host.emit("agent_settled", {}, { ...ctx, ...extra });
+		}
+		expect(host.messages).toHaveLength(0);
+	});
+
+	test("errors pause until a successful run; blocked and complete lists stop", async () => {
+		const host = await setup(true);
+		await host.emit("agent_end", { messages: [{ role: "assistant", stopReason: "error" }] });
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(0);
+		await host.emit("agent_end", { messages: [{ role: "assistant", stopReason: "stop" }] });
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(1);
+		await run(host.execute, { action: "update", id: 1, status: "blocked" });
+		await host.emit("agent_settled", {}, ctx);
+		await run(host.execute, { action: "update", updates: "1:done,2:done" });
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(1);
+	});
+
+	test("three reminders without progress disable and persist the flag", async () => {
+		const host = await setup(true);
+		const warnings: string[] = [];
+		const context = { ...ctx, ui: { notify: (text: string) => warnings.push(text) } };
+		for (let i = 0; i < 5; i++) {
+			await host.emit("before_agent_start", { messageType: "custom" });
+			await host.emit("agent_settled", {}, context);
+		}
+		expect(host.messages).toHaveLength(3);
+		expect(warnings).toEqual([expect.stringMatching(/3 nudges without progress/)]);
+		expect(host.appendCalls.at(-1)?.data).toMatchObject({ remind: false });
+	});
+
+	test("status progress resets the stall guard; omission preserves opt-in", async () => {
+		const host = await setup(true);
+		for (let i = 0; i < 3; i++) await host.emit("agent_settled", {}, ctx);
+		await run(host.execute, { action: "update", id: 1, status: "done" });
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(4);
+		expect(host.messages.at(-1)?.message.content).toMatch(/continue #2 bravo/);
+	});
+
+	test("restore honors persisted opt-in and clears state on a new session", async () => {
+		const entries = [
+			{
+				type: "custom",
+				customType: "todo-state",
+				data: { todos: [{ id: 1, text: "restored", status: "pending" }], remind: true },
+			},
+		];
+		const host = makeHost(entries);
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(1);
+		entries.length = 0;
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		await host.emit("agent_settled", {}, ctx);
+		expect(host.messages).toHaveLength(1);
+		expect(text(await run(host.execute, { action: "list" }))).toBe("(no todos)");
+	});
 });
 
 // ─── parseItems (via set/add) ───────────────────────────────────────────────
