@@ -136,6 +136,10 @@ export function getMaxTokens(model: RouterModel, devModel?: ModelsDevModel): num
 }
 
 export function getReasoning(model: RouterModel, devModel?: ModelsDevModel): boolean {
+	// Router's own declaration is first-party — the startup path registers from the
+	// disk cache with an empty models.dev index, so this is the only reliable
+	// source until the background refresh lands.
+	if (typeof model.capabilities?.reasoning === "boolean") return model.capabilities.reasoning;
 	if (typeof devModel?.reasoning === "boolean") return devModel.reasoning;
 	// ponytail: Detect GPT-5/6 offline. Add metadata for new families instead of a network wait.
 	return /reasoner|thinking|xhigh|high|max|pro|codex|opus|sonnet|(?:^|\/)gpt-[56](?:[.-]|$)/i.test(

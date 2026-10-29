@@ -222,6 +222,30 @@ describe("getReasoning", () => {
 	it("returns false for plain model with no devModel", () => {
 		expect(getReasoning({ id: "llama-3-8b-instruct" })).toBe(false);
 	});
+
+	it("uses router capabilities first — offline cache path has no devModel", () => {
+		// glm-5.3-flash matches none of the fallback patterns; without this the
+		// startup registration marks it non-reasoning and clamps the thinking
+		// level to off until the background models.dev refresh lands.
+		expect(getReasoning({ id: "glm-cn/glm-5.3-flash", capabilities: { reasoning: true } })).toBe(
+			true,
+		);
+	});
+
+	it("router capabilities beat both devModel and the name pattern", () => {
+		expect(
+			getReasoning(
+				{ id: "glm-cn/glm-5.3-flash", capabilities: { reasoning: true } },
+				{ id: "glm-5.3-flash", reasoning: false },
+			),
+		).toBe(true);
+		expect(
+			getReasoning(
+				{ id: "claude-opus-4", capabilities: { reasoning: false } },
+				{ id: "claude-opus-4", reasoning: true },
+			),
+		).toBe(false);
+	});
 });
 
 // ── isClassifierModel & toModelConfig ────────────────────────────────────────
