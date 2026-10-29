@@ -407,7 +407,7 @@ const tts: TtsProvider[] = [
 	},
 	{
 		id: "cartesia",
-		defaultModel: "sonic-3.6/db6b0ed5-d5d3-463d-ae85-518a07d3c2b4",
+		defaultModel: "sonic-3.6",
 		env: ["CARTESIA_API_KEY"],
 		isConfigured: has("CARTESIA_API_KEY"),
 		async synthesize(req) {

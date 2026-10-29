@@ -312,6 +312,7 @@ describe("built-in TTS providers", () => {
 		process.env.CARTESIA_API_KEY = "c-key";
 		const calls = captureFetch(() => new Response(new Uint8Array([1, 2])));
 		const tts = provider("tts", "cartesia");
+		expect(tts.defaultModel).toBe("sonic-3.6");
 		for (const model of [tts.defaultModel, "sonic-3.6", "sonic-3.6/custom-voice"]) {
 			const speech = await tts.synthesize({ input: "Hi", model, format: "mp3" });
 			expect({ audio: [...speech.audio], format: speech.format }).toEqual({
