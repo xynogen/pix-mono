@@ -1,7 +1,7 @@
 /**
  * Welcome extension — ASCII art banner + startup health checks.
  *
- * Renders a coloured π logo above the editor on session start.
+ * Renders a coloured π logo in the header on session start.
  * Runs checks in parallel while the banner is visible:
  *
  *   · PI version   — read installed version only
@@ -33,7 +33,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { padIcon } from "@xynogen/pix-pretty/utils";
@@ -422,7 +422,7 @@ function fitLine(line: string, width: number): string {
 /**
  * Full banner, every line clamped to `width`. A logo line wider than the
  * terminal would otherwise make Pi's TUI throw, so this is the safe entry point
- * the widget render uses.
+ * the header render uses.
  */
 export function renderWelcome(
 	theme: Theme,
@@ -442,11 +442,11 @@ export default function (pi: ExtensionAPI) {
 	let requestRender: (() => void) | null = null;
 	let _updateSkills: ((r: CheckResult) => void) | null = null;
 
-	const dismiss = (ctx: ExtensionContext) => {
+	const dismiss = () => {
 		if (dismissed) return;
 		dismissed = true;
+		requestRender?.();
 		requestRender = null;
-		ctx.ui?.setWidget?.("welcome", undefined);
 	};
 
 	pi.on("session_start", (event, ctx) => {
@@ -473,29 +473,25 @@ export default function (pi: ExtensionAPI) {
 		CHECKS[1] = authResult;
 		CHECKS[2] = modelsResult;
 
-		// Register widget
-		if (!ctx.ui.setWidget) return;
-		ctx.ui.setWidget(
-			"welcome",
-			(tui: { requestRender(): void }, theme: Theme) => {
-				requestRender = () => tui.requestRender();
+		// The header stays above chat notifications, unlike an editor widget.
+		if (!ctx.ui.setHeader) return;
+		ctx.ui.setHeader((tui: { requestRender(): void }, theme: Theme) => {
+			requestRender = () => tui.requestRender();
 
-				return {
-					render: (width: number) => {
-						// SAFETY: Host theme implements the smaller local foreground-only Theme contract.
-						const t = theme as unknown as Theme;
-						// Re-read modelId each render so /model changes show live.
-						// Clamp to width so an over-wide logo line never crashes Pi's TUI.
-						return renderWelcome(t, modelId, cwd, CHECKS, width);
-					},
-					dispose() {
-						requestRender = null;
-					},
-					invalidate() {},
-				};
-			},
-			{ placement: "aboveEditor" },
-		);
+			return {
+				render: (width: number) => {
+					// SAFETY: Host theme implements the smaller local foreground-only Theme contract.
+					const t = theme as unknown as Theme;
+					// Re-read modelId each render so /model changes show live.
+					// Clamp to width so an over-wide logo line never crashes Pi's TUI.
+					return dismissed ? [] : renderWelcome(t, modelId, cwd, CHECKS, width);
+				},
+				dispose() {
+					requestRender = null;
+				},
+				invalidate() {},
+			};
+		});
 
 		// Run async checks in parallel; each updates CHECKS and re-renders
 		const update = (idx: number, result: CheckResult) => {
@@ -530,16 +526,16 @@ export default function (pi: ExtensionAPI) {
 
 	// before_agent_start fires after resources_discover — use the authoritative
 	// skills list from systemPromptOptions to refine the count, then dismiss.
-	pi.on("before_agent_start", (event, ctx) => {
+	pi.on("before_agent_start", (event) => {
 		const skills = event.systemPromptOptions?.skills ?? [];
 		if (skills.length > 0) _updateSkills?.(summariseSkills(skills));
-		dismiss(ctx);
+		dismiss();
 	});
 
-	pi.on("turn_start", (_event, ctx) => {
-		dismiss(ctx);
+	pi.on("turn_start", () => {
+		dismiss();
 	});
-	pi.on("session_shutdown", (_event, ctx) => {
-		dismiss(ctx);
+	pi.on("session_shutdown", () => {
+		dismiss();
 	});
 }

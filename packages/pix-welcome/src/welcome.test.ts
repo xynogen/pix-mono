@@ -27,32 +27,50 @@ const theme: Theme = {
 };
 
 describe("welcome lifecycle", () => {
-	it("does not run the welcome checks again on extension reload", () => {
+	it("uses the header above chat, dismisses on the first turn, and skips reload", () => {
 		let onStart: ((event: { reason: "reload" | "new" }, ctx: unknown) => void) | undefined;
-		let widgetCalls = 0;
+		let onTurn: typeof onStart;
+		let renderHeader: ((width: number) => string[]) | undefined;
+		let headerCalls = 0;
 		registerWelcome({
 			on(event: string, handler: typeof onStart) {
 				if (event === "session_start") onStart = handler;
+				if (event === "turn_start") onTurn = handler;
 			},
 		} as never);
 		onStart?.(
 			{ reason: "reload" },
 			{
-				ui: { setWidget: () => widgetCalls++ },
+				ui: { setHeader: () => headerCalls++ },
 				cwd: tempDir(),
 				modelRegistry: { getAvailable: () => [] },
 			},
 		);
-		expect(widgetCalls).toBe(0);
+		expect(headerCalls).toBe(0);
 		onStart?.(
 			{ reason: "new" },
 			{
-				ui: { setWidget: () => widgetCalls++ },
+				ui: {
+					setHeader(
+						factory: (
+							tui: { requestRender(): void },
+							theme: Theme,
+						) => {
+							render(width: number): string[];
+						},
+					) {
+						headerCalls++;
+						renderHeader = factory({ requestRender() {} }, theme).render;
+					},
+				},
 				cwd: tempDir(),
 				modelRegistry: { getAvailable: () => [] },
 			},
 		);
-		expect(widgetCalls).toBe(1);
+		expect(headerCalls).toBe(1);
+		expect(renderHeader?.(80)[0]).toContain(LOGO_ROWS[0]?.[0] ?? "");
+		onTurn?.({ reason: "new" }, {});
+		expect(renderHeader?.(80)).toEqual([]);
 	});
 });
 
