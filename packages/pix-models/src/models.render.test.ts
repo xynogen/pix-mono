@@ -53,7 +53,13 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			}) as never),
 		);
 		const { default: register } = await import("./models.ts");
-		type Component = { render(width: number): string[]; handleInput(data: string): void };
+		const { reasoningCatalog } = await import("./thinking.ts");
+		const catalogSpy = spyOn(reasoningCatalog, "get").mockResolvedValue([]);
+		restores.push(catalogSpy);
+		type Component = {
+			render(width: number): string[];
+			handleInput(data: string): void | Promise<void>;
+		};
 		let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
 		let level = "medium";
 		const selected: unknown[] = [];
@@ -101,7 +107,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 		const theme = roleTheme() as unknown as Theme;
 		const states: string[] = [];
 		const notifications: string[] = [];
-		let mode: "capture" | "chat" | "classifier" | "image" = "capture";
+		let mode: "capture" | "chat" | "classifier" | "image" | "thinking" | "cancel" = "capture";
 		const ctx = {
 			model: models[0],
 			modelRegistry: registry,
@@ -180,6 +186,17 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 						capture("reload completed and height paging");
 						available = models;
 						component.handleInput("\x1b");
+					} else if (mode === "thinking" || mode === "cancel") {
+						expect(selected).toEqual([]);
+						expect(component.render(80).join("\n")).toContain("[high]");
+						if (mode === "thinking") {
+							await component.handleInput("\x1b[C");
+							expect(level).toBe("max");
+							await component.handleInput("\x1b[D");
+							expect(level).toBe("high");
+							expect(selected).toHaveLength(1);
+						}
+						await component.handleInput("\x1b");
 					} else {
 						if (mode === "classifier") component.handleInput("\t");
 						if (mode === "image") component.handleInput("\x1b[Z");
@@ -207,6 +224,29 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 		await handler("", ctx);
 		expect(notifications.at(-1)).toBe("Failed to switch to alpha");
 		expect(states.join("\n")).toMatchSnapshot();
+		accept = true;
+		selected.length = 0;
+		catalogSpy.mockResolvedValue([
+			{ provider: "fixture", id: "alpha", levels: ["low", "medium", "high", "max"] },
+		]);
+		mode = "cancel";
+		await handler("", ctx);
+		expect(level).toBe("high");
+		expect(selected).toEqual([]);
+		mode = "thinking";
+		await handler("", ctx);
+		expect(selected[0]).toMatchObject({
+			id: "alpha",
+			thinkingLevelMap: { max: "max", xhigh: null },
+		});
+		selected.length = 0;
+		mode = "chat";
+		await handler("", ctx);
+		expect(selected[0]).toMatchObject({
+			id: "alpha",
+			thinkingLevelMap: { high: "high", max: "max", xhigh: null },
+		});
+		expect(notifications.at(-1)).toBe("Thinking options for alpha: models.dev");
 	} finally {
 		for (const restore of restores.reverse()) restore.mockRestore();
 		if (cache === undefined) delete process.env.XDG_CACHE_HOME;

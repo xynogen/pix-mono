@@ -33,6 +33,7 @@ import { dotJoin } from "@xynogen/pix-pretty/utils";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { patchOutBuiltinModelCommand } from "./patch-builtin";
 import { registerProjectPrefs } from "./project-prefs";
+import { reasoningCatalog, withReasoningLevels } from "./thinking.ts";
 
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
 
@@ -248,7 +249,8 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 		return;
 	}
 
-	const current = ctx.model;
+	const catalog = available.some((model) => model.reasoning) ? await reasoningCatalog.get() : [];
+	let current = ctx.model ? withReasoningLevels(ctx.model, catalog) : undefined;
 
 	// Build items with benchmark data
 	type Row = {
@@ -504,8 +506,9 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 			// `local` shadows the level so the header updates even on builds/contexts
 			// where pi.getThinkingLevel() lags or is unavailable inside the overlay.
 			let localLevel = pi.getThinkingLevel?.() ?? "";
-			const supportedLevels = (): string[] =>
-				ctx.model ? getSupportedThinkingLevels(ctx.model) : [];
+			let applyingThinking = false;
+			let needsThinkingModel = current !== ctx.model;
+			const supportedLevels = (): string[] => (current ? getSupportedThinkingLevels(current) : []);
 			const thinkLine = () => {
 				const resolved = pi.getThinkingLevel?.() ?? localLevel;
 				const levels = supportedLevels();
@@ -580,7 +583,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					list.invalidate();
 					search.invalidate();
 				},
-				handleInput(data: string) {
+				async handleInput(data: string) {
 					// Detect keys via pi-tui's own parser — the same recognition
 					// SelectList uses. Arrows arrive as named keys ("up"/"down"),
 					// not raw escape sequences, so string-equality checks fail.
@@ -597,7 +600,7 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 						done(null);
 						return;
 					}
-					if (reloading) return;
+					if (reloading || applyingThinking) return;
 					const shiftTab = matchesKey(data, Key.shift(Key.tab));
 					if (shiftTab || matchesKey(data, Key.tab)) {
 						switchTab(shiftTab ? -1 : 1);
@@ -611,6 +614,21 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 					if (dir !== 0) {
 						const cur = pi.getThinkingLevel?.() || localLevel || "medium";
 						const next = stepThinkingLevel(supportedLevels(), cur, dir);
+						if (current && needsThinkingModel) {
+							applyingThinking = true;
+							try {
+								if (!(await pi.setModel(current))) throw new Error("Model update rejected");
+								needsThinkingModel = false;
+								ctx.ui.notify(`Thinking options for ${current.id}: models.dev`, "info");
+							} catch (error) {
+								current = ctx.model;
+								ctx.ui.notify(`Failed to apply thinking options: ${String(error)}`, "error");
+								tui.requestRender();
+								return;
+							} finally {
+								applyingThinking = false;
+							}
+						}
 						pi.setThinkingLevel(next as Parameters<typeof pi.setThinkingLevel>[0]);
 						localLevel = pi.getThinkingLevel?.() ?? next;
 						// setThinkingLevel doesn't repaint this overlay, so force a render
@@ -659,10 +677,14 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 		ctx.ui.notify(`Model not found: ${result}`, "error");
 		return;
 	}
-	const ok = await pi.setModel(picked);
+	const enriched = withReasoningLevels(picked, catalog);
+	const ok = await pi.setModel(enriched);
 	if (!ok) {
 		ctx.ui.notify(`Failed to switch to ${picked.id}`, "error");
 		return;
+	}
+	if (enriched !== picked) {
+		ctx.ui.notify(`Thinking options for ${picked.id}: models.dev`, "info");
 	}
 	// Persistence happens in project-prefs.ts via the model_select event.
 }
