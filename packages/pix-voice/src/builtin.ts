@@ -18,7 +18,6 @@ import {
 	json,
 	mimeType,
 	parseTranscriptionResponse,
-	pcmToWav,
 	request,
 	requireRouterBase,
 	routerBaseUrl,
@@ -47,7 +46,10 @@ async function openaiTranscribe(url: string, key: string, req: TranscribeRequest
 	const form = new FormData();
 	form.append("file", await audioBlob(req.file, req.signal), basename(req.file));
 	form.append("model", req.model);
-	if (req.language) form.append("language", req.language);
+	if (req.language) {
+		// gpt-transcribe replaced the singular language field with an array.
+		form.append(req.model === "gpt-transcribe" ? "languages[]" : "language", req.language);
+	}
 	const response = await request(url, {
 		method: "POST",
 		headers: bearer(key),
@@ -77,6 +79,16 @@ function baseOf(url: string, suffix: string): string {
 		.replace(/\/v1$/, "");
 }
 
+/** Interactions includes input and thought steps too; only model output is a result. */
+function geminiOutput(data: Record<string, unknown>) {
+	if (!Array.isArray(data.steps)) throw new Error("Gemini returned no output steps");
+	const content = data.steps.flatMap((step) =>
+		step?.type === "model_output" && Array.isArray(step.content) ? step.content : [],
+	) as Array<{ type?: string; text?: string; data?: string; mime_type?: string }>;
+	if (!content.length) throw new Error("Gemini returned no model output");
+	return content;
+}
+
 // ── Speech to text ──────────────────────────────────────────────────────────
 
 const stt: SttProvider[] = [
@@ -90,7 +102,7 @@ const stt: SttProvider[] = [
 	},
 	{
 		id: "openai",
-		defaultModel: "gpt-4o-mini-transcribe",
+		defaultModel: "gpt-transcribe",
 		env: ["OPENAI_API_KEY"],
 		isConfigured: has("OPENAI_API_KEY"),
 		transcribe: (req) =>
@@ -179,39 +191,30 @@ const stt: SttProvider[] = [
 	},
 	{
 		id: "gemini",
-		defaultModel: "gemini-2.5-flash",
+		defaultModel: "gemini-3.8-flash",
 		env: ["GEMINI_API_KEY"],
 		isConfigured: has("GEMINI_API_KEY"),
 		async transcribe(req) {
 			const audio = await readFile(req.file, { signal: req.signal });
 			const prompt = `Generate a transcript of the speech. Return only the transcribed text, no commentary.${req.language ? ` Language: ${req.language}.` : ""}`;
-			const data = await json(
-				`https://generativelanguage.googleapis.com/v1beta/models/${req.model}:generateContent`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json", "x-goog-api-key": env("GEMINI_API_KEY") },
-					body: JSON.stringify({
-						contents: [
-							{
-								parts: [
-									{ text: prompt },
-									{
-										inline_data: {
-											mime_type: mimeType(req.file),
-											data: audio.toString("base64"),
-										},
-									},
-								],
-							},
-						],
-					}),
-					signal: req.signal,
-				},
-			);
-			const candidates = data.candidates as
-				| Array<{ content?: { parts?: Array<{ text?: string }> } }>
-				| undefined;
-			return (candidates?.[0]?.content?.parts ?? []).map((part) => part.text ?? "").join("");
+			const data = await json("https://generativelanguage.googleapis.com/v1beta/interactions", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", "x-goog-api-key": env("GEMINI_API_KEY") },
+				body: JSON.stringify({
+					model: req.model,
+					input: [
+						{ type: "text", text: prompt },
+						{ type: "audio", mime_type: mimeType(req.file), data: audio.toString("base64") },
+					],
+				}),
+				signal: req.signal,
+			});
+			const text = geminiOutput(data)
+				.filter((part) => part.type === "text" && typeof part.text === "string")
+				.map((part) => part.text)
+				.join("");
+			if (!text.trim()) throw new Error("Gemini returned no transcript");
+			return text;
 		},
 	},
 	{
@@ -353,34 +356,27 @@ const tts: TtsProvider[] = [
 	},
 	{
 		id: "gemini",
-		defaultModel: "gemini-2.5-flash-preview-tts/Kore",
+		defaultModel: "gemini-3.8-flash-tts/Kore",
 		env: ["GEMINI_API_KEY"],
 		isConfigured: has("GEMINI_API_KEY"),
 		async synthesize(req) {
 			const { model, voice } = splitModel(req.model, "Kore");
-			const data = await json(
-				`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json", "x-goog-api-key": env("GEMINI_API_KEY") },
-					body: JSON.stringify({
-						contents: [
-							{ parts: [{ text: /:\s/.test(req.input) ? req.input : `Say: ${req.input}` }] },
-						],
-						generationConfig: {
-							responseModalities: ["AUDIO"],
-							speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
-						},
-					}),
-					signal: req.signal,
-				},
-			);
-			const candidates = data.candidates as
-				| Array<{ content?: { parts?: Array<{ inlineData?: { data?: string } }> } }>
-				| undefined;
-			const pcm = candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data);
-			// Gemini returns 16-bit mono PCM at 24 kHz.
-			return { audio: pcmToWav(fromBase64(pcm?.inlineData?.data)), format: "wav" };
+			const data = await json("https://generativelanguage.googleapis.com/v1beta/interactions", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", "x-goog-api-key": env("GEMINI_API_KEY") },
+				body: JSON.stringify({
+					model,
+					input: [{ type: "user_input", content: [{ type: "text", text: req.input }] }],
+					response_format: { type: "audio" },
+					generation_config: { speech_config: [{ voice }] },
+				}),
+				signal: req.signal,
+			});
+			const audio = geminiOutput(data)
+				.reverse()
+				.find((part) => part.type === "audio");
+			if (audio?.mime_type !== "audio/wav") throw new Error("Gemini returned no WAV audio");
+			return { audio: fromBase64(audio.data), format: "wav" };
 		},
 	},
 	minimax("minimax", "api.minimax.io", "MINIMAX_API_KEY"),
@@ -411,22 +407,22 @@ const tts: TtsProvider[] = [
 	},
 	{
 		id: "cartesia",
-		defaultModel: "sonic-2",
+		defaultModel: "sonic-3.6/db6b0ed5-d5d3-463d-ae85-518a07d3c2b4",
 		env: ["CARTESIA_API_KEY"],
 		isConfigured: has("CARTESIA_API_KEY"),
 		async synthesize(req) {
-			const { model, voice } = splitModel(req.model, "");
+			const { model, voice } = splitModel(req.model, "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4");
 			const response = await request("https://api.cartesia.ai/tts/bytes", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 					"X-API-Key": env("CARTESIA_API_KEY"),
-					"Cartesia-Version": "2024-06-10",
+					"Cartesia-Version": "2026-08-14",
 				},
 				body: JSON.stringify({
 					model_id: model,
 					transcript: req.input,
-					...(voice ? { voice: { mode: "id", id: voice } } : {}),
+					voice,
 					output_format: { container: "mp3", bit_rate: 128000, sample_rate: 44100 },
 				}),
 				signal: req.signal,
@@ -436,11 +432,11 @@ const tts: TtsProvider[] = [
 	},
 	{
 		id: "inworld",
-		defaultModel: "inworld-tts-1.5-mini/Alex",
+		defaultModel: "inworld-tts-2-flash/Ashley",
 		env: ["INWORLD_API_KEY"],
 		isConfigured: has("INWORLD_API_KEY"),
 		async synthesize(req) {
-			const { model, voice } = splitModel(req.model, "Alex");
+			const { model, voice } = splitModel(req.model, "Ashley");
 			const data = await json("https://api.inworld.ai/tts/v1/voice", {
 				method: "POST",
 				headers: {
@@ -476,7 +472,7 @@ const tts: TtsProvider[] = [
 	},
 	{
 		id: "openrouter",
-		defaultModel: "openai/gpt-4o-mini-tts/alloy",
+		defaultModel: "openai/gpt-audio/alloy",
 		env: ["OPENROUTER_API_KEY"],
 		isConfigured: has("OPENROUTER_API_KEY"),
 		async synthesize(req) {

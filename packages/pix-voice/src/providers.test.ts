@@ -105,6 +105,96 @@ describe("provider registry", () => {
 });
 
 describe("built-in STT providers", () => {
+	test("OpenAI uses the current file model and plural language hints", async () => {
+		process.env.OPENAI_API_KEY = "oa-key";
+		const calls = captureFetch(() => Response.json({ text: "selamat pagi" }));
+		const stt = provider("stt", "openai");
+		const text = await stt.transcribe({
+			file: audioFile(),
+			model: stt.defaultModel,
+			language: "id",
+		});
+		const form = calls[0]?.body as FormData;
+		expect({
+			text,
+			url: calls[0]?.url,
+			auth: calls[0]?.headers.get("authorization"),
+			fields: [...form.keys()],
+			model: form.get("model"),
+			languages: form.getAll("languages[]"),
+		}).toEqual({
+			text: "selamat pagi",
+			url: "https://api.openai.com/v1/audio/transcriptions",
+			auth: "Bearer oa-key",
+			fields: ["file", "model", "languages[]"],
+			model: "gpt-transcribe",
+			languages: ["id"],
+		});
+	});
+
+	test("legacy multipart models retain singular language hints", async () => {
+		process.env.GROQ_API_KEY = "groq-key";
+		const calls = captureFetch(() => Response.json({ text: "hello" }));
+		await provider("stt", "groq").transcribe({
+			file: audioFile(),
+			model: "whisper-large-v3-turbo",
+			language: "en",
+		});
+		const form = calls[0]?.body as FormData;
+		expect([...form.keys()]).toEqual(["file", "model", "language"]);
+		expect(form.get("language")).toBe("en");
+	});
+
+	test("Gemini transcribes inline audio through Interactions and excludes input/thought steps", async () => {
+		process.env.GEMINI_API_KEY = "g-key";
+		const calls = captureFetch(() =>
+			Response.json({
+				steps: [
+					{ type: "user_input", content: [{ type: "text", text: "prompt" }] },
+					{ type: "thought", content: [{ type: "text", text: "private thought" }] },
+					{
+						type: "model_output",
+						content: [
+							{ type: "text", text: "hello" },
+							{ type: "text", text: " world" },
+						],
+					},
+				],
+			}),
+		);
+		const stt = provider("stt", "gemini");
+		expect(
+			await stt.transcribe({ file: audioFile(), model: stt.defaultModel, language: "id" }),
+		).toBe("hello world");
+		expect(calls[0]?.url).toBe("https://generativelanguage.googleapis.com/v1beta/interactions");
+		expect(calls[0]?.headers.get("x-goog-api-key")).toBe("g-key");
+		expect(JSON.parse(String(calls[0]?.body))).toEqual({
+			model: "gemini-3.8-flash",
+			input: [
+				{
+					type: "text",
+					text: "Generate a transcript of the speech. Return only the transcribed text, no commentary. Language: id.",
+				},
+				{ type: "audio", mime_type: "audio/wav", data: "AQIDBA==" },
+			],
+		});
+	});
+
+	test("Gemini rejects missing output and empty transcripts", async () => {
+		process.env.GEMINI_API_KEY = "g-key";
+		const stt = provider("stt", "gemini");
+		for (const reply of [
+			{},
+			{ steps: [] },
+			{ steps: [{ type: "model_output", content: [{ type: "text", text: " " }] }] },
+		]) {
+			captureFetch(() => Response.json(reply));
+			await expect(stt.transcribe({ file: audioFile(), model: stt.defaultModel })).rejects.toThrow(
+				/Gemini returned no/,
+			);
+		}
+	});
+
 	test("9router posts multipart audio with the router key", async () => {
 		process.env.NINEROUTER_URL = "https://router.test";
 		process.env.NINEROUTER_KEY = "router-key";
@@ -173,24 +263,127 @@ describe("built-in TTS providers", () => {
 		});
 	});
 
-	test("gemini wraps 24 kHz PCM in a WAV header", async () => {
+	test("Gemini returns Interactions WAV unchanged and sends verbatim input", async () => {
 		process.env.GEMINI_API_KEY = "g-key";
-		const pcm = Buffer.from([1, 0, 2, 0]).toString("base64");
-		captureFetch(() =>
-			Response.json({ candidates: [{ content: { parts: [{ inlineData: { data: pcm } }] } }] }),
+		const wav = new Uint8Array([82, 73, 70, 70, 1, 2, 3, 4]);
+		const calls = captureFetch(() =>
+			Response.json({
+				steps: [
+					{
+						type: "model_output",
+						content: [
+							{ type: "audio", mime_type: "audio/wav", data: Buffer.from(wav).toString("base64") },
+						],
+					},
+				],
+			}),
 		);
-		const speech = await provider("tts", "gemini").synthesize({
-			input: "Hi",
-			model: "gemini-2.5-flash-preview-tts/Kore",
-			format: "mp3",
+		const tts = provider("tts", "gemini");
+		const speech = await tts.synthesize({ input: "Hi", model: tts.defaultModel, format: "mp3" });
+		expect({ format: speech.format, audio: [...speech.audio] }).toEqual({
+			format: "wav",
+			audio: [...wav],
 		});
-		const header = Buffer.from(speech.audio.slice(0, 44));
-		expect({
-			format: speech.format,
-			riff: header.toString("ascii", 0, 4),
-			rate: header.readUInt32LE(24),
-			size: speech.audio.byteLength,
-		}).toEqual({ format: "wav", riff: "RIFF", rate: 24_000, size: 48 });
+		expect(calls[0]?.url).toBe("https://generativelanguage.googleapis.com/v1beta/interactions");
+		expect(JSON.parse(String(calls[0]?.body))).toEqual({
+			model: "gemini-3.8-flash-tts",
+			input: [{ type: "user_input", content: [{ type: "text", text: "Hi" }] }],
+			response_format: { type: "audio" },
+			generation_config: { speech_config: [{ voice: "Kore" }] },
+		});
+	});
+
+	test("Gemini rejects unexpected audio formats and missing audio", async () => {
+		process.env.GEMINI_API_KEY = "g-key";
+		for (const part of [
+			{ type: "text", text: "no audio" },
+			{ type: "audio", mime_type: "audio/l16", data: "AQI=" },
+			{ type: "audio", mime_type: "audio/wav" },
+		]) {
+			captureFetch(() => Response.json({ steps: [{ type: "model_output", content: [part] }] }));
+			const tts = provider("tts", "gemini");
+			await expect(
+				tts.synthesize({ input: "Hi", model: tts.defaultModel, format: "wav" }),
+			).rejects.toThrow(/no (WAV )?audio/);
+		}
+	});
+
+	test("Cartesia's current default always sends a voice and matching API version", async () => {
+		process.env.CARTESIA_API_KEY = "c-key";
+		const calls = captureFetch(() => new Response(new Uint8Array([1, 2])));
+		const tts = provider("tts", "cartesia");
+		for (const model of [tts.defaultModel, "sonic-3.6", "sonic-3.6/custom-voice"]) {
+			const speech = await tts.synthesize({ input: "Hi", model, format: "mp3" });
+			expect({ audio: [...speech.audio], format: speech.format }).toEqual({
+				audio: [1, 2],
+				format: "mp3",
+			});
+		}
+		for (const [i, call] of calls.entries()) {
+			expect(call.url).toBe("https://api.cartesia.ai/tts/bytes");
+			expect(call.headers.get("Cartesia-Version")).toBe("2026-08-14");
+			expect(call.headers.get("X-API-Key")).toBe("c-key");
+			expect(JSON.parse(String(call.body))).toEqual({
+				model_id: "sonic-3.6",
+				transcript: "Hi",
+				voice: i === 2 ? "custom-voice" : "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4",
+				output_format: { container: "mp3", bit_rate: 128000, sample_rate: 44100 },
+			});
+		}
+	});
+
+	test("Inworld's current flash model preserves explicit voice selection", async () => {
+		process.env.INWORLD_API_KEY = "iw-key";
+		const calls = captureFetch(() => Response.json({ audioContent: "AQI=" }));
+		const tts = provider("tts", "inworld");
+		for (const model of [
+			tts.defaultModel,
+			"inworld-tts-2-flash",
+			"inworld-tts-2-flash/custom-voice",
+		]) {
+			expect(await tts.synthesize({ input: "Hi", model, format: "mp3" })).toEqual({
+				audio: new Uint8Array([1, 2]),
+				format: "mp3",
+			});
+		}
+		for (const [i, call] of calls.entries()) {
+			expect(call.url).toBe("https://api.inworld.ai/tts/v1/voice");
+			expect(call.headers.get("authorization")).toBe("Basic iw-key");
+			expect(JSON.parse(String(call.body))).toEqual({
+				modelId: "inworld-tts-2-flash",
+				voiceId: i === 2 ? "custom-voice" : "Ashley",
+				text: "Hi",
+				audioConfig: { audioEncoding: "MP3" },
+			});
+		}
+	});
+
+	test("OpenRouter uses a listed chat-audio model and assembles SSE audio", async () => {
+		process.env.OPENROUTER_API_KEY = "or-key";
+		const calls = captureFetch(
+			() =>
+				new Response(
+					[
+						": keep-alive",
+						'data: {"choices":[{"delta":{"audio":{"data":"AQ"}}}]}',
+						'data: {"choices":[{"delta":{"audio":{"data":"IDBA=="}}}]}',
+						"data: [DONE]",
+					].join("\n"),
+				),
+		);
+		const tts = provider("tts", "openrouter");
+		expect(
+			await tts.synthesize({ input: "Read this aloud", model: tts.defaultModel, format: "wav" }),
+		).toEqual({ audio: new Uint8Array([1, 2, 3, 4]), format: "wav" });
+		expect(calls[0]?.url).toBe("https://openrouter.ai/api/v1/chat/completions");
+		expect(calls[0]?.headers.get("authorization")).toBe("Bearer or-key");
+		expect(JSON.parse(String(calls[0]?.body))).toEqual({
+			model: "openai/gpt-audio",
+			modalities: ["text", "audio"],
+			audio: { voice: "alloy", format: "wav" },
+			stream: true,
+			messages: [{ role: "user", content: "Read this aloud" }],
+		});
 	});
 
 	test("minimax decodes hex audio and surfaces a status error", async () => {
