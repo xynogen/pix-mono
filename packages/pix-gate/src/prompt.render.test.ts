@@ -53,6 +53,11 @@ test("captures actual gate severity, path and merged approval components", async
 			const hit = classify(command, DEFAULT_RULES);
 			if (!hit) throw new Error("Missing command rule");
 			await capture(name, promptGateDecision(gateUi, hit, command));
+			const popup = captures[name]?.join("\n") ?? "";
+			expect(popup).toMatch(
+				/Review the command[\s\S]*allow[\s\S]*block|Review the command[\s\S]*block[\s\S]*risk/i,
+			);
+			expect(popup).not.toContain(command);
 		}
 		for (const [name, path] of Object.entries({ block: ".env", warn: ".npmrc" })) {
 			const hit = classifyPath(path, "read", DEFAULT_PATH_RULES);

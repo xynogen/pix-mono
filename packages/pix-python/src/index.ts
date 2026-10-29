@@ -224,8 +224,7 @@ function register(pi: ExtensionAPI): void {
 						body: [
 							`Cwd: ${ctx.cwd}`,
 							...(python ? [`Python: ${interpreter}`] : []),
-							"",
-							...code.split("\n"),
+							"Review the code in the tool card below.",
 						],
 						choices: [
 							{ value: "yes", label: "Allow", description: "Run this snippet" },

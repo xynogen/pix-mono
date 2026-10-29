@@ -266,12 +266,12 @@ function approvalTitle({ action, direction, reason }: SshOperation): string {
 }
 
 function approvalBody(operation: SshOperation, host: string, port?: number): string[] {
-	const { action, command, destination, direction, reason, recursive, source, sudo } = operation;
+	const { action, destination, direction, reason, recursive, source } = operation;
 	return [
 		...(reason?.trim() ? [] : ["No reason provided by AI"]),
 		`Host: ${host}${port ? ` (port ${port})` : ""}`,
 		...(action === "command"
-			? [`Command: ${sudo ? "sudo " : ""}${command}`]
+			? ["Review the command in the tool card below."]
 			: [
 					`Direction: ${direction === "download" ? "Download" : "Upload"}`,
 					`From: ${source}`,
@@ -799,7 +799,6 @@ export default function (pi: ExtensionAPI): void {
 			const overlayResult = await runOverlay();
 			if (overlayResult.passwordAttemptsExhausted) {
 				const text = `SSH authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
-				ctx.ui.notify(`🔐 ${text}`, "error");
 				return {
 					content: [{ type: "text", text }],
 					details: makeDetails(command, host, sudo, reason, {
@@ -814,7 +813,6 @@ export default function (pi: ExtensionAPI): void {
 				((needLogin && !collected.login) || (needSudo && !collected.sudo));
 			if (overlayResult.action !== "approved" || missing) {
 				const r = cancelResult(command, host, sudo, reason, overlayResult.action);
-				ctx.ui.notify(`🔐 ${r.content[0]?.text}`, "warning");
 				return r;
 			}
 
@@ -909,7 +907,6 @@ export default function (pi: ExtensionAPI): void {
 			// next call re-prompts.
 			if (detectSshFailure(result.code, result.stderr)) {
 				credCache.delete(key);
-				ctx.ui.notify("🔐 SSH authentication failed", "error");
 				return {
 					content: [{ type: "text", text: `SSH authentication failed:\n${result.stderr}` }],
 					details: makeDetails(command, host, sudo, reason, {
@@ -926,7 +923,6 @@ export default function (pi: ExtensionAPI): void {
 			// Remote sudo password failure → drop the bad sudo password.
 			if (sudo && detectSudoFailure(result.stderr)) {
 				credCache.set(key, loginPassword ? { loginPassword } : {});
-				ctx.ui.notify("🔐 Remote sudo authentication failed", "error");
 				return {
 					content: [{ type: "text", text: `Remote sudo authentication failed:\n${result.stderr}` }],
 					details: makeDetails(command, host, sudo, reason, {

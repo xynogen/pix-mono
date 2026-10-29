@@ -885,20 +885,30 @@ describe("sudo_run tool execute()", () => {
 		expect(JSON.stringify(updates)).not.toContain("secret-value");
 	});
 
-	test("overlay renders the command", async () => {
+	test("command stays in the tool card, not the approval popup", async () => {
 		const host = makeHost();
-		const rendered: string[] = [];
+		const popup: string[] = [];
+		const command = "printf first\nprintf second";
 		await host.execute(
 			"id",
-			{ command: "rm -rf /tmp/test" },
+			{ command },
 			undefined,
 			undefined,
 			makeCtx({
 				overlayResult: { action: "denied" },
-				onCustom: (lines) => rendered.push(...lines),
+				onCustom: (lines) => popup.push(...lines),
 			}),
 		);
-		expect(rendered.join("\n")).toContain("rm -rf /tmp/test");
+		expect(popup.join("\n")).toContain("Review the command in the tool card below.");
+		expect(popup.join("\n")).not.toContain("printf");
+		const call = rendered(
+			host.renderCall({ command }, stubTheme, {
+				expanded: true,
+				state: {},
+				invalidate() {},
+			}),
+		);
+		expect(call).toMatch(/sudo[\s\S]*printf first[\s\S]*printf second/);
 	});
 
 	test("overlay renders the reason when provided", async () => {

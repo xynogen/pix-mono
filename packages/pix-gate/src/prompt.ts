@@ -145,7 +145,7 @@ const SEVERITY_TIER: {
 export async function promptMergedGateDecision(
 	ui: GatePromptUI,
 	concerns: Concern[],
-	command: string,
+	_command: string,
 ): Promise<GateDecision> {
 	// Sort by tier desc so the highest-severity concern drives dialog behavior.
 	const sorted = [...concerns].sort((a, b) => b.tier - a.tier);
@@ -163,11 +163,12 @@ export async function promptMergedGateDecision(
 			uniqueLabels.push(key);
 		}
 	}
-	const titleSuffix = command.length > 55 ? `${command.slice(0, 52)}…` : command;
-	const title = `${uniqueLabels.join(" + ")} — ${titleSuffix}`;
+	const title = uniqueLabels.join(" + ");
 
-	// Body: command + concern list
-	const body = [command, "", ...sorted.map((c) => `${c.icon} ${c.label} — ${c.detail}`)];
+	const body = [
+		"Review the command in the tool card below.",
+		...sorted.map((c) => `${c.icon} ${c.label} — ${c.detail}`),
+	];
 
 	const accent =
 		highest.tier >= SEVERITY_TIER.critical
@@ -234,7 +235,7 @@ const TIMEOUT_BY_TIER: Record<string, number> = {
 export async function promptGateDecision(
 	ui: GatePromptUI,
 	hit: Rule,
-	command: string,
+	_command: string,
 ): Promise<GateDecision> {
 	const icon = SEVERITY_ICON[hit.severity];
 	const label = titleCase(hit.severity);
@@ -268,7 +269,7 @@ export async function promptGateDecision(
 		mode: "confirm",
 		icon,
 		title: `${label} — ${hit.reason}`,
-		body: [command],
+		body: ["Review the command in the tool card below."],
 		accent,
 		timeoutMs: TIMEOUT_MS[hit.severity],
 		choices,

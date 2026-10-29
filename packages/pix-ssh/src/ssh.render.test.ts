@@ -229,6 +229,11 @@ test("SSH package command and overwrite approval components, login then remote s
 				);
 				try {
 					expect(options?.overlay).toBe(true);
+					if (mode === "command" || mode === "passwords") {
+						const popup = captureRows(component, { width: 80, surface: "component" }).join("\n");
+						expect(popup).toContain("Review the command in the tool card below.");
+						expect(popup).not.toContain("Command:");
+					}
 					if (mode !== "passwords")
 						captures[mode] = captureRows(component, { width: 80, surface: "component" });
 					else {

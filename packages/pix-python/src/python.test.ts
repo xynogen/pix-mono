@@ -91,6 +91,31 @@ const getText = (r: ToolResultLike) =>
 	(r.content ?? []).map((c) => ("text" in c ? c.text : "")).join("");
 
 describe("python_run", () => {
+	test("approval shows controls while code stays in the tool card", async () => {
+		const { tool, execute } = host();
+		let popup = "";
+		const ui = {
+			custom: async (
+				factory: (...a: unknown[]) => { render(w: number): string[]; handleInput(d: string): void },
+			) =>
+				new Promise((resolve) => {
+					const component = factory(
+						{ requestRender() {}, terminal: { rows: 40 } },
+						roleTheme(),
+						undefined,
+						resolve,
+					);
+					popup = component.render(100).join("\n");
+					component.handleInput("\x1b");
+				}),
+		};
+		await execute("t", args, undefined, undefined, { hasUI: true, ui, cwd: "/work" });
+		expect(popup).toMatch(/Add numbers[\s\S]*Review the code[\s\S]*Allow[\s\S]*Deny/);
+		expect(popup).not.toContain("print(40 + 2)");
+		const component = tool.renderCall?.(args, makeTheme(), makeRenderCtx({ expanded: true }));
+		expect(component?.render(100).join("\n")).toContain("print(40 + 2)");
+	});
+
 	test("Allow runs the repaired code once; the next call asks again", async () => {
 		const { execute } = host();
 		const ui = pickUi(0);

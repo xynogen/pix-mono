@@ -5,7 +5,7 @@
  * overlay with two stages:
  *
  *   Stage 1 — confirm
- *     Shows command + AI intent.  User picks Allow or Deny via SelectList.
+ *     Shows AI intent; the command stays in its transcript tool card. Allow/Deny.
  *     Auto-denies after 60 s.
  *
  *   Stage 2 — password (skipped when a valid PAM ticket already exists)
@@ -229,7 +229,10 @@ export default function (pi: ExtensionAPI): void {
 
 			const intent = reason?.trim();
 			const title = intent || "Root Command Request";
-			const body = [...(intent ? [] : ["No reason provided by AI"]), `Command: ${command}`];
+			const body = [
+				"Review the command in the tool card below.",
+				...(intent ? [] : ["No reason provided by AI"]),
+			];
 
 			let result: { stdout: string; stderr: string; code: number } | undefined;
 			let executionError: unknown;
@@ -304,7 +307,6 @@ export default function (pi: ExtensionAPI): void {
 			// Checked before anything runs: a wrong password must never reach sudo.
 			if (overlayResult.passwordAttemptsExhausted) {
 				const text = `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
-				ctx.ui.notify(`🔐 ${text}`, "error");
 				return {
 					content: [{ type: "text", text }],
 					details: makeDetails(command, reason, { outcome: "error", errorKind: "authentication" }),
@@ -333,7 +335,6 @@ export default function (pi: ExtensionAPI): void {
 						: outcome === "denied"
 							? "Denied by user."
 							: "Cancelled — no password entered.";
-				ctx.ui.notify(`🔐 ${msg}`, "warning");
 				return {
 					content: [{ type: "text", text: `Cancelled — ${msg}` }],
 					details: makeDetails(command, reason, { outcome, cancellationKind }),
@@ -385,10 +386,6 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			if (detectAuthFailure(result.code, result.stderr)) {
-				ctx.ui.notify(
-					`🔐 sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts`,
-					"error",
-				);
 				return {
 					content: [
 						{
