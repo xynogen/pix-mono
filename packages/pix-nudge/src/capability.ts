@@ -107,20 +107,28 @@ export function partitionTools(
 	other: number;
 	active: number;
 	gated: number;
+	mcpGated: number;
+	otherGated: number;
 } {
 	const activeSet = active ? new Set(active) : undefined;
 	let mcp = 0;
 	let other = 0;
 	let activeCount = 0;
 	let gated = 0;
+	let mcpGated = 0;
+	let otherGated = 0;
 	for (const t of tools ?? []) {
-		if (/mcp/i.test(t.sourceInfo?.source ?? "")) mcp++;
+		const isMcp = /mcp/i.test(t.sourceInfo?.source ?? "");
+		if (isMcp) mcp++;
 		else other++;
 		// A tool is "gated" only when we have an active set and it's absent from it.
-		if (activeSet && !activeSet.has(t.name)) gated++;
-		else activeCount++;
+		if (activeSet && !activeSet.has(t.name)) {
+			gated++;
+			if (isMcp) mcpGated++;
+			else otherGated++;
+		} else activeCount++;
 	}
-	return { mcp, other, active: activeCount, gated };
+	return { mcp, other, active: activeCount, gated, mcpGated, otherGated };
 }
 
 /**
@@ -134,15 +142,21 @@ export function buildOrientation(
 	/** Currently-active tool names; absent ⇒ gate not tracked (all treated active). */
 	activeToolNames?: Iterable<string>,
 ): string {
-	const { mcp, other, gated } = partitionTools(tools, activeToolNames);
+	const { mcp, other, gated, mcpGated, otherGated } = partitionTools(tools, activeToolNames);
 	const skillNames = (skills ?? [])
 		.filter((s) => !s.disableModelInvocation)
 		.map((s) => s.name)
 		.sort();
 
 	const inventory: string[] = [];
-	if (other) inventory.push(`${other} tool${other === 1 ? "" : "s"}`);
-	if (mcp) inventory.push(`${mcp} MCP tool${mcp === 1 ? "" : "s"}`);
+	if (other)
+		inventory.push(
+			`${other} tool${other === 1 ? "" : "s"}${otherGated ? ` (${otherGated} deferred)` : ""}`,
+		);
+	if (mcp)
+		inventory.push(
+			`${mcp} MCP tool${mcp === 1 ? "" : "s"}${mcpGated ? ` (${mcpGated} deferred)` : ""}`,
+		);
 	if (skillNames.length)
 		inventory.push(`${skillNames.length} skill${skillNames.length === 1 ? "" : "s"}`);
 	const summary = inventory.length ? inventory.join(", ") : "your toolbelt";
@@ -204,13 +218,13 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 				activeToolNames = undefined;
 			}
 			content = buildOrientation(tools, skills, activeToolNames);
-			const { gated } = partitionTools(tools, activeToolNames);
+			const { other, mcp, otherGated, mcpGated } = partitionTools(tools, activeToolNames);
 			const caps = capabilityLabels(tools).length;
 			details = {
 				kind: "orientation",
 				summary: [
-					`${tools?.length ?? 0} tools`,
-					gated && `${gated} deferred`,
+					`${other} tools${otherGated ? ` (${otherGated} deferred)` : ""}`,
+					mcp && `${mcp} MCP tools${mcpGated ? ` (${mcpGated} deferred)` : ""}`,
 					// caps = helper tools named in the "Before you improvise" line (ask_user, search, mcp…).
 					caps && `${caps} capabilities`,
 				]

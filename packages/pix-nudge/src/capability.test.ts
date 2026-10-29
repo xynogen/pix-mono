@@ -81,6 +81,8 @@ describe("partitionTools", () => {
 			other: 0,
 			active: 0,
 			gated: 0,
+			mcpGated: 0,
+			otherGated: 0,
 		});
 	});
 
@@ -102,6 +104,25 @@ describe("partitionTools", () => {
 		);
 		expect(active).toBe(2);
 		expect(gated).toBe(2);
+	});
+	test("tracks deferred counts independently for each source", () => {
+		const tools = [
+			tool("read", "builtin"),
+			tool("find", "builtin"),
+			tool("docs", "mcp:docs"),
+			tool("query", "mcp:db"),
+		];
+		expect(partitionTools(tools, ["read", "docs"])).toEqual({
+			other: 2,
+			mcp: 2,
+			active: 2,
+			gated: 2,
+			otherGated: 1,
+			mcpGated: 1,
+		});
+		expect(buildOrientation(tools, [], ["read", "docs"])).toMatch(
+			/^Toolbelt: 2 tools \(1 deferred\), 2 MCP tools \(1 deferred\)\./,
+		);
 	});
 });
 
@@ -174,7 +195,7 @@ describe("buildOrientation", () => {
 
 	test("no tool_search registered: never tells the model to call it", () => {
 		const out = buildOrientation([tool("read", "builtin"), tool("find", "builtin")], [], ["read"]);
-		expect(out).toMatch(/^Toolbelt: 2 tools\.$/m);
+		expect(out).toMatch(/^Toolbelt: 2 tools \(1 deferred\)\.$/m);
 		expect(out).not.toContain("tool_search");
 	});
 
@@ -235,6 +256,8 @@ describe("registerCapabilityNudge", () => {
 					tool("read", "builtin"),
 					tool("ask_user", "builtin"),
 					tool("tool_search", "builtin"),
+					tool("context7-docs", "mcp:context7"),
+					tool("notion-search", "MCP server notion"),
 				];
 			},
 			getActiveTools() {
@@ -254,7 +277,10 @@ describe("registerCapabilityNudge", () => {
 			customType: "pix-capability-nudge",
 			content: expect.stringMatching(/^Toolbelt:[\s\S]*Orientation only/),
 			display: true,
-			details: { kind: "orientation", summary: "3 tools · 2 deferred · 1 capabilities" },
+			details: {
+				kind: "orientation",
+				summary: "3 tools (2 deferred) · 2 MCP tools (2 deferred) · 2 capabilities",
+			},
 		});
 		expect(await handler?.({ systemPrompt: "BASE" })).toBeUndefined(); // turn 2: nothing
 	});
