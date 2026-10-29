@@ -9,13 +9,25 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { once } from "@xynogen/pix-runtime/once";
 import { registerFffCommands } from "./commands/fff.ts";
 import { fffState } from "./fff.ts";
 import { clearHighlightCache } from "./highlight.ts";
 import { initIconMode } from "./icon-persist.ts";
+import { installOrderedWidgets } from "./ordered-widgets.ts";
 import type { PiPrettyApi } from "./types.ts";
 
 export default function piPrettyExtension(pi: ExtensionAPI): void {
+	once(pi, "pix-pretty-widgets", () => {
+		let restore: (() => void) | undefined;
+		pi.on("session_start", (_event, ctx) => {
+			if (ctx.mode === "tui") restore = installOrderedWidgets(ctx.ui);
+		});
+		pi.on("session_shutdown", () => {
+			restore?.();
+			restore = undefined;
+		});
+	});
 	const prettyPi = pi as unknown as PiPrettyApi;
 	clearHighlightCache();
 
