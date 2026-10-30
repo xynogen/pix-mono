@@ -68,7 +68,7 @@ describe("welcome lifecycle", () => {
 			},
 		);
 		expect(headerCalls).toBe(1);
-		expect(renderHeader?.(80)[0]).toContain(LOGO_ROWS[0]?.[0] ?? "");
+		expect(renderHeader?.(80)?.slice(0, 2)).toEqual(["", `   ${LOGO_ROWS[0]?.[0]}`]);
 		onTurn?.({ reason: "new" }, {});
 		expect(renderHeader?.(80)).toEqual([]);
 	});

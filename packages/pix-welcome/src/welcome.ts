@@ -431,7 +431,7 @@ export function renderWelcome(
 	checks: CheckResult[],
 	width: number,
 ): string[] {
-	const lines = [...buildLogoLines(theme, model, cwd), ...buildCheckLines(theme, checks), ""];
+	const lines = ["", ...buildLogoLines(theme, model, cwd), ...buildCheckLines(theme, checks), ""];
 	return lines.map((line) => fitLine(line, width));
 }
 

@@ -3,6 +3,7 @@
 exports[`pure welcome banner pending, complete, mixed and clipped 1`] = `
 {
   "complete / 80": [
+    "",
     "   <accent>██████╗ ██╗██╗  ██╗</accent>",
     "   <accent>██╔══██╗██║╚██╗██╔╝</accent>  <dim>PIx</dim>",
     "   <accent>██████╔╝██║ ╚███╔╝ </accent>",
@@ -19,6 +20,7 @@ exports[`pure welcome banner pending, complete, mixed and clipped 1`] = `
     "",
   ],
   "long / 80": [
+    "",
     "   <accent>██████╗ ██╗██╗  ██╗</accent>",
     "   <accent>██╔══██╗██║╚██╗██╔╝</accent>  <dim>PIx</dim>",
     "   <accent>██████╔╝██║ ╚███╔╝ </accent>",
@@ -35,6 +37,7 @@ exports[`pure welcome banner pending, complete, mixed and clipped 1`] = `
     "",
   ],
   "mixed / 80": [
+    "",
     "   <accent>██████╗ ██╗██╗  ██╗</accent>",
     "   <accent>██╔══██╗██║╚██╗██╔╝</accent>  <dim>PIx</dim>",
     "   <accent>██████╔╝██║ ╚███╔╝ </accent>",
@@ -51,6 +54,7 @@ exports[`pure welcome banner pending, complete, mixed and clipped 1`] = `
     "",
   ],
   "narrow / 10": [
+    "",
     "   <accent>██████</accent>…",
     "   <accent>██╔══█</accent>…",
     "   <accent>██████</accent>…",
@@ -67,6 +71,7 @@ exports[`pure welcome banner pending, complete, mixed and clipped 1`] = `
     "",
   ],
   "no checks / 80": [
+    "",
     "   <accent>██████╗ ██╗██╗  ██╗</accent>",
     "   <accent>██╔══██╗██║╚██╗██╔╝</accent>  <dim>PIx</dim>",
     "   <accent>██████╔╝██║ ╚███╔╝ </accent>",
@@ -76,6 +81,7 @@ exports[`pure welcome banner pending, complete, mixed and clipped 1`] = `
     "",
   ],
   "pending / 80": [
+    "",
     "   <accent>██████╗ ██╗██╗  ██╗</accent>",
     "   <accent>██╔══██╗██║╚██╗██╔╝</accent>  <dim>PIx</dim>",
     "   <accent>██████╔╝██║ ╚███╔╝ </accent>",
