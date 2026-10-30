@@ -61,8 +61,11 @@ class Logger {
 		this.defaultContext = context;
 	}
 
-	addHandler(handler: LogHandler): void {
+	addHandler(handler: LogHandler): () => void {
 		this.handlers.push(handler);
+		return () => {
+			this.handlers = this.handlers.filter((current) => current !== handler);
+		};
 	}
 
 	clearHandlers(): void {
