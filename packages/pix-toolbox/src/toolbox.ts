@@ -484,6 +484,9 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 				};
 
 				const rows = getRows();
+				const alwaysOnCount = (pi.getAllTools() ?? []).filter((tool) =>
+					ALWAYS_ON_TOOLS.has(tool.name),
+				).length;
 				const byValue = new Map<string, ToolRow>();
 				const toItem = (r: ToolRow): SelectItem => {
 					byValue.set(r.name, r);
@@ -526,7 +529,10 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 				const tabBar = () =>
 					TABS.map((name) => {
 						const n = rows.filter((r) => r.mcp === (name === "MCP")).length;
-						const label = `  ${name} (${n})  `;
+						const label =
+							name === "Tools"
+								? `  Tools (${n} adjustable + ${alwaysOnCount} always-on)  `
+								: `  MCP (${n})  `;
 						return name === tab ? theme.fg(accent, theme.bold(label)) : mute(label);
 					}).join(mute("│"));
 

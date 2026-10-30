@@ -509,7 +509,7 @@ describe("/toolbox command", () => {
 		const screen = () => v.render(100).join("\n");
 		const selected = () => v.render(100).find((l) => l.includes("→")) ?? "";
 
-		expect(screen()).toMatch(/Tools \(3\).*MCP \(1\)/);
+		expect(screen()).toMatch(/Tools \(3 adjustable \+ 3 always-on\).*MCP \(1\)/);
 		v.handleInput("\t");
 		expect(screen()).toMatch(/ctx_docs/);
 		v.handleInput("\t");

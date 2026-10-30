@@ -219,14 +219,20 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 			}
 			content = buildOrientation(tools, skills, activeToolNames);
 			const { other, mcp, otherGated, mcpGated } = partitionTools(tools, activeToolNames);
+			// Match the fixed tools hidden by the toolbox; count only registered native tools.
+			const alwaysOn = (tools ?? []).filter(
+				(tool) =>
+					!/mcp/i.test(tool.sourceInfo?.source ?? "") &&
+					["read", "bash", "edit", "write", "tool_search", "codemode"].includes(tool.name),
+			).length;
 			const caps = capabilityLabels(tools).length;
 			details = {
 				kind: "orientation",
 				summary: [
-					`${other} tools${otherGated ? ` (${otherGated} deferred)` : ""}`,
+					`Tools (${other - alwaysOn} adjustable + ${alwaysOn} always-on)${otherGated ? ` · ${otherGated} deferred` : ""}`,
 					mcp && `${mcp} MCP tools${mcpGated ? ` (${mcpGated} deferred)` : ""}`,
 					// caps = helper tools named in the "Before you improvise" line (ask_user, search, mcp…).
-					caps && `${caps} capabilities`,
+					caps && `${caps} capability groups`,
 				]
 					.filter(Boolean)
 					.join(" · "),

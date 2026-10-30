@@ -261,7 +261,7 @@ describe("registerCapabilityNudge", () => {
 				];
 			},
 			getActiveTools() {
-				return ["read"];
+				return ["read", "tool_search"];
 			},
 		} as never;
 
@@ -279,7 +279,8 @@ describe("registerCapabilityNudge", () => {
 			display: true,
 			details: {
 				kind: "orientation",
-				summary: "3 tools (2 deferred) · 2 MCP tools (2 deferred) · 2 capabilities",
+				summary:
+					"Tools (1 adjustable + 2 always-on) · 1 deferred · 2 MCP tools (2 deferred) · 2 capability groups",
 			},
 		});
 		expect(await handler?.({ systemPrompt: "BASE" })).toBeUndefined(); // turn 2: nothing

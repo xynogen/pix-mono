@@ -6,7 +6,7 @@ import {
 	type Theme,
 	type ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
-import { type Component, Markdown, Text } from "@earendil-works/pi-tui";
+import { Box, type Component, Markdown, Text } from "@earendil-works/pi-tui";
 import {
 	BODY_PAD,
 	bodyLine,
@@ -131,13 +131,15 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 		const lines = body.split("\n");
 		const preview = opts.expanded ? body : lines.slice(0, MAX_PREVIEW_LINES).join("\n");
 		const remaining = lines.length - MAX_PREVIEW_LINES;
-		const markdown = new Markdown(
-			remaining > 0 && !opts.expanded ? `… ${remaining} more lines\n\n${preview}` : preview,
-			2,
-			0,
-			getMarkdownTheme(),
-			{ color: (value) => theme.fg("dim", value) },
+		const bodyView = new Box(0, 0);
+		bodyView.addChild(
+			new Markdown(preview, 3, 0, getMarkdownTheme(), {
+				color: (value) => theme.fg("dim", value),
+			}),
 		);
-		return frameToolResult(markdown, theme, false);
+		if (remaining > 0 && !opts.expanded) {
+			bodyView.addChild(new Text(moreLines(remaining, theme), 0, 0));
+		}
+		return frameToolResult(bodyView, theme, false);
 	};
 }

@@ -26,6 +26,7 @@ test("renders successful web content as Markdown without changing the model text
 		);
 		const display = view.render(80).join("\n");
 		expect(display).toContain("Guide");
+		expect(stripVTControlCharacters(display)).toMatch(/^ {3}Guide *$/m);
 		expect(display).toContain("Open");
 		expect(display).toContain("Read");
 		expect(display).not.toContain("**Read**");
@@ -46,7 +47,7 @@ test("shows a bounded Markdown preview and the full content when expanded", asyn
 		const result = {
 			content: [{ type: "text" as const, text: content }],
 		} as AgentToolResult<unknown>;
-		const theme = makeTheme() as Theme;
+		const theme = makeTheme({ tag: true }) as Theme;
 		const ctx = {
 			lastComponent: undefined,
 			isError: false,
@@ -60,8 +61,8 @@ test("shows a bounded Markdown preview and the full content when expanded", asyn
 		const full = stripVTControlCharacters(
 			renderer(result, { isPartial: false, expanded: true }, theme, ctx).render(80).join("\n"),
 		);
-		expect(preview).toContain("9 more lines");
-		expect(preview).toContain("Item 30");
+		expect(preview).toMatch(/Item 30[\s\S]*<muted>… 9 more lines<\/muted>/);
+		expect(preview).toMatch(/^ {3}<muted>… 9 more lines<\/muted> *$/m);
 		expect(full).toContain("Item 39");
 		expect(result.content[0]).toEqual({ type: "text", text: content });
 	} finally {
