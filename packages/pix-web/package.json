@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-web",
-	"version": "0.2.7",
+	"version": "0.2.8",
 	"description": "Provider-neutral web fetch and search tools with plain-text output for Pi",
 	"type": "module",
 	"main": "src/index.ts",
