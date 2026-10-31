@@ -9,7 +9,7 @@
  * checklist is seeded by the model via the tool's `set` action.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
@@ -19,9 +19,10 @@ import {
 	frameToolResult,
 	termW,
 } from "@xynogen/pix-pretty/utils";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
+import { renderTodoWidget } from "./widget.ts";
 
 export type TodoStatus = "pending" | "in_progress" | "done" | "blocked";
 
@@ -220,6 +221,34 @@ export default function registerTodo(pi: ExtensionAPI): void {
 		let lastReminderState = "";
 		let reminderCount = 0;
 		let runFailed = false;
+		let ui: ExtensionContext["ui"] | undefined;
+		let clearWidgetTimer: ReturnType<typeof setTimeout> | undefined;
+		const widgetKey = "pix-todo:progress";
+		function updateWidget() {
+			clearTimeout(clearWidgetTimer);
+			clearWidgetTimer = undefined;
+			if (!ui?.setWidget) return;
+			if (!todos.length) {
+				ui.setWidget(widgetKey, undefined);
+				return;
+			}
+			const snapshot = todos.map((item) => ({ ...item }));
+			const sequential = ordered;
+			ui.setWidget(
+				widgetKey,
+				(_tui, theme) => ({
+					render: (width) => renderTodoWidget(snapshot, sequential, width, theme),
+					invalidate() {},
+				}),
+				{ placement: "aboveEditor" },
+			);
+			if (todos.every((item) => item.status === "done")) {
+				clearWidgetTimer = setTimeout(() => {
+					ui?.setWidget(widgetKey, undefined);
+					clearWidgetTimer = undefined;
+				}, collapseDelayMs());
+			}
+		}
 
 		// Single-open policy: only the newest todo card stays expanded. When a new
 		// card first renders (its state bag is unseen), collapse the previously
@@ -386,7 +415,8 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				return frameToolResult(component, theme, false);
 			},
 
-			async execute(_id, params) {
+			async execute(_id, params, _signal, _onUpdate, ctx) {
+				ui = ctx?.ui ?? ui;
 				const action = params.action as TodoAction;
 				const details = (outcome: TodoResultDetails["outcome"]): TodoResultDetails => ({
 					_type: "todoResult",
@@ -402,6 +432,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 						reminderCount = 0;
 					}
 					if (action !== "list" || params.remind !== undefined) persistTodos();
+					updateWidget();
 					return {
 						content: [
 							{
@@ -597,6 +628,10 @@ export default function registerTodo(pi: ExtensionAPI): void {
 
 		// Restore the checklist from session entries so it survives restart.
 		pi.on("session_start", async (_event, ctx) => {
+			clearTimeout(clearWidgetTimer);
+			clearWidgetTimer = undefined;
+			ui?.setWidget?.(widgetKey, undefined);
+			ui = ctx.ui;
 			todos = [];
 			nextTodoId = 1;
 			ordered = true;
@@ -619,6 +654,13 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				ordered = lastTodo.data.ordered ?? true;
 				remind = lastTodo.data.remind === true;
 			}
+			updateWidget();
+		});
+		pi.on("session_shutdown", () => {
+			clearTimeout(clearWidgetTimer);
+			clearWidgetTimer = undefined;
+			ui?.setWidget?.(widgetKey, undefined);
+			ui = undefined;
 		});
 	});
 }
