@@ -257,7 +257,13 @@ function makeHost(onState?: (state: string) => void) {
 			captured = def;
 		},
 	} as never;
-	registerSudo(pi);
+	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	try {
+		Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+		registerSudo(pi);
+	} finally {
+		if (platform) Object.defineProperty(process, "platform", platform);
+	}
 	return {
 		events,
 		get execute(): ExecuteFn {

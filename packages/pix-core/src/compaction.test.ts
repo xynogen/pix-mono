@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { resolve, sep } from "node:path";
 import registerCompaction, {
 	compactionThresholdTokens,
 	formatFileLists,
@@ -220,7 +221,9 @@ describe("stale read masking", () => {
 			{
 				type: "context_edit",
 				targetId: "r-1",
-				replacement: { content: [{ type: "text", text: maskedRead("/repo/a.ts") }] },
+				replacement: {
+					content: [{ type: "text", text: maskedRead(resolve("/repo/a.ts").split(sep).join("/")) }],
+				},
 			},
 		]);
 		expect(notices).toEqual([

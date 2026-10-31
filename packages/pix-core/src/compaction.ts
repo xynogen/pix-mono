@@ -25,7 +25,7 @@
  * notify line with reason, model, and token counts.
  */
 
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
 import { contentText, retryAssistantCall, type ThinkingLevel } from "@earendil-works/pi-ai";
 import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { ContextEditableContent, ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -446,7 +446,7 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 		const masked = new Set<string>();
 		for (const { id, path } of staleReads(
 			event.context.contextEntries as unknown as MaskEntry[],
-			(p) => resolve(ctx.cwd, p),
+			(p) => resolve(ctx.cwd, p).split(sep).join("/"),
 		)) {
 			masked.add(id);
 			edits.push({

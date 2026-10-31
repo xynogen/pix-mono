@@ -9,7 +9,7 @@
  * limit. Validation and execution errors throw so Pi marks the result failed.
  */
 
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
@@ -53,9 +53,11 @@ interface DiagnosticsDetails {
 type Severity = PixDiagnostic["severity"] | "all";
 
 function relativePath(cwd: string, filePath: string): string {
-	const base = resolve(cwd);
 	const abs = resolve(filePath);
-	return abs.startsWith(`${base}/`) ? abs.slice(base.length + 1) : abs;
+	const path = relative(cwd, abs);
+	return (!isAbsolute(path) && path !== ".." && !path.startsWith(`..${sep}`) ? path : abs)
+		.split(sep)
+		.join("/");
 }
 
 function formatFinding(cwd: string, d: PixDiagnostic): string {

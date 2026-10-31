@@ -24,9 +24,12 @@ const ACTIVATE_ON_START = ["tool_search", "codemode"];
 
 export default function deferNonCoreTools(pi: ExtensionAPI): void {
 	const register = pi.registerTool.bind(pi);
+	// PowerShell registers only on Windows and stays enabled there, like the default shell.
 	pi.registerTool = (tool) =>
 		register(
-			ALWAYS_ON_TOOLS.has(tool.name) || (tool.exposure ?? "direct") !== "direct"
+			tool.name === "powershell" ||
+				ALWAYS_ON_TOOLS.has(tool.name) ||
+				(tool.exposure ?? "direct") !== "direct"
 				? tool
 				: { ...tool, exposure: "deferred" },
 		);

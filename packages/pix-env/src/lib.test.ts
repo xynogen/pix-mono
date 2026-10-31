@@ -289,26 +289,30 @@ describe("read_env tool", () => {
 		expect(readFileSync(join(cwd, ".env"), "utf-8")).toBe(changed);
 	});
 
-	test("symlinks cannot redirect writes or disguise a non-env read", async () => {
-		const file = join(cwd, "notes.txt");
-		writeFileSync(file, "PRIVATE=unchanged\n");
-		const link = join(cwd, ".env.link");
-		symlinkSync(file, link);
-		const tool = captureEnvRead();
-		const write = await tool.execute(
-			"1",
-			{ action: "add", path: link, name: "APP_PORT", value: 8080 },
-			undefined,
-			undefined,
-			{ cwd, hasUI: true, ui: approvalUi() },
-		);
-		expect(write.isError).toBe(true);
-		const read = await tool.execute("2", { action: "info", path: link }, undefined, undefined, {
-			cwd,
-		});
-		expect(read.isError).toBe(true);
-		expect(readFileSync(file, "utf-8")).toBe("PRIVATE=unchanged\n");
-	});
+	// File symlinks require admin or Developer Mode on Windows; POSIX CI runs this boundary check.
+	test.skipIf(process.platform === "win32")(
+		"symlinks cannot redirect writes or disguise a non-env read",
+		async () => {
+			const file = join(cwd, "notes.txt");
+			writeFileSync(file, "PRIVATE=unchanged\n");
+			const link = join(cwd, ".env.link");
+			symlinkSync(file, link);
+			const tool = captureEnvRead();
+			const write = await tool.execute(
+				"1",
+				{ action: "add", path: link, name: "APP_PORT", value: 8080 },
+				undefined,
+				undefined,
+				{ cwd, hasUI: true, ui: approvalUi() },
+			);
+			expect(write.isError).toBe(true);
+			const read = await tool.execute("2", { action: "info", path: link }, undefined, undefined, {
+				cwd,
+			});
+			expect(read.isError).toBe(true);
+			expect(readFileSync(file, "utf-8")).toBe("PRIVATE=unchanged\n");
+		},
+	);
 
 	test("read reveals only requested values after approval", async () => {
 		const tool = captureEnvRead();

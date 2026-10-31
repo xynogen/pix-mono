@@ -74,7 +74,7 @@ const MEMBERS = [
 	registerGrep,
 	registerLs,
 	registerBash,
-	// No-op unless Windows AND the user enabled Pi's optional `powershell` tool.
+	// Enabled automatically on native Windows; not registered on other hosts.
 	registerPowerShell,
 	registerTodo,
 	registerAsk,

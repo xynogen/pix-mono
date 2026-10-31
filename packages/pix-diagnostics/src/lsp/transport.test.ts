@@ -135,7 +135,9 @@ describe("LspTransport deadlines and failures", () => {
 			serverId: "ghost",
 			initTimeoutMs: 2_000,
 		});
-		await expect(start).rejects.toThrow(/LSP ghost: failed to start: .*ENOENT/);
+		await expect(start).rejects.toThrow(
+			/LSP ghost: failed to start: .*(?:ENOENT|Executable not found in [$]PATH)/,
+		);
 	});
 
 	test("a request the server never answers hits the local deadline", async () => {

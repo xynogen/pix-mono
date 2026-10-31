@@ -34,7 +34,13 @@ const theme = roleTheme();
 
 function host() {
 	const { pi, tool } = capturePi();
-	register({ ...pi, events: createEventBus() } as unknown as ExtensionAPI);
+	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	try {
+		Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+		register({ ...pi, events: createEventBus() } as unknown as ExtensionAPI);
+	} finally {
+		if (platform) Object.defineProperty(process, "platform", platform);
+	}
 	return tool;
 }
 

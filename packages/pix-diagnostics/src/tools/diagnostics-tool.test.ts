@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import type { DiagnosticRequest, LspManager, NavigationResult } from "../lsp/manager.ts";
 import { DiagnosticStore } from "../store.ts";
 import type { DiagnosticSnapshot } from "../types.ts";
-import { paintRow, registerDiagnosticsTool, renderClose } from "./diagnostics-tool.ts";
+import {
+	collectFindings,
+	paintRow,
+	registerDiagnosticsTool,
+	renderClose,
+} from "./diagnostics-tool.ts";
 
 type ToolDef = {
 	name: string;
@@ -63,6 +68,28 @@ function capture(store: DiagnosticStore, manager: LspManager, cwd = "/repo"): To
 }
 
 describe("lsp_diagnostics tool", () => {
+	test("findings use relative forward-slash paths only inside cwd", () => {
+		const cwd = resolve("/repo");
+		const files = [join(cwd, "src", "a.ts"), join(`${cwd}-other`, "a.ts")];
+		for (const [index, filePath] of files.entries()) {
+			const rows = collectFindings(
+				cwd,
+				[
+					{
+						filePath,
+						checkedAt: 0,
+						state: "findings",
+						diagnostics: [{ filePath, severity: "error", message: "bad", line: 1, column: 2 }],
+					},
+				],
+				"error",
+			);
+			expect(rows).toEqual([
+				`${index === 0 ? "src/a.ts" : filePath.replace(/\\/g, "/")}:1:2 error bad`,
+			]);
+		}
+	});
+
 	test("has exactly the four public fields", () => {
 		const tool = capture(new DiagnosticStore(), fakeManager());
 		const { name, description, promptSnippet, parameters } = tool;

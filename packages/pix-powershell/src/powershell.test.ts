@@ -7,6 +7,7 @@ import {
 	makeToolContext,
 } from "@xynogen/pix-pretty/test-utils";
 import type { ToolResultLike } from "@xynogen/pix-pretty/types";
+import { currentPlatform } from "@xynogen/pix-runtime/platform";
 import { createPixPowerShellExtension } from "./extension";
 import { registerPowerShellTool, summarizePowerShellCommand } from "./powershell";
 
@@ -94,57 +95,35 @@ describe("registerPowerShellTool", () => {
 	});
 });
 
-type Handler = () => void;
-
-function fakeHost(activeTools: string[]) {
-	const handlers = new Map<string, Handler[]>();
-	const { pi: captured, names } = capturePi();
-	const pi = {
-		...captured,
-		on: (event: string, handler: Handler) => {
-			handlers.set(event, [...(handlers.get(event) ?? []), handler]);
-		},
-		getActiveTools: () => activeTools,
-	} as unknown as ExtensionAPI;
-	const emit = (event: string) => {
-		for (const handler of handlers.get(event) ?? []) handler();
-	};
-	return { pi, names, activeTools, start: () => emit("session_start"), emit };
-}
-
 describe("pix-powershell extension", () => {
-	it("overrides powershell on Windows only when the user enabled it", () => {
-		const host = fakeHost(["read", "bash", "powershell"]);
-		createPixPowerShellExtension({ platform: "win32", createTool: okFactory })(host.pi);
-		expect(host.names).toEqual([]); // nothing at load time
-		host.start();
-		host.start(); // re-emitted session_start must not re-register
-		expect(host.names).toEqual(["powershell"]);
+	for (const active of [
+		["read", "bash"],
+		["read", "bash", "powershell"],
+	]) {
+		it(`registers automatically on Windows with active tools: ${active.join(", ")}`, () => {
+			const { pi: captured, names } = capturePi();
+			const pi = { ...captured, getActiveTools: () => active } as unknown as ExtensionAPI;
+			const extension = createPixPowerShellExtension({ platform: "win32", createTool: okFactory });
+			extension(pi);
+			extension(pi);
+			expect(names).toEqual(["powershell"]);
+			expect(pi.getActiveTools()).toEqual(active);
+		});
+	}
+
+	it("uses pix-runtime host detection by default", () => {
+		const { pi, names } = capturePi();
+		createPixPowerShellExtension({ createTool: okFactory })(pi as unknown as ExtensionAPI);
+		expect(names).toEqual(currentPlatform().os === "win32" ? ["powershell"] : []);
 	});
 
-	it("registers nothing when powershell is not an active tool", () => {
-		const host = fakeHost(["read", "bash"]);
-		createPixPowerShellExtension({ platform: "win32", createTool: okFactory })(host.pi);
-		host.start();
-		expect(host.names).toEqual([]);
-	});
-
-	it("registers before the next prompt when another extension enables powershell later", () => {
-		// pix-toolbox restores toolbox.json in its own, later session_start handler.
-		const host = fakeHost(["read", "bash"]);
-		createPixPowerShellExtension({ platform: "win32", createTool: okFactory })(host.pi);
-		host.start();
-		expect(host.names).toEqual([]);
-		host.activeTools.push("powershell");
-		host.emit("before_agent_start");
-		host.emit("before_agent_start");
-		expect(host.names).toEqual(["powershell"]);
-	});
-
-	it("is inert off Windows", () => {
-		const host = fakeHost(["powershell"]);
-		createPixPowerShellExtension({ platform: "linux", createTool: okFactory })(host.pi);
-		host.start();
-		expect(host.names).toEqual([]);
-	});
+	for (const platform of ["linux", "darwin", "android"] as const) {
+		it(`is inert on ${platform}`, () => {
+			const { pi, names } = capturePi();
+			createPixPowerShellExtension({ platform, createTool: okFactory })(
+				pi as unknown as ExtensionAPI,
+			);
+			expect(names).toEqual([]);
+		});
+	}
 });

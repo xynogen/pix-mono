@@ -29,9 +29,9 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.16",
-		"@earendil-works/pi-ai": "latest",
-		"@earendil-works/pi-coding-agent": "latest",
-		"@earendil-works/pi-tui": "latest",
+		"@earendil-works/pi-ai": "1.4.0",
+		"@earendil-works/pi-coding-agent": "1.4.0",
+		"@earendil-works/pi-tui": "1.4.0",
 		"@types/bun": "latest",
 		"@types/node": "^22",
 		"@xynogen/pix-runtime": "^0.15.0",
