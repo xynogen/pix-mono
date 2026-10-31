@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { rgbColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
+import { roleTheme, semanticRow } from "../../../scripts/ui-capture.ts";
 import { renderWidget } from "./diagnostics.ts";
 import { DiagnosticStore } from "./store.ts";
 
+const roles = roleTheme();
 const theme = {
-	fg: (role: string, text: string) => `[${role}]${text}[/${role}]`,
+	...roles,
+	colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+	style: (text: string) => roles.fg("muted", text),
 };
 
 describe("diagnostic widget", () => {
@@ -12,7 +16,7 @@ describe("diagnostic widget", () => {
 		const store = new DiagnosticStore();
 		store.set({ filePath: "/repo/a.ts", checkedAt: 1, state: "clean", diagnostics: [] });
 		const lines = renderWidget(store, 80, theme as never);
-		expect(lines[0]).toBe(`[borderMuted]${"─".repeat(80)}[/borderMuted]`);
+		expect(semanticRow(lines[0]!)).toBe(`<borderMuted>${"─".repeat(80)}</borderMuted>`);
 		expect(lines[1]).toMatch(/LSP.*1 checked.*1 clean/);
 	});
 
@@ -32,7 +36,7 @@ describe("diagnostic widget", () => {
 		expect(text).toMatch(/LSP.*1 error.*1 warning.*a\.ts/);
 	});
 
-	test("shows only files with findings and caps the list at three", () => {
+	test("shows recently checked files on the right and caps the list at three", () => {
 		const store = new DiagnosticStore();
 		for (const [index, name] of ["clean.ts", "a.ts", "b.ts", "c.ts", "d.ts"].entries()) {
 			store.set({
@@ -55,7 +59,7 @@ describe("diagnostic widget", () => {
 		}
 
 		const text = renderWidget(store, 200, theme as never).join("\n");
-		expect(text).toMatch(/d\.ts, c\.ts, b\.ts \+1/);
+		expect(text).toMatch(/d\.ts, c\.ts, b\.ts \+2/);
 		expect(text).not.toContain("clean.ts");
 	});
 
@@ -95,6 +99,34 @@ describe("diagnostic widget", () => {
 		const plain = { fg: (_role: string, text: string) => text };
 		const text = renderWidget(store, 80, plain as never).join("\n");
 		expect(text).toMatch(/LSP.*1 checked.*1 unconfirmed.*a\.ts/);
+	});
+
+	test("right-aligns clean filenames while keeping counts on the left", () => {
+		const store = new DiagnosticStore();
+		store.set({ filePath: "/repo/first.ts", checkedAt: 1, state: "clean", diagnostics: [] });
+		store.set({ filePath: "/repo/second.ts", checkedAt: 2, state: "clean", diagnostics: [] });
+		const row = renderWidget(store, 100, theme)[1]!;
+		const text = stripTerminalSequences(row);
+		expect(text).toMatch(/^ .*LSP.*2 checked.*2 clean {2,}second\.ts, first\.ts$/);
+		expect(visibleWidth(row)).toBe(100);
+		for (const width of [1, 16, 24, 40, 60, 80]) {
+			expect(visibleWidth(renderWidget(store, width, theme)[1]!)).toBeLessThanOrEqual(width);
+		}
+	});
+
+	test("fades overflowing filenames without replacing the left-hand summary", () => {
+		const store = new DiagnosticStore();
+		store.set({
+			filePath: `/repo/${"界e\u0301".repeat(30)}.ts`,
+			checkedAt: 1,
+			state: "clean",
+			diagnostics: [],
+		});
+		const row = renderWidget(store, 60, theme)[1]!;
+		expect(stripTerminalSequences(row)).toMatch(/^ .*LSP.*1 checked.*1 clean {2,}界/);
+		expect(semanticRow(row)).toMatch(/<dim>.*<\/dim><muted>.*<\/muted>/);
+		expect(visibleWidth(row)).toBeLessThanOrEqual(60);
+		expect(renderWidget(store, 0, theme)).toEqual([]);
 	});
 
 	test("returns no row before LSP checks a file", () => {

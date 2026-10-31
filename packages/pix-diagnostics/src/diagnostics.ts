@@ -14,8 +14,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import {
+	mixColors,
+	stripTerminalSequences,
+	truncateToWidth,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { fadeText } from "@xynogen/pix-pretty/text";
 import { rule } from "@xynogen/pix-pretty/utils";
 import { config } from "@xynogen/pix-runtime/config";
 import { editSection } from "@xynogen/pix-runtime/sections";
@@ -28,7 +34,9 @@ import { registerMarkTool } from "./tools/mark-tool.ts";
 import { registerNavigationTool } from "./tools/navigation-tool.ts";
 import type { PixDiagnostic } from "./types.ts";
 
-type ThemeLike = Pick<Theme, "fg">;
+type ThemeLike = Pick<Theme, "fg" | "style"> & {
+	colors: Pick<Theme["colors"], "dim" | "customMessageBg">;
+};
 
 const MAX_RECENT = 3;
 const WIDGET_KEY = "pi-lens-lsp";
@@ -48,13 +56,10 @@ function severityCounts(store: DiagnosticStore): { errors: number; warnings: num
 
 /** Render the one-line widget, or `[]` when no file has state yet. */
 export function renderWidget(store: DiagnosticStore, width: number, theme: ThemeLike): string[] {
-	const w = Math.max(1, width || 80);
+	const w = Math.max(0, width);
+	if (w === 0) return [];
 	const checkedFiles = store.recent().filter((snapshot) => snapshot.state !== "touched");
 	if (checkedFiles.length === 0) return [];
-	const notable = checkedFiles.filter(
-		(snapshot) =>
-			snapshot.diagnostics.length > 0 || ["unconfirmed", "unavailable"].includes(snapshot.state),
-	);
 	const clean = checkedFiles.filter((snapshot) => snapshot.state === "clean").length;
 	const unconfirmed = checkedFiles.filter((snapshot) => snapshot.state === "unconfirmed").length;
 	const unavailable = checkedFiles.filter((snapshot) => snapshot.state === "unavailable").length;
@@ -68,15 +73,26 @@ export function renderWidget(store: DiagnosticStore, width: number, theme: Theme
 	if (unconfirmed > 0) parts.push(theme.fg("warning", `${unconfirmed} unconfirmed`));
 	if (unavailable > 0) parts.push(theme.fg("warning", `${unavailable} unavailable`));
 
-	const files = notable.slice(0, MAX_RECENT).map((snap) => basename(snap.filePath));
-	const more = notable.length > files.length ? ` +${notable.length - files.length}` : "";
-	const fileList = files.length > 0 ? theme.fg("dim", files.join(", ") + more) : "";
-	if (fileList) parts.push(fileList);
+	const files = checkedFiles
+		.slice(0, MAX_RECENT)
+		.map((snap) =>
+			stripTerminalSequences(basename(snap.filePath)).replace(/[\x00-\x1f\x7f-\x9f]/g, " "),
+		);
+	const more = checkedFiles.length > files.length ? ` +${checkedFiles.length - files.length}` : "";
+	const summary = truncateToWidth(` ${parts.join("  ")}`, w, "…");
+	const available = w - visibleWidth(summary) - 2;
+	const fileList = fadeText(files.join(", ") + more, available, (text, fade) =>
+		fade === 0
+			? theme.fg("dim", text)
+			: theme.style(text, {
+					fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+				}),
+	);
+	const row = fileList
+		? summary + " ".repeat(w - visibleWidth(summary) - visibleWidth(fileList)) + fileList
+		: summary;
 
-	return [
-		rule(w, (glyphs) => theme.fg("borderMuted", glyphs)),
-		truncateToWidth(` ${parts.join("  ")}`, w, "…"),
-	];
+	return [rule(w, (glyphs) => theme.fg("borderMuted", glyphs)), row];
 }
 
 // ─── Extension ────────────────────────────────────────────────────────────────

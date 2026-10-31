@@ -30,6 +30,7 @@ import { Type } from "typebox";
 import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine, statusWord } from "./format.ts";
 import { ProcManager } from "./manager.ts";
 import { MODAL_LOG_LINES, ProcModal, type ProcModalResult } from "./modal.ts";
+import { processRow } from "./widget.ts";
 
 const WIDGET_KEY = "pix-proc:procs";
 const POLL_MS = 1000;
@@ -109,13 +110,19 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			return;
 		}
 		// Widget shows status only — never the process's live output line.
-		const rows = visible.map((m) => statusLine(m, now));
 		ui.setWidget(
 			WIDGET_KEY,
 			(_tui, theme) => ({
 				render: (width: number) => {
 					const heading = `${theme.fg("accent", icon("process"))} ${theme.fg("accent", "Processes")}`;
-					const body = rows.map((line) => truncateToWidth(`  ${theme.fg("dim", line)}`, width));
+					const body = visible.map((m) =>
+						processRow(
+							m,
+							m.status === "running" ? now : (lastCleared.get(m.handle) ?? now),
+							width,
+							theme,
+						),
+					);
 					return [
 						rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
 						truncateToWidth(heading, width),

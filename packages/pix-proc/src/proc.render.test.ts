@@ -1,6 +1,11 @@
 import { expect, spyOn, test } from "bun:test";
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { KeybindingsManager, type TUI, TUI_KEYBINDINGS } from "@earendil-works/pi-tui";
+import {
+	KeybindingsManager,
+	stripTerminalSequences,
+	type TUI,
+	TUI_KEYBINDINGS,
+} from "@earendil-works/pi-tui";
 import { agentDir } from "@xynogen/pix-runtime/paths";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
@@ -228,6 +233,14 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 		await events.get("session_start")!({}, { ui });
 		if (!widget) throw new Error("Widget not registered");
 		capture("running capped and recent widget", widget);
+		now += 1_000;
+		for (const callback of timers.values()) callback();
+		const updatedRows = widget.render(80).map(stripTerminalSequences);
+		expect(updatedRows[0]).toMatch(/^─{80}$/);
+		expect(updatedRows[1]).toContain("Processes");
+		expect(updatedRows[2]).toMatch(/ 6s {2}$/);
+		expect(updatedRows[3]).toMatch(/ 10s {2}$/);
+		now -= 1_000;
 		await command("", { ui });
 		await fixture.runtime.update(collapseSection, (current) => ({ ...current, delaySec: 1 }));
 		now += 2_000;

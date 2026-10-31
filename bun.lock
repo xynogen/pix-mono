@@ -112,7 +112,7 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.7.18",
+      "version": "0.7.19",
       "dependencies": {
         "@xynogen/pix-ask": "^0.3.5",
         "@xynogen/pix-bash": "^0.2.13",
@@ -160,7 +160,7 @@
     },
     "packages/pix-diagnostics": {
       "name": "@xynogen/pix-diagnostics",
-      "version": "0.4.5",
+      "version": "0.4.6",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.32.0",
         "@xynogen/pix-runtime": "^0.15.0",
@@ -386,7 +386,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "1.34.1",
+      "version": "1.35.0",
       "dependencies": {
         "@ff-labs/fff-node": "^0.10.6",
         "@xynogen/pix-runtime": "^0.15.0",
@@ -401,7 +401,7 @@
     },
     "packages/pix-proc": {
       "name": "@xynogen/pix-proc",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.32.0",
         "@xynogen/pix-runtime": "^0.15.0",
