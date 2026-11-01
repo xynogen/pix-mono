@@ -214,6 +214,15 @@ function binariesEnv(runtime: PixRuntime): NodeJS.ProcessEnv {
 }
 
 const TABS = ["Settings", "Binaries", "Footer"] as const;
+/** Most frequently changed tabs sit leftmost; unknown package tabs go before rare ones. */
+const TAB_ORDER = ["Settings", "Tools", "MCP", "Optimizer", "Web", "Voice"];
+const RARE_TABS = ["Footer", "Binaries"];
+function tabRank(label: string): number {
+	const common = TAB_ORDER.indexOf(label);
+	if (common >= 0) return common;
+	const rare = RARE_TABS.indexOf(label);
+	return rare >= 0 ? 100 + rare : 50;
+}
 const SECTION_PACKAGES: Record<string, string> = {
 	Compaction: "pix-core",
 	Edit: "pix-diagnostics",
@@ -328,7 +337,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							(name) => name !== "Footer" || settings.some((row) => row.section === "Footer"),
 						),
 						...panels.map((entry) => entry.label),
-					];
+					].sort((a, b) => tabRank(a) - tabRank(b));
 					let tab = "Settings";
 					let embedded:
 						| { render(width: number): string[]; handleInput(data: string): void; dispose?(): void }

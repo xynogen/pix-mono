@@ -353,20 +353,20 @@ describe("/pix tabs", () => {
 	const SHIFT_TAB = { legacy: "\u001b[Z", kitty: "\u001b[9;2u" } as const;
 
 	for (const enc of ENCODINGS) {
-		it(`tab / shift+tab switch between Settings, Binaries, and Footer (${enc})`, async () => {
+		it(`tab / shift+tab follow usage order: Settings, Footer, Binaries (${enc})`, async () => {
 			if (enc === "kitty") setKittyProtocolActive(true);
 			try {
 				const d = await openOverlay(getKeybindings(), 60);
-				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>.* {2}Binaries {2}/);
-				d.feed(TAB[enc]);
-				expect(d.lines()[1]).toMatch(/ {2}Settings {2}.*<b> {2}Binaries {2}<\/b>/);
+				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>.* {2}Footer {2}.* {2}Binaries {2}/);
 				d.feed(TAB[enc]);
 				expect(d.lines()[1]).toMatch(/<b> {2}Footer {2}<\/b>/);
 				expect(d.lines().join("\n")).toMatch(/mode\s+show/);
+				d.feed(TAB[enc]);
+				expect(d.lines()[1]).toMatch(/ {2}Footer {2}.*<b> {2}Binaries {2}<\/b>/);
+				d.feed(TAB[enc]);
+				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>/);
 				d.feed(SHIFT_TAB[enc]);
 				expect(d.lines()[1]).toMatch(/<b> {2}Binaries {2}<\/b>/);
-				d.feed(SHIFT_TAB[enc]);
-				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>/);
 			} finally {
 				if (enc === "kitty") setKittyProtocolActive(false);
 			}
@@ -375,7 +375,7 @@ describe("/pix tabs", () => {
 
 	it("Binaries tab lists catalog rows with a status glyph + text without creating binary.json", async () => {
 		const d = await openOverlay(getKeybindings(), 60);
-		d.feed(TAB.legacy);
+		d.feed(SHIFT_TAB.legacy);
 		const text = d.lines().join("\n");
 		expect(text).toMatch(/binary\.json · unset = automatic/);
 		// Every visible row: cursor slot, glyph, name, then detail text.
@@ -387,7 +387,7 @@ describe("/pix tabs", () => {
 
 	it("Binaries rows stay one line each; the selected row's users show in the fixed detail line", async () => {
 		const d = await openOverlay(getKeybindings(), 60);
-		d.feed(TAB.legacy);
+		d.feed(SHIFT_TAB.legacy);
 		const before = d.lines();
 		const detail = /│ \S+ · used by [\w-]+(, [\w-]+)*\s*│/;
 		expect(before.join("\n")).toMatch(detail);
@@ -404,7 +404,7 @@ describe("/pix tabs", () => {
 
 	it("↑ from the first row on a short terminal moves to the last Other platforms row", async () => {
 		const d = await openOverlay(getKeybindings(), 20);
-		d.feed(TAB.legacy);
+		d.feed(SHIFT_TAB.legacy);
 		expect(d.lines().join("\n")).not.toMatch(/Other platforms/);
 		d.feed(KEYS.up.legacy);
 		// The last other-platform row differs per host OS, so match its shape, not a name.
@@ -416,7 +416,7 @@ describe("/pix tabs", () => {
 
 	it("/ filters the Binaries list; esc clears the filter before it closes the overlay", async () => {
 		const d = await openOverlay(getKeybindings(), 40);
-		d.feed(TAB.legacy);
+		d.feed(SHIFT_TAB.legacy);
 		d.feed("/");
 		for (const ch of "ssh") d.feed(ch);
 		// One status glyph, then the name. The "Other platforms" header has no glyph.
@@ -432,7 +432,7 @@ describe("/pix tabs", () => {
 
 	it("e edits a path into binary.json; d resets it to automatic", async () => {
 		const d = await openOverlay(getKeybindings(), 60);
-		d.feed(TAB.legacy);
+		d.feed(SHIFT_TAB.legacy);
 		d.feed("e");
 		expect(d.lines().join("\n")).toMatch(/path: /);
 		// Clear the prefilled value, type a path, save.
@@ -450,7 +450,7 @@ describe("/pix tabs", () => {
 
 	it("esc inside the path editor cancels the edit, not the overlay", async () => {
 		const d = await openOverlay(getKeybindings(), 60);
-		d.feed(TAB.legacy);
+		d.feed(SHIFT_TAB.legacy);
 		d.feed("e");
 		d.feed("\u001b");
 		expect(d.closed()).toBe(false);

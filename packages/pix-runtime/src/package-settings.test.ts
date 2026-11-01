@@ -90,14 +90,15 @@ test("standalone settings render directly in /pix without a second overlay and d
 							resolve,
 						);
 						overlays++;
-						for (let i = 0; i < 2; i++) component.handleInput("\t");
+						expect(component.render(100)[1]).toMatch(/Settings.*Voice.*Binaries/);
+						component.handleInput("\t");
 						const embedded = component.render(100);
 						expect(embedded.join("\n")).toContain("microphone: default");
 						// 40 rows at the default 80% cap: the tab row plus panel must fit 32 rows.
 						expect(embedded.length).toBeLessThanOrEqual(32);
 						expect(embedded.at(-1)).toMatch(/^╰─+╯$/);
 						component.handleInput("\u001b[Z");
-						expect(component.render(100).join("\n")).toMatch(/binary\.json/);
+						expect(component.render(100).join("\n")).toMatch(/icons\s+\S+/);
 						component.handleInput("\u001b");
 					}),
 			},

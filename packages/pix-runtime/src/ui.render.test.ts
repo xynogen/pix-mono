@@ -56,8 +56,8 @@ test("Settings and Footer actual overlay captures", async () => {
 		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot("settings");
 		component.handleInput("\x1b[6~");
 		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot("page");
-		// Reverse tab reaches Footer without constructing the binary tab.
-		component.handleInput("\x1b[Z");
+		// Tab reaches Footer (second by usage order) without constructing the binary tab.
+		component.handleInput("\t");
 		await fixture.runtime.update(prettySection, { footer: { model: false } });
 		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot(
 			"footer changed",
