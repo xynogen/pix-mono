@@ -1,7 +1,7 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { mixColors, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { mixColors, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { fadeText } from "@xynogen/pix-pretty/text";
+import { fadeLine, fadeText } from "@xynogen/pix-pretty/text";
 import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import type { TodoItem } from "./todo.ts";
 
@@ -44,14 +44,11 @@ export function renderTodoWidget(
 	const separator = theme.fg("muted", " · ");
 	const metadata = separator + theme.fg("muted", position);
 	const room = width - visibleWidth(prefix) - visibleWidth(metadata) - visibleWidth(separator);
-	const task =
-		current && room > 0
-			? fadeText(current.text, room, (text, fade) =>
-					fade === 0
-						? theme.fg("accent", text)
-						: theme.style(text, { fg: mixColors(theme.colors.accent, theme.colors.muted, fade) }),
-				)
-			: "";
-	const row = truncateToWidth(`${prefix}${task ? separator + task : ""}${metadata}`, width, "…");
+	const paint = (text: string, fade: number) =>
+		fade === 0
+			? theme.fg("accent", text)
+			: theme.style(text, { fg: mixColors(theme.colors.accent, theme.colors.muted, fade) });
+	const task = current && room > 0 ? fadeText(current.text, room, paint) : "";
+	const row = fadeLine(`${prefix}${task ? separator + task : ""}${metadata}`, width, paint);
 	return [rule(width, (text) => theme.fg("borderMuted", text)), row];
 }

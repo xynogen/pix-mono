@@ -1,4 +1,9 @@
-import { sliceByColumn, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	sliceByColumn,
+	stripTerminalSequences,
+	truncateToWidth,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
@@ -36,4 +41,23 @@ export function fadeText(
 		}
 	}
 	return output;
+}
+
+/**
+ * Fit an already-styled line: unchanged when it fits, otherwise the head keeps its styling
+ * and the last `fadeColumns` columns fade through `paint`. Widgets use this instead of "…".
+ */
+export function fadeLine(
+	line: string,
+	width: number,
+	paint: (text: string, fade: number) => string,
+	fadeColumns = 8,
+): string {
+	if (!Number.isFinite(width) || width < 1) return "";
+	const columns = Math.floor(width);
+	if (visibleWidth(line) <= columns) return line;
+	const head = truncateToWidth(line, Math.max(0, columns - fadeColumns), "");
+	const headWidth = visibleWidth(head);
+	const rest = sliceByColumn(stripTerminalSequences(line), headWidth, columns - headWidth + 1);
+	return head + fadeText(rest, columns - headWidth, paint, fadeColumns);
 }

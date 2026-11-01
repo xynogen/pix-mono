@@ -115,5 +115,5 @@ widget:mixed-overflow
 <toolTitle>◉︎   LSP     </toolTitle><muted> │ </muted><error>✗︎ 3 error</error><muted> · </muted><warning>⚠︎ 1 warning</warning><muted> · </muted><warning>1 unconfirmed</warning><muted> · </muted><warning>1 unavailable</warning><muted> · </muted><success>✓︎ 1 clean</success><muted> · 7 checked · </muted><dim>offline.ts, unk</dim><muted>nown.ts,</muted>
 widget:narrow
 <borderMuted>────────────────────────</borderMuted>
-<toolTitle>◉︎   LSP     </toolTitle><muted> │ </muted><error>✗︎ 3 erro</error>…"
+<toolTitle>◉︎   LSP     </toolTitle><muted> │ </muted><error>✗︎</error><muted> 3 error</muted>"
 `;

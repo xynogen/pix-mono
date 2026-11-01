@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
-import { fadeText } from "./text.ts";
+import { fadeLine, fadeText } from "./text.ts";
 
 describe("fadeText", () => {
 	test("leaves fitting text to the caller with no fade", () => {
@@ -86,5 +86,31 @@ describe("fadeText", () => {
 		const input = "\x1b[31mred\x1b[0m\n\x1b]8;;https://example.com\x07link\x1b]8;;\x07\tend";
 		const result = fadeText(input, 40, (text) => `\x1b[32m${text}\x1b[39m`);
 		expect(stripTerminalSequences(result)).toBe("red link end");
+	});
+});
+
+describe("fadeLine", () => {
+	test("returns a fitting styled line unchanged", () => {
+		const line = "\x1b[31mok\x1b[39m";
+		expect(fadeLine(line, 10, () => "X")).toBe(line);
+	});
+
+	test("keeps the styled head and fades the last columns instead of an ellipsis", () => {
+		const line = `\x1b[31m${"abcdefghij"}\x1b[39m\x1b[32m${"klmnopqrst"}\x1b[39m`;
+		const levels: number[] = [];
+		const result = fadeLine(
+			line,
+			12,
+			(text, fade) => {
+				levels.push(fade);
+				return `<${text}>`;
+			},
+			4,
+		);
+		expect(stripTerminalSequences(result)).toBe("abcdefgh<i><j><k><l>");
+		expect(result.startsWith("\x1b[31mabcdefgh")).toBe(true);
+		expect(levels).toEqual([0.25, 0.5, 0.75, 1]);
+		for (let width = 0; width < 25; width++)
+			expect(visibleWidth(fadeLine(line, width, (t) => t))).toBeLessThanOrEqual(width);
 	});
 });

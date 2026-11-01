@@ -14,14 +14,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
-import {
-	mixColors,
-	stripTerminalSequences,
-	truncateToWidth,
-	visibleWidth,
-} from "@earendil-works/pi-tui";
+import { mixColors, stripTerminalSequences } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { fadeText } from "@xynogen/pix-pretty/text";
+import { fadeLine } from "@xynogen/pix-pretty/text";
 import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { config } from "@xynogen/pix-runtime/config";
 import { editSection } from "@xynogen/pix-runtime/sections";
@@ -79,23 +74,15 @@ export function renderWidget(store: DiagnosticStore, width: number, theme: Theme
 			stripTerminalSequences(basename(snap.filePath)).replace(/[\x00-\x1f\x7f-\x9f]/g, " "),
 		);
 	const more = checkedFiles.length > files.length ? ` +${checkedFiles.length - files.length}` : "";
-	const summary = truncateToWidth(
-		widgetTitle(theme, icon("lsp"), "LSP") + dotJoin(parts, (text) => theme.fg("muted", text)),
-		w,
-		"…",
-	);
-	const separator = theme.fg("muted", " · ");
-	const available = w - visibleWidth(summary) - visibleWidth(separator);
-	const fileList = fadeText(files.join(", ") + more, available, (text, fade) =>
+	const paintFade = (text: string, fade: number) =>
 		fade === 0
 			? theme.fg("dim", text)
-			: theme.style(text, {
-					fg: mixColors(theme.colors.dim, theme.colors.muted, fade),
-				}),
-	);
-	const row = fileList ? summary + separator + fileList : summary;
-
-	return [rule(w, (glyphs) => theme.fg("borderMuted", glyphs)), row];
+			: theme.style(text, { fg: mixColors(theme.colors.dim, theme.colors.muted, fade) });
+	const summary =
+		widgetTitle(theme, icon("lsp"), "LSP") + dotJoin(parts, (text) => theme.fg("muted", text));
+	const fileText = files.join(", ") + more;
+	const row = fileText ? summary + theme.fg("muted", " · ") + paintFade(fileText, 0) : summary;
+	return [rule(w, (glyphs) => theme.fg("borderMuted", glyphs)), fadeLine(row, w, paintFade)];
 }
 
 // ─── Extension ────────────────────────────────────────────────────────────────

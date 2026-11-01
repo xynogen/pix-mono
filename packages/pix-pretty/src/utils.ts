@@ -23,7 +23,7 @@ import {
 } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { icon } from "./icon-catalog.ts";
-import { fadeText } from "./text.ts";
+import { fadeLine, fadeText } from "./text.ts";
 import type {
 	FgTheme,
 	TextComponentCtor,
@@ -343,28 +343,24 @@ export function widgetActivityRow(
 	width: number,
 	stats = "",
 ): string {
+	const paint = (text: string, fade: number) =>
+		fade === 0
+			? theme.fg("dim", text)
+			: theme.colors && theme.style
+				? theme.style(text, {
+						fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+					})
+				: theme.fg("muted", text);
 	if (stats) {
 		const room = width - visibleWidth(stats) - 2;
-		if (room < visibleWidth(prefix)) return truncateToWidth(`${prefix}  ${stats}`, width, "…");
+		if (room < visibleWidth(prefix)) return fadeLine(`${prefix}  ${stats}`, width, paint);
 		const body = widgetActivityRow(theme, prefix, activity, room);
 		return body + " ".repeat(width - visibleWidth(body) - visibleWidth(stats)) + stats;
 	}
 	const separator = theme.fg("muted", " · ");
 	const room = width - visibleWidth(prefix) - 3;
-	if (!activity || room < 1) return truncateToWidth(prefix, width, "…");
-	return (
-		prefix +
-		separator +
-		fadeText(activity, room, (text, fade) =>
-			fade === 0
-				? theme.fg("dim", text)
-				: theme.colors && theme.style
-					? theme.style(text, {
-							fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
-						})
-					: theme.fg("muted", text),
-		)
-	);
+	if (!activity || room < 1) return fadeLine(prefix, width, paint);
+	return prefix + separator + fadeText(activity, room, paint);
 }
 
 /** Use the host lifecycle fields so every call has the same status marker. */

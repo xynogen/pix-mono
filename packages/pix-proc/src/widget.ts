@@ -1,20 +1,19 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import {
-	mixColors,
-	stripTerminalSequences,
-	truncateToWidth,
-	visibleWidth,
-} from "@earendil-works/pi-tui";
+import { mixColors, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { fadeText } from "@xynogen/pix-pretty/text";
+import { fadeLine, fadeText } from "@xynogen/pix-pretty/text";
 import { humanUptime, type ProcMeta, procLabel, statusWord } from "./format.ts";
 
 export function processRow(m: ProcMeta, now: number, width: number, theme: Theme): string {
 	if (width <= 0) return "";
+	const paint = (text: string, fade: number) =>
+		fade === 0
+			? theme.fg("dim", text)
+			: theme.style(text, { fg: mixColors(theme.colors.dim, theme.colors.muted, fade) });
 	const timer = ` ${humanUptime(now - m.startTime)} `;
 	const timerWidth = visibleWidth(timer);
 	const badge = theme.fg("muted", timer);
-	if (width < timerWidth + 4) return truncateToWidth(badge, width, "");
+	if (width < timerWidth + 4) return fadeLine(badge, width, paint);
 
 	const role = m.logError
 		? "error"
@@ -43,7 +42,7 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 	const identity = stripTerminalSequences(
 		procLabel({ command: (m.name || m.handle).replace(/\s+/g, " ") }),
 	).replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
-	const prefix = `${chips}${separator}${theme.fg("accent", truncateToWidth(identity, 24, "…"))}${separator}`;
+	const prefix = `${chips}${separator}${fadeText(identity, 24, (t, f) => (f === 0 ? theme.fg("accent", t) : theme.style(t, { fg: mixColors(theme.colors.accent, theme.colors.muted, f) })))}${separator}`;
 	const metadata = badge;
 	const metadataWidth = visibleWidth(metadata);
 	const available = width - metadataWidth - 2;
@@ -52,20 +51,10 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 		.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")
 		.replace(/\s+/g, " ")
 		.trim();
-	let body: string;
-	if (prefixWidth >= available) {
-		body = truncateToWidth(prefix, available, "…");
-	} else {
-		body =
-			prefix +
-			fadeText(label, available - prefixWidth, (text, fade) =>
-				fade === 0
-					? theme.fg("dim", text)
-					: theme.style(text, {
-							fg: mixColors(theme.colors.dim, theme.colors.muted, fade),
-						}),
-			);
-	}
+	const body =
+		prefixWidth >= available
+			? fadeLine(prefix, available, paint)
+			: prefix + fadeText(label, available - prefixWidth, paint);
 	const gap = " ".repeat(width - metadataWidth - visibleWidth(body) - 1);
 	return `${body}${gap}${metadata} `;
 }
