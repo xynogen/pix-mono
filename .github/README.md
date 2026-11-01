@@ -1,5 +1,9 @@
 # pix-mono
 
+<p align="center">
+  <img src="assets/pix-logo.svg" alt="Pix logo" width="304" height="160">
+</p>
+
 Monorepo of Pix, a distro of [Pi Coding Agent](https://github.com/badlogic/pi-mono).
 
 ## What to install
