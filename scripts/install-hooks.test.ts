@@ -18,7 +18,17 @@ test("installs standard hooks, migrates legacy config, and preserves user hooks"
 		git(["config", "--local", "core.hooksPath", ".githooks"]);
 		const target = installHooks(cwd) as string;
 		expect(target).toBe(join(cwd, ".git", "hooks", "pre-commit"));
-		expect(readFileSync(target, "utf8")).toMatch(/set -e\nbun run check\nbun run typecheck\nexec bun run test\n$/);
+		expect(readFileSync(target, "utf8")).toMatch(
+			/\.md\$'; then\n.*\n\texit 0\nfi\nbun run check\nbun run typecheck\nexec bun run test\n$/,
+		);
+		// Markdown-only commits skip the checks; any other staged file runs them.
+		const runHook = () => runToolSync("bash", [target], { cwd });
+		writeFileSync(join(cwd, "README.md"), "# x\n");
+		git(["add", "README.md"]);
+		expect(runHook().stdout).toMatch(/only Markdown staged; skipping checks/);
+		writeFileSync(join(cwd, "a.ts"), "");
+		git(["add", "a.ts"]);
+		expect(runHook().stdout).not.toMatch(/skipping checks/);
 		expect(runToolSync("git", ["config", "--get", "core.hooksPath"], { cwd }).code).toBe(1);
 		if (process.platform !== "win32") chmodSync(target, 0o644);
 		expect(installHooks(cwd)).toBe(target);

@@ -6,10 +6,27 @@ const PRE_COMMIT = `#!/bin/sh
 # pix-mono pre-commit
 # ponytail: check the working tree without rewriting/staging; CI checks the committed snapshot.
 set -e
+files=$(git diff --cached --name-only)
+if [ -n "$files" ] && ! printf '%s\\n' "$files" | grep -qv '\\.md$'; then
+	echo "pre-commit: only Markdown staged; skipping checks (CI still runs them)."
+	exit 0
+fi
 bun run check
 bun run typecheck
 exec bun run test
 `;
+
+/** Earlier standard hooks that may be upgraded in place. */
+const LEGACY_HOOKS = [
+	`#!/bin/sh
+# pix-mono pre-commit
+# ponytail: check the working tree without rewriting/staging; CI checks the committed snapshot.
+set -e
+bun run check
+bun run typecheck
+exec bun run test
+`,
+];
 
 export function installHooks(cwd: string): string | undefined {
 	const git = (args: string[]) => runToolSync("git", args, { cwd });
@@ -30,7 +47,9 @@ export function installHooks(cwd: string): string | undefined {
 		writeFileSync(target, PRE_COMMIT, { flag: "wx", mode: 0o755 });
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-		if (readFileSync(target, "utf8") !== PRE_COMMIT)
+		const current = readFileSync(target, "utf8");
+		if (LEGACY_HOOKS.includes(current)) writeFileSync(target, PRE_COMMIT);
+		else if (current !== PRE_COMMIT)
 			throw new Error(`Preserving existing hook: ${target}. Merge it manually first.`);
 	}
 	chmodSync(target, 0o755);
