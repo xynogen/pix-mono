@@ -14,6 +14,17 @@
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 </p>
 
+<p align="center">
+  <a href="#what-to-install">What to install</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#packages">Packages</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#development">Development</a> ·
+  <a href="#publishing">Publishing</a> ·
+  <a href="#lineage">Lineage</a> ·
+  <a href="#license">License</a>
+</p>
+
 ## What to install
 
 **Do you want the distro?** One package. `pix-core` installs the rest:
