@@ -14,6 +14,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { currentPlatform, type HostOs } from "@xynogen/pix-runtime/platform";
 import { NUDGE_ENTRY, type NudgeCard } from "./card.ts";
 
 /** In-bounds array access that satisfies noUncheckedIndexedAccess without casting. */
@@ -28,7 +29,16 @@ function at<T>(arr: T[], i: number): T {
  * stand-ins (bash `sudo`/`ssh`) are NOT here: they are *guarded* (hard block +
  * redirect) by pix-gate, a separate concern. Guard = stop; nudge = steer.
  */
-type Category = "read" | "ls" | "grep" | "find" | "edit" | "poll" | "heredoc" | "python";
+type Category =
+	| "read"
+	| "ls"
+	| "grep"
+	| "find"
+	| "edit"
+	| "poll"
+	| "heredoc"
+	| "python"
+	| "powershell";
 
 interface Rule {
 	category: Category;
@@ -38,6 +48,8 @@ interface Rule {
 	reason: string;
 	/** The tool options that replace the shell idiom, so the model knows what to pass. */
 	hint: string;
+	/** Closing note; defaults to the "bash for pipelines" reminder. */
+	note?: string;
 }
 
 /**
@@ -169,6 +181,19 @@ const WHOLE_RULES: Rule[] = [
 ];
 
 /**
+ * Windows only: any bash call that no other rule caught steers once toward the
+ * native `powershell` tool. Bash stays enabled; this only states the preference.
+ */
+const POWERSHELL_RULE: Rule = {
+	category: "powershell",
+	test: () => true,
+	tool: "powershell",
+	reason: "This host is Windows.",
+	hint: "native Windows paths, cmdlets and env",
+	note: "Keep bash only for POSIX-specific scripts.",
+};
+
+/**
  * Pick a rule only when the command is a *simple* single-command invocation
  * standing in for a tool. Skip anything with pipes, redirects, command
  * chaining, or subshells — those are legitimate shell work bash should handle.
@@ -280,12 +305,13 @@ export function nudgeReason(
 	tool: string,
 	toolActive: boolean,
 	hint?: string,
+	note = "Use bash for genuine shell pipelines, not chained tool replacements.",
 ): string {
 	const opts = hint ? ` (${hint})` : "";
 	const how = toolActive
 		? `Use \`${tool}\`${opts} instead.`
 		: `Load \`${tool}\` with tool_search, then call it${opts}.`;
-	return `${baseReason} ${how} (Use bash for genuine shell pipelines, not chained tool replacements.)`;
+	return `${baseReason} ${how} (${note})`;
 }
 
 /**
@@ -294,7 +320,7 @@ export function nudgeReason(
  * (then the hint is dropped, not the nudge). Unknown registry → no nudge.
  */
 export function nudgeFor(
-	rule: Pick<Rule, "reason" | "tool" | "hint">,
+	rule: Pick<Rule, "reason" | "tool" | "hint" | "note">,
 	registered: Set<string> | undefined,
 	active: string[] | undefined,
 ): string | undefined {
@@ -303,10 +329,13 @@ export function nudgeFor(
 	const isActive = !active || active.includes(rule.tool);
 	if (!isActive && !registered.has("tool_search")) return undefined;
 	const hint = hintTools(rule.hint).every((t) => registered.has(t)) ? rule.hint : undefined;
-	return nudgeReason(rule.reason, rule.tool, isActive, hint);
+	return nudgeReason(rule.reason, rule.tool, isActive, hint, rule.note);
 }
 
-export default function registerToolsNudge(pi: ExtensionAPI): void {
+export default function registerToolsNudge(
+	pi: ExtensionAPI,
+	os: HostOs = currentPlatform().os,
+): void {
 	// Categories already nudged this session — warn once, then stay silent.
 	const nudged = new Set<Category>();
 
@@ -315,8 +344,14 @@ export default function registerToolsNudge(pi: ExtensionAPI): void {
 		const command = event.input?.command;
 		if (typeof command !== "string") return;
 
-		const rule = classifyCompound(command);
-		if (!rule || nudged.has(rule.category)) return;
+		const matched = classifyCompound(command);
+		const rule =
+			matched && !nudged.has(matched.category)
+				? matched
+				: os === "win32" && !nudged.has("powershell")
+					? POWERSHELL_RULE
+					: undefined;
+		if (!rule) return;
 		let active: string[] | undefined;
 		try {
 			// getActiveTools() returns string[] (tool NAMES), not ToolInfo[].

@@ -20,6 +20,7 @@ const ALL_TOOLS = ["read", "ls", "grep", "find", "edit", "write", "proc", "tool_
 function makeHandler(
 	activeTools: string[] = ["read", "ls", "grep", "find", "edit", "write", "proc"],
 	registered: string[] = ALL_TOOLS,
+	os: "win32" | "linux" = "linux",
 ): ToolResultHandler {
 	let handler: ToolResultHandler | undefined;
 	const pi = {
@@ -31,7 +32,7 @@ function makeHandler(
 		appendEntry: (customType: string, card: Card) =>
 			notices.push({ msg: card.body, type: `${customType}:${card.kind}` }),
 	};
-	registerToolsNudge(pi as unknown as Parameters<typeof registerToolsNudge>[0]);
+	registerToolsNudge(pi as unknown as Parameters<typeof registerToolsNudge>[0], os);
 	if (!handler) throw new Error("handler not registered");
 	return handler;
 }
@@ -309,6 +310,28 @@ describe("registerToolsNudge handler", () => {
 		await handler(bashEvent("grep x y"), ctx); // new category → new nudge
 		expect(notices).toHaveLength(2);
 		expect((notices[1] as Notice).msg).toMatch(/Use `grep` \(.*\) instead/);
+	});
+
+	test("on Windows nudges bash toward powershell once, after tool stand-ins", async () => {
+		const tools = [...ALL_TOOLS, "powershell"];
+		const handler = makeHandler(tools, tools, "win32");
+		const { ctx, notices } = makeCtx();
+
+		await handler(bashEvent("cat a"), ctx); // stand-in rule wins first
+		await handler(bashEvent("git status"), ctx);
+		await handler(bashEvent("git log"), ctx); // already nudged
+		expect(notices.map((n) => n.msg)).toEqual([
+			expect.stringContaining("Use `read`"),
+			expect.stringMatching(
+				/^\[pix-nudge\] This host is Windows\. Use `powershell` \(.*\) instead\./,
+			),
+		]);
+
+		// Without a registered powershell tool there is nothing to steer toward.
+		const bare = makeHandler(undefined, ALL_TOOLS, "win32");
+		const { ctx: ctx2, notices: none } = makeCtx();
+		await bare(bashEvent("git status"), ctx2);
+		expect(none).toHaveLength(0);
 	});
 
 	test("ignores commands with no tool stand-in and non-bash tools", async () => {
