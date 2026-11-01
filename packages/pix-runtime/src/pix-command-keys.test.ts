@@ -63,6 +63,7 @@ interface Driver {
 	minimumTokensValue(): number;
 	maxRenderWidthValue(): number | `${number}%`;
 	maxRenderHeightValue(): number | `${number}%`;
+	themeName(): string | undefined;
 	cleanup(): void;
 }
 
@@ -73,7 +74,11 @@ afterEach(() => {
 });
 
 /** Register /pix against a mock host + isolated runtime and open its overlay. */
-async function openOverlay(kb = getKeybindings(), rows = 12): Promise<Driver> {
+async function openOverlay(
+	kb = getKeybindings(),
+	rows = 12,
+	themes: string[] = [],
+): Promise<Driver> {
 	const iso = createIsolatedRuntime();
 	active = iso;
 	await iso.runtime.init();
@@ -93,7 +98,13 @@ async function openOverlay(kb = getKeybindings(), rows = 12): Promise<Driver> {
 	registerPixCommand(pi, iso.runtime);
 	if (!commandHandler) throw new Error("/pix did not register");
 
-	const theme = {
+	const theme: {
+		name?: string;
+		fg(c: string, t: string): string;
+		bg(c: string, t: string): string;
+		bold(t: string): string;
+	} = {
+		name: themes[0],
 		fg: (_c: string, t: string) => t,
 		bg: (_c: string, t: string) => t,
 		bold: (t: string) => `<b>${t}</b>`,
@@ -102,6 +113,13 @@ async function openOverlay(kb = getKeybindings(), rows = 12): Promise<Driver> {
 		ui: {
 			theme,
 			notify: () => {},
+			...(themes.length && {
+				getAllThemes: () => themes.map((name) => ({ name, path: undefined })),
+				setTheme: (name: string) => {
+					theme.name = name;
+					return { success: true };
+				},
+			}),
 			custom: async <T>(
 				cb: (
 					tui: { requestRender(): void; terminal?: { rows?: number } },
@@ -137,6 +155,7 @@ async function openOverlay(kb = getKeybindings(), rows = 12): Promise<Driver> {
 		minimumTokensValue: () => iso.runtime.get(compactionSection).minimumTokens,
 		maxRenderWidthValue: () => iso.runtime.get(prettySection).maxRenderWidth,
 		maxRenderHeightValue: () => iso.runtime.get(prettySection).maxRenderHeight,
+		themeName: () => theme.name,
 		cleanup: () => iso.cleanup(),
 	};
 }
@@ -292,6 +311,19 @@ describe("/pix compaction floor", () => {
 		expect(d.cursorLine()).toContain("Minimum tokens");
 		expect(d.triggerPercentValue()).toBe(triggerPercent);
 		expect(d.minimumTokensValue()).toBe(minimumTokens);
+	});
+
+	it("theme row cycles Pi themes through setTheme without touching pix.json", async () => {
+		const d = await openOverlay(getKeybindings(), 24, ["dark", "light", "pix-nord"]);
+		expect(d.cursorLine()).toMatch(/→ theme\s+dark/);
+		const icons = d.iconsValue();
+		d.feed(KEYS.right.legacy);
+		expect(d.themeName()).toBe("light");
+		d.feed(KEYS.left.legacy);
+		d.feed(KEYS.left.legacy);
+		expect(d.themeName()).toBe("pix-nord");
+		expect(d.cursorLine()).toMatch(/→ theme\s+pix-nord/);
+		expect(d.iconsValue()).toBe(icons);
 	});
 
 	it("offers 25k through 600k and defaults to 100k", async () => {

@@ -42,6 +42,21 @@ function row<T>(r: SettingRow<T>): SettingRow<unknown> {
 	return r as SettingRow<unknown>;
 }
 
+/** Pi-owned theme row: not stored in pix.json, applied through `ctx.ui.setTheme`. */
+interface ThemeRow {
+	kind: "theme";
+	section: string;
+	label: string;
+	values: readonly string[];
+	current: () => string;
+}
+
+type Row = SettingRow<unknown> | ThemeRow;
+
+function isThemeRow(row: Row): row is ThemeRow {
+	return "kind" in row;
+}
+
 /** Render a token count as a compact label: 1_000_000 → "1M", 150_000 → "150k". */
 function formatTokens(tokens: number): string {
 	return tokens % 1_000_000 === 0 ? `${tokens / 1_000_000}M` : `${tokens / 1000}k`;
@@ -297,6 +312,18 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 			await runtime.reload({ origin: "command", source: "pix" });
 			const panels = packageSettings(pi);
 			const settings = visibleSettings(pi);
+			// Pi owns the active theme (settings.json); `/pix` only cycles it through `ctx.ui.setTheme`.
+			const themeNames = (ctx.ui.getAllThemes?.() ?? []).map((t) => t.name).sort();
+			const themeRow: ThemeRow | undefined =
+				themeNames.length > 1
+					? {
+							kind: "theme",
+							section: "Pretty",
+							label: "theme",
+							values: themeNames,
+							current: () => ctx.ui.theme.name ?? "",
+						}
+					: undefined;
 			// SAFETY: Runtime UI supports custom overlays beyond the published command context type.
 			const ui = ctx.ui as unknown as {
 				custom?: (f: unknown, opts?: unknown) => Promise<unknown>;
@@ -429,11 +456,23 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						mountPanel();
 					};
 
-					const rows = () =>
-						settings.filter((r) => (r.section === "Footer") === (tab === "Footer"));
+					const rows = (): Row[] => {
+						const list = settings.filter((r) => (r.section === "Footer") === (tab === "Footer"));
+						return tab === "Settings" && themeRow ? [themeRow, ...list] : list;
+					};
 					const cycle = (direction: -1 | 1) => {
 						const row = rows()[selected];
 						if (!row) return;
+						if (isThemeRow(row)) {
+							const cur = row.values.indexOf(row.current());
+							const start = cur === -1 && direction === -1 ? 0 : cur;
+							const next = row.values[(start + direction + row.values.length) % row.values.length];
+							const result = next ? ctx.ui.setTheme(next) : undefined;
+							if (result && !result.success)
+								ui.notify(`pix: theme ${next}: ${result.error ?? "failed"}`, "error");
+							tui.requestRender();
+							return;
+						}
 						// Functional updater: the runtime queue serializes writes, and the
 						// callback sees the latest committed value — so rapid presses each
 						// advance exactly one step instead of collapsing on a stale snapshot.
@@ -538,8 +577,8 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								const sel = i === selected;
 								const cursor = sel ? theme.fg("accent", "→") : " ";
 								const label = theme.fg(sel ? "accent" : "text", row.label.padEnd(labelW));
-								const value = row.read(runtime.get(row.handle));
-								const isDefault = value === row.read(row.handle.defaults);
+								const value = isThemeRow(row) ? row.current() : row.read(runtime.get(row.handle));
+								const isDefault = isThemeRow(row) || value === row.read(row.handle.defaults);
 								settingBodyLines[i] = body.length;
 								body.push(`${cursor} ${label}  ${theme.fg(isDefault ? "dim" : "success", value)}`);
 							}
