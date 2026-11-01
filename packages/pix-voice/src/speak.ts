@@ -1,4 +1,4 @@
-/** Text-to-speech tool. The provider comes from /voice; the result names the provider and model. */
+/** Text-to-speech tool. The provider comes from /pix → Voice; the result names the provider and model. */
 
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -16,7 +16,7 @@ import { resolveProvider } from "./providers.ts";
 import { makeRenderCall, makeRenderResult } from "./render.ts";
 import { resolveOutputPath } from "./transcribe.ts";
 
-// ponytail: mp3 plays everywhere. Add a /voice format setting if a provider needs another.
+// ponytail: mp3 plays everywhere. Add a /pix → Voice format setting if a provider needs another.
 const FORMAT = "mp3";
 
 interface TtsDetails {

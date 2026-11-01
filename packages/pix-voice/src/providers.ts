@@ -23,7 +23,7 @@ export interface SpeechAudio {
 interface BaseProvider {
 	id: string;
 	defaultModel: string;
-	/** Env var names this provider reads. Shown in /voice. */
+	/** Env var names this provider reads. Shown in /pix → Voice. */
 	env?: string[];
 	isConfigured?: () => boolean;
 }
@@ -78,6 +78,7 @@ export function resolveProvider<K extends VoiceKind>(kind: K, id: string): Provi
 		return provider;
 	}
 	const provider = listProviders(kind).find(isConfigured);
-	if (!provider) throw new Error(`No configured ${kind} provider. Run /voice to see the options.`);
+	if (!provider)
+		throw new Error(`No configured ${kind} provider. Run /pix → Voice to see the options.`);
 	return provider;
 }

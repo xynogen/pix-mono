@@ -135,11 +135,15 @@ function envMode(): IconMode {
 	return "nerd";
 }
 
-let activeMode: IconMode = envMode();
+const shared = globalThis as {
+	__pixIconState?: { mode: IconMode; listeners: Set<(mode: IconMode) => void> };
+};
+shared.__pixIconState ??= { mode: envMode(), listeners: new Set() };
+const state = shared.__pixIconState;
 
 /** Current global icon mode. */
 export function getIconMode(): IconMode {
-	return activeMode;
+	return state.mode;
 }
 
 /**
@@ -149,7 +153,7 @@ export function getIconMode(): IconMode {
  * here; setIconMode fires every callback on an actual change.
  */
 type ModeListener = (mode: IconMode) => void;
-const listeners = new Set<ModeListener>();
+const listeners = state.listeners;
 
 /** Subscribe to global icon-mode changes. Returns an unsubscribe fn. */
 export function onIconModeChange(cb: ModeListener): () => void {
@@ -163,8 +167,8 @@ export function onIconModeChange(cb: ModeListener): () => void {
  * subscribers only on an actual change (no-op re-sets are ignored).
  */
 export function setIconMode(mode: IconMode): void {
-	if (!ICON_MODES.includes(mode) || mode === activeMode) return;
-	activeMode = mode;
+	if (!ICON_MODES.includes(mode) || mode === state.mode) return;
+	state.mode = mode;
 	for (const cb of listeners) cb(mode);
 }
 
@@ -174,7 +178,7 @@ export function setIconMode(mode: IconMode): void {
  */
 export function icon(key: IconKey): string {
 	const entry = CATALOG[key];
-	return entry ? entry[activeMode] : "";
+	return entry ? entry[state.mode] : "";
 }
 
 /** Resolve a key for an explicit mode (used by /pix previews + tests). */

@@ -73,8 +73,8 @@ describe("welcome lifecycle", () => {
 			},
 		);
 		expect(headerCalls).toBe(1);
-		expect(renderHeader?.(80)?.slice(0, 2)).toEqual(["", `   ${LOGO_ROWS[0]?.[0]}`]);
-		expect(renderHeader?.(120)?.[2]).toMatch(/PIx · Welcome, .+!$/);
+		expect(renderHeader?.(120)?.[1]).toMatch(/^ {3}.+ {2}Welcome, .+!$/);
+		expect(renderHeader?.(120)?.[2]).toBe(`   ${LOGO_ROWS[1]?.[0]}  PIx`);
 		onTurn?.({ reason: "new" }, {});
 		expect(renderHeader?.(80)).toEqual([]);
 	});
@@ -93,9 +93,11 @@ describe("renderWelcome", () => {
 });
 
 it("greets the supplied OS username and clips long names to the terminal width", () => {
-	expect(renderWelcome(theme, "model", "cwd", [], 120, "alice")[2]).toEndWith(
-		"PIx · Welcome, alice!",
-	);
+	const lines = renderWelcome(theme, "model", "cwd", [], 120, "alice");
+	expect(lines.slice(1, 3)).toEqual([
+		`   ${LOGO_ROWS[0]?.[0]}  Welcome, alice!`,
+		`   ${LOGO_ROWS[1]?.[0]}  PIx`,
+	]);
 	for (const width of [0, 1, 20, 40, 80]) {
 		for (const line of renderWelcome(theme, "model", "cwd", [], width, "界alice".repeat(40))) {
 			expect(visibleWidth(line)).toBeLessThanOrEqual(width);
@@ -231,7 +233,7 @@ describe("renderCheck", () => {
 
 describe("LOGO_ROWS", () => {
 	it("has 5 grid rows", () => expect(LOGO_ROWS.length).toBe(5));
-	it("starts with empty tag", () => expect((LOGO_ROWS[0] as string[])[1]).toBe(""));
+	it("starts with welcome tag", () => expect(LOGO_ROWS[0]?.[1]).toBe("welcome"));
 	it("has heading, model, cwd, ready tags", () => {
 		const tags = LOGO_ROWS.map((r) => r[1]);
 		expect(tags).toContain("heading");

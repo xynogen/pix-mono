@@ -1,24 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import registerCommands from "@xynogen/pix-commands/extension";
+import { once } from "@xynogen/pix-runtime/once";
 import registerSubagent from "@xynogen/pix-subagent/extension";
 import registerTodo from "@xynogen/pix-todo";
-
-// Mirror of the per-instance guard. pix-core does not own once.ts (each member
-// duplicates it to stay cross-dep-free), so we re-declare the contract here and
-// assert the dedupe semantics that the aggregator relies on.
-function once(pi: Record<string, unknown>, key: string, fn: () => void): void {
-	const g = globalThis as { __pixOnce?: WeakMap<object, Set<string>> };
-	if (!g.__pixOnce) g.__pixOnce = new WeakMap<object, Set<string>>();
-	const registry = g.__pixOnce;
-	let loaded = registry.get(pi);
-	if (!loaded) {
-		loaded = new Set<string>();
-		registry.set(pi, loaded);
-	}
-	if (loaded.has(key)) return;
-	loaded.add(key);
-	fn();
-}
 
 afterEach(() => {
 	delete (globalThis as { __pixOnce?: WeakMap<object, Set<string>> }).__pixOnce;

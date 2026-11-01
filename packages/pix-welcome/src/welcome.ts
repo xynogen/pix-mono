@@ -35,7 +35,7 @@ export type Theme = {
 
 // ─── Pixel logo ───────────────────────────────────────────────────────────────
 
-export type Tag = "heading" | "model" | "cwd" | "ready" | "";
+export type Tag = "welcome" | "heading" | "model" | "cwd" | "ready";
 
 // Brand artwork matches .github/assets/pix-logo.svg; surrounding UI uses theme roles.
 const LOGO_COLORS = {
@@ -46,7 +46,7 @@ const LOGO_COLORS = {
 	P: parseColor("#9d7cd8"),
 };
 const LOGO_GRID: [string, Tag][] = [
-	["LLL LLLM   M", ""],
+	["LLL LLLM   M", "welcome"],
 	["B  P B MB BM", "heading"],
 	["BMM  B   P  ", "model"],
 	["D    P  M M ", "cwd"],
@@ -388,8 +388,10 @@ function buildLogoLines(theme: Theme, model: string, cwd: string, user: string):
 			})
 			.join("");
 		switch (tag) {
+			case "welcome":
+				return `${pad}${l}${user ? `  ${theme.fg("dim", `Welcome, ${user}!`)}` : ""}`;
 			case "heading":
-				return `${pad}${l}  ${theme.fg("dim", "PIx")}${user ? ` · ${theme.fg("text", `Welcome, ${user}!`)}` : ""}`;
+				return `${pad}${l}  ${theme.fg("dim", "PIx")}`;
 			case "model":
 				return `${pad}${l}  ${theme.fg("muted", icon("model"))}  ${theme.fg("text", model)}`;
 			case "cwd":

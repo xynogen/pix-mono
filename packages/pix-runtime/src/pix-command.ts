@@ -18,7 +18,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { createBinariesTab } from "./binaries-tab.ts";
 import { icon } from "./icon-catalog.ts";
-import type { PixRuntime } from "./runtime.ts";
+import { type PixRuntime, pixRuntime } from "./runtime.ts";
 import { type DeepPartial, deepMerge, type SectionHandle } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { compactionSection } from "./sections/compaction.ts";
@@ -236,12 +236,42 @@ function buildSummary(runtime: PixRuntime): string {
 	return lines.join("\n");
 }
 
+export type PackageSettings = {
+	id: string;
+	label: string;
+	open(ctx: ExtensionCommandContext): Promise<void>;
+};
+
+const SETTINGS_QUERY = "pix:settings";
+const COMMAND_QUERY = "pix:settings-command";
+
+/** Register only from an active package factory; Pi clears subscriptions on reload. */
+export function registerPackageSettings(pi: ExtensionAPI, settings: PackageSettings): void {
+	pi.events.on(SETTINGS_QUERY, (data: unknown) => {
+		if (data instanceof Map) data.set(settings.id, settings);
+	});
+	registerPixCommand(pi, pixRuntime());
+}
+
+function packageSettings(pi: ExtensionAPI): PackageSettings[] {
+	const entries = new Map<string, PackageSettings>();
+	pi.events?.emit(SETTINGS_QUERY, entries);
+	return [...entries.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void {
+	const claim = { registered: false };
+	pi.events?.emit(COMMAND_QUERY, claim);
+	if (claim.registered) return;
+	pi.events?.on(COMMAND_QUERY, (data: unknown) => {
+		if (data && typeof data === "object" && "registered" in data) data.registered = true;
+	});
 	pi.registerCommand("pix", {
 		description: "pix: open shared settings (edit pix.json)",
 		handler: async (_args: string, ctx: ExtensionCommandContext) => {
 			// Re-parse pix.json so section parsers remain the single validation source.
 			await runtime.reload({ origin: "command", source: "pix" });
+			const panels = packageSettings(pi);
 			// SAFETY: Runtime UI supports custom overlays beyond the published command context type.
 			const ui = ctx.ui as unknown as {
 				custom?: (f: unknown, opts?: unknown) => Promise<unknown>;
@@ -249,7 +279,10 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 			};
 
 			if (typeof ui.custom !== "function") {
-				ui.notify(buildSummary(runtime), "info");
+				ui.notify(
+					[buildSummary(runtime), ...panels.map((panel) => `[${panel.label}]`)].join("\n"),
+					"info",
+				);
 				return;
 			}
 
@@ -272,7 +305,57 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					let visibleBodyLines = 1;
 					let maxBodyOffset = 0;
 					let inspectingPage = false;
-					let tab: (typeof TABS)[number] = "Settings";
+					const tabs = [...TABS, ...panels.map((entry) => entry.label)];
+					let tab = "Settings";
+					let embedded:
+						| { render(width: number): string[]; handleInput(data: string): void; dispose?(): void }
+						| undefined;
+					let leavePanel: (() => void) | undefined;
+					let panelGeneration = 0;
+					const mountPanel = () => {
+						const generation = ++panelGeneration;
+						leavePanel?.();
+						embedded?.dispose?.();
+						embedded = undefined;
+						leavePanel = undefined;
+						const panel = panels.find((entry) => entry.label === tab);
+						if (!panel) return;
+						const panelContext = {
+							...ctx,
+							ui: {
+								...ctx.ui,
+								custom: async (
+									factory: (
+										tui: unknown,
+										theme: unknown,
+										kb: unknown,
+										done: (value: unknown) => void,
+									) => NonNullable<typeof embedded>,
+								) => {
+									if (generation !== panelGeneration) return null;
+									return new Promise<unknown>((resolve) => {
+										leavePanel = () => resolve(null);
+										embedded = factory(tui, theme, kb, (value: unknown) => {
+											if (generation !== panelGeneration) return resolve(null);
+											if (value == null) {
+												embedded = undefined;
+												done(null);
+											}
+											resolve(value);
+										});
+										tui.requestRender();
+									});
+								},
+							},
+						} as unknown as ExtensionCommandContext;
+						void panel.open(panelContext).catch((error) => {
+							if (generation === panelGeneration)
+								ui.notify(
+									`pix: ${panel.label}: ${error instanceof Error ? error.message : String(error)}`,
+									"error",
+								);
+						});
+					};
 					let binaries: ReturnType<typeof createBinariesTab> | undefined;
 					const binariesTab = () => {
 						binaries ??= createBinariesTab({
@@ -283,18 +366,21 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						return binaries;
 					};
 					const tabBar = () =>
-						TABS.map((name) =>
-							name === tab
-								? theme.fg("accent", theme.bold(`  ${name}  `))
-								: theme.fg("muted", `  ${name}  `),
-						).join(theme.fg("muted", "│"));
+						tabs
+							.map((name) =>
+								name === tab
+									? theme.fg("accent", theme.bold(`  ${name}  `))
+									: theme.fg("muted", `  ${name}  `),
+							)
+							.join(theme.fg("muted", "│"));
 					const switchTab = (direction: -1 | 1) => {
-						const next = (TABS.indexOf(tab) + direction + TABS.length) % TABS.length;
-						tab = TABS[next] ?? "Settings";
+						const next = (tabs.indexOf(tab) + direction + tabs.length) % tabs.length;
+						tab = tabs[next] ?? "Settings";
 						selected = 0;
 						bodyOffset = 0;
 						inspectingPage = false;
 						if (tab === "Binaries") binariesTab().refresh();
+						mountPanel();
 					};
 
 					const rows = () =>
@@ -370,6 +456,21 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								maxBodyOffset = result.maxBodyOffset;
 								return result.lines;
 							}
+							if (!TABS.some((name) => name === tab)) {
+								if (embedded) {
+									const lines = embedded.render(width);
+									const panelWidth = visibleWidth(lines[0] ?? "");
+									lines.splice(1, 0, ...frameRows(panelWidth, [tabBar()], frame).slice(1, -1));
+									return lines;
+								}
+								return frameModal({
+									...frame,
+									header: [tabBar(), ""],
+									body: [theme.fg("dim", `  Loading ${tab} settings…`)],
+									footer: ["", tabGuide + guideSep + guide("esc", "close")],
+									bodyOffset: 0,
+								}).lines;
+							}
 							const settings = rows();
 							const labelW = Math.max(...settings.map((r) => r.label.length));
 							const body: string[] = [];
@@ -415,6 +516,11 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							maxBodyOffset = result.maxBodyOffset;
 							return result.lines;
 						},
+						dispose: () => {
+							panelGeneration++;
+							leavePanel?.();
+							embedded?.dispose?.();
+						},
 						invalidate: () => {},
 						handleInput: (data: string) => {
 							if (tab === "Binaries" && binariesTab().editing) {
@@ -433,6 +539,10 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							if (shiftTab || matchesKey(data, Key.tab)) {
 								switchTab(shiftTab ? -1 : 1);
 								tui.requestRender();
+								return;
+							}
+							if (!TABS.some((name) => name === tab) && embedded) {
+								embedded.handleInput(data);
 								return;
 							}
 							const pageUp = kb?.matches(data, "tui.select.pageUp") || matchesKey(data, Key.pageUp);

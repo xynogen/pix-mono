@@ -2,7 +2,7 @@
  * pix-voice — provider-neutral speech tools for Pi.
  *
  * Registers the `transcribe` and `speak` tools, the `/stt` microphone command,
- * and the `/voice` settings command. Other packages can add providers through
+ * and Voice settings under `/pix`. Other packages can add providers through
  * `@xynogen/pix-voice/providers`.
  */
 

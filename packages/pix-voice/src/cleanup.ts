@@ -110,7 +110,8 @@ export function cleanupModel(setting: string, ctx: Models): Model<Api> | undefin
 		slash > 0
 			? ctx.modelRegistry.find(setting.slice(0, slash), setting.slice(slash + 1))
 			: undefined;
-	if (!model) throw new Error(`cleanup model ${setting} is not available. Pick one in /voice.`);
+	if (!model)
+		throw new Error(`cleanup model ${setting} is not available. Pick one in /pix → Voice.`);
 	return model;
 }
 

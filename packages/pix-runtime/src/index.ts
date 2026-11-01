@@ -32,6 +32,7 @@ export {
 	parseLfid,
 	uniqueLfid,
 } from "./lfid.ts";
+export { type PackageSettings, registerPackageSettings } from "./pix-command.ts";
 export {
 	config,
 	createRuntime,

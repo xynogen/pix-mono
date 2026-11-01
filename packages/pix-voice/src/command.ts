@@ -1,4 +1,8 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionCommandContext,
+	ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	type SettingsRow,
@@ -7,6 +11,7 @@ import {
 } from "@xynogen/pix-pretty/provider-picker";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
+import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { listMicrophones, type Microphone, startRecording } from "@xynogen/pix-runtime/audio";
 import { cleanupModel } from "./cleanup.ts";
 import { parseLanguage, saveConfig, voiceConfig } from "./config.ts";
@@ -167,12 +172,12 @@ function settingsRows(
 }
 
 export default function registerVoiceCommand(pi: ExtensionAPI): void {
-	pi.registerCommand("voice", {
-		description:
-			"Set the speech-to-text and text-to-speech providers, 9Router models, microphone, and playback",
-		handler: async (_args, ctx) => {
+	registerPackageSettings(pi, {
+		id: "pix-voice",
+		label: "Voice",
+		open: async (ctx: ExtensionCommandContext) => {
 			let cursor = 0;
-			// Read once per /voice. The device scan is too slow for each render.
+			// Scan once when opening Voice settings, not on each render.
 			const mics = await listMicrophones().catch(() => [
 				{ id: "default", label: "System default" },
 			]);

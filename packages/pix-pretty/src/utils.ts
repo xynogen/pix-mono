@@ -270,9 +270,15 @@ export type CollapsedToolStatus = "success" | "error" | "warning";
  * (`⚡` is reserved for strength / model-score badges, not warnings.)
  */
 export const COLLAPSED_TOOL_GLYPH: Record<CollapsedToolStatus, string> = {
-	success: "✓",
-	warning: "⚠",
-	error: "✗",
+	get success() {
+		return icon("status.ok");
+	},
+	get warning() {
+		return icon("status.warn");
+	},
+	get error() {
+		return icon("status.error");
+	},
 };
 
 /**

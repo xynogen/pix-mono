@@ -12,6 +12,22 @@ import {
 describe("icon-catalog", () => {
 	afterEach(() => setIconMode("nerd")); // restore default for other suites
 
+	it("shares mode and notifications across separately evaluated modules", async () => {
+		const modulePath = "./icon-catalog.ts?separate-instance";
+		const other: typeof import("./icon-catalog.ts") = await import(modulePath);
+		const seen: string[] = [];
+		const unsubscribe = other.onIconModeChange((mode: string) => seen.push(mode));
+		try {
+			setIconMode("ascii");
+			expect(other.icon("status.ok")).toBe("ok");
+			other.setIconMode("nerd");
+			expect(getIconMode()).toBe("nerd");
+			expect(seen).toEqual(["ascii", "nerd"]);
+		} finally {
+			unsubscribe();
+		}
+	});
+
 	it("exposes nerd/unicode/ascii in cycle order", () => {
 		expect([...ICON_MODES]).toEqual(["nerd", "unicode", "ascii"]);
 	});

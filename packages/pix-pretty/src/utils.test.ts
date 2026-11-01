@@ -11,7 +11,7 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "./config.ts";
-import { icon, iconFor } from "./icon-catalog.ts";
+import { getIconMode, icon, iconFor, setIconMode } from "./icon-catalog.ts";
 import type { FgTheme } from "./types.ts";
 import {
 	BODY_PAD,
@@ -43,6 +43,27 @@ import {
 	widgetActivityRow,
 	widgetTitle,
 } from "./utils.ts";
+
+it("collapsed status marks follow live icon mode changes", () => {
+	const previous = getIconMode();
+	const theme = { fg: (_role: string, text: string) => text, bold: (text: string) => text };
+	try {
+		for (const mode of ["ascii", "nerd", "unicode"] as const) {
+			setIconMode(mode);
+			for (const [status, key] of [
+				["success", "status.ok"],
+				["error", "status.error"],
+				["warning", "status.warn"],
+			] as const) {
+				expect(formatCollapsedToolRow(theme, "graph", "query", "done", status)).toStartWith(
+					padIcon(icon(key)),
+				);
+			}
+		}
+	} finally {
+		setIconMode(previous);
+	}
+});
 
 class MockTextComponent {
 	private text = "";

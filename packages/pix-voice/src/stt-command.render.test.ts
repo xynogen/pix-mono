@@ -180,13 +180,20 @@ async function captureStt(onStage = (_stage: string) => {}) {
 			"fixture-recording.wav",
 		]);
 		const { default: registerVoice } = await import("./command.ts");
-		let handler!: (args: string, context: unknown) => Promise<void>;
+		let open!: (context: unknown) => Promise<void>;
 		registerVoice({
-			registerCommand: (_name: string, command: { handler: typeof handler }) => {
-				handler = command.handler;
+			registerCommand() {},
+			events: {
+				emit() {},
+				on(channel: string, listener: (data: unknown) => void) {
+					if (channel !== "pix:settings") return;
+					const entries = new Map();
+					listener(entries);
+					open = entries.get("pix-voice").open;
+				},
 			},
 		} as never);
-		await handler("", {
+		await open({
 			model: { provider: "fixture", id: "selected-model" },
 			modelRegistry: { getAvailable: () => [] },
 			ui: {

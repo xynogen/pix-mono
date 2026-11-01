@@ -1,5 +1,5 @@
 /**
- * transcribe.ts — speech-to-text tool. The provider comes from /voice or the
+ * transcribe.ts — speech-to-text tool. The provider comes from /pix → Voice or the
  * `provider` argument; the result names the provider and model that ran.
  */
 

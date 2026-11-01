@@ -377,7 +377,10 @@ export function renderAgentUtilityResult(
 	if (details.outcome === "stopped") {
 		const row = formatCollapsedToolRow(theme, tool, target, meta);
 		return new Text(
-			row.replace(theme.fg("success", padIcon("✓")), theme.fg("dim", padIcon("■"))),
+			row.replace(
+				theme.fg("success", padIcon(COLLAPSED_TOOL_GLYPH.success)),
+				theme.fg("dim", padIcon("■")),
+			),
 			0,
 			0,
 		);
