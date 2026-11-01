@@ -1,5 +1,5 @@
 /**
- * opt.ts — the single `/optimizer` command: an interactive overlay that fronts
+ * opt.ts — the Optimizer settings tab: an interactive overlay that fronts
  * every optimizer tool.
  *
  * caveman / rtk / ponytail each register their own lifecycle hooks but expose
@@ -24,6 +24,7 @@ import {
 	modalOverlayOptions,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { registerPackageSettings } from "@xynogen/pix-runtime";
 import type { OptimizerHandle, OptimizerStatus, OptimizerTool } from "./status.ts";
 import { toolIcon } from "./status.ts";
 
@@ -71,9 +72,10 @@ export function registerOptCommand(
 	handles: Record<OptimizerTool, OptimizerHandle>,
 	_status: OptimizerStatus,
 ): void {
-	pi.registerCommand("optimizer", {
-		description: "pix-optimizer: caveman / rtk / ponytail tools",
-		handler: async (_args, ctx) => {
+	registerPackageSettings(pi, {
+		id: "pix-optimizer",
+		label: "Optimizer",
+		open: async (ctx) => {
 			// SAFETY: Runtime UI supports custom overlays beyond the published command context type.
 			const ui = ctx.ui as unknown as {
 				theme: {

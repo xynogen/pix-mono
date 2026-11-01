@@ -40,6 +40,7 @@ import {
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
 import { padIcon } from "@xynogen/pix-pretty/utils";
+import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { config, pixRuntime, updateConfig } from "@xynogen/pix-runtime/config";
 import { toolboxSection } from "@xynogen/pix-runtime/sections";
 
@@ -431,7 +432,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 		if (!state.isDisabled(event.toolName)) return;
 		return {
 			block: true,
-			reason: `${event.toolName} is disabled in /toolbox. Ask the user to enable it.`,
+			reason: `${event.toolName} is disabled. Ask the user to enable it in Pix tool settings.`,
 		};
 	});
 	pi.on("tool_execution_end", async (event) => {
@@ -704,6 +705,14 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 		);
 	}
 
+	registerPackageSettings(pi, {
+		id: "pix-toolbox",
+		label: "Tools",
+		open: async (ctx) => {
+			await showPicker(ctx as unknown as Parameters<typeof showPicker>[0]);
+		},
+	});
+
 	pi.registerCommand("toolbox", {
 		description:
 			"Set each tool to enabled, deferred or disabled. tab Tools/MCP, ↑↓ navigate, " +
@@ -740,12 +749,12 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 				return;
 			}
 
-			if (typeof ctx.ui.custom === "function") {
-				// SAFETY: The runtime command context satisfies showPicker's narrowed UI contract.
-				await showPicker(ctx as unknown as Parameters<typeof showPicker>[0]);
-			} else {
-				ctx.ui.notify(renderList(getRows(), ops.stateOf), "info");
-			}
+			ctx.ui.notify(
+				verb
+					? "Unknown toolbox action. Use enable, defer, disable, or list."
+					: "Tool settings are in /pix → Tools.",
+				"info",
+			);
 		},
 	});
 }

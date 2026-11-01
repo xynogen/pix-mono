@@ -7,6 +7,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { showTransientError, showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { getErrorMessage, pluralize } from "@xynogen/pix-pretty/utils";
+import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { Type } from "typebox";
 import {
 	logoutServer,
@@ -323,6 +324,17 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 
 	// Re-flag returned MCP tool failures so pi registers them as errors (see toolErrorOverride).
 	pi.on("tool_result", (event) => toolErrorOverride(event.details));
+
+	registerPackageSettings(pi, {
+		id: "pix-mcp",
+		label: "MCP",
+		open: async (ctx) => {
+			if (!state && initPromise) state = await initPromise;
+			if (!state) throw new Error("MCP not initialized");
+			const result = await openMcpPanel(state, pi, ctx, earlyConfigPath);
+			if (result?.configChanged) await ctx.reload();
+		},
+	});
 
 	pi.registerCommand("mcp", {
 		description: "Show MCP server status",

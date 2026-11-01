@@ -32,6 +32,7 @@ import registerPretty from "@xynogen/pix-pretty";
 import registerPrompts from "@xynogen/pix-prompts/extension";
 import registerRead from "@xynogen/pix-read/extension";
 import registerRuntime from "@xynogen/pix-runtime";
+import { once } from "@xynogen/pix-runtime/once";
 import registerSkills from "@xynogen/pix-skills";
 import registerSubagent from "@xynogen/pix-subagent/extension";
 import registerTodo from "@xynogen/pix-todo";
@@ -90,5 +91,6 @@ const MEMBERS = [
 ] satisfies readonly PixExtension[];
 
 export default async function (pi: ExtensionAPI): Promise<void> {
+	once(pi, "pix-core", () => {});
 	for (const register of MEMBERS) await register(pi);
 }

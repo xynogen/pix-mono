@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { PackageSettings } from "@xynogen/pix-runtime";
 import { registerOptCommand } from "./opt.ts";
 import type { OptimizerHandle, OptimizerStatus, OptimizerTool } from "./status.ts";
 
@@ -75,15 +76,25 @@ async function openOverlay(): Promise<Driver> {
 	let closed = false;
 	let renders = 0;
 
-	let commandHandler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
+	let open: PackageSettings["open"] | undefined;
 	const pi = {
-		registerCommand: (_name: string, spec: { handler: typeof commandHandler }) => {
-			commandHandler = spec.handler;
+		registerCommand(name: string) {
+			expect(name).toBe("pix");
+		},
+		events: {
+			emit() {},
+			on(channel: string, listener: (data: unknown) => void) {
+				if (channel !== "pix:settings") return;
+				const entries = new Map<string, PackageSettings>();
+				listener(entries);
+				expect(entries.get("pix-optimizer")?.label).toBe("Optimizer");
+				open = entries.get("pix-optimizer")!.open;
+			},
 		},
 	} as unknown as ExtensionAPI;
 
 	registerOptCommand(pi, handles, {} as OptimizerStatus);
-	if (!commandHandler) throw new Error("/optimizer did not register");
+	if (!open) throw new Error("Optimizer settings did not register");
 
 	const ctx = {
 		ui: {
@@ -122,8 +133,8 @@ async function openOverlay(): Promise<Driver> {
 		},
 	};
 
-	// Fire the command; the mock custom() resolves immediately so this settles.
-	await commandHandler("", ctx);
+	// The mock custom() resolves immediately so opening the settings settles.
+	await open(ctx as never);
 	if (!overlay) throw new Error("overlay was not constructed");
 	const comp = overlay;
 

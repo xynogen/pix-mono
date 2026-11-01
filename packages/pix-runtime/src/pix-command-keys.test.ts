@@ -17,6 +17,7 @@ import {
 	setKittyProtocolActive,
 	TUI_KEYBINDINGS,
 } from "@earendil-works/pi-tui";
+import { once } from "./once.ts";
 import { registerPixCommand } from "./pix-command.ts";
 import { compactionSection } from "./sections/compaction.ts";
 import { ioSection } from "./sections/io.ts";
@@ -86,6 +87,8 @@ async function openOverlay(kb = getKeybindings(), rows = 12): Promise<Driver> {
 			commandHandler = spec.handler;
 		},
 	} as unknown as ExtensionAPI;
+	for (const key of ["pix-core", "pix-diagnostics", "pix-gate", "pix-footer"])
+		once(pi, key, () => {});
 
 	registerPixCommand(pi, iso.runtime);
 	if (!commandHandler) throw new Error("/pix did not register");

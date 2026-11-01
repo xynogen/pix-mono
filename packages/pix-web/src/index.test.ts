@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import registerWeb from "./index.ts";
 
-test("standalone web registers its command without registering shared /pix", () => {
+test("standalone web exposes settings through /pix", () => {
 	const commands: string[] = [];
 	const events: string[] = [];
 	const pi = {
@@ -14,6 +14,6 @@ test("standalone web registers its command without registering shared /pix", () 
 		},
 	} as unknown as Parameters<typeof registerWeb>[0];
 	registerWeb(pi);
-	expect(commands).toEqual(["web"]);
+	expect(commands).toEqual(["pix"]);
 	expect(events).toContain("session_start");
 });

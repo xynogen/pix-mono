@@ -42,10 +42,20 @@ test("standalone settings render directly in /pix without a second overlay and d
 			label: "Voice",
 			open: async (ctx) => {
 				opened++;
-				await ctx.ui.custom((_tui, _theme, _kb, done) => ({
+				await ctx.ui.custom((tui, _theme, _kb, done) => ({
+					// Fill the panel's whole terminal budget, like full-height pickers do.
 					render: () => [
 						"╭────────────────────────╮",
 						"│ microphone: default    │",
+						...Array.from(
+							{
+								length: Math.max(
+									0,
+									Math.floor((tui as { terminal: { rows: number } }).terminal.rows * 0.8) - 3,
+								),
+							},
+							() => "│                        │",
+						),
 						"╰────────────────────────╯",
 					],
 					handleInput: (data: string) => {
@@ -80,10 +90,14 @@ test("standalone settings render directly in /pix without a second overlay and d
 							resolve,
 						);
 						overlays++;
-						for (let i = 0; i < 3; i++) component.handleInput("\t");
-						expect(component.render(100).join("\n")).toContain("microphone: default");
+						for (let i = 0; i < 2; i++) component.handleInput("\t");
+						const embedded = component.render(100);
+						expect(embedded.join("\n")).toContain("microphone: default");
+						// 40 rows at the default 80% cap: the tab row plus panel must fit 32 rows.
+						expect(embedded.length).toBeLessThanOrEqual(32);
+						expect(embedded.at(-1)).toMatch(/^╰─+╯$/);
 						component.handleInput("\u001b[Z");
-						expect(component.render(100).join("\n")).toMatch(/mode\s+show/);
+						expect(component.render(100).join("\n")).toMatch(/binary\.json/);
 						component.handleInput("\u001b");
 					}),
 			},

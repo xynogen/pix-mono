@@ -18,6 +18,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { createBinariesTab } from "./binaries-tab.ts";
 import { icon } from "./icon-catalog.ts";
+import { isPackageLoaded } from "./once.ts";
 import { type PixRuntime, pixRuntime } from "./runtime.ts";
 import { type DeepPartial, deepMerge, type SectionHandle } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
@@ -213,11 +214,25 @@ function binariesEnv(runtime: PixRuntime): NodeJS.ProcessEnv {
 }
 
 const TABS = ["Settings", "Binaries", "Footer"] as const;
+const SECTION_PACKAGES: Record<string, string> = {
+	Compaction: "pix-core",
+	Edit: "pix-diagnostics",
+	Gate: "pix-gate",
+	Footer: "pix-footer",
+};
 
-function buildSummary(runtime: PixRuntime): string {
+function visibleSettings(pi: ExtensionAPI): SettingRow<unknown>[] {
+	return SETTINGS.filter(
+		(row) =>
+			!SECTION_PACKAGES[row.section] ||
+			isPackageLoaded(pi, SECTION_PACKAGES[row.section] as string),
+	);
+}
+
+function buildSummary(runtime: PixRuntime, settings: SettingRow<unknown>[]): string {
 	const lines = [`Pix Settings (${runtime.path})`, ""];
 	let lastSection = "";
-	for (const row of SETTINGS) {
+	for (const row of settings) {
 		if (row.section !== lastSection) {
 			if (lastSection) lines.push("");
 			lines.push(`[${row.section}]`);
@@ -247,7 +262,7 @@ const COMMAND_QUERY = "pix:settings-command";
 
 /** Register only from an active package factory; Pi clears subscriptions on reload. */
 export function registerPackageSettings(pi: ExtensionAPI, settings: PackageSettings): void {
-	pi.events.on(SETTINGS_QUERY, (data: unknown) => {
+	pi.events?.on(SETTINGS_QUERY, (data: unknown) => {
 		if (data instanceof Map) data.set(settings.id, settings);
 	});
 	registerPixCommand(pi, pixRuntime());
@@ -272,6 +287,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 			// Re-parse pix.json so section parsers remain the single validation source.
 			await runtime.reload({ origin: "command", source: "pix" });
 			const panels = packageSettings(pi);
+			const settings = visibleSettings(pi);
 			// SAFETY: Runtime UI supports custom overlays beyond the published command context type.
 			const ui = ctx.ui as unknown as {
 				custom?: (f: unknown, opts?: unknown) => Promise<unknown>;
@@ -280,7 +296,9 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 
 			if (typeof ui.custom !== "function") {
 				ui.notify(
-					[buildSummary(runtime), ...panels.map((panel) => `[${panel.label}]`)].join("\n"),
+					[buildSummary(runtime, settings), ...panels.map((panel) => `[${panel.label}]`)].join(
+						"\n",
+					),
 					"info",
 				);
 				return;
@@ -305,13 +323,19 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					let visibleBodyLines = 1;
 					let maxBodyOffset = 0;
 					let inspectingPage = false;
-					const tabs = [...TABS, ...panels.map((entry) => entry.label)];
+					const tabs = [
+						...TABS.filter(
+							(name) => name !== "Footer" || settings.some((row) => row.section === "Footer"),
+						),
+						...panels.map((entry) => entry.label),
+					];
 					let tab = "Settings";
 					let embedded:
 						| { render(width: number): string[]; handleInput(data: string): void; dispose?(): void }
 						| undefined;
 					let leavePanel: (() => void) | undefined;
 					let panelGeneration = 0;
+					let panelShrink = 1;
 					const mountPanel = () => {
 						const generation = ++panelGeneration;
 						leavePanel?.();
@@ -335,7 +359,20 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 									if (generation !== panelGeneration) return null;
 									return new Promise<unknown>((resolve) => {
 										leavePanel = () => resolve(null);
-										embedded = factory(tui, theme, kb, (value: unknown) => {
+										// The /pix tab row takes one line; render() shrinks the panel's terminal until both fit.
+										const panelTui = {
+											...tui,
+											terminal: {
+												...tui.terminal,
+												get rows() {
+													return Math.max(
+														1,
+														(tui.terminal?.rows ?? process.stdout.rows ?? 24) - panelShrink,
+													);
+												},
+											},
+										};
+										embedded = factory(panelTui, theme, kb, (value: unknown) => {
 											if (generation !== panelGeneration) return resolve(null);
 											if (value == null) {
 												embedded = undefined;
@@ -384,7 +421,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 					};
 
 					const rows = () =>
-						SETTINGS.filter((r) => (r.section === "Footer") === (tab === "Footer"));
+						settings.filter((r) => (r.section === "Footer") === (tab === "Footer"));
 					const cycle = (direction: -1 | 1) => {
 						const row = rows()[selected];
 						if (!row) return;
@@ -458,7 +495,12 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							}
 							if (!TABS.some((name) => name === tab)) {
 								if (embedded) {
-									const lines = embedded.render(width);
+									let lines = embedded.render(width);
+									// Keep the composite inside the same budget as built-in tabs.
+									for (let tries = 0; lines.length + 1 > frame.maxHeight && tries < 8; tries++) {
+										panelShrink += lines.length + 1 - frame.maxHeight;
+										lines = embedded.render(width);
+									}
 									const panelWidth = visibleWidth(lines[0] ?? "");
 									lines.splice(1, 0, ...frameRows(panelWidth, [tabBar()], frame).slice(1, -1));
 									return lines;

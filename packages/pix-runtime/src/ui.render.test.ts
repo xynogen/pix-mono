@@ -5,6 +5,7 @@ import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-captu
 import * as resolve from "./binaries/resolve.ts";
 import * as store from "./binaries/store.ts";
 import { createBinariesTab } from "./binaries-tab.ts";
+import { once } from "./once.ts";
 import { registerPixCommand } from "./pix-command.ts";
 import { prettySection } from "./sections/pretty.ts";
 
@@ -13,14 +14,14 @@ test("Settings and Footer actual overlay captures", async () => {
 	const fixture = await withUiFixture();
 	try {
 		let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
-		registerPixCommand(
-			{
-				registerCommand: (_name: string, spec: { handler: typeof handler }) => {
-					handler = spec.handler;
-				},
-			} as unknown as ExtensionAPI,
-			fixture.runtime,
-		);
+		const pi = {
+			registerCommand: (_name: string, spec: { handler: typeof handler }) => {
+				handler = spec.handler;
+			},
+		} as unknown as ExtensionAPI;
+		for (const key of ["pix-core", "pix-diagnostics", "pix-gate", "pix-footer"])
+			once(pi, key, () => {});
+		registerPixCommand(pi, fixture.runtime);
 		if (!handler) throw new Error("Missing pix command");
 		let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
 		let rows = 24;

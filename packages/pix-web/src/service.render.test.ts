@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { promises as dns } from "node:dns";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
+import type { PackageSettings } from "@xynogen/pix-runtime";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 
@@ -172,11 +173,20 @@ test("captures actual web command rows with fixed provider maps and no saves", a
 			});
 		};
 		const { registerWebCommand } = await import("./command.ts");
-		let handler!: (args: string, ctx: unknown) => Promise<void>;
+		let open!: PackageSettings["open"];
 		registerWebCommand({
-			registerCommand: (name: string, command: { handler: typeof handler }) => {
-				expect(name).toBe("web");
-				handler = command.handler;
+			registerCommand: (name: string) => {
+				expect(name).toBe("pix");
+			},
+			events: {
+				emit() {},
+				on(channel: string, listener: (data: unknown) => void) {
+					if (channel !== "pix:settings") return;
+					const entries = new Map<string, PackageSettings>();
+					listener(entries);
+					expect(entries.get("pix-web")?.label).toBe("Web");
+					open = entries.get("pix-web")!.open;
+				},
 			},
 		} as never);
 		const output: string[] = [];
@@ -193,7 +203,7 @@ test("captures actual web command rows with fixed provider maps and no saves", a
 					env: ["FIXTURE_API_KEY"],
 					isConfigured: () => state === "connected",
 				});
-			await handler("", {
+			await open({
 				ui: {
 					custom: async (
 						factory: (
@@ -220,7 +230,7 @@ test("captures actual web command rows with fixed provider maps and no saves", a
 						return null;
 					},
 				},
-			});
+			} as never);
 		}
 		expect(output.join("\n")).toMatchSnapshot();
 	} finally {

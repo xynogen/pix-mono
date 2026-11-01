@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { Text } from "@earendil-works/pi-tui";
 import * as icons from "@xynogen/pix-pretty/icon-catalog";
+import type { PackageSettings } from "@xynogen/pix-runtime";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import { registerOptCommand } from "./opt.ts";
 import { type OptimizerHandle, OptimizerStatus, type OptimizerTool, STATUS_KEY } from "./status.ts";
@@ -14,7 +15,7 @@ test("actual optimizer overlay and pushed status without RTK initialization", as
 		return unsubscribe;
 	});
 	let overlay: { render(width: number): string[]; handleInput(data: string): void } | undefined;
-	let command: ((args: string, ctx: unknown) => Promise<void>) | undefined;
+	let open: PackageSettings["open"] | undefined;
 	let rows = 40;
 	let paints = 0;
 	let close: ((value: null) => void) | undefined;
@@ -47,14 +48,24 @@ test("actual optimizer overlay and pushed status without RTK initialization", as
 		const status = new OptimizerStatus();
 		registerOptCommand(
 			{
-				registerCommand: (_name: string, spec: { handler: typeof command }) => {
-					command = spec.handler;
+				registerCommand(name: string) {
+					expect(name).toBe("pix");
+				},
+				events: {
+					emit() {},
+					on(channel: string, listener: (data: unknown) => void) {
+						if (channel !== "pix:settings") return;
+						const entries = new Map<string, PackageSettings>();
+						listener(entries);
+						expect(entries.get("pix-optimizer")?.label).toBe("Optimizer");
+						open = entries.get("pix-optimizer")!.open;
+					},
 				},
 			} as never,
 			handles,
 			status,
 		);
-		if (!command) throw new Error("Optimizer command did not register");
+		if (!open) throw new Error("Optimizer settings did not register");
 		const ctx = {
 			ui: {
 				theme: roleTheme(),
@@ -91,7 +102,7 @@ test("actual optimizer overlay and pushed status without RTK initialization", as
 				},
 			},
 		};
-		commandJob = command("", ctx);
+		commandJob = open(ctx as never);
 		if (!overlay) throw new Error("Optimizer overlay did not render");
 		const component = overlay;
 		expect(options).toEqual({
@@ -135,14 +146,14 @@ test("actual optimizer overlay and pushed status without RTK initialization", as
 		component.handleInput("\u001b");
 		await commandJob;
 		let fallback = "";
-		await command("", {
+		await open({
 			ui: {
 				notify: (text: string, level: string) => {
 					expect(level).toBe("info");
 					fallback = text;
 				},
 			},
-		});
+		} as never);
 		states["fallback / 80"] = captureRows(new Text(fallback, 0, 0), {
 			width: 80,
 			surface: "component",

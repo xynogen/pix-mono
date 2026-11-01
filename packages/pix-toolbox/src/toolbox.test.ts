@@ -251,6 +251,7 @@ function makeHost(
 		name: string;
 		handler: (...args: unknown[]) => unknown;
 	}> = [];
+	let openSettings: ((ctx: unknown) => Promise<void>) | undefined;
 	const pi = {
 		on(ev: string, fn: (p: unknown) => unknown) {
 			if (!handlers[ev]) handlers[ev] = [];
@@ -279,6 +280,16 @@ function makeHost(
 		getCommands() {
 			return [];
 		},
+		events: {
+			emit() {},
+			on(channel: string, listener: (data: unknown) => void) {
+				if (channel !== "pix:settings") return;
+				const entries = new Map<string, { open(ctx: unknown): Promise<void> }>();
+				listener(entries);
+				const settings = entries.get("pix-toolbox");
+				if (settings) openSettings = settings.open;
+			},
+		},
 		appendEntry() {},
 		registerTool() {},
 		registerCommand(name: string, def: { handler: (...args: unknown[]) => unknown }) {
@@ -293,7 +304,16 @@ function makeHost(
 		pi,
 		emit,
 		getActive: () => active,
-		command: (name: string) => commands.find((c) => c.name === name),
+		command: (name: string) =>
+			name === "toolbox"
+				? {
+						name,
+						handler: async (args: string, ctx: { ui: { custom?: unknown; notify?: unknown } }) =>
+							!args && ctx.ui.custom && openSettings
+								? openSettings(ctx)
+								: commands.find((c) => c.name === name)?.handler(args, ctx),
+					}
+				: commands.find((c) => c.name === name),
 	};
 }
 
@@ -394,14 +414,11 @@ describe("/toolbox command", () => {
 		expect(host.getActive()).toEqual([...ALL, "powershell"]);
 	});
 
-	test("bare /toolbox falls back to listing when no custom UI", async () => {
+	test("bare /toolbox points to /pix tool settings", async () => {
 		const host = await boot();
 		const { ctx, notes } = makeCtx();
 		await host.command("toolbox")?.handler("", ctx);
-		// always-on tools are excluded; the rest start enabled
-		expect((notes[0] as Note).text).toMatch(
-			/^Tools · direct:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n\nTools · always-on:\n✓ enabled \(fixed\)/,
-		);
+		expect((notes[0] as Note).text).toBe("Tool settings are in /pix → Tools.");
 	});
 
 	test("/toolbox list <query> filters", async () => {

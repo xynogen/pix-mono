@@ -6,6 +6,7 @@ import {
 	showProviderPicker,
 	showSettingsPicker,
 } from "@xynogen/pix-pretty/provider-picker";
+import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { fetchConfig, saveFetchConfig } from "./config.ts";
 import { listAllFetchProviders } from "./providers.ts";
 import { saveSearchConfig, searchConfig } from "./search-config.ts";
@@ -143,9 +144,10 @@ function settingsRows(): SettingsRow[] {
 }
 
 export function registerWebCommand(pi: ExtensionAPI): void {
-	pi.registerCommand("web", {
-		description: "Set the default web search and fetch providers and 9Router models",
-		handler: async (_args, ctx) => {
+	registerPackageSettings(pi, {
+		id: "pix-web",
+		label: "Web",
+		open: async (ctx) => {
 			if (typeof ctx.ui.custom !== "function") {
 				for (const service of SERVICES) {
 					const provider = await ctx.ui.select(
