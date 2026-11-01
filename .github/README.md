@@ -91,7 +91,7 @@ Standalone, zero deps.
 
 | Package | Description |
 | --- | --- |
-| [`@xynogen/pix-themes`](https://www.npmjs.com/package/@xynogen/pix-themes) | Theme pack — 7 dark themes |
+| [`@xynogen/pix-themes`](https://www.npmjs.com/package/@xynogen/pix-themes) | Theme pack — 15 dark themes |
 
 ### UI / UX extensions
 

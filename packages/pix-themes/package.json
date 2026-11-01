@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-themes",
-	"version": "1.0.8",
-	"description": "Theme pack for Pi Coding Agent (7 dark themes)",
+	"version": "1.0.9",
+	"description": "Theme pack for Pi Coding Agent (15 dark themes)",
 	"type": "module",
 	"scripts": {
 		"test": "bun test"

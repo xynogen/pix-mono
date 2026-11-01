@@ -1,5 +1,5 @@
 /**
- * Smoke tests for pix-themes — verifies both bundled themes are present and valid.
+ * Smoke tests for pix-themes — verifies every bundled theme is present and valid.
  */
 
 import { describe, expect, it } from "bun:test";
@@ -14,6 +14,14 @@ const THEMES = [
 	"pix-dracula",
 	"pix-nord",
 	"pix-rose-pine",
+	"pix-kanagawa",
+	"pix-everforest-dark",
+	"pix-solarized-dark",
+	"pix-github-dark",
+	"pix-monokai-pro",
+	"pix-ayu-dark",
+	"pix-night-owl",
+	"pix-material-palenight",
 ] as const;
 
 const THINKING_COLOR_KEYS = [

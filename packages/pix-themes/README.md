@@ -12,6 +12,14 @@ pix-gruvbox-dark      # Gruvbox Dark
 pix-dracula           # Dracula
 pix-nord              # Nord
 pix-rose-pine         # Rosé Pine
+pix-kanagawa          # Kanagawa Wave
+pix-everforest-dark   # Everforest Dark (medium)
+pix-solarized-dark    # Solarized Dark
+pix-github-dark       # GitHub Dark
+pix-monokai-pro       # Monokai Pro
+pix-ayu-dark          # Ayu Dark
+pix-night-owl         # Night Owl
+pix-material-palenight  # Material Palenight
 ```
 
 Select a theme in Pi by its name above.
