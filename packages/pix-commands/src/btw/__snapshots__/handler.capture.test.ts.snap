@@ -3,10 +3,8 @@
 exports[`BTW handler keeps bounded default context, opt-out, model inheritance, and display isolation 1`] = `
 "registered:running
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<accent>○︎</accent> <accent>BTW</accent><muted> (1)</muted>                                                                       
-  <accent>⠋</accent> <toolTitle+bold>#1</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>0.0s</muted> <muted>·</muted> <dim>thinking…</dim>                                      
+<toolTitle>⠋   BTW     </toolTitle><muted> │ </muted><toolTitle+bold>#1</toolTitle+bold> <muted>[Selected model] · </muted><dim>thinking…</dim>                              <muted>0.0s</muted>
 registered:completed
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<dim>●︎</dim> <dim>BTW</dim><muted> (0)</muted>                                                                       
-  <success>✓</success> <dim>#1</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>2.1s</muted>                                                  "
+<toolTitle>✓︎   BTW     </toolTitle><muted> │ </muted><toolTitle+bold>#1</toolTitle+bold> <muted>[Selected model]</muted><success> · completed</success><muted> · </muted><dim>Read the file.</dim>             <muted>2.1s</muted>"
 `;

@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
+	rgbColor,
+	stripTerminalSequences,
+	styleText,
+	type TextStyle,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
+import {
 	type BtwWidgetJob,
 	DEFAULT_LINGER_BASE_MS,
 	ERROR_LINGER_SCALE,
@@ -42,9 +49,15 @@ describe("BTW widget layout", () => {
 		expect(renderBtwWidget([old], theme, 0, 999_999, 200)).toEqual([]);
 	});
 
-	test("running heading is hollow and shows the running count", () => {
+	test("each job adds one content row and the title appears only once", () => {
 		const out = render([job({ id: 7, model: "GPT" })]);
-		expect(out).toContain("\u25cb BTW (1)");
+		expect(out).toMatch(/.+ BTW {6}│ #7 \[GPT\] · thinking.* {2,}1\.0s$/);
+		expect(renderBtwWidget([job({})], theme, 0, 1_000, 200)).toHaveLength(2);
+		const rows = renderBtwWidget([job({}), job({ id: 2 })], theme, 0, 1_000, 200);
+		expect(rows).toHaveLength(3);
+		expect(rows[2]).toMatch(/^ +│ #2/);
+		expect(visibleWidth(rows[1]!.split("│")[0]!)).toBe(visibleWidth(rows[2]!.split("│")[0]!));
+		expect(rows.join("\n").match(/BTW/g)).toHaveLength(1);
 		expect(out).toContain("#7");
 		expect(out).toContain("[GPT]");
 	});
@@ -61,13 +74,15 @@ describe("BTW widget layout", () => {
 			1_000,
 			500,
 		).join("\n");
-		expect(output).toContain("<accent>BTW</accent><muted> (1)</muted>");
+		expect(output).toMatch(
+			/<toolTitle>.+ BTW {5}<\/toolTitle><muted> │ <\/muted><toolTitle>#7<\/toolTitle>/,
+		);
 		expect(output).toContain("<toolTitle>#7</toolTitle>");
 		expect(output).toContain("<muted>[GPT]</muted>");
 		expect(output).toMatch(/<muted>[^<]*2 · 1\.0s<\/muted>/);
 		expect(output).toContain("<dim>Reading auth.ts</dim>");
 		expect(output.split("\n")[0]).toBe(`<borderMuted>${"─".repeat(500)}</borderMuted>`);
-		expect(output.split("\n")[2]).toMatch(/^ {2}<accent>/);
+		expect(output.split("\n")).toHaveLength(2);
 	});
 
 	test("finished jobs linger with a check, then drop after the window", () => {
@@ -78,8 +93,7 @@ describe("BTW widget layout", () => {
 
 		const out = render([done], 1_500);
 		expect(out).toContain("\u2713");
-		// All jobs finished → filled heading disk.
-		expect(out).toContain("\u25cf BTW (0)");
+		expect(out).toMatch(/BTW {6}│ #1 \[Model\] · completed {2,}/);
 	});
 
 	test("errors linger longer and show the message", () => {
@@ -111,7 +125,80 @@ describe("BTW widget layout", () => {
 		const lines = renderBtwWidget(many, theme, 0, 1_000, 200);
 		expect(lines).toHaveLength(12);
 		expect(lines[0]).toBe("─".repeat(200));
-		expect(lines.at(-1)).toBe("  +11 more");
+		expect(lines.at(-1)).toBe("  +10 more");
+	});
+
+	test("fades only overflowing activity and keeps model, stats and elapsed time fixed", () => {
+		const fadeTheme = {
+			...theme,
+			colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+			style: (text: string, style: TextStyle) => styleText(text, style, "truecolor"),
+		};
+		for (const width of [60, 80, 120]) {
+			const rows = renderBtwWidget(
+				[job({ model: "GPT", text: "界e\u0301🙂 activity ".repeat(40), toolUses: 2 })],
+				fadeTheme,
+				0,
+				1_000,
+				width,
+			);
+			const row = rows[1]!;
+			expect(stripTerminalSequences(row)).toMatch(
+				/^\S+\s+BTW {6}│ #1 \[GPT\] · .* {2,}.*2 · 1\.0s$/,
+			);
+			expect(row).toContain("\x1b[38;2;20;20;20m");
+			for (const line of rows) expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+			const short = renderBtwWidget(
+				[job({ model: "GPT", text: "Short", toolUses: 2 })],
+				fadeTheme,
+				0,
+				1_000,
+				width,
+			)[1]!;
+			expect(visibleWidth(stripTerminalSequences(row).split("1.0s")[0]!)).toBe(
+				visibleWidth(stripTerminalSequences(short).split("1.0s")[0]!),
+			);
+		}
+		for (let width = 0; width < 60; width++) {
+			for (const row of renderBtwWidget(
+				[job({ text: "long ".repeat(40) })],
+				fadeTheme,
+				0,
+				1_000,
+				width,
+			))
+				expect(visibleWidth(row)).toBeLessThanOrEqual(width);
+		}
+		const error = renderBtwWidget(
+			[job({ status: "error", completedAt: 1_000, error: "long error ".repeat(50) })],
+			fadeTheme,
+			0,
+			1_500,
+			60,
+		)[1]!;
+		expect(stripTerminalSequences(error)).toMatch(/\[Model\] · error · .* {2,}1\.0s$/);
+		expect(error).toContain("\x1b[38;2;20;20;20m");
+	});
+
+	test("keeps output in the middle and stats anchored to the far right", () => {
+		for (const width of [60, 100, 160]) {
+			const row = renderBtwWidget(
+				[job({ model: "GPT", text: "Reading" })],
+				theme,
+				0,
+				1_000,
+				width,
+			)[1]!;
+			expect(row).toMatch(/\[GPT\] · Reading {2,}1\.0s$/);
+			expect(visibleWidth(row)).toBe(width);
+			for (const text of ["", "Hi", "界e\u0301🙂", "long output ".repeat(40)]) {
+				const other = stripTerminalSequences(
+					renderBtwWidget([job({ model: "GPT", text })], theme, 0, 1_000, width)[1]!,
+				);
+				expect(visibleWidth(other.split("1.0s")[0]!)).toBe(visibleWidth(row.split("1.0s")[0]!));
+				expect(visibleWidth(other)).toBe(width);
+			}
+		}
 	});
 
 	test("hasVisibleJobs mirrors render visibility", () => {

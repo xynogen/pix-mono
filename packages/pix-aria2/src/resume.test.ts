@@ -95,9 +95,10 @@ test("W1 capture: resume restarts progress polling after paused downloads clear 
 		await poll();
 		if (typeof widget !== "function") throw new Error("progress widget was not registered");
 		const component = widget({}, { fg: (_key: string, text: string) => text });
-		const rendered = component.render(20) as string[];
-		expect(rendered[0]).toBe("─".repeat(20));
-		expect(rendered[2]).toMatch(/^ {2}\S+ dl-[\w-]+/);
+		const rendered = component.render(60) as string[];
+		expect(rendered[0]).toBe("─".repeat(60));
+		expect(rendered).toHaveLength(2);
+		expect(rendered[1]).toMatch(/^\S+\s+Download │ file\.iso.*50%/);
 		expect(
 			captureRows(widget({}, roleTheme()), { width: 80, surface: "component" }),
 		).toMatchSnapshot("single active widget");

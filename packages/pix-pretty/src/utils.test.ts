@@ -1,9 +1,17 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import { join } from "node:path";
-import { getCapabilities, setCapabilities, Text, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	getCapabilities,
+	rgbColor,
+	setCapabilities,
+	styleText,
+	Text,
+	type TextStyle,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "./config.ts";
-import { icon } from "./icon-catalog.ts";
+import { icon, iconFor } from "./icon-catalog.ts";
 import type { FgTheme } from "./types.ts";
 import {
 	BODY_PAD,
@@ -32,6 +40,8 @@ import {
 	termW,
 	unframeToolResult,
 	viewportText,
+	widgetActivityRow,
+	widgetTitle,
 } from "./utils.ts";
 
 class MockTextComponent {
@@ -429,9 +439,9 @@ describe("collapsed tool rows", () => {
 			fg: (key: string, text: string) => `<${key}>${text}</${key}>`,
 			bold: (text: string) => text,
 		};
-		expect(formatCollapsedToolRow(taggedTheme, "read", "src/a.ts", "12 lines")).toContain(
-			"<dim>src/a.ts</dim> <muted>·</muted> <muted>12 lines</muted>",
-		);
+		expect(
+			formatCollapsedToolRow(taggedTheme, "read", "src/a.ts", "12 lines", "success", 1000),
+		).toContain("<dim>src/a.ts</dim> <muted>·</muted> <muted>12 lines</muted>");
 	});
 
 	it("renders a consistent status, tool, target, and metadata row", () => {
@@ -442,6 +452,85 @@ describe("collapsed tool rows", () => {
 		);
 		const rendered = plain(renderCollapsedToolRow(rowTheme, "read", "src/a.ts", "12 lines"));
 		expect(rendered).toStartWith("✓  read src/a.ts · 12 lines");
+	});
+
+	it("fades overflowing Unicode targets while retaining status and trailing metadata", () => {
+		const fadeTheme = {
+			fg: (_key: string, text: string) => text,
+			bold: (text: string) => text,
+			colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+			style: (text: string, style: TextStyle) => styleText(text, style, "truecolor"),
+		};
+		for (const width of [35, 60, 90]) {
+			const row = formatCollapsedToolRow(
+				fadeTheme,
+				"todo",
+				"界e\u0301🙂".repeat(60),
+				"1/3 done",
+				"warning",
+				width,
+			);
+			expect(plain(row)).toMatch(/^⚠\s+todo .* · 1\/3 done$/);
+			expect(visibleWidth(row)).toBeLessThanOrEqual(width);
+			expect(row).toContain("\x1b[38;2;20;20;20m");
+		}
+		for (let width = 0; width < 35; width++) {
+			expect(
+				visibleWidth(
+					formatCollapsedToolRow(fadeTheme, "todo", "long task", "1/3 done", "error", width),
+				),
+			).toBeLessThanOrEqual(width);
+		}
+	});
+
+	it("keeps activity prefixes intact and clips overflow with theme-safe fallback", () => {
+		const theme = { fg: (_role: string, text: string) => text };
+		expect(widgetActivityRow(theme, "Agent [GPT] · 2s", "reading", 80)).toBe(
+			"Agent [GPT] · 2s · reading",
+		);
+		for (let width = 0; width < 80; width++) {
+			expect(
+				visibleWidth(widgetActivityRow(theme, "Agent [GPT] · 2s", "界e\u0301🙂".repeat(30), width)),
+			).toBeLessThanOrEqual(width);
+		}
+		expect(widgetActivityRow(theme, "Agent · 2s", "", 80)).toBe("Agent · 2s");
+	});
+
+	it("anchors stats to the right independently of middle activity length", () => {
+		const theme = { fg: (_role: string, text: string) => text };
+		for (const width of [40, 60, 100]) {
+			for (const activity of ["", "Short", "界e\u0301🙂".repeat(40)]) {
+				const row = widgetActivityRow(theme, "Agent [GPT]", activity, width, "2 tools · 3.5s");
+				expect(row).toMatch(/^Agent \[GPT\].* {2,}2 tools · 3\.5s$/);
+				expect(visibleWidth(row)).toBe(width);
+			}
+		}
+		for (let width = 0; width < 40; width++) {
+			expect(
+				visibleWidth(
+					widgetActivityRow(theme, "Agent [GPT]", "long ".repeat(40), width, "2 tools · 3.5s"),
+				),
+			).toBeLessThanOrEqual(width);
+		}
+	});
+
+	it("aligns widget dividers across all icon modes", () => {
+		const theme = { fg: (_role: string, text: string) => text };
+		for (const mode of ["nerd", "unicode", "ascii"] as const) {
+			const titles = [
+				widgetTitle(theme, iconFor("lsp", mode), "LSP"),
+				widgetTitle(theme, iconFor("status.ok", mode), "Todo"),
+				widgetTitle(theme, iconFor("agent", mode), "Agents"),
+				widgetTitle(theme, iconFor("agent", mode), "BTW"),
+				widgetTitle(theme, iconFor("update", mode), "Download"),
+				widgetTitle(theme, iconFor("process", mode), "Proc"),
+				widgetTitle(theme, "", ""),
+			];
+			for (const title of titles) {
+				expect(visibleWidth(title.split("│")[0]!)).toBe(13);
+				expect(title).toEndWith(" │ ");
+			}
+		}
 	});
 
 	it("padIcon normalizes markers to a fixed cell width (per pi-tui visibleWidth)", () => {

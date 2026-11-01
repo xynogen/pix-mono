@@ -8,6 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { userInfo } from "node:os";
 import { join } from "node:path";
 import { resolveTool } from "./binaries/resolve.ts";
 import { quoteForCmd, runTool, runToolSync } from "./exec.ts";
@@ -17,6 +18,19 @@ import { currentPlatform, type HostPlatform } from "./platform.ts";
 export interface OsOptions {
 	env?: NodeJS.ProcessEnv;
 	host?: HostPlatform;
+}
+
+/** Current OS account name; unavailable accounts do not prevent startup. */
+export function username(): string | undefined {
+	try {
+		return (
+			userInfo()
+				.username.replace(/[\x00-\x1f\x7f-\x9f]/g, "")
+				.trim() || undefined
+		);
+	} catch {
+		return undefined;
+	}
 }
 
 // ── Open a URL or path ──────────────────────────────────────────────────────

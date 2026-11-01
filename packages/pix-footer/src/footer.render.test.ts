@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test";
 import { stripVTControlCharacters } from "node:util";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { type Color, colorToHex, rgbColor, visibleWidth } from "@earendil-works/pi-tui";
 import { benchlm, modelgrep } from "@xynogen/pix-data";
 import * as os from "@xynogen/pix-runtime/os";
 import { prettySection } from "@xynogen/pix-runtime/sections";
@@ -49,6 +49,16 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 	let branchChanged: (() => void) | undefined;
 	let branchDisposed = 0;
 	let paints = 0;
+	const fadeColors: Color[] = [];
+	const roles = roleTheme();
+	const theme = {
+		...roles,
+		colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+		style: (text: string, style: { fg: Color }) => {
+			fadeColors.push(style.fg);
+			return roles.fg("muted", text);
+		},
+	};
 	const statuses = new Map([
 		["plan", "PLAN"],
 		["mcp", "2/3 servers"],
@@ -76,7 +86,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		},
 		ui: {
 			setFooter: (factory: (tui: unknown, theme: unknown, data: unknown) => typeof component) => {
-				component = factory({ requestRender: () => paints++ }, roleTheme(), {
+				component = factory({ requestRender: () => paints++ }, theme, {
 					getGitBranch: () => branch,
 					getExtensionStatuses: () => statuses,
 					onBranchChange: (callback: () => void) => {
@@ -113,7 +123,18 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/PLAN.*capture.*2[/]3.*2 !1/);
 		expect(defaults.wrap).toBe(false);
 		expect(footer.render(40)).toHaveLength(1);
-		expect(stripVTControlCharacters(footer.render(40)[0] ?? "")).toMatch(/\.\.\.$/);
+		const clipped = footer.render(40)[0]!;
+		expect(visibleWidth(clipped)).toBe(40);
+		expect(stripVTControlCharacters(clipped)).toStartWith("PLAN");
+		expect(fadeColors.length).toBeGreaterThan(1);
+		expect(colorToHex(fadeColors.at(-1)!)).toBe("#141414");
+		const unique = new Set(fadeColors.map(colorToHex));
+		expect(unique.size).toBeGreaterThan(2);
+		for (let width = 0; width <= 100; width++) {
+			const rows = footer.render(width);
+			expect(rows.length).toBeLessThanOrEqual(1);
+			for (const row of rows) expect(visibleWidth(row)).toBeLessThanOrEqual(width);
+		}
 		await fixture.runtime.update(prettySection, { footer: { wrap: true } });
 		expect(footer.render(240)).toHaveLength(1);
 		for (const width of [16, 40, 80, 120]) {

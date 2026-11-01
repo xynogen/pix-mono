@@ -1,6 +1,8 @@
 import { describe, expect, jest, test } from "bun:test";
 import type { Theme, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { rgbColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { padIcon } from "@xynogen/pix-pretty/utils";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { roleTheme, semanticRow, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerTodo, { type TodoItem } from "./todo.ts";
@@ -9,7 +11,7 @@ import { renderTodoWidget } from "./widget.ts";
 const baseTheme = roleTheme();
 const theme = {
 	...baseTheme,
-	colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+	colors: { accent: rgbColor(100, 180, 240), muted: rgbColor(70, 70, 70) },
 	style: (text: string) => baseTheme.fg("muted", text),
 } as unknown as Theme;
 const items: TodoItem[] = [
@@ -19,13 +21,20 @@ const items: TodoItem[] = [
 ];
 
 const plain = (rows: string[]) => rows.map(stripTerminalSequences);
+const title = `${padIcon(icon("status.ok"), 3)} Todo     │ `;
 
 describe("todo progress widget", () => {
 	test("shows current position, status, and task on one content line", () => {
 		const rows = renderTodoWidget(items, true, 80, theme);
-		expect(plain(rows)).toEqual(["─".repeat(80), "Todo  2/3 · in progress  Implement the widget"]);
+		expect(plain(rows)).toEqual([
+			"─".repeat(80),
+			`${title}in progress · Implement the widget · 2/3`,
+		]);
 		expect(semanticRow(rows[1]!)).toMatch(
-			/<accent>in progress<\/accent>.*<dim>Implement the widget<\/dim>/,
+			/<accent>in progress<\/accent>.*<accent>Implement the widget<\/accent><muted> · 2\/3<\/muted>/,
+		);
+		expect(semanticRow(rows[1]!)).toMatch(
+			/^<toolTitle>.+ Todo {4}<\/toolTitle><muted> │ <\/muted><accent>in progress<\/accent>/,
 		);
 	});
 
@@ -39,13 +48,13 @@ describe("todo progress widget", () => {
 			),
 		);
 		expect(rows).toHaveLength(2);
-		expect(rows[1]).toBe("Todo  1/4 done · in progress · 1 blocked  Implement the widget");
+		expect(rows[1]).toBe(`${title}in progress · 1 blocked · Implement the widget · 1/4 done`);
 	});
 
 	test("shows next pending task without claiming it has started; caps independent tasks", () => {
 		const pending: TodoItem[] = [{ id: 4, text: "Not started", status: "pending" }];
 		expect(plain(renderTodoWidget(pending, true, 80, theme))[1]).toBe(
-			"Todo  1/1 · pending  Not started",
+			`${title}pending · Not started · 1/1`,
 		);
 		const many = Array.from(
 			{ length: 5 },
@@ -53,13 +62,13 @@ describe("todo progress widget", () => {
 		);
 		const rows = plain(renderTodoWidget(many, false, 80, theme));
 		expect(rows).toHaveLength(2);
-		expect(rows[1]).toBe("Todo  0/5 done · in progress · 5 active  Work");
+		expect(rows[1]).toBe(`${title}in progress · 5 active · Work · 0/5 done`);
 	});
 
 	test("fades long descriptions and fits Unicode in narrow terminals", () => {
 		const long = [{ ...items[1]!, text: "界e\u0301🙂".repeat(40) }];
 		const rows = renderTodoWidget(long, true, 60, theme);
-		expect(semanticRow(rows[1]!)).toMatch(/<dim>.*<\/dim><muted>.*<\/muted>/);
+		expect(semanticRow(rows[1]!)).toMatch(/<accent>.*<\/accent><muted>.*<\/muted>/);
 		for (let width = 0; width <= 100; width++) {
 			for (const row of renderTodoWidget(long, true, width, theme)) {
 				expect(visibleWidth(row)).toBeLessThanOrEqual(width);
@@ -75,7 +84,7 @@ describe("todo progress widget", () => {
 					theme,
 				),
 			)[1],
-		).toMatch(/3\/3 done.*complete/);
+		).toMatch(/complete.*3\/3 done/);
 	});
 
 	test("updates on successful tool calls, restores state, and cleans up on complete, clear, and shutdown", async () => {
@@ -113,27 +122,27 @@ describe("todo progress widget", () => {
 				},
 			} as never);
 			await handlers.get("session_start")!({}, ctx);
-			expect(show()).toMatch(/Todo {2}2\/3 · in progress {2}Implement the widget/);
+			expect(show()).toMatch(/Todo {5}│ in progress · Implement the widget · 2\/3/);
 			const call = (params: Record<string, unknown>) =>
 				tool.execute("widget-test", params, undefined, undefined, ctx as never);
 			await call({ action: "update", id: 3, status: "in_progress" });
-			expect(show()).toMatch(/Todo {2}3\/3 · in progress {2}Run checks/);
+			expect(show()).toMatch(/Todo {5}│ in progress · Run checks · 3\/3/);
 			const unchanged = show();
 			expect((await call({ action: "update", id: 99, status: "done" })).isError).toBe(true);
 			expect(show()).toBe(unchanged);
 			await call({ action: "update", id: 3, status: "done" });
-			expect(show()).toMatch(/3\/3 done.*complete/);
+			expect(show()).toMatch(/complete.*3\/3 done/);
 			jest.advanceTimersByTime(1_100);
 			expect(widget).toBeUndefined();
 			await call({ action: "set", items: "Fresh task" });
-			expect(show()).toMatch(/Todo {2}1\/1 · pending {2}Fresh task/);
+			expect(show()).toMatch(/Todo {5}│ pending · Fresh task · 1\/1/);
 			await call({ action: "clear" });
 			expect(widget).toBeUndefined();
 			await call({ action: "set", items: "Finish" });
 			await call({ action: "update", id: 1, status: "done" });
 			await call({ action: "add", items: "More work" });
 			jest.advanceTimersByTime(1_100);
-			expect(show()).toMatch(/Todo {2}2\/2 · pending {2}More work/);
+			expect(show()).toMatch(/Todo {5}│ pending · More work · 2\/2/);
 			entries.length = 0;
 			await handlers.get("session_start")!({}, ctx);
 			expect(widget).toBeUndefined();

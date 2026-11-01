@@ -15,10 +15,11 @@ import { basename } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import type { AssistantMessage, AssistantMessageEvent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ReadonlyFooterDataProvider } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { mixColors, sliceByColumn, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import type { ModelsDevModel } from "@xynogen/pix-data";
 import { benchScoreColor, formatCost, lookupBenchmark, resolveModelsDev } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { fadeText } from "@xynogen/pix-pretty/text";
 import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
 import { fmtTokenCount } from "@xynogen/pix-pretty/widget-format";
 import { config, onConfigChange } from "@xynogen/pix-runtime/config";
@@ -32,6 +33,11 @@ type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "
 type Theme = {
 	fg(color: string, text: string): string;
 	getThinkingBorderColor(level: ThinkingLevel): (text: string) => string;
+	colors?: {
+		dim: Parameters<typeof mixColors>[0];
+		customMessageBg: Parameters<typeof mixColors>[1];
+	};
+	style?: (text: string, style: { fg: ReturnType<typeof mixColors> }) => string;
 };
 
 const THINKING_LEVELS = new Set<string>([
@@ -543,9 +549,26 @@ export default function (pi: ExtensionAPI) {
 					]
 						.filter(Boolean)
 						.join(sep);
-					// ponytail: use Pi's width-aware helpers; wrapping is opt-in through /pix.
-					if (!line) return [];
-					return parts.wrap ? wrapTextWithAnsi(line, width) : [truncateToWidth(line, width)];
+					if (!line || width < 1) return [];
+					if (parts.wrap) return wrapTextWithAnsi(line, width);
+					if (visibleWidth(line) <= width) return [line];
+					const head = sliceByColumn(line, 0, Math.max(0, width - 8), true);
+					const start = visibleWidth(head);
+					return [
+						head +
+							fadeText(
+								sliceByColumn(line, start, visibleWidth(line) - start, true),
+								width - start,
+								(text, fade) =>
+									fade === 0
+										? theme.fg("dim", text)
+										: theme.colors && theme.style
+											? theme.style(text, {
+													fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+												})
+											: theme.fg("muted", text),
+							),
+					];
 				},
 			};
 		});

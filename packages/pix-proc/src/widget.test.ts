@@ -28,17 +28,16 @@ describe("process activity row", () => {
 	test("keeps identity, state chips, and right-aligned timer on one row", () => {
 		const row = processRow({ ...meta, capped: true, logError: "disk full" }, 42_000, 100, theme);
 		const text = stripTerminalSequences(row);
-		expect(text).toMatch(
-			/^ {2}\S+ proc-dev {2}bun run dev +running {3}capped {3}log error {3}42s {2}$/,
-		);
+		expect(text).toMatch(/^\S+ running · log error · capped · proc-dev · bun run dev +42s {2}$/);
 		expect(visibleWidth(row)).toBe(100);
 		const semantic = captureRows(
 			{ render: () => [row] },
 			{ width: 100, surface: "component" },
 		).join("\n");
-		expect(semantic).toMatch(/<accent\+bg:customMessageBg>proc-dev<\//);
-		expect(semantic).toMatch(/<error\+bg:selectedBg> log error <\//);
-		expect(semantic).toMatch(/<muted\+bg:selectedBg> 42s <\//);
+		expect(semantic).toMatch(/<accent>proc-dev<\//);
+		expect(semantic).toMatch(/<error>log error<\//);
+		expect(semantic).toMatch(/<muted> 42s <\//);
+		expect(semantic).not.toContain("bg:");
 	});
 
 	test("timer advances and completed states remain explicit", () => {
@@ -48,21 +47,26 @@ describe("process activity row", () => {
 			["killed", undefined, "killed"],
 		] as const) {
 			const row = processRow({ ...meta, status, exitCode }, 65_000, 100, theme);
-			expect(stripTerminalSequences(row)).toContain(` ${word} `);
+			expect(stripTerminalSequences(row)).toMatch(
+				new RegExp(`^\\S+ ${word.replace(/[()]/g, "\\$&")} · proc-dev · `),
+			);
 			expect(stripTerminalSequences(row)).toMatch(/ 1m05s {2}$/);
 		}
 		expect(stripTerminalSequences(processRow(meta, 66_000, 100, theme))).toMatch(/ 1m06s {2}$/);
 	});
 
 	for (const light of [false, true]) {
-		test(`fades only overflow into the ${light ? "light" : "dark"} row background`, () => {
+		test(`fades only overflow toward the ${light ? "light" : "dark"} theme muted color`, () => {
 			const colors = {
 				dim: light ? rgbColor(50, 50, 50) : rgbColor(200, 200, 200),
-				customMessageBg: light ? rgbColor(245, 245, 245) : rgbColor(20, 20, 20),
+				muted: light ? rgbColor(150, 150, 150) : rgbColor(60, 60, 60),
 			};
 			const fadeColors: string[] = [];
 			const fadeTheme = {
 				...roleTheme(),
+				bg() {
+					throw new Error("Process widget must preserve the terminal background");
+				},
 				colors,
 				style(text: string, options: Parameters<Theme["style"]>[1]) {
 					if (typeof options.fg !== "object") throw new Error("Expected concrete fade color");
@@ -76,7 +80,7 @@ describe("process activity row", () => {
 			expect(visibleWidth(row)).toBe(60);
 			expect(fadeColors.length).toBe(8);
 			expect(new Set(fadeColors).size).toBe(8);
-			expect(fadeColors.at(-1)).toBe(colorToHex(colors.customMessageBg));
+			expect(fadeColors.at(-1)).toBe(colorToHex(colors.muted));
 			expect(stripTerminalSequences(row)).toMatch(/ 42s {2}$/);
 
 			for (const command of ["界e\u0301🙂".repeat(40), "a".repeat(200)]) {
@@ -89,16 +93,14 @@ describe("process activity row", () => {
 		});
 	}
 
-	test("puts a bounded friendly name before the command, with status anchored right", () => {
+	test("puts status and friendly name before the dim command, with only time anchored right", () => {
 		const row = processRow(
 			{ ...meta, name: "Frontend", command: "bun run dev" },
 			42_000,
 			100,
 			theme,
 		);
-		expect(stripTerminalSequences(row)).toMatch(
-			/^ {2}\S+ Frontend {2}bun run dev +running {3}42s {2}$/,
-		);
+		expect(stripTerminalSequences(row)).toMatch(/^\S+ running · Frontend · bun run dev +42s {2}$/);
 	});
 
 	test("keeps terminal controls and masked environment secrets out of labels", () => {
@@ -108,6 +110,6 @@ describe("process activity row", () => {
 			120,
 			theme,
 		);
-		expect(stripTerminalSequences(row)).toMatch(/server name {2}TOKEN=\*\*\* bun run dev/);
+		expect(stripTerminalSequences(row)).toMatch(/server name · TOKEN=\*\*\* bun run dev/);
 	});
 });

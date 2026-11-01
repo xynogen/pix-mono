@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import {
+	rgbColor,
+	stripTerminalSequences,
+	styleText,
+	type TextStyle,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
 
 const theme = { fg: (_key: string, text: string) => text };
@@ -32,11 +38,32 @@ test("command preview separates parameters, wraps without dropping text, and bou
 	for (const row of rows) expect(visibleWidth(row)).toBeLessThanOrEqual(24);
 	const collapsed = collapsedCommandRow("ssh user@host", code, theme).render(24);
 	expect(collapsed).toHaveLength(1);
-	expect(collapsed[0]).toContain("…");
+	expect(collapsed[0]).toBe('ssh user@host · printf "');
 	expect(visibleWidth(collapsed[0] ?? "")).toBeLessThanOrEqual(24);
 	preview.setText("");
 	expect(preview.render(24)).toEqual([]);
 	const row = collapsedCommandRow("bash", "echo ok", theme);
 	row.setText("line one\nline two");
 	expect(row.render(24).map((line) => line.trimEnd())).toEqual(["line one", "line two"]);
+});
+
+test("collapsed command fades at the current viewport width without losing expandable text", () => {
+	const fadeTheme = {
+		...theme,
+		colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+		style: (text: string, style: TextStyle) => styleText(text, style, "truecolor"),
+	};
+	const command = "echo 界e\u0301🙂".repeat(30);
+	const component = collapsedCommandRow("bash · 12 lines", command, fadeTheme);
+	for (const width of [30, 60, 90]) {
+		const rows = component.render(width);
+		expect(rows).toHaveLength(1);
+		expect(stripTerminalSequences(rows[0]!)).toStartWith("bash · 12 lines · echo");
+		expect(visibleWidth(rows[0]!)).toBeLessThanOrEqual(width);
+		expect(rows[0]).toContain("\x1b[38;2;20;20;20m");
+	}
+	for (let width = 0; width < 30; width++) {
+		expect(visibleWidth(component.render(width)[0]!)).toBeLessThanOrEqual(width);
+	}
+	expect(stripTerminalSequences(component.getText())).toEndWith(command);
 });

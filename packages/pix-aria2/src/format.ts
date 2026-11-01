@@ -19,8 +19,8 @@ export type DlStatus = Pick<
 export function fraction(s: DlStatus): number {
 	const total = Number(s.totalLength);
 	const done = Number(s.completedLength);
-	if (!total || total <= 0) return 0;
-	return Math.min(1, done / total);
+	if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(done)) return 0;
+	return Math.max(0, Math.min(1, done / total));
 }
 
 /** Seconds remaining at current speed, or undefined when unknowable. */
@@ -43,7 +43,7 @@ function humanEta(secs: number | undefined): string {
 export function downloadName(s: DlStatus): string {
 	const path = s.files?.[0]?.path;
 	if (path) {
-		const base = path.split("/").pop();
+		const base = path.split(/[\\/]/).pop();
 		if (base) return base;
 	}
 	const uri = s.files?.[0]?.uris?.[0]?.uri;
@@ -51,14 +51,23 @@ export function downloadName(s: DlStatus): string {
 	return s.gid;
 }
 
-/** One-line progress string, e.g. `dl-id video.mp4 · 42% · 4.2 MiB/5.0 GiB · 1.2 MiB/s · eta 2m3s`. */
-export function progressLine(handle: string, s: DlStatus): string {
-	const name = downloadName(s);
+/** Compact statistics shared by tool output and live progress rows. */
+export function progressStats(s: DlStatus): string {
 	const pct = Math.round(fraction(s) * 100);
 	const done = humanSize(Number(s.completedLength) || 0);
 	const total = Number(s.totalLength) > 0 ? humanSize(Number(s.totalLength)) : "?";
 	const speed = Number(s.downloadSpeed) > 0 ? `${humanSize(Number(s.downloadSpeed))}/s` : "";
 	const eta = humanEta(etaSeconds(s));
-	const parts = [`${pct}%`, `${done}/${total}`, speed, eta && `eta ${eta}`].filter(Boolean);
-	return `${handle} ${name} · ${parts.join(" · ")}`;
+	const parts = [
+		Number(s.totalLength) > 0 ? `${pct}%` : "?",
+		`${done}/${total}`,
+		speed,
+		eta && `eta ${eta}`,
+	].filter(Boolean);
+	return parts.join(" · ");
+}
+
+/** Plain tool output retains the handle for follow-up actions. */
+export function progressLine(handle: string, s: DlStatus): string {
+	return `${handle} ${downloadName(s)} · ${progressStats(s)}`;
 }

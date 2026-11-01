@@ -1,7 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import * as os from "node:os";
 import { join } from "node:path";
-import { extForMime, pickPreferredMime, readClipboardImage } from "./os.ts";
+import { extForMime, pickPreferredMime, readClipboardImage, username } from "./os.ts";
 import { tempDir } from "./paths.ts";
 import type { HostPlatform } from "./platform.ts";
 
@@ -14,6 +15,24 @@ const linux: HostPlatform = {
 	termux: false,
 	exe: "",
 };
+
+test("username uses the native account, strips controls, and tolerates missing OS records", () => {
+	expect(username()).toBe(os.userInfo().username.trim());
+	const info = os.userInfo();
+	const lookup = spyOn(os, "userInfo");
+	try {
+		lookup.mockReturnValue({ ...info, username: "  alice\x1b\n  " });
+		expect(username()).toBe("alice");
+		lookup.mockReturnValue({ ...info, username: "   " });
+		expect(username()).toBeUndefined();
+		lookup.mockImplementation(() => {
+			throw new Error("No user record");
+		});
+		expect(username()).toBeUndefined();
+	} finally {
+		lookup.mockRestore();
+	}
+});
 
 describe("clipboard helpers", () => {
 	test("mime preference and extensions", () => {

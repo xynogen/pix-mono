@@ -8,9 +8,16 @@
  * Ported from tintinweb/pi-subagents (MIT), adapted for pix-mono.
  */
 
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon, rule } from "@xynogen/pix-pretty/utils";
+import {
+	COLLAPSED_TOOL_GLYPH,
+	dotJoin,
+	padIcon,
+	rule,
+	widgetActivityRow,
+	widgetTitle,
+} from "@xynogen/pix-pretty/utils";
 import {
 	describeActivity,
 	formatContext,
@@ -212,6 +219,7 @@ export class AgentWidget {
 			streamingMs?: number;
 		},
 		theme: Theme,
+		width: number,
 	): string {
 		const name = getDisplayName(a.type);
 		const modeLabel = getPromptModeLabel(a.type);
@@ -241,8 +249,7 @@ export class AgentWidget {
 			statusText = theme.fg("muted", " stopped");
 		} else if (a.status === "error") {
 			icon = theme.fg("error", padIcon("✗"));
-			const errMsg = a.error ? `: ${a.error.slice(0, 60)}` : "";
-			statusText = theme.fg("error", ` error${errMsg}`);
+			statusText = theme.fg("error", " error");
 		} else {
 			icon = theme.fg("warning", padIcon(COLLAPSED_TOOL_GLYPH.warning));
 			statusText = theme.fg("warning", " aborted");
@@ -264,8 +271,23 @@ export class AgentWidget {
 		if (speed) parts.push(speed);
 		parts.push(duration);
 
-		const dot = (s: string) => theme.fg("muted", s);
-		return `${dotJoin([`${icon} ${theme.fg("dim", name)}${modelLabel}${modeTag}`, theme.fg("dim", a.description), theme.fg("muted", dotJoin(parts))], dot)}${statusText}`;
+		const identity =
+			`${icon} ` +
+			[
+				name === "Agent" ? "" : theme.fg("toolTitle", name),
+				modelLabel.trimStart(),
+				modeTag.trimStart(),
+				statusText.trimStart(),
+			]
+				.filter(Boolean)
+				.join(" ");
+		return widgetActivityRow(
+			theme,
+			identity,
+			dotJoin([a.status === "error" && a.error, a.description]),
+			width,
+			theme.fg("muted", dotJoin(parts)),
+		);
 	}
 
 	private renderWidget(
@@ -287,17 +309,17 @@ export class AgentWidget {
 
 		if (running.length === 0 && queued.length === 0 && finished.length === 0) return [];
 
-		const w = tui.terminal.columns;
-		const truncate = (line: string) => truncateToWidth(line, w);
-		const hasActive = running.length > 0 || queued.length > 0;
-		const headingColor = hasActive ? "accent" : "dim";
-		// ○ hollow = incomplete (still running), ● filled disk = complete (all done).
-		const headingIcon = hasActive ? "○" : "●";
+		const width = tui.terminal.columns;
+		if (width < 1) return [];
+		const title = widgetTitle(theme, icon("agent"), "Agent");
+		const titleWidth = visibleWidth(title);
+		const w = Math.max(0, width - titleWidth);
+		const truncate = (line: string) => truncateToWidth(line, width);
 		const frame = SPINNER[this.widgetFrame % SPINNER.length] ?? "";
 
 		const finishedLines: string[] = [];
 		for (const a of finished) {
-			finishedLines.push(truncate(`  ${this.renderFinishedLine(a, theme)}`));
+			finishedLines.push(this.renderFinishedLine(a, theme, w));
 		}
 
 		const runningLines: string[] = [];
@@ -326,72 +348,50 @@ export class AgentWidget {
 			parts.push(elapsed);
 			const statsText = dotJoin(parts);
 
-			// Activity trails at the end (after stats) so its variable width
-			// doesn't cause the static identity + stats to bounce around.
-			const activity = bg ? describeActivity(bg.activeTools, bg.responseText) : "thinking…";
-
-			const dot = (s: string) => theme.fg("muted", s);
+			const activity =
+				bg && (bg.activeTools.size > 0 || bg.responseText.trim())
+					? describeActivity(bg.activeTools, bg.responseText, w)
+					: a.description;
+			const identity =
+				`${theme.fg("toolTitle", padIcon(frame))} ` +
+				[
+					name === "Agent" ? "" : theme.fg("toolTitle", theme.bold(name)),
+					modelLabel.trimStart(),
+					modeTag.trimStart(),
+				]
+					.filter(Boolean)
+					.join(" ");
 			runningLines.push(
-				truncate(
-					`  ${dotJoin([`${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(name))}${modelLabel}${modeTag}`, theme.fg("dim", a.description), theme.fg("muted", statsText), theme.fg("dim", activity)], dot)}`,
-				),
+				widgetActivityRow(theme, identity, activity, w, theme.fg("muted", statsText)),
 			);
 		}
 
-		const queuedLine =
-			queued.length > 0
-				? truncate(`  ${theme.fg("muted", "◦")} ${theme.fg("muted", `${queued.length} queued`)}`)
-				: undefined;
-
-		const maxBody = MAX_WIDGET_LINES - 2;
-		const totalBody = finishedLines.length + runningLines.length + (queuedLine ? 1 : 0);
-
-		const lines: string[] = [
-			rule(w, (glyphs) => theme.fg("borderMuted", glyphs)),
-			truncate(`${theme.fg(headingColor, headingIcon)} ${theme.fg(headingColor, "Agents")}`),
+		const queuedLines = queued.map((a) =>
+			widgetActivityRow(
+				theme,
+				`${theme.fg("muted", padIcon(icon("status.pending")))} ` +
+					[
+						getDisplayName(a.type) === "Agent" ? "" : theme.fg("toolTitle", getDisplayName(a.type)),
+						a.invocation?.modelName ? theme.fg("muted", `[${a.invocation.modelName}]`) : "",
+					]
+						.filter(Boolean)
+						.join(" "),
+				a.description,
+				w,
+				theme.fg("muted", "queued"),
+			),
+		);
+		const body = [...runningLines, ...queuedLines, ...finishedLines];
+		const budget = MAX_WIDGET_LINES - 1;
+		return [
+			rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
+			...body
+				.slice(0, body.length > budget ? budget - 1 : budget)
+				.map((line, i) => truncate((i === 0 ? title : widgetTitle(theme, "", "")) + line)),
+			...(body.length > budget
+				? [truncate(theme.fg("muted", `  +${body.length - budget + 1} more`))]
+				: []),
 		];
-
-		if (totalBody <= maxBody) {
-			lines.push(...finishedLines);
-			lines.push(...runningLines);
-			if (queuedLine) lines.push(queuedLine);
-		} else {
-			let budget = maxBody - 1;
-			let hiddenRunning = 0;
-			let hiddenFinished = 0;
-
-			for (const line of runningLines) {
-				if (budget >= 1) {
-					lines.push(line);
-					budget--;
-				} else {
-					hiddenRunning++;
-				}
-			}
-			if (queuedLine && budget >= 1) {
-				lines.push(queuedLine);
-				budget--;
-			}
-			for (const fl of finishedLines) {
-				if (budget >= 1) {
-					lines.push(fl);
-					budget--;
-				} else {
-					hiddenFinished++;
-				}
-			}
-
-			const overflowParts: string[] = [];
-			if (hiddenRunning > 0) overflowParts.push(`${hiddenRunning} running`);
-			if (hiddenFinished > 0) overflowParts.push(`${hiddenFinished} finished`);
-			lines.push(
-				truncate(
-					`  ${theme.fg("muted", `+${hiddenRunning + hiddenFinished} more (${overflowParts.join(", ")})`)}`,
-				),
-			);
-		}
-
-		return lines;
 	}
 
 	update() {

@@ -13,19 +13,18 @@ import {
 	type KeyId,
 	matchesKey,
 	parseKey,
-	truncateToWidth,
+	visibleWidth,
 } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
-import { getErrorMessage, rule } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, rule, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { listMicrophones, type Recording, startRecording } from "@xynogen/pix-runtime/audio";
 import { cleanTranscript, cleanupModel, hasSlip } from "./cleanup.ts";
 import { voiceConfig } from "./config.ts";
 import { transcribeAudioFile } from "./transcribe.ts";
 
 const WIDGET = "voice-stt";
-/** Device name column width. Pad and cut to it, so the level bar does not move. */
-const DEVICE_WIDTH = 32;
 
 export function levelBar(db: number | undefined, width = 16): string {
 	if (db === undefined) return "░".repeat(width);
@@ -116,18 +115,36 @@ function showWidget(ctx: ExtensionContext): void {
 		(tui, theme) => {
 			redraw = () => tui.requestRender();
 			return {
-				render() {
-					const separator = rule(tui.terminal.columns, (glyphs) => theme.fg("borderMuted", glyphs));
-					if (phase?.kind !== "recording")
-						return [
-							separator,
-							`${theme.fg("warning", "…")} ${theme.fg("toolTitle", phase?.kind === "transcribing" ? phase.step : "transcribing")}${theme.fg("muted", " · esc cancel")}`,
-						];
-					const loud = phase.level !== undefined && phase.level > -12;
-					const db = phase.level === undefined ? "" : ` ${phase.level.toFixed(0)} dB`;
+				render(width: number) {
+					if (width < 1) return [];
+					const title = widgetTitle(theme, icon("audio.play"), "Voice");
+					const fadeTheme = {
+						fg: theme.fg.bind(theme),
+						style: theme.style.bind(theme),
+						colors: { dim: theme.colors.dim, customMessageBg: theme.colors.muted },
+					};
+					const separator = theme.fg("muted", " · ");
+					const recording = phase?.kind === "recording" ? phase : undefined;
+					const loud = recording?.level !== undefined && recording.level > -12;
+					let prefix =
+						title +
+						theme.fg(recording ? "error" : "warning", recording ? "recording" : "transcribing");
+					const detail = recording
+						? `${recording.device ?? voiceConfig.sttDevice}${recording.level === undefined ? "" : ` · ${recording.level.toFixed(0)} dB`}`
+						: phase?.kind === "transcribing" && phase.step !== "transcribing"
+							? phase.step
+							: "";
+					const fullHints = `${recording ? `${heldSince === undefined ? `${voiceConfig.sttShortcut} stop` : "release to stop"} · ` : ""}esc cancel`;
+					const hints = theme.fg(
+						"muted",
+						visibleWidth(prefix) + fullHints.length + 2 <= width ? fullHints : "esc cancel",
+					);
+					if (recording && visibleWidth(prefix) + visibleWidth(hints) + 21 <= width) {
+						prefix += separator + theme.fg(loud ? "warning" : "success", levelBar(recording.level));
+					}
 					return [
-						separator,
-						`${theme.fg("error", "●")} ${theme.fg("toolTitle", "recording")} ${theme.fg("dim", truncateToWidth(phase.device ?? voiceConfig.sttDevice, DEVICE_WIDTH, "…", true))} ${theme.fg(loud ? "warning" : "success", levelBar(phase.level))}${theme.fg("muted", `${db} · ${heldSince === undefined ? `${voiceConfig.sttShortcut} stop` : "release to stop"} · esc cancel`)}`,
+						rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
+						widgetActivityRow(fadeTheme, prefix, detail, width, hints),
 					];
 				},
 				invalidate() {},

@@ -13,7 +13,7 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 	if (width <= 0) return "";
 	const timer = ` ${humanUptime(now - m.startTime)} `;
 	const timerWidth = visibleWidth(timer);
-	const badge = theme.bg("selectedBg", theme.fg("muted", timer));
+	const badge = theme.fg("muted", timer);
 	if (width < timerWidth + 4) return truncateToWidth(badge, width, "");
 
 	const role = m.logError
@@ -34,21 +34,19 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 					? "status.blocked"
 					: "status.ok",
 	);
+	const separator = theme.fg("muted", " · ");
 	const chips = [
-		theme.bg("selectedBg", theme.fg(role, ` ${statusWord(m)} `)),
-		...(m.capped ? [theme.bg("selectedBg", theme.fg("warning", " capped "))] : []),
-		...(m.logError ? [theme.bg("selectedBg", theme.fg("error", " log error "))] : []),
-	].join(" ");
+		theme.fg(role, `${glyph} ${statusWord(m)}`),
+		...(m.logError ? [theme.fg("error", "log error")] : []),
+		...(m.capped ? [theme.fg("warning", "capped")] : []),
+	].join(separator);
 	const identity = stripTerminalSequences(
 		procLabel({ command: (m.name || m.handle).replace(/\s+/g, " ") }),
 	).replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
-	const prefix = `${theme.fg(role, glyph)} ${theme.fg("accent", truncateToWidth(identity, 24, "…"))}  `;
-	const metadata =
-		visibleWidth(chips) + timerWidth + visibleWidth(prefix) + 5 < width
-			? `${chips} ${badge}`
-			: badge;
+	const prefix = `${chips}${separator}${theme.fg("accent", truncateToWidth(identity, 24, "…"))}${separator}`;
+	const metadata = badge;
 	const metadataWidth = visibleWidth(metadata);
-	const available = width - metadataWidth - 4;
+	const available = width - metadataWidth - 2;
 	const prefixWidth = visibleWidth(prefix);
 	const label = stripTerminalSequences(procLabel({ command: m.command }))
 		.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")
@@ -64,17 +62,10 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 				fade === 0
 					? theme.fg("dim", text)
 					: theme.style(text, {
-							fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+							fg: mixColors(theme.colors.dim, theme.colors.muted, fade),
 						}),
 			);
 	}
-	const gap = " ".repeat(width - metadataWidth - visibleWidth(body) - 3);
-	return (
-		theme.bg(
-			"customMessageBg",
-			`  ${body}${gap}`.replaceAll("\x1b[49m", theme.getBgAnsi("customMessageBg")),
-		) +
-		metadata +
-		theme.bg("customMessageBg", " ")
-	);
+	const gap = " ".repeat(width - metadataWidth - visibleWidth(body) - 1);
+	return `${body}${gap}${metadata} `;
 }

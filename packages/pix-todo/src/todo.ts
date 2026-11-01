@@ -61,14 +61,14 @@ const TODO_COLOR: Record<TodoStatus, string> = {
 	blocked: "error",
 };
 
-export type TodoTheme = {
+export type TodoTheme = Parameters<typeof formatCollapsedToolRow>[0] & {
 	fg: (color: string, text: string) => string;
 	bold: (text: string) => string;
 };
 
 /** One-line shared summary used once a card has collapsed. */
-export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme): string {
-	if (!items.length) return formatCollapsedToolRow(theme, "todo", "empty");
+export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme, width?: number): string {
+	if (!items.length) return formatCollapsedToolRow(theme, "todo", "empty", "", "success", width);
 	const done = items.filter((t) => t.status === "done").length;
 	const active = items.find((t) => t.status === "in_progress");
 	const blocked = items.filter((t) => t.status === "blocked").length;
@@ -81,7 +81,7 @@ export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme): stri
 	// Blocked work with nothing active is not a success — surface the warning glyph
 	// (text meta already names the block count) so status is not color-only.
 	const status = blocked > 0 && !active && done !== items.length ? "warning" : "success";
-	return formatCollapsedToolRow(theme, "todo", target, meta, status);
+	return formatCollapsedToolRow(theme, "todo", target, meta, status, width);
 }
 
 /** Kanban columns in workflow order: To Do → In Progress → Done → Blocked. */
@@ -409,9 +409,19 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					);
 				// An open card claims focus, collapsing any earlier open board.
 				if (!collapsed) focusCard(context.state as CollapseState, context.invalidate);
-				const render = collapsed ? renderTodoSummaryLine : renderTodoLines;
-				const component = new Text(render(details.snapshot, theme as TodoTheme), 0, 0);
-				if (collapsed || isPartial) return component;
+				if (collapsed)
+					return {
+						render: (width: number) => [
+							...new Text(
+								renderTodoSummaryLine(details.snapshot, theme as TodoTheme, width),
+								0,
+								0,
+							).render(width),
+						],
+						invalidate() {},
+					};
+				const component = new Text(renderTodoLines(details.snapshot, theme as TodoTheme), 0, 0);
+				if (isPartial) return component;
 				return frameToolResult(component, theme, false);
 			},
 

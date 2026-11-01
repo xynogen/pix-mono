@@ -1,7 +1,8 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { mixColors, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { fadeText } from "@xynogen/pix-pretty/text";
-import { rule } from "@xynogen/pix-pretty/utils";
+import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import type { TodoItem } from "./todo.ts";
 
 export function renderTodoWidget(
@@ -29,22 +30,28 @@ export function renderTodoWidget(
 			: `${done}/${items.length} done`;
 	const status =
 		current?.status === "in_progress" ? "in progress" : (current?.status ?? "complete");
-	const extra = [
-		...(active.length > 1 ? [`${active.length} active`] : []),
-		...(blocked.length && current?.status !== "blocked" ? [`${blocked.length} blocked`] : []),
-		...(blocked.length > 1 && current?.status === "blocked" ? [`${blocked.length} blocked`] : []),
-	].join(" · ");
-	const prefix = `${theme.fg("accent", "Todo")}  ${theme.fg("muted", position)} · ${theme.fg(role, status)}${extra ? ` · ${theme.fg("muted", extra)}` : ""}`;
-	const room = width - visibleWidth(prefix) - 2;
-	const row =
+	const prefix =
+		widgetTitle(theme, icon("status.ok"), "Todo") +
+		dotJoin(
+			[
+				theme.fg(role, status),
+				active.length > 1 && theme.fg("muted", `${active.length} active`),
+				blocked.length > (current?.status === "blocked" ? 1 : 0) &&
+					theme.fg("error", `${blocked.length} blocked`),
+			],
+			(text) => theme.fg("muted", text),
+		);
+	const separator = theme.fg("muted", " · ");
+	const metadata = separator + theme.fg("muted", position);
+	const room = width - visibleWidth(prefix) - visibleWidth(metadata) - visibleWidth(separator);
+	const task =
 		current && room > 0
-			? `${prefix}  ${fadeText(current.text, room, (text, fade) =>
+			? fadeText(current.text, room, (text, fade) =>
 					fade === 0
-						? theme.fg("dim", text)
-						: theme.style(text, {
-								fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
-							}),
-				)}`
-			: truncateToWidth(prefix, width, "…");
+						? theme.fg("accent", text)
+						: theme.style(text, { fg: mixColors(theme.colors.accent, theme.colors.muted, fade) }),
+				)
+			: "";
+	const row = truncateToWidth(`${prefix}${task ? separator + task : ""}${metadata}`, width, "…");
 	return [rule(width, (text) => theme.fg("borderMuted", text)), row];
 }

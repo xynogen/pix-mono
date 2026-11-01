@@ -35,9 +35,8 @@ listening
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 running capped and recent widget
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<accent>▸︎</accent> <accent>Processes</accent>
-<bg:customMessageBg>  </bg:customMessageBg><accent+bg:customMessageBg>◐︎</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>proc-dev</accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>serve</dim+bg:customMessageBg><bg:customMessageBg>                                     </bg:customMessageBg><accent+bg:selectedBg> running </accent+bg:selectedBg> <warning+bg:selectedBg> capped </warning+bg:selectedBg> <muted+bg:selectedBg> 5s </muted+bg:selectedBg><bg:customMessageBg> </bg:customMessageBg>
-<bg:customMessageBg>  </bg:customMessageBg><error+bg:customMessageBg>✗︎</error+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>proc-old</accent+bg:customMessageBg><bg:customMessageBg>  </bg:customMessageBg><dim+bg:customMessageBg>compile</dim+bg:customMessageBg><bg:customMessageBg>                                         </bg:customMessageBg><error+bg:selectedBg> exited(1) </error+bg:selectedBg> <muted+bg:selectedBg> 10s </muted+bg:selectedBg><bg:customMessageBg> </bg:customMessageBg>
+<toolTitle>▸︎   Proc    </toolTitle><muted> │ </muted><accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                       <muted> 5s </muted> 
+<toolTitle>            </toolTitle><muted> │ </muted><error>✗︎ exited(1)</error><muted> · </muted><accent>proc-old</accent><muted> · </muted><dim>compile</dim>                           <muted> 10s </muted> 
 list
 <accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
 <accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Processes</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>

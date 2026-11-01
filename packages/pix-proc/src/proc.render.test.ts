@@ -5,6 +5,7 @@ import {
 	stripTerminalSequences,
 	type TUI,
 	TUI_KEYBINDINGS,
+	visibleWidth,
 } from "@earendil-works/pi-tui";
 import { agentDir } from "@xynogen/pix-runtime/paths";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
@@ -237,9 +238,12 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 		for (const callback of timers.values()) callback();
 		const updatedRows = widget.render(80).map(stripTerminalSequences);
 		expect(updatedRows[0]).toMatch(/^─{80}$/);
-		expect(updatedRows[1]).toContain("Processes");
-		expect(updatedRows[2]).toMatch(/ 6s {2}$/);
-		expect(updatedRows[3]).toMatch(/ 10s {2}$/);
+		expect(updatedRows).toHaveLength(3);
+		expect(updatedRows[1]).toMatch(/^\S+\s+Proc +│ \S+.* 6s {2}$/);
+		expect(updatedRows[2]).toMatch(/^ +│ \S+.* 10s {2}$/);
+		expect(visibleWidth(updatedRows[1]!.split("│")[0]!)).toBe(
+			visibleWidth(updatedRows[2]!.split("│")[0]!),
+		);
 		now -= 1_000;
 		await command("", { ui });
 		await fixture.runtime.update(collapseSection, (current) => ({ ...current, delaySec: 1 }));

@@ -49,31 +49,28 @@ card:long-question
 widget:empty
 widget:running
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<accent>○︎</accent> <accent>BTW</accent><muted> (1)</muted>                                                                       
-  <accent>⠋</accent> <toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>reading, searching…</dim>       
+<toolTitle>⠋   BTW     </toolTitle><muted> │ </muted><toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model] · </muted><dim>reading,</dim><muted> searchi</muted>  <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
 widget:mixed
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<accent>○︎</accent> <accent>BTW</accent><muted> (1)</muted>                                                                       
-  <accent>⠋</accent> <toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <success>✓</success> <dim>#8</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>                             
-  <error>✗</error> <dim>#9</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted><error> offline</error>                     
-  <muted>■</muted> <dim>#10</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s stopped</muted>                    
+<toolTitle>⠋   BTW     </toolTitle><muted> │ </muted><toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#8</toolTitle+bold> <muted>[Selected model]</muted><success> · completed</success><muted> · Read</muted>  <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#9</toolTitle+bold> <muted>[Selected model]</muted><error> · error</error><muted> · </muted><dim>offline</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#10</toolTitle+bold> <muted>[Selected model] · stopped · Readi</muted>  <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
 widget:finished
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<dim>●︎</dim> <dim>BTW</dim><muted> (0)</muted>                                                                       
-  <success>✓</success> <dim>#7</dim> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>                             
+<toolTitle>✓︎   BTW     </toolTitle><muted> │ </muted><toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model]</muted><success> · completed</success><muted> · Read</muted>  <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
 widget:expired
 widget:overflow
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<accent>○︎</accent> <accent>BTW</accent><muted> (20)</muted>                                                                      
-  <accent>⠋</accent> <toolTitle+bold>#1</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#2</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#3</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#4</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#5</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#6</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#8</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <accent>⠋</accent> <toolTitle+bold>#9</toolTitle+bold> <muted>[Selected model]</muted> <muted>·</muted> <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted> <muted>·</muted> <dim>Reading auth.ts</dim>           
-  <muted>+11 more</muted>                                                                      "
+<toolTitle>⠋   BTW     </toolTitle><muted> │ </muted><toolTitle+bold>#1</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#2</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#3</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#4</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#5</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#6</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#7</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#8</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#9</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>   <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><toolTitle+bold>#10</toolTitle+bold> <muted>[Selected model] · </muted><dim>Reading auth.ts</dim>  <muted>↻︎ 1 · ⚒︎ 2 · 20 t/s · 2.1s</muted>
+  <muted>+10 more</muted>                                                                      "
 `;

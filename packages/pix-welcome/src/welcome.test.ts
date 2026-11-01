@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import {
+	colorToHex,
+	stripTerminalSequences,
+	styleText,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import { runGit } from "@xynogen/pix-runtime/os";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerWelcome, {
@@ -69,6 +74,7 @@ describe("welcome lifecycle", () => {
 		);
 		expect(headerCalls).toBe(1);
 		expect(renderHeader?.(80)?.slice(0, 2)).toEqual(["", `   ${LOGO_ROWS[0]?.[0]}`]);
+		expect(renderHeader?.(120)?.[2]).toMatch(/PIx · Welcome, .+!$/);
 		onTurn?.({ reason: "new" }, {});
 		expect(renderHeader?.(80)).toEqual([]);
 	});
@@ -84,6 +90,70 @@ describe("renderWelcome", () => {
 		const lines = renderWelcome(theme, "m", "/p", checks, 40);
 		expect(lines.some((l) => l === "")).toBe(true);
 	});
+});
+
+it("greets the supplied OS username and clips long names to the terminal width", () => {
+	expect(renderWelcome(theme, "model", "cwd", [], 120, "alice")[2]).toEndWith(
+		"PIx · Welcome, alice!",
+	);
+	for (const width of [0, 1, 20, 40, 80]) {
+		for (const line of renderWelcome(theme, "model", "cwd", [], width, "界alice".repeat(40))) {
+			expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+		}
+	}
+});
+
+it("matches the README mosaic geometry and colors cell for cell", () => {
+	const svg = readFileSync(
+		new URL("../../../.github/assets/pix-logo.svg", import.meta.url),
+		"utf8",
+	);
+	const expected = Array.from({ length: 5 }, () => Array<string | undefined>(12).fill(undefined));
+	const pieces = [
+		...svg.matchAll(/<rect x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)" fill="(#[a-f0-9]+)"/g),
+	];
+	expect(pieces).toHaveLength(18);
+	for (const piece of pieces) {
+		const [x, y, w, h] = piece.slice(1, 5).map(Number) as [number, number, number, number];
+		for (const value of [x, y, w, h]) expect(value % 20).toBe(0);
+		for (let row = y / 20; row < (y + h) / 20; row++) {
+			for (let col = x / 20; col < (x + w) / 20; col++) {
+				expect(expected[row]![col]).toBeUndefined();
+				expected[row]![col] = piece[5];
+			}
+		}
+	}
+	const actual: string[] = [];
+	const coloredTheme: Theme = {
+		...theme,
+		style(text, style) {
+			expect(text).toBe("██");
+			if (!style.fg) throw new Error("Logo cell has no foreground color");
+			actual.push(colorToHex(style.fg));
+			return styleText(text, style, "truecolor");
+		},
+	};
+	const lines = renderWelcome(coloredTheme, "model", "cwd", [], 120);
+	expect(actual).toEqual(expected.flat().filter((color): color is string => color !== undefined));
+	for (let row = 0; row < 5; row++) {
+		const mask = expected[row]!.map((color) => (color ? "██" : "  ")).join("");
+		expect(LOGO_ROWS[row]![0]).toBe(mask);
+		expect(stripTerminalSequences(lines[row + 1]!).slice(3, 27)).toBe(mask);
+	}
+	for (const [start, end] of [
+		[0, 4],
+		[4, 7],
+		[7, 12],
+	] as const) {
+		expect(
+			expected.flatMap((row) => row.slice(start, end)).filter((c) => c === "#9d7cd8"),
+		).toHaveLength(1);
+	}
+	for (const width of [0, 1, 10, 27, 40, 80]) {
+		for (const line of renderWelcome(coloredTheme, "model", "cwd", [], width)) {
+			expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+		}
+	}
 });
 
 describe("shortCwd", () => {
@@ -160,7 +230,7 @@ describe("renderCheck", () => {
 });
 
 describe("LOGO_ROWS", () => {
-	it("has 6 rows", () => expect(LOGO_ROWS.length).toBe(6));
+	it("has 5 grid rows", () => expect(LOGO_ROWS.length).toBe(5));
 	it("starts with empty tag", () => expect((LOGO_ROWS[0] as string[])[1]).toBe(""));
 	it("has heading, model, cwd, ready tags", () => {
 		const tags = LOGO_ROWS.map((r) => r[1]);

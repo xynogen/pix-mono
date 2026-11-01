@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { getIconMode, icon, setIconMode } from "@xynogen/pix-pretty/icon-catalog";
 import { pixRuntime } from "@xynogen/pix-runtime/config";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerToolbox, {
@@ -33,7 +34,7 @@ const mcpToolInfo = (name: string) => toolInfo(name, "mcp:context7");
 // ─── buildRows ──────────────────────────────────────────────────────────────
 
 describe("buildRows", () => {
-	test("excludes always-on tools (read, bash, edit, write, tool_search, codemode)", () => {
+	test("includes always-on tools as a fixed group", () => {
 		const rows = buildRows([
 			toolInfo("bash"),
 			toolInfo("edit"),
@@ -43,7 +44,15 @@ describe("buildRows", () => {
 			toolInfo("codemode"),
 			toolInfo("grep"),
 		]);
-		expect(rows.map((r) => r.name)).toEqual(["grep"]);
+		expect(rows.map((r) => r.name)).toEqual([
+			"grep",
+			"bash",
+			"codemode",
+			"edit",
+			"read",
+			"tool_search",
+			"write",
+		]);
 		expect(rows.every((r) => !r.mcp)).toBe(true);
 	});
 
@@ -70,7 +79,7 @@ describe("buildRows", () => {
 		expect(rows.map((r) => r.name)).toEqual(["z_tool", "b_deferred", "a_mcp", "c_mcp"]);
 	});
 
-	test("sorts by live state (enabled, deferred, disabled), then by name", () => {
+	test("groups by capability, then live state and name", () => {
 		const state: Record<string, ToolState> = {
 			b_on: "enabled",
 			a_off: "disabled",
@@ -92,10 +101,10 @@ describe("buildRows", () => {
 		);
 		expect(rows.map((r) => r.name)).toEqual([
 			"a_on",
+			"a_off",
 			"b_on",
 			"a_defer",
 			"c_defer",
-			"a_off",
 			"m_on",
 		]);
 	});
@@ -136,12 +145,14 @@ describe("renderList", () => {
 	test("groups tools and shows one state per tool", () => {
 		const out = renderList(rows, stateOf);
 		expect(out).toMatch(
-			/^Tools:\n# disabled {2}grep .*\n~ deferred {2}hunk .*\n\nMCP:\n✓ enabled {2}ctx /,
+			/^Tools · direct:\n# disabled {2}grep .*\n\nTools · deferrable:\n~ deferred {2}hunk .*\n\nMCP · deferrable:\n✓ enabled {2}ctx /,
 		);
 	});
 
 	test("filters by query", () => {
-		expect(renderList(rows, stateOf, "grep")).toMatch(/^Tools:\n# disabled {2}grep [^\n]*$/);
+		expect(renderList(rows, stateOf, "grep")).toMatch(
+			/^Tools · direct:\n# disabled {2}grep [^\n]*$/,
+		);
 	});
 
 	test("no match message", () => {
@@ -328,7 +339,7 @@ describe("/toolbox command", () => {
 		const { ctx, notes } = makeCtx();
 		await host.command("toolbox")?.handler("list", ctx);
 		expect((notes[0] as Note).text).toMatch(
-			/^Tools:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n~ deferred {2}hunk [^\n]*$/,
+			/^Tools · direct:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n\nTools · deferrable:\n~ deferred {2}hunk .*\n\nTools · always-on:\n✓ enabled \(fixed\)/,
 		);
 	});
 
@@ -389,7 +400,7 @@ describe("/toolbox command", () => {
 		await host.command("toolbox")?.handler("", ctx);
 		// always-on tools are excluded; the rest start enabled
 		expect((notes[0] as Note).text).toMatch(
-			/^Tools:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls [^\n]*$/,
+			/^Tools · direct:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n\nTools · always-on:\n✓ enabled \(fixed\)/,
 		);
 	});
 
@@ -397,7 +408,7 @@ describe("/toolbox command", () => {
 		const host = await boot();
 		const { ctx, notes } = makeCtx();
 		await host.command("toolbox")?.handler("list fet", ctx);
-		expect((notes[0] as Note).text).toMatch(/^Tools:\n✓ enabled {2}fetch [^\n]*$/);
+		expect((notes[0] as Note).text).toMatch(/^Tools · direct:\n✓ enabled {2}fetch [^\n]*$/);
 	});
 
 	test("opens interactive picker when ctx.ui.custom exists", async () => {
@@ -509,6 +520,11 @@ describe("/toolbox command", () => {
 		const screen = () => v.render(100).join("\n");
 		const selected = () => v.render(100).find((l) => l.includes("→")) ?? "";
 
+		expect(selected()).toContain(icon("audio.play"));
+		expect(screen()).toContain("Direct · enabled / disabled only");
+		expect(screen()).not.toContain("^F defer");
+		v.handleInput("\x06");
+		expect(host.getActive()).toContain("fetch");
 		expect(screen()).toMatch(/Tools \(3 adjustable \+ 3 always-on\).*MCP \(1\)/);
 		v.handleInput("\t");
 		expect(screen()).toMatch(/ctx_docs/);
@@ -517,16 +533,34 @@ describe("/toolbox command", () => {
 		// Rows: fetch, ls, hunk (deferred last). Move to hunk.
 		v.handleInput("\x1b[B");
 		v.handleInput("\x1b[B");
-		expect(selected()).toMatch(/→ ~ hunk/);
+		expect(selected()).toContain(`→ ${icon("status.pending")}   ~ hunk`);
 		v.handleInput("\x05"); // ctrl+e
 		expect(host.getActive()).toContain("hunk");
-		expect(selected()).toMatch(/→ ✓ hunk/);
+		expect(selected()).toContain(`→ ${icon("status.pending")}   ✓ hunk`);
+		expect(selected()).toMatch(/deferrable enabled/);
 		v.handleInput("\x06"); // ctrl+f
 		expect(host.getActive()).not.toContain("hunk");
-		expect(selected()).toMatch(/→ ~ hunk/);
+		expect(selected()).toContain(`→ ${icon("status.pending")}   ~ hunk`);
 		v.handleInput("\x04"); // ctrl+d
-		expect(selected()).toMatch(/→ # hunk/);
+		expect(selected()).toContain(`→ ${icon("status.pending")}   # hunk`);
 		expect(screen()).toContain("hunk disabled — blocked.");
+		const savedMode = getIconMode();
+		try {
+			for (const mode of ["nerd", "unicode", "ascii"] as const) {
+				setIconMode(mode);
+				expect(selected()).toContain(icon("status.pending"));
+			}
+		} finally {
+			setIconMode(savedMode);
+		}
+		v.handleInput("\x1b[B");
+		expect(selected()).toContain(icon("lock"));
+		expect(selected()).toMatch(/always-on +fixed on/);
+		expect(screen()).toContain("Always-on · fixed enabled");
+		const active = [...host.getActive()];
+		for (const key of [" ", "\x04", "\x06", "\x05"]) v.handleInput(key);
+		expect(host.getActive()).toEqual(active);
+		expect(screen()).not.toContain("^D disable");
 
 		// Plain letters type into the search, not a state change.
 		v.handleInput("d");

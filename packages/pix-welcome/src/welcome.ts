@@ -1,7 +1,5 @@
 /**
- * Welcome extension — ASCII art banner + startup health checks.
- *
- * Renders a coloured π logo in the header on session start.
+ * Welcome extension — pixel mosaic banner + startup health checks.
  * Runs checks in parallel while the banner is visible:
  *
  *   · PI version   — read installed version only
@@ -14,32 +12,17 @@
  * Each check updates the banner live as results arrive.
  * Banner auto-dismisses on the first user turn (turn_start).
  *
- * Layout:
- *
- *   ██████╗ ██╗██╗  ██╗
- *   ██╔══██╗██║╚██╗██╔╝
- *   ██████╔╝██║ ╚███╔╝
- *   ██╔═══╝ ██║ ██╔██╗
- *   ██║     ██║██╔╝ ██╗
- *   ╚═╝     ╚═╝╚═╝  ╚═╝
- *
- *   ✓ PI      0.78.0
- *   ✓ Auth    connected
- *   ✓ Models  16 loaded
- *   ✓ Tools   24 loaded
- *   ✓ Skills  10 loaded
- *   ✓ Ignore  up to date
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { parseColor, type TextStyle, truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { padIcon } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { runTool } from "@xynogen/pix-runtime/exec";
-import { runGit } from "@xynogen/pix-runtime/os";
+import { runGit, username } from "@xynogen/pix-runtime/os";
 import { agentDir, homeDir } from "@xynogen/pix-runtime/paths";
 
 // ─── Theme shim (same pattern as footer.ts) ───────────────────────────────────
@@ -47,20 +30,33 @@ import { agentDir, homeDir } from "@xynogen/pix-runtime/paths";
 export type Theme = {
 	fg(color: string, text: string): string;
 	bold(text: string): string;
+	style?(text: string, style: TextStyle): string;
 };
 
-// ─── ASCII logo ───────────────────────────────────────────────────────────────
+// ─── Pixel logo ───────────────────────────────────────────────────────────────
 
 export type Tag = "heading" | "model" | "cwd" | "ready" | "";
 
-export const LOGO_ROWS: [string, Tag][] = [
-	["██████╗ ██╗██╗  ██╗", ""],
-	["██╔══██╗██║╚██╗██╔╝", "heading"],
-	["██████╔╝██║ ╚███╔╝ ", ""],
-	["██╔═══╝ ██║ ██╔██╗ ", "model"],
-	["██║     ██║██╔╝ ██╗", "cwd"],
-	["╚═╝     ╚═╝╚═╝  ╚═╝", "ready"],
+// Brand artwork matches .github/assets/pix-logo.svg; surrounding UI uses theme roles.
+const LOGO_COLORS = {
+	L: parseColor("#a9c1ff"),
+	B: parseColor("#7aa2f7"),
+	M: parseColor("#5277c3"),
+	D: parseColor("#3d59a1"),
+	P: parseColor("#9d7cd8"),
+};
+const LOGO_GRID: [string, Tag][] = [
+	["LLL LLLM   M", ""],
+	["B  P B MB BM", "heading"],
+	["BMM  B   P  ", "model"],
+	["D    P  M M ", "cwd"],
+	["D   BBBDD DD", "ready"],
 ];
+
+export const LOGO_ROWS: [string, Tag][] = LOGO_GRID.map(([row, tag]) => [
+	row.replace(/./g, (cell) => (cell === " " ? "  " : "██")),
+	tag,
+]);
 
 // ─── Check result ─────────────────────────────────────────────────────────────
 
@@ -381,13 +377,19 @@ export function renderCheck(theme: Theme, c: CheckResult): string {
 	return `${padIcon(icon)} ${label}  ${detail}`;
 }
 
-function buildLogoLines(theme: Theme, model: string, cwd: string): string[] {
+function buildLogoLines(theme: Theme, model: string, cwd: string, user: string): string[] {
 	const pad = "   ";
-	return LOGO_ROWS.map(([logo, tag]) => {
-		const l = theme.fg("accent", logo);
+	return LOGO_GRID.map(([row, tag]) => {
+		const l = [...row]
+			.map((cell) => {
+				if (cell === " ") return "  ";
+				const fg = LOGO_COLORS[cell as keyof typeof LOGO_COLORS];
+				return theme.style ? theme.style("██", { fg }) : "██";
+			})
+			.join("");
 		switch (tag) {
 			case "heading":
-				return `${pad}${l}  ${theme.fg("dim", "PIx")}`;
+				return `${pad}${l}  ${theme.fg("dim", "PIx")}${user ? ` · ${theme.fg("text", `Welcome, ${user}!`)}` : ""}`;
 			case "model":
 				return `${pad}${l}  ${theme.fg("muted", icon("model"))}  ${theme.fg("text", model)}`;
 			case "cwd":
@@ -430,8 +432,14 @@ export function renderWelcome(
 	cwd: string,
 	checks: CheckResult[],
 	width: number,
+	user = "",
 ): string[] {
-	const lines = ["", ...buildLogoLines(theme, model, cwd), ...buildCheckLines(theme, checks), ""];
+	const lines = [
+		"",
+		...buildLogoLines(theme, model, cwd, user),
+		...buildCheckLines(theme, checks),
+		"",
+	];
 	return lines.map((line) => fitLine(line, width));
 }
 
@@ -457,6 +465,7 @@ export default function (pi: ExtensionAPI) {
 		// cwd is static; model can change via /model so keep it mutable
 		const modelId = ctx.model?.id ?? "—";
 		const cwd = shortCwd(ctx.cwd);
+		const user = username() ?? "";
 
 		// Pending placeholders — one per check
 		const CHECKS: CheckResult[] = [
@@ -484,7 +493,7 @@ export default function (pi: ExtensionAPI) {
 					const t = theme as unknown as Theme;
 					// Re-read modelId each render so /model changes show live.
 					// Clamp to width so an over-wide logo line never crashes Pi's TUI.
-					return dismissed ? [] : renderWelcome(t, modelId, cwd, CHECKS, width);
+					return dismissed ? [] : renderWelcome(t, modelId, cwd, CHECKS, width, user);
 				},
 				dispose() {
 					requestRender = null;

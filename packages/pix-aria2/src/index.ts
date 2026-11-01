@@ -13,15 +13,13 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth } from "@earendil-works/pi-tui";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text } from "@earendil-works/pi-tui";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import {
 	formatCollapsedToolRow,
 	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
-	rule,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
@@ -29,6 +27,7 @@ import { aria2 } from "maria2/dist/index.js";
 import { Type } from "typebox";
 import { Aria2MissingError, type DaemonHandle, startDaemon } from "./daemon.ts";
 import { type DlStatus, downloadName, fraction, progressLine } from "./format.ts";
+import { renderDownloadWidget } from "./widget.ts";
 
 const WIDGET_KEY = "pix-aria2:progress";
 const POLL_MS = 1000;
@@ -133,24 +132,10 @@ class DownloadManager {
 			}
 			return;
 		}
-		const lines = visible.map((s) => progressLine(this.handleFor(s.gid), s));
 		this.ui.setWidget(
 			WIDGET_KEY,
 			(_tui, theme) => ({
-				render: (width: number) => {
-					const heading = `${theme.fg("accent", "○")} ${theme.fg("accent", "Downloads")}`;
-					const rows = lines.map((line) =>
-						truncateToWidth(
-							`  ${theme.fg("accent", icon("update"))} ${theme.fg("dim", line)}`,
-							width,
-						),
-					);
-					return [
-						rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
-						truncateToWidth(heading, width),
-						...rows,
-					];
-				},
+				render: (width: number) => renderDownloadWidget(visible, width, theme),
 				invalidate() {},
 			}),
 			{ placement: "aboveEditor" },

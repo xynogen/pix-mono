@@ -14,6 +14,13 @@
  */
 
 import { expect, test } from "bun:test";
+import {
+	rgbColor,
+	stripTerminalSequences,
+	styleText,
+	type TextStyle,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import { AgentWidget, lingerWindows, type UICtx } from "../src/ui/widget.ts";
 
 type Theme = UICtx["theme"];
@@ -88,7 +95,7 @@ test("a running background agent keeps its widget registered across updates", ()
 	widget.dispose();
 });
 
-test("widget has a full-width top rule and indented rows within its line limit", () => {
+test("widget has one row per agent and caps overflow under a full-width rule", () => {
 	const agents = Array.from({ length: 20 }, (_, i) => ({ ...runningBg, id: `a${i}` }));
 	const widget = new AgentWidget(makeManager(agents), new Map());
 	const ctx = makeSpyCtx();
@@ -98,11 +105,100 @@ test("widget has a full-width top rule and indented rows within its line limit",
 	const component = ctx.widgetContent({ terminal: { columns: 160 } }, ctx.theme);
 	const lines = component.render();
 	expect(lines[0]).toBe("─".repeat(160));
-	expect(lines[1]).toMatch(/^○ Agents$/);
-	expect(lines[2]).toMatch(/^ {2}\S.*Agent.*long job/);
+	expect(lines[1]).toMatch(/^\S+\s+Agent +│.*long job/);
+	expect(lines[2]).toMatch(/^ +│.*long job/);
+	expect(lines.join("\n").match(/\bAgent\b/g)).toHaveLength(1);
 	expect(lines).toHaveLength(12);
-	expect(lines.at(-1)).toMatch(/^ {2}\+\d+ more \(\d+ running\)$/);
+	expect(lines.at(-1)).toMatch(/^ {2}\+10 more$/);
 	widget.dispose();
+});
+
+test("long agent descriptions fade after fixed model, stats and status columns", () => {
+	const agents = [
+		{
+			...runningBg,
+			startedAt: Date.now() - 2_000,
+			description: "界e\u0301🙂 job ".repeat(60),
+			invocation: { modelName: "GPT" },
+		},
+	];
+	const widget = new AgentWidget(makeManager(agents), new Map());
+	const ctx = makeSpyCtx();
+	ctx.theme = {
+		...ctx.theme,
+		colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+		style: (text: string, style: TextStyle) => styleText(text, style, "truecolor"),
+	};
+	try {
+		widget.setUICtx(ctx);
+		widget.update();
+		if (typeof ctx.widgetContent !== "function") throw new Error("agent widget missing");
+		const tui = { terminal: { columns: 80 } };
+		const component = ctx.widgetContent(tui, ctx.theme);
+		for (const width of [60, 80, 120]) {
+			tui.terminal.columns = width;
+			const rows = component.render();
+			expect(rows).toHaveLength(2);
+			expect(stripTerminalSequences(rows[1]!)).toMatch(
+				/^\S+\s+Agent +│ \S+\s+\[GPT\] \(fork\) · 界.* {2,}\d+(?:\.\d+)?s$/,
+			);
+			expect(rows[1]).toContain("\x1b[38;2;20;20;20m");
+			for (const row of rows) expect(visibleWidth(row)).toBeLessThanOrEqual(width);
+		}
+		for (let width = 0; width < 60; width++) {
+			tui.terminal.columns = width;
+			for (const row of component.render()) expect(visibleWidth(row)).toBeLessThanOrEqual(width);
+		}
+		Object.assign(agents[0]!, {
+			status: "error",
+			completedAt: Date.now(),
+			error: "Provider unavailable ".repeat(30),
+		});
+		tui.terminal.columns = 80;
+		const failed = component.render()[1]!;
+		expect(stripTerminalSequences(failed)).toMatch(
+			/\[GPT\] \(fork\) error · Provider unavailable.* {2,}\d+(?:\.\d+)?s$/,
+		);
+		expect(failed).toContain("\x1b[38;2;20;20;20m");
+	} finally {
+		widget.dispose();
+	}
+});
+
+test("a second agent adds only one row; live activity replaces the description", () => {
+	const agents = [{ ...runningBg }, { ...runningBg, id: "a2" }];
+	const widget = new AgentWidget(
+		makeManager(agents),
+		new Map([
+			[
+				"a1",
+				{
+					activeTools: new Map([["read", "read"]]),
+					responseText: "",
+					toolUses: 0,
+					turnCount: 0,
+					lifetimeUsage: { output: 0 },
+				} as never,
+			],
+		]),
+	);
+	const ctx = makeSpyCtx();
+	try {
+		widget.setUICtx(ctx);
+		widget.update();
+		if (typeof ctx.widgetContent !== "function") throw new Error("widget missing");
+		const component = ctx.widgetContent({ terminal: { columns: 120 } }, ctx.theme);
+		const rows = component.render();
+		expect(rows).toHaveLength(3);
+		expect(rows[1]).toMatch(/^\S+\s+Agent +│ \S+\s+\(fork\) · reading.*\d.*s$/);
+		expect(rows[2]).toMatch(/^ +│ \S+\s+\(fork\) · long job.*\d.*s$/);
+		expect(visibleWidth(rows[1]!.split("│")[0]!)).toBe(visibleWidth(rows[2]!.split("│")[0]!));
+		expect(rows.join("\n").match(/\bAgent\b/g)).toHaveLength(1);
+		agents.pop();
+		expect(component.render()).toHaveLength(2);
+	} finally {
+		widget.dispose();
+	}
 });
 
 test("linger windows scale off the shared collapse delay (config-driven)", () => {

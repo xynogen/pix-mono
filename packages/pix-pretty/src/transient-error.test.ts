@@ -1,5 +1,13 @@
 import { describe, expect, jest, test } from "bun:test";
 import {
+	rgbColor,
+	stripTerminalSequences,
+	styleText,
+	type TextStyle,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
+import { roleTheme, semanticRow } from "../../../scripts/ui-capture.ts";
+import {
 	showTransientError,
 	showTransientMessage,
 	TRANSIENT_ERROR_TTL_MS,
@@ -38,12 +46,12 @@ describe("showTransientError", () => {
 			expect(calls).toHaveLength(1);
 			expect(calls[0]?.options).toEqual({ placement: "aboveEditor" });
 			const component = calls[0]?.content?.({}, { fg: (_color, text) => text });
-			const lines = component?.render(24) ?? [];
+			const lines = component?.render(80) ?? [];
 			expect(lines).toHaveLength(2);
 			expect(lines[0]).toMatch(/^[─-]/); // top rule
-			expect(lines[1]).toContain("cache");
+			expect(lines[1]).toMatch(/Runtime +│ error · cache refresh failed$/);
 			for (const line of lines) {
-				expect(Bun.stringWidth(line)).toBeLessThanOrEqual(24);
+				expect(Bun.stringWidth(line)).toBeLessThanOrEqual(80);
 			}
 		} finally {
 			jest.useRealTimers();
@@ -65,7 +73,7 @@ describe("showTransientError", () => {
 					},
 				},
 			);
-			expect(warning?.render(80)[1]).toContain("warning using cached metadata");
+			expect(warning?.render(80)[1]).toMatch(/Runtime +│ warning · using cached metadata$/);
 			expect(warningColors).toContain("warning");
 
 			showTransientMessage(ui, "configuration reloaded", "info");
@@ -79,8 +87,43 @@ describe("showTransientError", () => {
 					},
 				},
 			);
-			expect(info?.render(80)[1]).toContain("info configuration reloaded");
+			expect(info?.render(80)[1]).toMatch(/Runtime +│ info · configuration reloaded$/);
 			expect(infoColors).toContain("accent");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	test("preserves semantic hierarchy, fades only overflow, and bounds every terminal width", () => {
+		jest.useFakeTimers();
+		try {
+			const { ui, calls } = makeUi();
+			showTransientMessage(
+				ui,
+				"cache \x1b[31mrefresh\x1b[0m failed\n界e\u0301🙂".repeat(20),
+				"warning",
+			);
+			const colors = { dim: rgbColor(180, 180, 180), muted: rgbColor(70, 70, 70) };
+			const theme = Object.assign(Object.create(roleTheme()), {
+				colors,
+				style: (text: string, style: TextStyle) => styleText(text, style, "truecolor"),
+				bg() {
+					throw new Error("Transient widget must not paint a background");
+				},
+			});
+			const widget = calls.at(-1)!.content!({}, theme);
+			const row = widget.render(80)[1]!;
+			expect(stripTerminalSequences(row)).toMatch(/Runtime +│ warning · cache refresh failed/);
+			expect(row).toContain("\x1b[38;2;70;70;70m");
+			for (let width = 0; width <= 120; width++) {
+				for (const line of widget.render(width))
+					expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+			}
+			showTransientMessage(ui, "configuration reloaded", "info");
+			const short = calls.at(-1)!.content!({}, theme).render(80)[1]!;
+			expect(semanticRow(short)).toMatch(
+				/<toolTitle>.+ Runtime +<\/toolTitle><muted> │ <\/muted><accent>info<\/accent><muted> · <\/muted><dim>configuration reloaded<\/dim>/,
+			);
 		} finally {
 			jest.useRealTimers();
 		}

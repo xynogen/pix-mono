@@ -3,28 +3,28 @@
 exports[`captures actual STT widget and voice settings through safe runtime spies 1`] = `
 "stt:unknown-level
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<error>●</error> <toolTitle>recording</toolTitle> <dim>default                         </dim> <success>░░░░░░░░░░░░░░░░</success><muted> · alt+z stop · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><error>recording</error><muted> · </muted><success>░░░░░░░░░░░░░░░░</success><muted> · </muted><dim>default</dim>                                            <muted>alt+z stop · esc cancel</muted>
 stt:device-label
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<error>●</error> <toolTitle>recording</toolTitle> <dim>Fixture microphone with a long </dim>… <success>░░░░░░░░░░░░░░░░</success><muted> · alt+z stop · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><error>recording</error><muted> · </muted><success>░░░░░░░░░░░░░░░░</success><muted> · </muted><dim>Fixture microphone with a long device label</dim>        <muted>alt+z stop · esc cancel</muted>
 stt:normal-level
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<error>●</error> <toolTitle>recording</toolTitle> <dim>Fixture microphone with a long </dim>… <success>████████░░░░░░░░</success><muted> -30 dB · alt+z stop · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><error>recording</error><muted> · </muted><success>████████░░░░░░░░</success><muted> · </muted><dim>Fixture microphone with a long device lab</dim><muted>el · -30</muted>  <muted>alt+z stop · esc cancel</muted>
 stt:loud-level
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<error>●</error> <toolTitle>recording</toolTitle> <dim>Fixture microphone with a long </dim>… <warning>██████████████░░</warning><muted> -6 dB · alt+z stop · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><error>recording</error><muted> · </muted><warning>██████████████░░</warning><muted> · </muted><dim>Fixture microphone with a long device lab</dim><muted>el · -6 </muted>  <muted>alt+z stop · esc cancel</muted>
 stt:transcribing
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<warning>…</warning> <toolTitle>transcribing</toolTitle><muted> · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><warning>transcribing</warning>                                                                                   <muted>esc cancel</muted>
 stt:cleanup
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<warning>…</warning> <toolTitle>cleaning up · fixture/selected-model</toolTitle><muted> · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><warning>transcribing</warning><muted> · </muted><dim>cleaning up · fixture/selected-model</dim>                                            <muted>esc cancel</muted>
 stt:hold
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<error>●</error> <toolTitle>recording</toolTitle> <dim>default                         </dim> <success>░░░░░░░░░░░░░░░░</success><muted> · release to stop · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><error>recording</error><muted> · </muted><success>░░░░░░░░░░░░░░░░</success><muted> · </muted><dim>default</dim>                                       <muted>release to stop · esc cancel</muted>
 stt:tap
 <borderMuted>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<error>●</error> <toolTitle>recording</toolTitle> <dim>default                         </dim> <success>░░░░░░░░░░░░░░░░</success><muted> · alt+z stop · esc cancel</muted>
+<toolTitle>▶︎   Voice   </toolTitle><muted> │ </muted><error>recording</error><muted> · </muted><success>░░░░░░░░░░░░░░░░</success><muted> · </muted><dim>default</dim>                                            <muted>alt+z stop · esc cancel</muted>
 voice:settings
 <accent+bg:customMessageBg>╭─ </accent+bg:customMessageBg><accent+bg:customMessageBg+bold>⚙︎ Voice Settings</accent+bg:customMessageBg+bold><accent+bg:customMessageBg> ───────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
 <accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg>                                                                              </bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>

@@ -9,7 +9,7 @@
 
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { dotJoin, rule } from "@xynogen/pix-pretty/utils";
+import { dotJoin, rule, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/utils";
 import {
 	type ContextUsageLike,
 	describeActivity,
@@ -40,10 +40,10 @@ export interface BtwWidgetJob {
 }
 
 /** Minimal theme surface the widget uses (matches Pi's Theme). */
-export interface WidgetTheme {
+export type WidgetTheme = Parameters<typeof widgetActivityRow>[0] & {
 	fg(color: string, text: string): string;
 	bold(text: string): string;
-}
+};
 
 const MAX_WIDGET_LINES = 12;
 const ERROR_STATUSES = new Set<BtwJobStatus>(["error", "stopped"]);
@@ -101,36 +101,46 @@ function statsFor(job: BtwWidgetJob, endMs: number): string {
 	return dotJoin(parts);
 }
 
-function finishedLine(job: BtwWidgetJob, theme: WidgetTheme): string {
-	const end = job.completedAt ?? Date.now();
-	let mark: string;
-	let suffix = "";
-	if (job.status === "completed") {
-		mark = theme.fg("success", "\u2713");
-	} else if (job.status === "stopped") {
-		mark = theme.fg("muted", "\u25a0");
-		suffix = theme.fg("muted", " stopped");
-	} else {
-		mark = theme.fg("error", "\u2717");
-		suffix = theme.fg("error", job.error ? ` ${job.error.slice(0, 60)}` : " error");
-	}
-	const model = theme.fg("muted", `[${job.model}]`);
-	const stats = theme.fg("muted", statsFor(job, end));
-	return `${mark} ${theme.fg("dim", `#${job.id}`)} ${model} ${theme.fg("muted", "\u00b7")} ${stats}${suffix}`;
-}
-
-function runningLine(job: BtwWidgetJob, theme: WidgetTheme, frame: string, now: number): string {
-	const model = theme.fg("muted", `[${job.model}]`);
-	const stats = theme.fg("muted", statsFor(job, now));
-	const activeMap = new Map<string, string>(job.activeTools.map((name, i) => [String(i), name]));
-	const activity = theme.fg("dim", describeActivity(activeMap, job.text));
-	const dot = theme.fg("muted", "\u00b7");
-	return `${theme.fg("accent", frame)} ${theme.fg("toolTitle", theme.bold(`#${job.id}`))} ${model} ${dot} ${stats} ${dot} ${activity}`;
+function jobRow(
+	job: BtwWidgetJob,
+	theme: WidgetTheme,
+	frame: string,
+	now: number,
+	width: number,
+	first: boolean,
+): string {
+	const running = job.status === "running";
+	const role = running
+		? "accent"
+		: job.status === "completed"
+			? "success"
+			: job.status === "error"
+				? "error"
+				: "muted";
+	const glyph = running
+		? frame
+		: icon(
+				job.status === "completed"
+					? "status.ok"
+					: job.status === "error"
+						? "status.error"
+						: "audio.stop",
+			);
+	const title = widgetTitle(theme, first ? glyph : "", first ? "BTW" : "");
+	const identity = `${title}${theme.fg("toolTitle", theme.bold(`#${job.id}`))} ${theme.fg("muted", `[${job.model}]`)}${running ? "" : theme.fg(role, ` · ${job.status}`)}`;
+	const stats = theme.fg("muted", statsFor(job, running ? now : (job.completedAt ?? now)));
+	const activeMap = new Map(job.activeTools.map((name, i) => [String(i), name]));
+	const activity =
+		job.status === "error"
+			? (job.error ?? "")
+			: running || job.text.trim()
+				? describeActivity(activeMap, job.text, width)
+				: "";
+	return widgetActivityRow(theme, identity, activity, width, stats);
 }
 
 /**
- * Render the full widget: heading + one line per running job, then lingering
- * finished jobs, with a "+N more" overflow line when the budget is exceeded.
+ * Render one content row per job, with the title only on the first row.
  * Returns [] when nothing is worth showing.
  */
 export function renderBtwWidget(
@@ -141,28 +151,19 @@ export function renderBtwWidget(
 	width: number,
 	baseMs?: number,
 ): string[] {
+	if (width < 1) return [];
 	const running = jobs.filter((j) => j.status === "running");
 	const finished = jobs.filter((j) => j.status !== "running" && shouldShowFinished(j, now, baseMs));
 	if (running.length === 0 && finished.length === 0) return [];
 
 	const truncate = (line: string) => truncateToWidth(line, width);
-	const hasActive = running.length > 0;
-	const headingColor = hasActive ? "accent" : "dim";
-	const headingIcon = hasActive ? icon("status.pending") : icon("status.done"); // running · all done
 	const spinner = SPINNER[frame % SPINNER.length] ?? "";
 
-	const runningLines = running.map((j) => truncate(`  ${runningLine(j, theme, spinner, now)}`));
-	const finishedLines = finished.map((j) => truncate(`  ${finishedLine(j, theme)}`));
-
-	const lines: string[] = [
-		rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
-		truncate(
-			`${theme.fg(headingColor, headingIcon)} ${theme.fg(headingColor, "BTW")}${theme.fg("muted", ` (${running.length})`)}`,
-		),
-	];
-
-	const body = [...runningLines, ...finishedLines];
-	const maxBody = MAX_WIDGET_LINES - 2;
+	const body = [...running, ...finished].map((job, i) =>
+		jobRow(job, theme, spinner, now, width, i === 0),
+	);
+	const lines: string[] = [rule(width, (glyphs) => theme.fg("borderMuted", glyphs))];
+	const maxBody = MAX_WIDGET_LINES - 1;
 	if (body.length <= maxBody) {
 		lines.push(...body);
 	} else {

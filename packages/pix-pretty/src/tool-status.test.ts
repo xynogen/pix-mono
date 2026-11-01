@@ -39,7 +39,7 @@ describe("tool-status", () => {
 		expect(f.status[0]?.[0]).toBe("pix-binaries");
 		expect(f.status[0]?.[1]).toMatch(/rtk 0\.50\.0$/);
 		expect(f.widgets[0]).toMatch(
-			/<accent>info .*downloading rtk 0\.50\.0 \(~5 MB\) from https:\/\/github\.com\/rtk-ai/,
+			/<accent>info<muted> · <dim>downloading rtk 0\.50\.0 \(~5 MB\) from https:\/\/github\.com\/rtk-ai/,
 		);
 	});
 
@@ -53,10 +53,10 @@ describe("tool-status", () => {
 			["pix-binaries", undefined],
 		]);
 		expect(f.widgets[0]).toMatch(
-			/<accent>info .*installed hunk 0\.22\.0 → \/b\/hunk \(sha256 verified\)/,
+			/<accent>info<muted> · <dim>installed hunk 0\.22\.0 → \/b\/hunk \(sha256 verified\)/,
 		);
 		expect(f.widgets[1]).toMatch(
-			/<warning>warning .*hunk unavailable: HTTP 404 — install: npm i -g hunkdiff/,
+			/<warning>warning<muted> · <dim>hunk unavailable: HTTP 404 — install: npm i -g hunkdiff/,
 		);
 	});
 

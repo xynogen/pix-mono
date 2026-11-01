@@ -1,6 +1,14 @@
-import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import {
+	mixColors,
+	Text,
+	truncateToWidth,
+	visibleWidth,
+	wrapTextWithAnsi,
+} from "@earendil-works/pi-tui";
 import { hlBlock } from "./highlight.ts";
+import { fadeText } from "./text.ts";
 import type { ThemeLike } from "./types.ts";
+import type { formatCollapsedToolRow } from "./utils.ts";
 
 export function commandPreview(
 	header: string,
@@ -60,8 +68,15 @@ export function commandPreview(
 	};
 }
 
-export function collapsedCommandRow(header: string, command: string, theme: Pick<ThemeLike, "fg">) {
-	let text = `${header}${theme.fg("muted", " · ")}${theme.fg("dim", command.replace(/\s+/g, " ").trim())}`;
+export function collapsedCommandRow(
+	header: string,
+	command: string,
+	theme: Pick<ThemeLike, "fg"> &
+		Pick<Parameters<typeof formatCollapsedToolRow>[0], "colors" | "style">,
+) {
+	const plain = command.replace(/\s+/g, " ").trim();
+	const prefix = `${header}${theme.fg("muted", " · ")}`;
+	let text = `${prefix}${theme.fg("dim", plain)}`;
 	let replaced = false;
 	return {
 		setText(value: string) {
@@ -72,7 +87,20 @@ export function collapsedCommandRow(header: string, command: string, theme: Pick
 		invalidate() {},
 		render(width: number): string[] {
 			if (replaced) return text ? new Text(text, 0, 0).render(width) : [];
-			return [truncateToWidth(text, width, "…")];
+			const room = width - visibleWidth(prefix);
+			return [
+				room > 0
+					? `${prefix}${fadeText(plain, room, (text, fade) =>
+							fade === 0
+								? theme.fg("dim", text)
+								: theme.colors && theme.style
+									? theme.style(text, {
+											fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+										})
+									: theme.fg("muted", text),
+						)}`
+					: truncateToWidth(prefix, width, "…"),
+			];
 		},
 	};
 }

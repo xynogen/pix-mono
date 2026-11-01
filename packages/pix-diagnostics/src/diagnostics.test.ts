@@ -7,7 +7,7 @@ import { DiagnosticStore } from "./store.ts";
 const roles = roleTheme();
 const theme = {
 	...roles,
-	colors: { dim: rgbColor(180, 180, 180), customMessageBg: rgbColor(20, 20, 20) },
+	colors: { dim: rgbColor(180, 180, 180), muted: rgbColor(70, 70, 70) },
 	style: (text: string) => roles.fg("muted", text),
 };
 
@@ -17,7 +17,12 @@ describe("diagnostic widget", () => {
 		store.set({ filePath: "/repo/a.ts", checkedAt: 1, state: "clean", diagnostics: [] });
 		const lines = renderWidget(store, 80, theme as never);
 		expect(semanticRow(lines[0]!)).toBe(`<borderMuted>${"─".repeat(80)}</borderMuted>`);
-		expect(lines[1]).toMatch(/LSP.*1 checked.*1 clean/);
+		expect(stripTerminalSequences(lines[1]!)).toMatch(
+			/^.+ LSP {6}│ \S+ 1 clean · 1 checked · a\.ts$/,
+		);
+		expect(semanticRow(lines[1]!)).toMatch(
+			/^<toolTitle>.+ LSP {5}<\/toolTitle><muted> │ <\/muted><success>.+ 1 clean<\/success>/,
+		);
 	});
 
 	test("shows the LSP role, severity counts, and recent files", () => {
@@ -36,7 +41,7 @@ describe("diagnostic widget", () => {
 		expect(text).toMatch(/LSP.*1 error.*1 warning.*a\.ts/);
 	});
 
-	test("shows recently checked files on the right and caps the list at three", () => {
+	test("keeps recent filenames beside the counts and caps the list at three", () => {
 		const store = new DiagnosticStore();
 		for (const [index, name] of ["clean.ts", "a.ts", "b.ts", "c.ts", "d.ts"].entries()) {
 			store.set({
@@ -70,7 +75,7 @@ describe("diagnostic widget", () => {
 		store.set({ filePath: "/repo/c.ts", checkedAt: 3, state: "unavailable", diagnostics: [] });
 		store.set({ filePath: "/repo/touched.ts", checkedAt: 4, state: "touched", diagnostics: [] });
 		const text = renderWidget(store, 320, theme as never).join("\n");
-		expect(text).toMatch(/LSP.*3 checked.*1 clean.*1 unconfirmed.*1 unavailable.*c\.ts, b\.ts/);
+		expect(text).toMatch(/LSP.*1 unconfirmed.*1 unavailable.*1 clean.*3 checked.*c\.ts, b\.ts/);
 	});
 
 	test("shows uncertain files beside files with findings", () => {
@@ -90,7 +95,7 @@ describe("diagnostic widget", () => {
 			diagnostics: [],
 		});
 		const text = renderWidget(store, 320, theme as never).join("\n");
-		expect(text).toMatch(/LSP.*2 checked.*1 error.*1 unconfirmed.*unknown\.ts, error\.ts/);
+		expect(text).toMatch(/LSP.*1 error.*1 unconfirmed.*2 checked.*unknown\.ts, error\.ts/);
 	});
 
 	test("shows an unconfirmed check without claiming the file is clean at normal width", () => {
@@ -98,17 +103,19 @@ describe("diagnostic widget", () => {
 		store.set({ filePath: "/repo/a.ts", checkedAt: 1, state: "unconfirmed", diagnostics: [] });
 		const plain = { fg: (_role: string, text: string) => text };
 		const text = renderWidget(store, 80, plain as never).join("\n");
-		expect(text).toMatch(/LSP.*1 checked.*1 unconfirmed.*a\.ts/);
+		expect(text).toMatch(/LSP.*1 unconfirmed.*1 checked.*a\.ts/);
 	});
 
-	test("right-aligns clean filenames while keeping counts on the left", () => {
+	test("groups filenames immediately after counts at every fitting width", () => {
 		const store = new DiagnosticStore();
 		store.set({ filePath: "/repo/first.ts", checkedAt: 1, state: "clean", diagnostics: [] });
 		store.set({ filePath: "/repo/second.ts", checkedAt: 2, state: "clean", diagnostics: [] });
 		const row = renderWidget(store, 100, theme)[1]!;
 		const text = stripTerminalSequences(row);
-		expect(text).toMatch(/^ .*LSP.*2 checked.*2 clean {2,}second\.ts, first\.ts$/);
-		expect(visibleWidth(row)).toBe(100);
+		expect(text).toMatch(/^.+ LSP {6}│ \S+ 2 clean · 2 checked · second\.ts, first\.ts$/);
+		for (const width of [80, 100, 200]) {
+			expect(stripTerminalSequences(renderWidget(store, width, theme)[1]!)).toBe(text);
+		}
 		for (const width of [1, 16, 24, 40, 60, 80]) {
 			expect(visibleWidth(renderWidget(store, width, theme)[1]!)).toBeLessThanOrEqual(width);
 		}
@@ -123,7 +130,7 @@ describe("diagnostic widget", () => {
 			diagnostics: [],
 		});
 		const row = renderWidget(store, 60, theme)[1]!;
-		expect(stripTerminalSequences(row)).toMatch(/^ .*LSP.*1 checked.*1 clean {2,}界/);
+		expect(stripTerminalSequences(row)).toMatch(/^.+ LSP {6}│ \S+ 1 clean · 1 checked · 界/);
 		expect(semanticRow(row)).toMatch(/<dim>.*<\/dim><muted>.*<\/muted>/);
 		expect(visibleWidth(row)).toBeLessThanOrEqual(60);
 		expect(renderWidget(store, 0, theme)).toEqual([]);

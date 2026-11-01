@@ -30,6 +30,7 @@ import {
 	type TUI,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
@@ -38,12 +39,13 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { padIcon } from "@xynogen/pix-pretty/utils";
 import { config, pixRuntime, updateConfig } from "@xynogen/pix-runtime/config";
 import { toolboxSection } from "@xynogen/pix-runtime/sections";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-/** Always-on tools: declared in every prompt, so the toolbox neither lists nor toggles them. Keep in sync with pix-core `ALWAYS_ON_TOOLS`. */
+/** Always-on tools stay visible but read-only. Keep in sync with pix-core `ALWAYS_ON_TOOLS`. */
 export const ALWAYS_ON_TOOLS: ReadonlySet<string> = new Set([
 	"read",
 	"bash",
@@ -74,10 +76,14 @@ export interface ToggleOps {
 }
 
 /** Only tools registered with `deferred` exposure can be found by tool_search. */
-export const canDefer = (row: ToolRow): boolean => row.exposure === "deferred";
+export const canDefer = (row: ToolRow): boolean =>
+	!ALWAYS_ON_TOOLS.has(row.name) && row.exposure === "deferred";
+const toolKind = (row: ToolRow): "always-on" | "direct" | "deferrable" =>
+	ALWAYS_ON_TOOLS.has(row.name) ? "always-on" : canDefer(row) ? "deferrable" : "direct";
 
 /** Next state for the space key. Skips `deferred` when the tool cannot be deferred. */
 export function nextState(row: ToolRow, current: ToolState): ToolState {
+	if (ALWAYS_ON_TOOLS.has(row.name)) return "enabled";
 	const states = TOOL_STATES.filter((s) => s !== "deferred" || canDefer(row));
 	return states[(states.indexOf(current) + 1) % states.length] ?? "enabled";
 }
@@ -89,23 +95,26 @@ function isMcpTool(info: ToolInfo): boolean {
 }
 
 /**
- * Normal tools first, MCP tools last. Inside a group: enabled, deferred, disabled,
- * then by name. Without `stateOf`, the registered exposure stands in for the state.
+ * Normal tools first, MCP tools last. Group by registered capability, then live
+ * state and name. Loading a deferrable tool does not make its registration direct.
  */
 export function buildRows(tools: ToolInfo[], stateOf?: (name: string) => ToolState): ToolRow[] {
-	const rows = tools
-		.filter((t) => !ALWAYS_ON_TOOLS.has(t.name))
-		.map((t) => ({
-			name: t.name,
-			description: firstSentence(t.description ?? ""),
-			mcp: isMcpTool(t),
-			source: t.sourceInfo?.source,
-			exposure: t.exposure ?? "direct",
-		}));
+	const rows = tools.map((t) => ({
+		name: t.name,
+		description: firstSentence(t.description ?? ""),
+		mcp: isMcpTool(t),
+		source: t.sourceInfo?.source,
+		exposure: t.exposure ?? "direct",
+	}));
 	const rank = (r: ToolRow): number =>
 		TOOL_STATES.indexOf(stateOf?.(r.name) ?? (r.exposure === "deferred" ? "deferred" : "enabled"));
 	return rows.sort(
-		(a, b) => Number(a.mcp) - Number(b.mcp) || rank(a) - rank(b) || a.name.localeCompare(b.name),
+		(a, b) =>
+			Number(a.mcp) - Number(b.mcp) ||
+			["direct", "deferrable", "always-on"].indexOf(toolKind(a)) -
+				["direct", "deferrable", "always-on"].indexOf(toolKind(b)) ||
+			rank(a) - rank(b) ||
+			a.name.localeCompare(b.name),
 	);
 }
 
@@ -153,13 +162,13 @@ export function renderList(
 	const lines: string[] = [];
 	let group = "";
 	for (const row of filtered) {
-		const nextGroup = row.mcp ? "MCP" : "Tools";
+		const nextGroup = `${row.mcp ? "MCP" : "Tools"} · ${toolKind(row)}`;
 		if (group !== nextGroup) {
 			group = nextGroup;
 			lines.push(`${lines.length ? "\n" : ""}${group}:`);
 		}
-		const kind = row.mcp ? "MCP" : "tool";
-		lines.push(`${STATUS[stateOf(row.name)]}  ${row.name}  [${kind}]  ${row.description}`);
+		const status = ALWAYS_ON_TOOLS.has(row.name) ? "✓ enabled (fixed)" : STATUS[stateOf(row.name)];
+		lines.push(`${status}  ${row.name}  ${row.description}`);
 	}
 	return lines.join("\n");
 }
@@ -178,7 +187,7 @@ export function toggleTool(
 ): string {
 	const row = rows.find((r) => r.name === name);
 	if (!row) return `Unknown tool "${name}".`;
-	if (ALWAYS_ON_TOOLS.has(name) && state !== "enabled") return `${name} is always on.`;
+	if (ALWAYS_ON_TOOLS.has(name)) return `${name} is always on.`;
 	if (state === "deferred" && !canDefer(row))
 		return `${name} has direct exposure. tool_search cannot find it, so it cannot be deferred.`;
 	if (!ops.setState(name, state)) return `${name} is already ${state}.`;
@@ -471,16 +480,20 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 				};
 
 				const labelFor = (r: ToolRow): string => {
-					const s = ops.stateOf(r.name);
+					const s = ALWAYS_ON_TOOLS.has(r.name) ? "enabled" : ops.stateOf(r.name);
 					const look = LOOK[s];
 					const name = s === "enabled" ? theme.fg("success", r.name) : theme.fg("muted", r.name);
-					return `${theme.fg(look.color, look.mark)} ${name}`;
+					const kindIcon = icon(
+						ALWAYS_ON_TOOLS.has(r.name) ? "lock" : canDefer(r) ? "status.pending" : "audio.play",
+					);
+					return `${theme.fg(canDefer(r) ? "accent" : "dim", padIcon(kindIcon, 3))} ${theme.fg(look.color, look.mark)} ${name}`;
 				};
 
 				const descFor = (r: ToolRow): string => {
-					const s = ops.stateOf(r.name);
-					const tag = theme.fg(LOOK[s].color, s.padEnd(8));
-					return `${tag} ${mute("·")} ${r.description || "(no description)"}`;
+					const s = ALWAYS_ON_TOOLS.has(r.name) ? "enabled" : ops.stateOf(r.name);
+					const kind = toolKind(r);
+					const tag = theme.fg(LOOK[s].color, (kind === "always-on" ? "fixed on" : s).padEnd(8));
+					return `${theme.fg(kind === "deferrable" ? "accent" : "dim", kind.padEnd(10))} ${tag} ${mute("·")} ${theme.fg("dim", r.description || "(no description)")}`;
 				};
 
 				const rows = getRows();
@@ -531,7 +544,7 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 						const n = rows.filter((r) => r.mcp === (name === "MCP")).length;
 						const label =
 							name === "Tools"
-								? `  Tools (${n} adjustable + ${alwaysOnCount} always-on)  `
+								? `  Tools (${n - alwaysOnCount} adjustable + ${alwaysOnCount} always-on)  `
 								: `  MCP (${n})  `;
 						return name === tab ? theme.fg(accent, theme.bold(label)) : mute(label);
 					}).join(mute("│"));
@@ -595,22 +608,36 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 						// maxVisible = all items, so list line i is filteredItems[i].
 						const body = list.render(inner);
 						const selLine = internal.selectedIndex;
+						const selected = list.getSelectedItem();
+						const row = selected && byValue.get(selected.value);
+						const fixed = row && ALWAYS_ON_TOOLS.has(row.name);
 						footer.push(
-							guide("tab", "switch tab") +
-								guideSep +
-								guide("↑↓", "navigate") +
-								guideSep +
-								guide("←→/PgUp/PgDn", "inspect") +
-								guideSep +
-								guide("^E", "enable") +
-								guideSep +
-								guide("^F", "defer") +
-								guideSep +
-								guide("^D", "disable") +
-								guideSep +
-								guide("space", "cycle") +
-								guideSep +
+							row
+								? theme.fg(
+										"dim",
+										fixed
+											? "Always-on · fixed enabled; cannot disable or defer"
+											: canDefer(row)
+												? "Deferrable · enabled / deferred / disabled; tool_search can load it"
+												: "Direct · enabled / disabled only; not discoverable by tool_search",
+									)
+								: "",
+						);
+						footer.push(
+							[
+								guide("tab", "switch tab"),
+								guide("↑↓", "navigate"),
+								guide("←→/PgUp/PgDn", "inspect"),
+								...(fixed || !row
+									? []
+									: [
+											guide("^E", "enable"),
+											...(canDefer(row) ? [guide("^F", "defer")] : []),
+											guide("^D", "disable"),
+											guide("space", "cycle"),
+										]),
 								guide("esc", "close"),
+							].join(guideSep),
 						);
 						const result = frameModal({
 							width: mw,

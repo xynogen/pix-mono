@@ -1,12 +1,27 @@
-import { Text, truncateToWidth } from "@earendil-works/pi-tui";
-import { rule } from "./utils.ts";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import { stripTerminalSequences } from "@earendil-works/pi-tui";
+import { icon } from "./icon-catalog.ts";
+import { rule, widgetActivityRow, widgetTitle } from "./utils.ts";
 
 export const TRANSIENT_ERROR_TTL_MS = 30_000;
 const WIDGET_KEY = "pix-transient-error";
 const timers = new WeakMap<object, ReturnType<typeof setTimeout>>();
 
 type TransientMessageTheme = {
-	fg(color: "error" | "warning" | "accent" | "muted" | "borderMuted", text: string): string;
+	fg(
+		color:
+			| "error"
+			| "warning"
+			| "accent"
+			| "success"
+			| "toolTitle"
+			| "dim"
+			| "muted"
+			| "borderMuted",
+		text: string,
+	): string;
+	colors?: Pick<Theme["colors"], "dim" | "muted">;
+	style?: Theme["style"];
 };
 
 export type TransientMessageLevel = "error" | "warning" | "info";
@@ -36,18 +51,33 @@ export function showTransientMessage(
 	ui.setWidget(
 		WIDGET_KEY,
 		(_tui, theme) => {
-			const text = new Text("", 0, 0);
+			const detail = stripTerminalSequences(message)
+				.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")
+				.replace(/\s+/g, " ")
+				.trim();
+			const fadeTheme = {
+				fg: theme.fg.bind(theme),
+				style: theme.style?.bind(theme),
+				colors: theme.colors && { dim: theme.colors.dim, customMessageBg: theme.colors.muted },
+			};
 			return {
 				render(width: number) {
+					if (width < 1) return [];
 					const color = level === "info" ? "accent" : level;
-					const prefix = theme.fg(color, `${level} `);
-					text.setText(prefix + theme.fg("muted", message.replace(/\s+/g, " ").trim()));
+					const glyph = icon(
+						level === "error"
+							? "status.error"
+							: level === "warning"
+								? "status.warn"
+								: "status.active",
+					);
+					const prefix = widgetTitle(theme, glyph, "Runtime") + theme.fg(color, level);
 					return [
 						rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
-						truncateToWidth(text.render(width)[0] ?? "", width),
+						widgetActivityRow(fadeTheme, prefix, detail, width),
 					];
 				},
-				invalidate: () => text.invalidate(),
+				invalidate() {},
 			};
 		},
 		{ placement: "aboveEditor" },

@@ -3,7 +3,7 @@
  *
  * `renderWidget` reads a `DiagnosticStore` and renders a top rule and one compact line:
  *
- *   <LSP icon> LSP  <N error>  <N warning>  <recent files>
+ *   LSP │ <N error> · <N warning> · <N clean> · <N checked> · <recent files>
  *
  * The render path does no file I/O — it reads only in-memory store state. The
  * default export wires one store, one lazy LSP manager, the two tools, and the
@@ -22,7 +22,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { fadeText } from "@xynogen/pix-pretty/text";
-import { rule } from "@xynogen/pix-pretty/utils";
+import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { config } from "@xynogen/pix-runtime/config";
 import { editSection } from "@xynogen/pix-runtime/sections";
 import { DispositionStore } from "./dispositions.ts";
@@ -35,7 +35,7 @@ import { registerNavigationTool } from "./tools/navigation-tool.ts";
 import type { PixDiagnostic } from "./types.ts";
 
 type ThemeLike = Pick<Theme, "fg" | "style"> & {
-	colors: Pick<Theme["colors"], "dim" | "customMessageBg">;
+	colors: Pick<Theme["colors"], "dim" | "muted">;
 };
 
 const MAX_RECENT = 3;
@@ -65,13 +65,13 @@ export function renderWidget(store: DiagnosticStore, width: number, theme: Theme
 	const unavailable = checkedFiles.filter((snapshot) => snapshot.state === "unavailable").length;
 
 	const { errors, warnings } = severityCounts(store);
-	const parts: string[] = [theme.fg("toolTitle", `${icon("lsp")} LSP`)];
-	parts.push(theme.fg("muted", `${checkedFiles.length} checked`));
+	const parts: string[] = [];
 	if (errors > 0) parts.push(theme.fg("error", `${icon("status.error")} ${errors} error`));
 	if (warnings > 0) parts.push(theme.fg("warning", `${icon("status.warn")} ${warnings} warning`));
-	if (clean > 0) parts.push(theme.fg("success", `${icon("status.ok")} ${clean} clean`));
 	if (unconfirmed > 0) parts.push(theme.fg("warning", `${unconfirmed} unconfirmed`));
 	if (unavailable > 0) parts.push(theme.fg("warning", `${unavailable} unavailable`));
+	if (clean > 0) parts.push(theme.fg("success", `${icon("status.ok")} ${clean} clean`));
+	parts.push(theme.fg("muted", `${checkedFiles.length} checked`));
 
 	const files = checkedFiles
 		.slice(0, MAX_RECENT)
@@ -79,18 +79,21 @@ export function renderWidget(store: DiagnosticStore, width: number, theme: Theme
 			stripTerminalSequences(basename(snap.filePath)).replace(/[\x00-\x1f\x7f-\x9f]/g, " "),
 		);
 	const more = checkedFiles.length > files.length ? ` +${checkedFiles.length - files.length}` : "";
-	const summary = truncateToWidth(` ${parts.join("  ")}`, w, "…");
-	const available = w - visibleWidth(summary) - 2;
+	const summary = truncateToWidth(
+		widgetTitle(theme, icon("lsp"), "LSP") + dotJoin(parts, (text) => theme.fg("muted", text)),
+		w,
+		"…",
+	);
+	const separator = theme.fg("muted", " · ");
+	const available = w - visibleWidth(summary) - visibleWidth(separator);
 	const fileList = fadeText(files.join(", ") + more, available, (text, fade) =>
 		fade === 0
 			? theme.fg("dim", text)
 			: theme.style(text, {
-					fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+					fg: mixColors(theme.colors.dim, theme.colors.muted, fade),
 				}),
 	);
-	const row = fileList
-		? summary + " ".repeat(w - visibleWidth(summary) - visibleWidth(fileList)) + fileList
-		: summary;
+	const row = fileList ? summary + separator + fileList : summary;
 
 	return [rule(w, (glyphs) => theme.fg("borderMuted", glyphs)), row];
 }

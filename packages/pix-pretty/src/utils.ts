@@ -5,6 +5,7 @@ import {
 	getCapabilities,
 	hyperlink,
 	MouseRegion,
+	mixColors,
 	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
@@ -22,6 +23,7 @@ import {
 } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { icon } from "./icon-catalog.ts";
+import { fadeText } from "./text.ts";
 import type {
 	FgTheme,
 	TextComponentCtor,
@@ -292,6 +294,15 @@ export function padIcon(glyph: string, width = 2): string {
 	return pad > 0 ? glyph + " ".repeat(pad) : glyph;
 }
 
+/** Fixed icon/name columns align the divider across compact activity widgets. */
+export function widgetTitle(
+	theme: { fg: (role: "toolTitle" | "muted", text: string) => string },
+	glyph: string,
+	name: string,
+): string {
+	return theme.fg("toolTitle", `${padIcon(glyph, 3)} ${name.padEnd(8)}`) + theme.fg("muted", " │ ");
+}
+
 /**
  * Join non-empty parts with a middot separator: `dotJoin(["a", "", "b"])` → `"a · b"`.
  * Empty/nullish parts are dropped so callers can pass conditional pieces inline.
@@ -311,7 +322,44 @@ type CollapsedToolTheme = {
 		text: string,
 	) => string;
 	bold: (text: string) => string;
+	colors?: {
+		dim: Parameters<typeof mixColors>[0];
+		customMessageBg: Parameters<typeof mixColors>[1];
+	};
+	style?: (text: string, style: { fg: ReturnType<typeof mixColors> }) => string;
 };
+
+/** Keep identity/stats fixed; only the trailing activity consumes spare columns. */
+export function widgetActivityRow(
+	theme: Pick<CollapsedToolTheme, "fg" | "colors" | "style">,
+	prefix: string,
+	activity: string,
+	width: number,
+	stats = "",
+): string {
+	if (stats) {
+		const room = width - visibleWidth(stats) - 2;
+		if (room < visibleWidth(prefix)) return truncateToWidth(`${prefix}  ${stats}`, width, "…");
+		const body = widgetActivityRow(theme, prefix, activity, room);
+		return body + " ".repeat(width - visibleWidth(body) - visibleWidth(stats)) + stats;
+	}
+	const separator = theme.fg("muted", " · ");
+	const room = width - visibleWidth(prefix) - 3;
+	if (!activity || room < 1) return truncateToWidth(prefix, width, "…");
+	return (
+		prefix +
+		separator +
+		fadeText(activity, room, (text, fade) =>
+			fade === 0
+				? theme.fg("dim", text)
+				: theme.colors && theme.style
+					? theme.style(text, {
+							fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+						})
+					: theme.fg("muted", text),
+		)
+	);
+}
 
 /** Use the host lifecycle fields so every call has the same status marker. */
 export function formatToolCallTitle(
@@ -347,16 +395,28 @@ export function formatCollapsedToolRow(
 	target: string,
 	meta = "",
 	status: CollapsedToolStatus = "success",
+	width?: number,
 ): string {
 	const marker = padIcon(
 		icon(status === "success" ? "status.ok" : status === "error" ? "status.error" : "status.warn"),
 	);
-	const parts = [
-		`${theme.fg(status, marker)} ${theme.fg("toolTitle", theme.bold(tool))}`,
-		target ? theme.fg("dim", target) : "",
-		meta ? `${theme.fg("muted", "·")} ${theme.fg("muted", meta)}` : "",
-	].filter(Boolean);
-	return parts.join(" ");
+	const title = `${theme.fg(status, marker)} ${theme.fg("toolTitle", theme.bold(tool))}`;
+	const metadata = meta ? ` ${theme.fg("muted", "·")} ${theme.fg("muted", meta)}` : "";
+	if (width === undefined)
+		return `${title}${target ? ` ${theme.fg("dim", target)}` : ""}${metadata}`;
+	const room = width - visibleWidth(title) - visibleWidth(metadata) - 1;
+	const fitted =
+		target && room > 0
+			? fadeText(target, room, (text, fade) => {
+					if (fade === 0) return theme.fg("dim", text);
+					return theme.colors && theme.style
+						? theme.style(text, {
+								fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
+							})
+						: theme.fg("muted", text);
+				})
+			: "";
+	return truncateToWidth(`${title}${fitted ? ` ${fitted}` : ""}${metadata}`, width, "…");
 }
 
 /** Render shared one-row content for tools using the self-rendered shell. */
@@ -369,7 +429,7 @@ export function renderCollapsedToolRow(
 	width?: number,
 ): string {
 	return fillToolBackground(
-		formatCollapsedToolRow(theme, tool, target, meta, status),
+		formatCollapsedToolRow(theme, tool, target, meta, status, width ?? termW()),
 		BG_BASE,
 		width,
 	);

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { rgbColor } from "@earendil-works/pi-tui";
 import { makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
@@ -12,7 +13,12 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 	let widget: unknown;
 	let snapshots: DiagnosticSnapshot[] = [];
 	const output: string[] = [];
-	const theme = roleTheme();
+	const roles = roleTheme();
+	const theme = {
+		...roles,
+		colors: { dim: rgbColor(180, 180, 180), muted: rgbColor(70, 70, 70) },
+		style: (text: string) => roles.fg("muted", text),
+	};
 	const ctx = {
 		ui: {
 			setStatus() {},

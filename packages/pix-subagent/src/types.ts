@@ -12,7 +12,8 @@ import type { LifetimeUsage } from "./usage.ts";
 export type { LifetimeUsage, ThinkingLevel };
 
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-export type Theme = {
+import type { widgetActivityRow } from "@xynogen/pix-pretty/utils";
+export type Theme = Parameters<typeof widgetActivityRow>[0] & {
 	fg(color: Parameters<ThemeLike["fg"]>[0], text: string): string;
 	bold(text: string): string;
 };

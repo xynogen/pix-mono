@@ -1,6 +1,12 @@
 import { expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs/promises";
-import { isKittyProtocolActive, setKittyProtocolActive } from "@earendil-works/pi-tui";
+import {
+	isKittyProtocolActive,
+	rgbColor,
+	setKittyProtocolActive,
+	stripTerminalSequences,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import * as audio from "@xynogen/pix-runtime/audio";
 import { voiceSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
@@ -105,7 +111,11 @@ async function captureStt(onStage = (_stage: string) => {}) {
 				) => {
 					component = factory?.(
 						{ requestRender: () => redraw?.(), terminal: { columns: 120, rows: 40 } },
-						roleTheme(),
+						{
+							...roleTheme(),
+							colors: { dim: rgbColor(180, 180, 180), muted: rgbColor(70, 70, 70) },
+							style: (text: string) => roleTheme().fg("muted", text),
+						},
 					);
 				},
 			},
@@ -121,7 +131,15 @@ async function captureStt(onStage = (_stage: string) => {}) {
 		const output: string[] = [];
 		const capture = (label: string) => {
 			if (!component) throw new Error("Missing STT widget");
-			// The private widget does not wrap. Its 32-cell device and key hints exceed 80 columns.
+			for (const width of [0, 1, 24, 40, 60, 80, 120]) {
+				for (const line of component.render(width))
+					expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+				if (width >= 40)
+					expect(stripTerminalSequences(component.render(width)[1]!)).toEndWith("esc cancel");
+			}
+			expect(stripTerminalSequences(component.render(120)[1]!)).toMatch(
+				/Voice +│ (recording|transcribing).*esc cancel$/,
+			);
 			output.push(label, ...captureRows(component, { width: 120, surface: "component" }));
 		};
 		// Observe the discovery redraw. The widget mounts before the scan resolves.

@@ -1176,6 +1176,23 @@ describe("todo card layout", () => {
 			"[success]✓ [/] [toolTitle]<b>todo</b>[/] [dim]#2 todo renderer[/] [muted]·[/] [muted]1/2 done[/]",
 		);
 	});
+	test("collapsed long task stays on one line and reflows on resize", async () => {
+		const host = makeHost();
+		registerTodo(host.pi);
+		await host.emit("session_start", {}, { sessionManager: host.sessionManager });
+		await run(host.execute, { action: "set", items: "Long Unicode 界e\u0301🙂 task ".repeat(60) });
+		const result = await run(host.execute, { action: "update", id: 1, status: "in_progress" });
+		const theme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
+		const component = host.render(result, { expanded: false }, theme, {
+			state: { collapsed: true },
+			invalidate() {},
+		});
+		for (const width of [35, 60, 90]) {
+			const rows = component.render(width);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]?.trimEnd()).toMatch(/^✓\s+todo #1 .* · 0\/1 done$/);
+		}
+	});
 });
 
 describe("renderResult snapshot isolation", () => {

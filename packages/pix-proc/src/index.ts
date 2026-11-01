@@ -13,7 +13,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth } from "@earendil-works/pi-tui";
+import { Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
@@ -24,6 +24,7 @@ import {
 	getErrorMessage,
 	hideCollapsedToolCall,
 	rule,
+	widgetTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
@@ -114,20 +115,22 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			WIDGET_KEY,
 			(_tui, theme) => ({
 				render: (width: number) => {
-					const heading = `${theme.fg("accent", icon("process"))} ${theme.fg("accent", "Processes")}`;
-					const body = visible.map((m) =>
-						processRow(
-							m,
-							m.status === "running" ? now : (lastCleared.get(m.handle) ?? now),
+					if (width < 1) return [];
+					const heading = widgetTitle(theme, icon("process"), "Proc");
+					const headingWidth = visibleWidth(heading);
+					const body = visible.map((m, i) =>
+						truncateToWidth(
+							(i === 0 ? heading : widgetTitle(theme, "", "")) +
+								processRow(
+									m,
+									m.status === "running" ? now : (lastCleared.get(m.handle) ?? now),
+									Math.max(0, width - headingWidth),
+									theme,
+								),
 							width,
-							theme,
 						),
 					);
-					return [
-						rule(width, (glyphs) => theme.fg("borderMuted", glyphs)),
-						truncateToWidth(heading, width),
-						...body,
-					];
+					return [rule(width, (glyphs) => theme.fg("borderMuted", glyphs)), ...body];
 				},
 				invalidate() {},
 			}),
