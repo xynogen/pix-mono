@@ -95,9 +95,11 @@ function isMcpTool(info: ToolInfo): boolean {
 	return /mcp/i.test(info.sourceInfo?.source ?? "");
 }
 
+const KIND_ORDER = ["always-on", "direct", "deferrable"] as const;
+
 /**
- * Normal tools first, MCP tools last. Group by registered capability, then live
- * state and name. Loading a deferrable tool does not make its registration direct.
+ * Normal tools first, MCP tools last. Group always-on, direct, then deferrable, then sort
+ * by live state and name. Loading a deferrable tool does not make its registration direct.
  */
 export function buildRows(tools: ToolInfo[], stateOf?: (name: string) => ToolState): ToolRow[] {
 	const rows = tools.map((t) => ({
@@ -112,8 +114,7 @@ export function buildRows(tools: ToolInfo[], stateOf?: (name: string) => ToolSta
 	return rows.sort(
 		(a, b) =>
 			Number(a.mcp) - Number(b.mcp) ||
-			["direct", "deferrable", "always-on"].indexOf(toolKind(a)) -
-				["direct", "deferrable", "always-on"].indexOf(toolKind(b)) ||
+			KIND_ORDER.indexOf(toolKind(a)) - KIND_ORDER.indexOf(toolKind(b)) ||
 			rank(a) - rank(b) ||
 			a.name.localeCompare(b.name),
 	);

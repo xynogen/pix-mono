@@ -45,13 +45,13 @@ describe("buildRows", () => {
 			toolInfo("grep"),
 		]);
 		expect(rows.map((r) => r.name)).toEqual([
-			"grep",
 			"bash",
 			"codemode",
 			"edit",
 			"read",
 			"tool_search",
 			"write",
+			"grep",
 		]);
 		expect(rows.every((r) => !r.mcp)).toBe(true);
 	});
@@ -359,7 +359,7 @@ describe("/toolbox command", () => {
 		const { ctx, notes } = makeCtx();
 		await host.command("toolbox")?.handler("list", ctx);
 		expect((notes[0] as Note).text).toMatch(
-			/^Tools · direct:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n\nTools · deferrable:\n~ deferred {2}hunk .*\n\nTools · always-on:\n✓ enabled \(fixed\)/,
+			/^Tools · always-on:\n✓ enabled \(fixed\).*\n.*\n.*\n\nTools · direct:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n\nTools · deferrable:\n~ deferred {2}hunk /,
 		);
 	});
 
@@ -537,6 +537,16 @@ describe("/toolbox command", () => {
 		const screen = () => v.render(100).join("\n");
 		const selected = () => v.render(100).find((l) => l.includes("→")) ?? "";
 
+		// Rows: bash, read, write (always-on), fetch, ls (direct), hunk (deferrable).
+		expect(selected()).toContain(icon("lock"));
+		expect(selected()).toMatch(/always-on +fixed on/);
+		expect(screen()).toContain("Always-on · fixed enabled");
+		const fixedActive = [...host.getActive()];
+		for (const key of [" ", "\x04", "\x06", "\x05"]) v.handleInput(key);
+		expect(host.getActive()).toEqual(fixedActive);
+		expect(screen()).not.toContain("^D disable");
+
+		for (let i = 0; i < 3; i++) v.handleInput("\x1b[B");
 		expect(selected()).toContain(icon("audio.play"));
 		expect(screen()).toContain("Direct · enabled / disabled only");
 		expect(screen()).not.toContain("^F defer");
@@ -547,9 +557,8 @@ describe("/toolbox command", () => {
 		expect(screen()).toMatch(/ctx_docs/);
 		v.handleInput("\t");
 
-		// Rows: fetch, ls, hunk (deferred last). Move to hunk.
-		v.handleInput("\x1b[B");
-		v.handleInput("\x1b[B");
+		// Tab switches reset the selection to the first row. Move to hunk.
+		for (let i = 0; i < 5; i++) v.handleInput("\x1b[B");
 		expect(selected()).toContain(`→ ${icon("status.pending")}   ~ hunk`);
 		v.handleInput("\x05"); // ctrl+e
 		expect(host.getActive()).toContain("hunk");
@@ -570,14 +579,6 @@ describe("/toolbox command", () => {
 		} finally {
 			setIconMode(savedMode);
 		}
-		v.handleInput("\x1b[B");
-		expect(selected()).toContain(icon("lock"));
-		expect(selected()).toMatch(/always-on +fixed on/);
-		expect(screen()).toContain("Always-on · fixed enabled");
-		const active = [...host.getActive()];
-		for (const key of [" ", "\x04", "\x06", "\x05"]) v.handleInput(key);
-		expect(host.getActive()).toEqual(active);
-		expect(screen()).not.toContain("^D disable");
 
 		// Plain letters type into the search, not a state change.
 		v.handleInput("d");
