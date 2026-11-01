@@ -1,10 +1,18 @@
-# pix-mono
-
 <p align="center">
-  <img src="assets/pix-logo.svg" alt="Pix logo" width="304" height="160">
+  <img src="assets/pix-logo.svg" alt="Pix" width="304" height="160">
 </p>
 
-Monorepo of Pix, a distro of [Pi Coding Agent](https://github.com/badlogic/pi-mono).
+<h1 align="center">Pix</h1>
+
+<p align="center">
+  A transparent, token-efficient distro of <a href="https://github.com/badlogic/pi-mono">Pi Coding Agent</a>.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@xynogen/pix-core"><img src="https://img.shields.io/npm/v/@xynogen/pix-core?label=pix-core" alt="npm"></a>
+  <a href="https://github.com/xynogen/pix-mono/actions/workflows/ci.yml"><img src="https://github.com/xynogen/pix-mono/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+</p>
 
 ## What to install
 
@@ -38,8 +46,8 @@ Pix stores its settings in `~/.pi/agent/pix.json`. `PI_CODING_AGENT_DIR` can cha
 | `voice` | Speech providers, models, microphone, language, shortcut, cleanup, and playback |
 | `toolbox` | Disabled tools and deferred tools selected for loading |
 
-Use `/pix` for shared settings and the **Footer** tab. Use `/web`, `/voice`, and `/toolbox` for their settings.
-All these commands save to `pix.json`. Defaults apply when a field is absent.
+Use `/pix` for all settings. It shows one tab per loaded package: **Tools**, **MCP**, **Optimizer**, **Web**, **Voice**, **Footer**, and **Binaries**.
+Every tab saves to `pix.json`. Defaults apply when a field is absent.
 
 On startup, Pix imports `voice.json`, `fetch.json`, `search.json`, `toolbox.json`, and `optimizer.json`.
 Existing values in `pix.json` win. After a successful save, Pix renames old files to `*.json.migrated-v1`.
@@ -114,7 +122,7 @@ How the agent acts — output optimization, permission gate, and sub-agents.
 
 | Package | Description |
 | --- | --- |
-| [`@xynogen/pix-optimizer`](https://www.npmjs.com/package/@xynogen/pix-optimizer) | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/optimizer` overlay) |
+| [`@xynogen/pix-optimizer`](https://www.npmjs.com/package/@xynogen/pix-optimizer) | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/pix` → **Optimizer**) |
 | [`@xynogen/pix-gate`](https://www.npmjs.com/package/@xynogen/pix-gate) | Permission gate for dangerous bash + path commands — 4 severity tiers (block/critical/dangerous/risky) + sudo redirect, configurable |
 | [`@xynogen/pix-subagent`](https://www.npmjs.com/package/@xynogen/pix-subagent) | Sub-agent spawning — 2 tools (`agent`, `agent_control`), live model widget, work-splitting |
 
@@ -131,7 +139,7 @@ Not bundled by `pix-core`. Install each one only if you want it. Each one stays 
 | [`@xynogen/pix-python`](https://www.npmjs.com/package/@xynogen/pix-python) | `python_run` — run local Python snippets with intent, indentation repair and an approval prompt (not sandboxed) |
 | [`@xynogen/pix-ssh`](https://www.npmjs.com/package/@xynogen/pix-ssh) | `ssh_run` — run commands on a remote host over SSH (key/password auth + remote `sudo`) |
 | [`@xynogen/pix-env`](https://www.npmjs.com/package/@xynogen/pix-env) | Broker `.env` secrets to tools via `$KEY` references, keeping the values out of the model's context |
-| [`@xynogen/pix-toolbox`](https://www.npmjs.com/package/@xynogen/pix-toolbox) | `/toolbox` — fuzzy-search picker to enable/disable tools at runtime |
+| [`@xynogen/pix-toolbox`](https://www.npmjs.com/package/@xynogen/pix-toolbox) | Enable, defer, or disable tools at runtime (`/pix` → **Tools**; `/toolbox enable\|defer\|disable\|list`) |
 | [`@xynogen/pix-mcp`](https://www.npmjs.com/package/@xynogen/pix-mcp) | Token-efficient MCP gateway — external servers can execute commands or reach sensitive services |
 | [`@xynogen/pix-codemode`](https://www.npmjs.com/package/@xynogen/pix-codemode) | Native `codemode` with highlighted JavaScript, formatted JSON, and Pix result frames |
 | [`@xynogen/pix-graph`](https://www.npmjs.com/package/@xynogen/pix-graph) | `graph` tool — native-TS code knowledge graph (build/query, no Python); TS/JS only |
