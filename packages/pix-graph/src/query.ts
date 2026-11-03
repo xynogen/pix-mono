@@ -100,6 +100,39 @@ function seedScore(node: GraphNode, terms: string[]): number {
 	return score;
 }
 
+/** Dependency edges PageRank follows: a node gains rank from what calls, uses or imports it. */
+const RANK_RELATIONS = new Set(["calls", "references", "imports"]);
+
+/**
+ * PageRank over dependency edges (damping 0.85, 20 iterations). Dangling rank is spread
+ * evenly so the scores keep summing to 1. Only orders lexical ties, so a rough fixed
+ * iteration count is enough.
+ */
+export function pageRank(graph: GraphData, iterations = 20, damping = 0.85): Map<string, number> {
+	const ids = graph.nodes.map((n) => n.id);
+	const n = ids.length;
+	if (n === 0) return new Map();
+	const out = new Map<string, string[]>();
+	for (const l of graph.links) {
+		if (!RANK_RELATIONS.has(l.relation)) continue;
+		out.set(l.source, [...(out.get(l.source) ?? []), l.target]);
+	}
+	let rank = new Map(ids.map((id) => [id, 1 / n]));
+	for (let i = 0; i < iterations; i++) {
+		const next = new Map(ids.map((id) => [id, (1 - damping) / n]));
+		let dangling = 0;
+		for (const id of ids) {
+			const r = rank.get(id) ?? 0;
+			const targets = out.get(id)?.filter((t) => next.has(t)) ?? [];
+			if (targets.length === 0) dangling += r;
+			for (const t of targets) next.set(t, (next.get(t) ?? 0) + (damping * r) / targets.length);
+		}
+		for (const id of ids) next.set(id, (next.get(id) ?? 0) + (damping * dangling) / n);
+		rank = next;
+	}
+	return rank;
+}
+
 /**
  * True if two words share a stem: a common prefix of ≥4 chars that covers the shorter word
  * except for at most a 3-char inflection (cluster/clustered, resolve/resolution), so that
@@ -117,6 +150,8 @@ export function sharePrefix(a: string, b: string): boolean {
  * Lexical query: match keywords against node names, then traverse from the
  * best-matching seed nodes. BFS gives broad neighborhood context (default);
  * DFS traces a specific path. Returns ranked hits — the caller narrates them.
+ * Ties in the lexical score go to the more central node (PageRank over dependency
+ * edges), so a symbol the codebase uses outranks a same-named local in a test.
  * ponytail: lexical seed match, no embeddings. Upgrade path: rank seeds with a
  * real similarity model if recall proves weak.
  */
@@ -125,10 +160,12 @@ export function query(graph: GraphData, question: string, options: QueryOptions 
 	const terms = tokenize(question);
 	if (terms.length === 0) return [];
 
-	const seeds = graph.nodes
+	const scored = graph.nodes
 		.map((node) => ({ node, score: seedScore(node, terms) }))
-		.filter((x) => x.score > 0)
-		.sort((a, b) => b.score - a.score)
+		.filter((x) => x.score > 0);
+	const rank = scored.length > 5 ? pageRank(graph) : new Map<string, number>();
+	const seeds = scored
+		.sort((a, b) => b.score - a.score || (rank.get(b.node.id) ?? 0) - (rank.get(a.node.id) ?? 0))
 		.slice(0, 5)
 		.map((x) => x.node);
 	if (seeds.length === 0) return [];

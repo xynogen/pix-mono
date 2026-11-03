@@ -72,7 +72,7 @@ function phaseStart(phase: BuildPhase): number {
 
 const yieldToLoop = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 // ponytail: bump this when extraction changes for builds outside the pix-graph source tree.
-const CACHE_VERSION = 4; // 4: `references` edges
+const CACHE_VERSION = 5; // 5: class member nodes
 const CACHE_FILE = ".graph-cache.json";
 const OUTPUT_FILES = ["graph.json", "graph.cleaned.json", "GRAPH_REPORT.md", "graph.html"] as const;
 

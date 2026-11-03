@@ -95,6 +95,16 @@ function declName(node: ts.Node): { name: string; label: string } | undefined {
 	return undefined;
 }
 
+/** Named methods and properties of a class declaration; none for anything else. */
+function classMembers(node: ts.Node): Array<{ name: string; label: string; at: ts.Node }> {
+	if (!ts.isClassDeclaration(node)) return [];
+	return node.members.flatMap((m) => {
+		const isMethod = ts.isMethodDeclaration(m);
+		if (!(isMethod || ts.isPropertyDeclaration(m)) || !ts.isIdentifier(m.name)) return [];
+		return [{ name: m.name.text, label: `${m.name.text}${isMethod ? "()" : ""}`, at: m }];
+	});
+}
+
 export interface ParsedFile {
 	file: string;
 	rel: string;
@@ -213,6 +223,9 @@ export function extract(
 	const exportsByRel = new Map<string, FileExports>();
 	// Per file: local binding -> imported module file + imported name ("*" = namespace).
 	const bindingsByRel = new Map<string, Map<string, { file: string; name: string }>>();
+	// `rel\0Class.member` → member node id, and `classNodeId\0member` → member node id.
+	const membersByRel = new Map<string, string>();
+	const memberById = new Map<string, string>();
 
 	const resolveSpec = (rel: string, source: ts.SourceFile, at: ts.Node, spec: string) => {
 		const target = resolver.resolve(rel, spec);
@@ -297,26 +310,36 @@ export function extract(
 			if (!decl) continue;
 			const id = entityNodeId(fileId, decl.name);
 			table.declared.set(decl.name, id);
-			if (!seen.has(id)) {
-				seen.add(id);
-				nodes.push({
-					id,
-					label: decl.label,
-					file_type: "code",
+			const entities = [{ id, label: decl.label, at: stmt as ts.Node, parent: fileId }];
+			// Class members become `Class.member` nodes, so impact can target one method.
+			for (const m of classMembers(stmt)) {
+				const mid = entityNodeId(fileId, `${decl.name}.${m.name}`);
+				membersByRel.set(`${rel}\0${decl.name}.${m.name}`, mid);
+				memberById.set(`${id}\0${m.name}`, mid);
+				entities.push({ id: mid, label: `${decl.name}.${m.label}`, at: m.at, parent: id });
+			}
+			for (const e of entities) {
+				if (!seen.has(e.id)) {
+					seen.add(e.id);
+					nodes.push({
+						id: e.id,
+						label: e.label,
+						file_type: "code",
+						source_file: rel,
+						source_location: line(source, e.at),
+						...(pkg ? { package: pkg } : {}),
+					});
+				}
+				links.push({
+					source: e.parent,
+					target: e.id,
+					relation: "contains",
+					confidence: "EXTRACTED",
+					confidence_score: 1,
 					source_file: rel,
-					source_location: line(source, stmt),
-					...(pkg ? { package: pkg } : {}),
+					source_location: line(source, e.at),
 				});
 			}
-			links.push({
-				source: fileId,
-				target: id,
-				relation: "contains",
-				confidence: "EXTRACTED",
-				confidence_score: 1,
-				source_file: rel,
-				source_location: line(source, stmt),
-			});
 		}
 	}
 
@@ -358,13 +381,19 @@ export function extract(
 						? [expr.left.text, expr.right.text]
 						: undefined;
 			if (!ns) return undefined;
-			const b = bindings.get(ns[0] as string);
-			return b?.name === "*" ? resolveExport(b.file, ns[1] as string) : undefined;
+			const [left, right] = ns as [string, string];
+			const b = bindings.get(left);
+			if (b?.name === "*") return resolveExport(b.file, right);
+			// `Class.member` of a class declared here or imported by name (static access).
+			const owner = b ? resolveExport(b.file, b.name) : local.get(left);
+			return owner ? memberById.get(`${owner}\0${right}`) : undefined;
 		};
 		for (const stmt of source.statements) {
 			if (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) continue;
 			const decl = declName(stmt);
-			const from = decl ? entityNodeId(fileId, decl.name) : fileId;
+			const stmtFrom = decl ? entityNodeId(fileId, decl.name) : fileId;
+			// Inside a class, attribute uses to the enclosing member; `this.x` resolves to `Class.x`.
+			let from = stmtFrom;
 			const link = (relation: "calls" | "references", target: string, at: ts.Node) => {
 				const key = `${relation}\0${from}\0${target}`;
 				if (target === from || emitted.has(key)) return;
@@ -380,6 +409,32 @@ export function extract(
 				});
 			};
 			const visit = (node: ts.Node): void => {
+				if (
+					decl &&
+					ts.isClassDeclaration(stmt) &&
+					node.parent === stmt &&
+					(ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node)) &&
+					ts.isIdentifier(node.name)
+				) {
+					const prev = from;
+					from = membersByRel.get(`${rel}\0${decl.name}.${node.name.text}`) ?? stmtFrom;
+					ts.forEachChild(node, (c) => {
+						if (c !== node.name) visit(c);
+					});
+					from = prev;
+					return;
+				}
+				if (
+					decl &&
+					ts.isClassDeclaration(stmt) &&
+					ts.isPropertyAccessExpression(node) &&
+					node.expression.kind === ts.SyntaxKind.ThisKeyword
+				) {
+					const target = membersByRel.get(`${rel}\0${decl.name}.${node.name.text}`);
+					const isCall = ts.isCallExpression(node.parent) && node.parent.expression === node;
+					if (target) link(isCall ? "calls" : "references", target, node);
+					return;
+				}
 				if (ts.isCallExpression(node)) {
 					// `await import("./x.ts")` is a lazy dependency; keep it as a file import.
 					const [arg] = node.arguments;

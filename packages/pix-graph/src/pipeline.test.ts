@@ -196,6 +196,41 @@ describe("extract", () => {
 		]);
 	});
 
+	test("class members are nodes; this.x and Class.x link to them from the enclosing member", () => {
+		const root = mkdtempSync(join(tempDir(), "pix-graph-"));
+		dirs.push(root);
+		writeFileSync(
+			join(root, "svc.ts"),
+			[
+				"export class Svc {",
+				"  static LIMIT = 3;",
+				"  run() { return this.step() + Svc.LIMIT; }",
+				"  step() { return 1; }",
+				"}",
+				"export function go() { return new Svc().run(); }",
+			].join("\n"),
+		);
+		const { nodes, links } = extract(collectFiles(root), root);
+		const short = (id: string) => id.replace("svc_ts_", "");
+		expect(nodes.map((n) => n.label).sort()).toEqual(
+			["Svc", "Svc.LIMIT", "Svc.run()", "Svc.step()", "go()", "svc.ts"].sort(),
+		);
+		const edges = links
+			.filter((l) => l.relation !== "imports")
+			.map((l) => `${l.relation} ${short(l.source)} -> ${short(l.target)}`)
+			.sort();
+		expect(edges).toEqual([
+			"calls svc_run -> svc_step",
+			"contains svc -> svc_limit",
+			"contains svc -> svc_run",
+			"contains svc -> svc_step",
+			"contains svc_ts -> go",
+			"contains svc_ts -> svc",
+			"references go -> svc",
+			"references svc_run -> svc_limit",
+		]);
+	});
+
 	test("respects ignore files and scans un-ignored hidden dirs", () => {
 		const root = fixture();
 		const put = (rel: string, body = "export const x = 1;\n") => {

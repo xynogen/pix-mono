@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { GraphData } from "./analyzer.ts";
-import { impact } from "./query.ts";
+import { impact, pageRank, query } from "./query.ts";
 
 // a.ts: hash()  ←calls─ b.ts: save()  ←calls─ c.ts: run()
 // b.test.ts imports b.ts and calls save(); hash() also calls helper() (a callee, not a dependent).
@@ -50,6 +50,24 @@ test("symbol impact walks callers transitively, never callees or file siblings",
 test("file impact includes importers and callers of its own symbols", () => {
 	const ids = impact(graph, "src/b.ts").hits.map((h) => h.node.id);
 	expect(new Set(ids)).toEqual(new Set(["b", "t", "c_run", "d_lone"]));
+});
+
+test("pageRank favors depended-on nodes; query breaks lexical ties with it", () => {
+	const rank = pageRank(graph);
+	const sum = [...rank.values()].reduce((a, b) => a + b, 0);
+	expect(sum).toBeCloseTo(1, 6);
+	// hash() is called by save(); lone() calls nothing and nothing calls it.
+	expect(rank.get("a_hash") ?? 0).toBeGreaterThan(rank.get("d_lone") ?? 0);
+
+	// Six same-named seeds force the tie-break; the one with callers wins.
+	const tied: GraphData = {
+		nodes: [
+			...Array.from({ length: 6 }, (_, i) => node(`t${i}`, "theme", `src/t${i}.test.ts`)),
+			node("user", "use()", "src/u.ts"),
+		],
+		links: [{ source: "user", target: "t4", relation: "references" }],
+	};
+	expect(query(tied, "theme", { maxDepth: 0 })[0]?.node.id).toBe("t4");
 });
 
 test("maxDepth, limit and inFile bound the walk", () => {
