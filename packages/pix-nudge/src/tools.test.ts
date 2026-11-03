@@ -17,17 +17,23 @@ let notices: Array<{ msg: string; type: string }> = [];
 
 const ALL_TOOLS = ["read", "ls", "grep", "find", "edit", "write", "proc", "tool_search"];
 
+let loadedTools: string[] = [];
+
 function makeHandler(
 	activeTools: string[] = ["read", "ls", "grep", "find", "edit", "write", "proc"],
 	registered: string[] = ALL_TOOLS,
 	os: "win32" | "linux" = "linux",
 ): ToolResultHandler {
+	loadedTools = [...activeTools];
 	let handler: ToolResultHandler | undefined;
 	const pi = {
 		on(eventName: string, h: ToolResultHandler) {
 			if (eventName === "tool_result") handler = h;
 		},
-		getActiveTools: () => activeTools,
+		getActiveTools: () => loadedTools,
+		setActiveTools: (names: string[]) => {
+			loadedTools = names;
+		},
 		getAllTools: () => registered.map((name) => ({ name })),
 		appendEntry: (customType: string, card: Card) =>
 			notices.push({ msg: card.body, type: `${customType}:${card.kind}` }),
@@ -125,6 +131,12 @@ describe("classifyCompound", () => {
 	test("still classifies simple commands", () => {
 		expect(classifyCompound("cat foo")?.category).toBe("read");
 		expect(classifyCompound("git status")).toBeUndefined();
+	});
+
+	test("ignores operators inside quoted patterns", () => {
+		expect(classifyCompound('rg -n "foo|bar" src')?.category).toBe("grep");
+		expect(classifyCompound("grep -E 'a|b' src | head -20")?.category).toBe("grep");
+		expect(classifyCompound('rg "a|b" src | wc -l')).toBeUndefined();
 	});
 
 	test("catches the chaining-dodge (|| && ;)", () => {
@@ -226,9 +238,9 @@ describe("nudgeReason", () => {
 		);
 	});
 
-	test("deferred tool: load through tool_search first", () => {
+	test("deferred tool: says it was loaded and to call it directly", () => {
 		const msg = nudgeReason("Locating files via bash find/fd.", "find", false);
-		expect(msg).toMatch(/Load `find` with tool_search, then call it\./);
+		expect(msg).toMatch(/Loaded `find` for you; call it directly next time\./);
 	});
 
 	test("names the replacing options when a hint is given", () => {
@@ -256,10 +268,13 @@ describe("nudgeFor: never names a tool the session lacks", () => {
 	const rule = { reason: "Writing a file.", tool: "write", hint: "or `edit` for changes" };
 	const set = (...names: string[]) => new Set(names);
 
-	test("target, deferred loader and hint tools all registered → full nudge", () => {
-		expect(nudgeFor(rule, set("write", "edit", "tool_search"), [])).toMatch(
-			/^Writing a file\. Load `write` with tool_search, then call it \(or `edit` for changes\)\./,
-		);
+	test("target, deferred loader and hint tools all registered → full nudge that loads", () => {
+		expect(nudgeFor(rule, set("write", "edit", "tool_search"), [])).toEqual({
+			text: expect.stringMatching(
+				/^Writing a file\. Loaded `write` for you; call it directly next time \(or `edit` for changes\)\./,
+			),
+			load: true,
+		});
 	});
 
 	test("target missing or registry unknown → no nudge", () => {
@@ -272,11 +287,14 @@ describe("nudgeFor: never names a tool the session lacks", () => {
 	});
 
 	test("active target without tool_search → direct nudge", () => {
-		expect(nudgeFor(rule, set("write", "edit"), ["write"])).toMatch(/Use `write` \(or `edit`/);
+		expect(nudgeFor(rule, set("write", "edit"), ["write"])).toEqual({
+			text: expect.stringMatching(/Use `write` \(or `edit`/),
+			load: false,
+		});
 	});
 
 	test("hint names a missing tool → hint dropped, nudge kept", () => {
-		expect(nudgeFor(rule, set("write"), ["write"])).toMatch(
+		expect(nudgeFor(rule, set("write"), ["write"])?.text).toMatch(
 			/^Writing a file\. Use `write` instead\./,
 		);
 	});
@@ -345,13 +363,14 @@ describe("registerToolsNudge handler", () => {
 		expect(notices).toHaveLength(0);
 	});
 
-	test("deferred tool points at tool_search", async () => {
+	test("deferred tool is loaded into the active set and the card says so", async () => {
 		const handler = makeHandler([]); // nothing active → all deferred
 		const { ctx } = makeCtx();
 
 		const result = (await handler(bashEvent("ls -la"), ctx)) as Result;
 
-		expect(result?.content[1]?.text).toMatch(/Load `ls` with tool_search/);
+		expect(result?.content[1]?.text).toMatch(/Loaded `ls` for you; call it directly next time/);
+		expect(loadedTools).toEqual(["ls"]);
 	});
 
 	test("whole-command nudge names the tool and its options", async () => {

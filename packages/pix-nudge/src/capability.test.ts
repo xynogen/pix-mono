@@ -7,6 +7,7 @@ import registerCapabilityNudge, {
 	CAPABILITY_REMINDER,
 	capabilityReminder,
 	countInvocableSkills,
+	deferredNames,
 	graphifyHint,
 	partitionTools,
 } from "./capability.ts";
@@ -123,6 +124,33 @@ describe("partitionTools", () => {
 		expect(buildOrientation(tools, [], ["read", "docs"])).toMatch(
 			/^Toolbelt: 2 tools \(1 deferred\), 2 MCP tools \(1 deferred\)\./,
 		);
+	});
+});
+
+describe("deferredNames", () => {
+	const tools = [
+		tool("read", "builtin"),
+		tool("grep", "builtin"),
+		tool("ast_search", "pkg"),
+		tool("ast_outline", "pkg"),
+		tool("lsp_diagnostics", "pkg"),
+		tool("tool_search", "builtin"),
+		tool("docs", "mcp:docs"),
+	];
+
+	test("groups inactive non-MCP tools by prefix family, sorted", () => {
+		expect(deferredNames(tools, ["read", "tool_search"])).toBe(
+			"ast_{outline,search} · grep · lsp_diagnostics",
+		);
+	});
+
+	test("orientation lists them only when tool_search can load them", () => {
+		expect(buildOrientation(tools, [], ["read", "tool_search"])).toMatch(
+			/^Deferred: ast_\{outline,search\} · grep · lsp_diagnostics\.$/m,
+		);
+		const noLoader = tools.filter((t) => (t as { name: string }).name !== "tool_search");
+		expect(buildOrientation(noLoader, [], ["read"])).not.toMatch(/^Deferred:/m);
+		expect(deferredNames(tools, undefined)).toBe("");
 	});
 });
 

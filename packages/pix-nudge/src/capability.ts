@@ -132,6 +132,38 @@ export function partitionTools(
 }
 
 /**
+ * Deferred non-MCP tool names, grouped by `prefix_` family so a large family costs one
+ * entry: `ast_{outline,search} · grep · lsp_{diagnostics,references}`. MCP tools are
+ * left out: their count is already shown and `mcp` search finds them. Empty when the
+ * gate is not tracked.
+ */
+export function deferredNames(
+	tools: ToolInfo[] | undefined,
+	active: Iterable<string> | undefined,
+): string {
+	if (!active) return "";
+	const on = new Set(active);
+	const families = new Map<string, string[]>();
+	for (const t of tools ?? []) {
+		if (on.has(t.name) || /mcp/i.test(t.sourceInfo?.source ?? "")) continue;
+		const cut = t.name.indexOf("_");
+		const family = cut > 0 ? t.name.slice(0, cut) : t.name;
+		families.set(family, [...(families.get(family) ?? []), t.name]);
+	}
+	return [...families]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([family, names]) =>
+			names.length === 1
+				? (names[0] as string)
+				: `${family}_{${names
+						.map((n) => (n.startsWith(`${family}_`) ? n.slice(family.length + 1) : n))
+						.sort()
+						.join(",")}}`,
+		)
+		.join(" · ");
+}
+
+/**
  * Build the one-time orientation block shown on the FIRST prompt: toolbelt counts,
  * the tool_search gate, a capability → tool map of what is actually registered,
  * and sorted skill names (no descriptions — read_skills() returns those).
@@ -170,6 +202,9 @@ export function buildOrientation(
 			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context): load with tool_search("<tool name or task>") before the first call.`
 			: head,
 	];
+	// Names, not schemas: a count alone never tells the model that ast_outline exists.
+	const names = canLoad ? deferredNames(tools, activeToolNames) : "";
+	if (names) lines.push(`Deferred: ${names}.`);
 	const caps = capabilityLabels(tools);
 	lines.push(
 		caps.length

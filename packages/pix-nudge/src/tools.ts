@@ -253,7 +253,11 @@ export function classifyCompound(command: string): Rule | undefined {
 	const whole = WHOLE_RULES.find((r) => r.test(command));
 	if (whole) return whole;
 
-	const cmd = command.trim().replace(TRAILING_TRIM, "");
+	// Mask operators inside quotes so `rg "a|b" src` is not mistaken for a pipeline.
+	const masked = command.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, (q) =>
+		q.replace(/[|&;<>`$\n]/g, "_"),
+	);
+	const cmd = masked.trim().replace(TRAILING_TRIM, "");
 	if (!cmd) return undefined;
 
 	// Fast path: a truly simple command (no operators/subshell/redirect).
@@ -297,8 +301,8 @@ const hintTools = (hint: string) => [...hint.matchAll(/`([a-z_]+)`/g)].map((m) =
 
 /**
  * One-line guidance for a nudge. Active tool → call it directly. Deferred tool
- * → load it with `tool_search` first. `hint` names the options that replace the
- * shell idiom. Pure + exported for unit testing.
+ * → the handler has just loaded it, so say so and point at it. `hint` names the
+ * options that replace the shell idiom. Pure + exported for unit testing.
  */
 export function nudgeReason(
 	baseReason: string,
@@ -310,26 +314,28 @@ export function nudgeReason(
 	const opts = hint ? ` (${hint})` : "";
 	const how = toolActive
 		? `Use \`${tool}\`${opts} instead.`
-		: `Load \`${tool}\` with tool_search, then call it${opts}.`;
+		: `Loaded \`${tool}\` for you; call it directly next time${opts}.`;
 	return `${baseReason} ${how} (${note})`;
 }
 
 /**
- * The nudge text for `rule`, or undefined when it would name a tool the session
- * lacks: the target, `tool_search` for a deferred target, or a tool in the hint
- * (then the hint is dropped, not the nudge). Unknown registry → no nudge.
+ * The nudge for `rule`, or undefined when it would name a tool the session lacks:
+ * the target, `tool_search` for a deferred target, or a tool in the hint (then the
+ * hint is dropped, not the nudge). Unknown registry → no nudge. `load` is true when
+ * the target is deferred, so the caller must activate it before the text is true.
  */
 export function nudgeFor(
 	rule: Pick<Rule, "reason" | "tool" | "hint" | "note">,
 	registered: Set<string> | undefined,
 	active: string[] | undefined,
-): string | undefined {
+): { text: string; load: boolean } | undefined {
 	if (!registered?.has(rule.tool)) return undefined;
 	// No active list → treat as active: the tool is registered, so naming it is safe.
 	const isActive = !active || active.includes(rule.tool);
+	// Deferred tools load through the active set, which tool_search also owns.
 	if (!isActive && !registered.has("tool_search")) return undefined;
 	const hint = hintTools(rule.hint).every((t) => registered.has(t)) ? rule.hint : undefined;
-	return nudgeReason(rule.reason, rule.tool, isActive, hint, rule.note);
+	return { text: nudgeReason(rule.reason, rule.tool, isActive, hint, rule.note), load: !isActive };
 }
 
 export default function registerToolsNudge(
@@ -359,15 +365,24 @@ export default function registerToolsNudge(
 		} catch {
 			active = undefined;
 		}
-		const reason = nudgeFor(rule, registeredToolNames(pi), active);
-		if (!reason) return;
+		const nudge = nudgeFor(rule, registeredToolNames(pi), active);
+		if (!nudge) return;
 		nudged.add(rule.category);
+		// Load the deferred target the same way tool_search does, so the model can call
+		// it next turn without a discovery round-trip. The card below makes it visible.
+		if (nudge.load && active) {
+			try {
+				pi.setActiveTools([...active, rule.tool]);
+			} catch {
+				return;
+			}
+		}
 
 		// Card body = the exact text appended to the model's tool result.
-		const text = `[pix-nudge] ${reason}`;
+		const text = `[pix-nudge] ${nudge.text}`;
 		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
 			kind: "tool",
-			summary: `bash ${rule.category} → ${rule.tool}`,
+			summary: `bash ${rule.category} → ${rule.tool}${nudge.load ? " (loaded)" : ""}`,
 			body: text,
 		});
 		return {
