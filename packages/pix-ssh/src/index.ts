@@ -39,6 +39,7 @@ import {
 } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
+import { fadeRowsOf } from "@xynogen/pix-pretty/text";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
@@ -1104,11 +1105,14 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-			const show = lines.slice(0, maxShow);
 			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme)] : [];
 			const statusKey = details.outcome === "success" ? "success" : "error";
 			const paint = (s: string) => theme.fg(statusKey, s);
-			const body = show.map((line) => bodyLine(line, theme));
+			const body = fadeRowsOf(
+				lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
+				theme,
+				maxShow,
+			);
 			const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
 			text.setText(fillToolBackground(out.join("\n")));
 			return text;
