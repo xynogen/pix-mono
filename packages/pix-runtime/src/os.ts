@@ -46,7 +46,7 @@ export function openCommand(
 	target: string,
 	host: HostPlatform,
 	app?: string,
-): { name: string; args: string[]; verbatim?: boolean } {
+): { name: string; args: string[]; verbatim?: boolean; cwd?: string } {
 	if (host.os === "darwin") return { name: "open", args: app ? ["-a", app, target] : [target] };
 	if (host.os === "win32") {
 		// `start` is a cmd.exe builtin; "" is its window-title argument.
@@ -54,8 +54,9 @@ export function openCommand(
 		return { name: "cmd", args: ["/d", "/s", "/c", `"${parts.join(" ")}"`], verbatim: true };
 	}
 	if (host.wsl && !app) {
-		// WSL: hand the target to Windows so the user's default browser opens.
-		return { name: "wslview", args: [target] };
+		// WSL: hand the target to Windows so the user's default browser opens. Windows programs
+		// cannot start from a long `\\wsl.localhost\...` cwd, so start from `/`.
+		return { name: "wslview", args: [target], cwd: "/" };
 	}
 	return { name: app ?? "xdg-open", args: [target] };
 }
@@ -71,6 +72,7 @@ export async function openTarget(target: string, opts: OpenOptions = {}): Promis
 	if (cmd.name === "wslview" && !resolveTool("wslview", opts))
 		cmd = openCommand(target, { ...host, wsl: false });
 	const result = await runTool(cmd.name, cmd.args, {
+		cwd: cmd.cwd,
 		env: opts.env,
 		host,
 		timeoutMs: opts.timeoutMs ?? 15_000,
@@ -140,10 +142,16 @@ export function pickPreferredMime(types: readonly string[]): string | null {
 }
 
 /** Output bytes when the tool exists and exits 0; null otherwise (probing, never throws). */
-function probe(name: string, args: string[], timeoutMs: number, opts: OsOptions): Buffer | null {
+function probe(
+	name: string,
+	args: string[],
+	timeoutMs: number,
+	opts: OsOptions,
+	cwd?: string,
+): Buffer | null {
 	if (!resolveTool(name, opts)) return null;
 	try {
-		const r = runToolSync(name, args, { env: opts.env, host: opts.host, timeoutMs });
+		const r = runToolSync(name, args, { env: opts.env, host: opts.host, timeoutMs, cwd });
 		return r.code === 0 ? r.stdoutBytes : null;
 	} catch {
 		return null;
@@ -203,7 +211,8 @@ function viaPowerShell(host: HostPlatform, opts: OsOptions): ClipboardImage | nu
 			"if ($img) { $img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png); Write-Output 'ok' } else { Write-Output 'empty' }",
 		].join("; ");
 		const args = ["-NoProfile", "-STA", "-Command", script];
-		const out = probe("powershell", args, POWERSHELL_TIMEOUT_MS, opts);
+		// From WSL, Windows programs cannot start from a long `\\wsl.localhost\...` cwd.
+		const out = probe("powershell", args, POWERSHELL_TIMEOUT_MS, opts, host.wsl ? "/" : undefined);
 		if (out?.toString("utf-8").trim() !== "ok") return null;
 		const bytes = readFileSync(tmpFile);
 		return bytes.length ? { bytes, mimeType: "image/png" } : null;

@@ -73,4 +73,24 @@ describe("clipboard helpers", () => {
 		expect(img?.mimeType).toBe("image/png");
 		expect(img?.bytes.toString()).toBe("PNGDATA");
 	});
+
+	test.skipIf(isWin)("WSL starts powershell from / (long UNC cwd breaks Windows programs)", () => {
+		const root = mkdtempSync(join(tempDir(), "pix-os-"));
+		const bin = join(root, "agent", "bin");
+		mkdirSync(bin, { recursive: true });
+		const target = join(root, "target");
+		const fake = (name: string, body: string) => {
+			writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`);
+			chmodSync(join(bin, name), 0o755);
+		};
+		fake("wslpath", `echo "$2" > '${target}'; echo "$2"`);
+		// Writes the image only when started from /, like Windows from a short cwd.
+		fake(
+			"powershell",
+			`[ "$PWD" = / ] && printf PNGDATA > "$(cat '${target}')" && echo ok || echo empty`,
+		);
+		const env = { PATH: "/usr/bin:/bin", PI_CODING_AGENT_DIR: join(root, "agent") };
+		const img = readClipboardImage({ env, host: { ...linux, wsl: true } });
+		expect(img?.bytes.toString()).toBe("PNGDATA");
+	});
 });

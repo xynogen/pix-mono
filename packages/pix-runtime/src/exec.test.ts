@@ -177,7 +177,10 @@ describe("openCommand", () => {
 			name: "xdg-open",
 			args: ["https://x.dev"],
 		});
-		expect(openCommand("https://x.dev", { ...linux, wsl: true }).name).toBe("wslview");
+		expect(openCommand("https://x.dev", { ...linux, wsl: true })).toMatchObject({
+			name: "wslview",
+			cwd: "/",
+		});
 		const w = openCommand("https://x.dev/?a=1&b=2", win);
 		expect(w).toMatchObject({ name: "cmd", verbatim: true });
 		expect(w.args[3]).toMatch(/^"start "" \^"https:\/\/x\.dev\/\^\?a=1\^&b=2\^""$/);
