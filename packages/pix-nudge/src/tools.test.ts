@@ -317,7 +317,7 @@ describe("registerToolsNudge handler", () => {
 		expect(notices).toEqual([{ msg: expect.stringContaining("`read`"), type: "pix-nudge:tool" }]);
 	});
 
-	test("nudges once per category, untouched thereafter", async () => {
+	test("nudges a category on its 1st and then every 5th use", async () => {
 		const handler = makeHandler();
 		const { ctx, notices } = makeCtx();
 
@@ -328,6 +328,15 @@ describe("registerToolsNudge handler", () => {
 		await handler(bashEvent("grep x y"), ctx); // new category → new nudge
 		expect(notices).toHaveLength(2);
 		expect((notices[1] as Notice).msg).toMatch(/Use `grep` \(.*\) instead/);
+
+		for (const f of ["c", "d"]) await handler(bashEvent(`cat ${f}`), ctx); // 3rd, 4th: silent
+		expect(notices).toHaveLength(2);
+		await handler(bashEvent("cat e"), ctx); // 5th read: reminder
+		expect(notices.map((n) => n.msg)).toEqual([
+			expect.stringContaining("Use `read`"),
+			expect.stringContaining("Use `grep`"),
+			expect.stringContaining("Use `read`"),
+		]);
 	});
 
 	test("on Windows nudges bash toward powershell once, after tool stand-ins", async () => {

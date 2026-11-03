@@ -342,12 +342,23 @@ export function nudgeFor(
 	return { text: nudgeReason(rule.reason, rule.tool, isActive, hint, rule.note), load: !isActive };
 }
 
+/** After the first nudge of a category, repeat it on every Nth matching bash call. */
+// ponytail: fixed cadence; make it a pix.json knob if a model needs more or fewer reminders.
+const NUDGE_EVERY = 5;
+
 export default function registerToolsNudge(
 	pi: ExtensionAPI,
 	os: HostOs = currentPlatform().os,
 ): void {
-	// Categories already nudged this session — warn once, then stay silent.
-	const nudged = new Set<Category>();
+	// Shell use per category. Nudge on the 1st and then every NUDGE_EVERY-th use: one
+	// warning per session was ignored (31% of bash calls in a long session still had a
+	// native tool), and a nudge on every call would be noise.
+	const seen = new Map<Category, number>();
+	const due = (c: Category): boolean => {
+		const n = (seen.get(c) ?? 0) + 1;
+		seen.set(c, n);
+		return n === 1 || n % NUDGE_EVERY === 0;
+	};
 
 	pi.on("tool_result", (event) => {
 		if (event.toolName === "read") return wholeRead(event);
@@ -357,9 +368,9 @@ export default function registerToolsNudge(
 
 		const matched = classifyCompound(command);
 		const rule =
-			matched && !nudged.has(matched.category)
+			matched && due(matched.category)
 				? matched
-				: os === "win32" && !nudged.has("powershell")
+				: !matched && os === "win32" && due("powershell")
 					? POWERSHELL_RULE
 					: undefined;
 		if (!rule) return;
@@ -372,7 +383,6 @@ export default function registerToolsNudge(
 		}
 		const nudge = nudgeFor(rule, registeredToolNames(pi), active);
 		if (!nudge) return;
-		nudged.add(rule.category);
 		// Load the deferred target the same way tool_search does, so the model can call
 		// it next turn without a discovery round-trip. The card below makes it visible.
 		if (nudge.load && active) {
