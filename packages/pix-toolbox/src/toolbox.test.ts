@@ -9,8 +9,6 @@ import registerToolbox, {
 	disabledFromState,
 	loadedFromState,
 	nextState,
-	parseTargets,
-	renderList,
 	TOOL_STATES,
 	type ToggleOps,
 	type ToolRow,
@@ -114,56 +112,6 @@ describe("buildRows", () => {
 	});
 });
 
-// ─── parseTargets ───────────────────────────────────────────────────────────
-
-describe("parseTargets", () => {
-	test("splits on commas, spaces, newlines", () => {
-		expect(parseTargets("ls, find  grep\nfetch")).toEqual(["ls", "find", "grep", "fetch"]);
-	});
-
-	test("dedupes", () => {
-		expect(parseTargets("ls, ls")).toEqual(["ls"]);
-	});
-
-	test("empty yields empty", () => {
-		expect(parseTargets("")).toEqual([]);
-		expect(parseTargets("  , ")).toEqual([]);
-	});
-});
-
-// ─── renderList ─────────────────────────────────────────────────────────────
-
-describe("renderList", () => {
-	const rows: ToolRow[] = [
-		{ name: "grep", description: "Search files.", mcp: false },
-		{ name: "hunk", description: "Review.", mcp: false, exposure: "deferred" },
-		{ name: "ctx", description: "MCP search.", mcp: true, exposure: "deferred" },
-	];
-	const states: Record<string, ToolState> = { grep: "disabled", hunk: "deferred", ctx: "enabled" };
-	const stateOf = (n: string) => states[n] ?? "enabled";
-
-	test("groups tools and shows one state per tool", () => {
-		const out = renderList(rows, stateOf);
-		expect(out).toMatch(
-			/^Tools · direct:\n# disabled {2}grep .*\n\nTools · deferrable:\n~ deferred {2}hunk .*\n\nMCP · deferrable:\n✓ enabled {2}ctx /,
-		);
-	});
-
-	test("filters by query", () => {
-		expect(renderList(rows, stateOf, "grep")).toMatch(
-			/^Tools · direct:\n# disabled {2}grep [^\n]*$/,
-		);
-	});
-
-	test("no match message", () => {
-		expect(renderList(rows, stateOf, "zzz")).toBe('No tools matched "zzz".');
-	});
-
-	test("empty rows", () => {
-		expect(renderList([], stateOf)).toBe("No tools registered.");
-	});
-});
-
 // ─── toggleTool / nextState ─────────────────────────────────────────────────
 
 describe("toggleTool", () => {
@@ -219,7 +167,7 @@ describe("nextState", () => {
 	});
 });
 
-// ─── Integration: /toolbox command ──────────────────────────────────────────
+// ─── Integration: /pix → Tools ──────────────────────────────────────────────
 
 // Isolate unified settings from the user's config.
 let tmpAgentDir: string;
@@ -247,10 +195,7 @@ function makeHost(
 	let active: string[] = toolNames.filter(
 		(name) => !deferred.includes(name) && !inactive.includes(name),
 	);
-	const commands: Array<{
-		name: string;
-		handler: (...args: unknown[]) => unknown;
-	}> = [];
+	const commands: string[] = [];
 	let openSettings: ((ctx: unknown) => Promise<void>) | undefined;
 	const pi = {
 		on(ev: string, fn: (p: unknown) => unknown) {
@@ -292,45 +237,45 @@ function makeHost(
 		},
 		appendEntry() {},
 		registerTool() {},
-		registerCommand(name: string, def: { handler: (...args: unknown[]) => unknown }) {
-			commands.push({ name, handler: def.handler });
+		registerCommand(name: string) {
+			commands.push(name);
 		},
 	} as never;
 	const emit = (ev: string, payload: unknown, ctx?: unknown) =>
 		Promise.all(
 			(handlers[ev] ?? []).map((f) => (f as (...args: unknown[]) => unknown)(payload, ctx)),
 		);
+	const open = (ctx: unknown) => (openSettings as (ctx: unknown) => Promise<void>)(ctx);
 	return {
 		pi,
 		emit,
+		commands,
 		getActive: () => active,
-		command: (name: string) =>
-			name === "toolbox"
-				? {
-						name,
-						handler: async (args: string, ctx: { ui: { custom?: unknown; notify?: unknown } }) =>
-							!args && ctx.ui.custom && openSettings
-								? openSettings(ctx)
-								: commands.find((c) => c.name === name)?.handler(args, ctx),
-					}
-				: commands.find((c) => c.name === name),
+		open,
+		/** Search the picker for `name`, then press the state hotkey. */
+		set: (state: ToolState, name: string) =>
+			open({
+				ui: {
+					notify() {},
+					async custom(build: (...a: unknown[]) => { handleInput(d: string): void }) {
+						const view = build(
+							{ terminal: { rows: 40 }, requestRender() {} },
+							roleTheme(),
+							undefined,
+							() => {},
+						);
+						for (const ch of name) view.handleInput(ch);
+						view.handleInput(HOTKEY[state]);
+						return null;
+					},
+				},
+			}),
 	};
 }
 
-function makeCtx() {
-	const notes: Array<{ text: string; level?: string }> = [];
-	const ctx = {
-		ui: {
-			notify(text: string, level?: string) {
-				notes.push({ text, level });
-			},
-		},
-	} as never;
-	return { ctx, notes };
-}
+const HOTKEY: Record<ToolState, string> = { enabled: "\x05", deferred: "\x06", disabled: "\x04" };
 
-describe("/toolbox command", () => {
-	type Note = { text: string; level?: string };
+describe("/pix → Tools", () => {
 	const ALL = ["read", "write", "bash", "ls", "fetch"];
 	const statePath = () => join(tmpAgentDir, "pix.json");
 
@@ -349,24 +294,18 @@ describe("/toolbox command", () => {
 		return host;
 	}
 
-	test("registers a /toolbox command", async () => {
-		expect((await boot()).command("toolbox")).toBeDefined();
+	test("registers Tools in /pix, not a /toolbox command", async () => {
+		expect((await boot()).commands).toEqual(["pix"]);
 	});
 
 	test("deferred tools start deferred; direct tools start enabled", async () => {
 		const host = await boot([...ALL, "hunk"], ["hunk"]);
 		expect(host.getActive()).toEqual(ALL);
-		const { ctx, notes } = makeCtx();
-		await host.command("toolbox")?.handler("list", ctx);
-		expect((notes[0] as Note).text).toMatch(
-			/^Tools · always-on:\n✓ enabled \(fixed\).*\n.*\n.*\n\nTools · direct:\n✓ enabled {2}fetch .*\n✓ enabled {2}ls .*\n\nTools · deferrable:\n~ deferred {2}hunk /,
-		);
 	});
 
 	test("enable, defer and disable a deferred tool; the choice survives a new session", async () => {
 		const host = await boot([...ALL, "hunk"], ["hunk"]);
-		const { ctx } = makeCtx();
-		await host.command("toolbox")?.handler("enable hunk", ctx);
+		await host.set("enabled", "hunk");
 		expect(host.getActive()).toEqual([...ALL, "hunk"]);
 
 		await pixRuntime().flush();
@@ -375,7 +314,7 @@ describe("/toolbox command", () => {
 		await next.emit("session_start", {}, {});
 		expect(next.getActive()).toEqual([...ALL, "hunk"]);
 
-		await next.command("toolbox")?.handler("defer hunk", ctx);
+		await next.set("deferred", "hunk");
 		expect(next.getActive()).toEqual(ALL);
 		await pixRuntime().flush();
 		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
@@ -383,7 +322,7 @@ describe("/toolbox command", () => {
 			loadedTools: [],
 		});
 
-		await next.command("toolbox")?.handler("disable hunk", ctx);
+		await next.set("disabled", "hunk");
 		await pixRuntime().flush();
 		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
 			disabledTools: ["hunk"],
@@ -392,7 +331,7 @@ describe("/toolbox command", () => {
 
 	test("a disabled tool is blocked, and a tool_search load of it is undone", async () => {
 		const host = await boot([...ALL, "hunk"], ["hunk"]);
-		await host.command("toolbox")?.handler("disable hunk", makeCtx().ctx);
+		await host.set("disabled", "hunk");
 		const [block] = (await host.emit("tool_call", { toolName: "hunk" })) as Array<{
 			block?: boolean;
 		}>;
@@ -410,32 +349,18 @@ describe("/toolbox command", () => {
 		expect(host.getActive()).toEqual(ALL);
 		await host.emit("session_tree", {}, {});
 		expect(host.getActive()).toEqual(ALL);
-		await host.command("toolbox")?.handler("enable powershell", makeCtx().ctx);
+		await host.set("enabled", "powershell");
 		expect(host.getActive()).toEqual([...ALL, "powershell"]);
-	});
-
-	test("bare /toolbox points to /pix tool settings", async () => {
-		const host = await boot();
-		const { ctx, notes } = makeCtx();
-		await host.command("toolbox")?.handler("", ctx);
-		expect((notes[0] as Note).text).toBe("Tool settings are in /pix → Tools.");
-	});
-
-	test("/toolbox list <query> filters", async () => {
-		const host = await boot();
-		const { ctx, notes } = makeCtx();
-		await host.command("toolbox")?.handler("list fet", ctx);
-		expect((notes[0] as Note).text).toMatch(/^Tools · direct:\n✓ enabled {2}fetch [^\n]*$/);
 	});
 
 	test("opens interactive picker when ctx.ui.custom exists", async () => {
 		const host = await boot();
 		let customCalled = 0;
-		const notes: Note[] = [];
+		const notes: string[] = [];
 		const ctx = {
 			ui: {
-				notify(text: string, level?: string) {
-					notes.push({ text, level });
+				notify(text: string) {
+					notes.push(text);
 				},
 				async custom() {
 					customCalled++;
@@ -443,19 +368,19 @@ describe("/toolbox command", () => {
 				},
 			},
 		} as never;
-		await host.command("toolbox")?.handler("", ctx);
+		await host.open(ctx);
 		expect(customCalled).toBe(1);
 		expect(notes.length).toBe(0);
 	});
 
 	test("W1 capture: real picker states, tabs, filter and completed save", async () => {
 		const host = await boot([...ALL, "hunk", "ctx_docs"], ["hunk"], ["ctx_docs"]);
-		await host.command("toolbox")?.handler("disable ls", makeCtx().ctx);
+		await host.set("disabled", "ls");
 		await fixture.runtime.flush();
 		let renders = 0;
 		let completed = false;
 		try {
-			await host.command("toolbox")?.handler("", {
+			await host.open({
 				ui: {
 					notify() {},
 					custom: (
@@ -532,7 +457,7 @@ describe("/toolbox command", () => {
 				},
 			},
 		} as never;
-		await host.command("toolbox")?.handler("", ctx);
+		await host.open(ctx);
 		const v = view as View;
 		const screen = () => v.render(100).join("\n");
 		const selected = () => v.render(100).find((l) => l.includes("→")) ?? "";
@@ -613,7 +538,7 @@ describe("pix.json toolbox persistence", () => {
 	test("disable saves only the disabled tool; a tool installed later is active", async () => {
 		await clear();
 		const first = await bootWith(["read", "ls", "fetch"]);
-		await first.command("toolbox")?.handler("disable ls", makeCtx().ctx);
+		await first.set("disabled", "ls");
 		await pixRuntime().flush();
 		expect(JSON.parse(readFileSync(statePath(), "utf-8")).toolbox).toMatchObject({
 			disabledTools: ["ls"],

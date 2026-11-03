@@ -1,15 +1,11 @@
 /**
- * toolbox.ts — /toolbox command for user-driven tool gating
+ * toolbox.ts — Tools tab in /pix for user-driven tool gating
  *
- * Registers a `/toolbox` slash command that opens a TUI picker listing every
+ * Registers the /pix → Tools picker (`/pix tools` opens it directly) listing every
  * registered tool (built-in and MCP). Each tool has one of three states:
  *   enabled  — declared in the system prompt (pi.setActiveTools)
  *   deferred — not declared; tool_search loads it on demand (deferred exposure only)
  *   disabled — not declared and blocked, even through tool_search or codemode
- *
- * Also supports headless usage:
- *   /toolbox enable|defer|disable <names>
- *   /toolbox list [query]     — text search (no picker)
  */
 
 import { createHash } from "node:crypto";
@@ -125,55 +121,6 @@ const firstSentence = (desc: string): string => {
 	const m = clean.match(/^.*?[.!?](?=\s|$)/);
 	return (m ? m[0] : clean).slice(0, 120);
 };
-
-export function parseTargets(raw: string): string[] {
-	const seen = new Set<string>();
-	const out: string[] = [];
-	for (const t of raw.split(/[\s,]+/)) {
-		const name = t.trim();
-		if (!name || seen.has(name)) continue;
-		seen.add(name);
-		out.push(name);
-	}
-	return out;
-}
-
-const STATUS: Record<ToolState, string> = {
-	enabled: "✓ enabled",
-	deferred: "~ deferred",
-	disabled: "# disabled",
-};
-
-export function renderList(
-	rows: ToolRow[],
-	stateOf: (name: string) => ToolState,
-	query?: string,
-): string {
-	const filtered = query
-		? rows.filter(
-				(r) =>
-					r.name.toLowerCase().includes(query.toLowerCase()) ||
-					r.description.toLowerCase().includes(query.toLowerCase()),
-			)
-		: rows;
-
-	if (!filtered.length) {
-		return query ? `No tools matched "${query}".` : "No tools registered.";
-	}
-
-	const lines: string[] = [];
-	let group = "";
-	for (const row of filtered) {
-		const nextGroup = `${row.mcp ? "MCP" : "Tools"} · ${toolKind(row)}`;
-		if (group !== nextGroup) {
-			group = nextGroup;
-			lines.push(`${lines.length ? "\n" : ""}${group}:`);
-		}
-		const status = ALWAYS_ON_TOOLS.has(row.name) ? "✓ enabled (fixed)" : STATUS[stateOf(row.name)];
-		lines.push(`${status}  ${row.name}  ${row.description}`);
-	}
-	return lines.join("\n");
-}
 
 const DONE: Record<ToolState, string> = {
 	enabled: "now in the prompt",
@@ -706,56 +653,12 @@ export default function registerToolbox(pi: ExtensionAPI): void {
 		);
 	}
 
+	// `/pix tools` opens this tab directly; no separate /toolbox command to keep in sync.
 	registerPackageSettings(pi, {
 		id: "pix-toolbox",
 		label: "Tools",
 		open: async (ctx) => {
 			await showPicker(ctx as unknown as Parameters<typeof showPicker>[0]);
-		},
-	});
-
-	pi.registerCommand("toolbox", {
-		description:
-			"Set each tool to enabled, deferred or disabled. tab Tools/MCP, ↑↓ navigate, " +
-			"ctrl+e/f/d enable/defer/disable, space cycle. " +
-			"Headless: /toolbox enable|defer|disable <names>, /toolbox list [query]",
-		handler: async (args, ctx) => {
-			const raw = (args ?? "").trim();
-			const verb = raw.split(/\s+/, 1)[0]?.toLowerCase();
-
-			const VERBS: Record<string, ToolState> = {
-				enable: "enabled",
-				defer: "deferred",
-				disable: "disabled",
-			};
-			const target = verb ? VERBS[verb] : undefined;
-			if (verb && target) {
-				const targets = parseTargets(raw.slice(verb.length).trim());
-				if (!targets.length) {
-					ctx.ui.notify(
-						`/toolbox ${verb} needs a tool name, e.g. /toolbox ${verb} grep`,
-						"warning",
-					);
-					return;
-				}
-				const rows = getRows();
-				const msg = targets.map((t) => toggleTool(target, t, rows, ops)).join("\n");
-				ctx.ui.notify(msg, "info");
-				return;
-			}
-
-			if (verb === "list") {
-				const query = raw.slice(verb.length).trim() || undefined;
-				ctx.ui.notify(renderList(getRows(), ops.stateOf, query), "info");
-				return;
-			}
-
-			ctx.ui.notify(
-				verb
-					? "Unknown toolbox action. Use enable, defer, disable, or list."
-					: "Tool settings are in /pix → Tools.",
-				"info",
-			);
 		},
 	});
 }

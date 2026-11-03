@@ -1,6 +1,6 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`/toolbox command W1 capture: real picker states, tabs, filter and completed save: tools three states 1`] = `
+exports[`/pix → Tools W1 capture: real picker states, tabs, filter and completed save: tools three states 1`] = `
 [
   "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
   "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>🧰  Toolbox</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                  </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
@@ -22,7 +22,7 @@ exports[`/toolbox command W1 capture: real picker states, tabs, filter and compl
 ]
 `;
 
-exports[`/toolbox command W1 capture: real picker states, tabs, filter and completed save: wide tools 1`] = `
+exports[`/pix → Tools W1 capture: real picker states, tabs, filter and completed save: wide tools 1`] = `
 [
   "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
   "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>🧰  Toolbox</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                                                          </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
@@ -44,7 +44,7 @@ exports[`/toolbox command W1 capture: real picker states, tabs, filter and compl
 ]
 `;
 
-exports[`/toolbox command W1 capture: real picker states, tabs, filter and completed save: MCP tab 1`] = `
+exports[`/pix → Tools W1 capture: real picker states, tabs, filter and completed save: MCP tab 1`] = `
 [
   "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
   "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>🧰  Toolbox</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                  </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
@@ -62,7 +62,7 @@ exports[`/toolbox command W1 capture: real picker states, tabs, filter and compl
 ]
 `;
 
-exports[`/toolbox command W1 capture: real picker states, tabs, filter and completed save: disabled status 1`] = `
+exports[`/pix → Tools W1 capture: real picker states, tabs, filter and completed save: disabled status 1`] = `
 [
   "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
   "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>🧰  Toolbox</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                  </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",
@@ -81,7 +81,7 @@ exports[`/toolbox command W1 capture: real picker states, tabs, filter and compl
 ]
 `;
 
-exports[`/toolbox command W1 capture: real picker states, tabs, filter and completed save: no match search 1`] = `
+exports[`/pix → Tools W1 capture: real picker states, tabs, filter and completed save: no match search 1`] = `
 [
   "<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>",
   "<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>🧰  Toolbox</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                  </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>",

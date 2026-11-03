@@ -1,10 +1,10 @@
 # pix-toolbox
 
-Pi tool — gated tool toggle UI (`/toolbox`).
+Pi tool — gated tool toggle UI (`/pix tools`).
 
 ## What it does
 
-Registers a `/toolbox` slash command — a TUI fuzzy-search picker listing every registered tool (built-in, extension, MCP), split into **Tools** and **MCP** tabs. Each tool has one of three states:
+Adds a **Tools** tab to `/pix` (`/pix tools` opens it directly) — a TUI fuzzy-search picker listing every registered tool (built-in, extension, MCP), split into **Tools** and **MCP** tabs. Each tool has one of three states:
 
 | State | Mark | Meaning |
 |---|---|---|
@@ -16,7 +16,6 @@ Keys: `tab` switch tab · `↑↓` navigate · `ctrl+e` enable · `ctrl+f` defer
 
 - Always-on tools (`read`, `bash`, `edit`, `write`, `tool_search`, `codemode`) are in every prompt. The toolbox does not list or toggle them.
 - State persists to `~/.pi/agent/pix.json` under `toolbox`. Only changes from the default are saved: `disabledTools` (tools you disabled) and `loadedTools` (deferred tools you enabled). A newly installed tool keeps its default. A legacy `enabledTools` file is migrated on the next session start.
-- Headless subcommands: `/toolbox enable|defer|disable <names>`, `/toolbox list [query]`.
 
 ## Install
 
