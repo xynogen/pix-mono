@@ -103,7 +103,7 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 		label: "Navigation",
 		renderShell: "self",
 		description:
-			"LSP navigation; positions are one-based. File operations need path; positional ones need line + character or symbol. workspaceSymbol needs query; rename previews edits.",
+			"LSP navigation: definition, references/usages, callers (call hierarchy), implementations, hover types, symbols, rename preview. One-based positions. File ops need path; positional ones need line + character or symbol.",
 		promptSnippet: "LSP lookup, symbols, preview rename and call hierarchy.",
 		parameters: Type.Object({
 			operation: StringEnum([
