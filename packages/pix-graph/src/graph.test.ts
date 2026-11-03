@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tempDir } from "@xynogen/pix-runtime/paths";
-import registerGraph from "./graph.ts";
+import registerGraph, { impactRows } from "./graph.ts";
 
 type ExecuteFn = (
 	id: string,
@@ -235,22 +235,42 @@ describe("graph tool", () => {
 		expect(one.isError).toBeFalsy();
 	});
 
-	test("query and impact flag a graph older than its sources", async () => {
+	test("query and impact rebuild a stale graph first and say so", async () => {
 		const root = fixture();
 		await run({ action: "build" }, root);
 		const fresh = await run({ action: "impact", question: "greet" }, root);
 		expect(fresh.content[0]?.text).toMatch(/Tests: none reach it\.$/);
-		const later = new Date(Date.now() + 60_000);
-		utimesSync(join(root, "src/util.ts"), later, later);
-		for (const args of [
-			{ action: "impact", question: "greet" },
-			{ action: "query", question: "greet" },
-		]) {
-			const res = await run(args, root);
-			expect(res.content[0]?.text).toMatch(
-				/\n\nGraph is stale: 1 file\(s\) changed since the build\. Run graph\(action:"build"\) before trusting this\.$/,
-			);
+		// A new caller lands after the build. Backdating the outputs keeps the test independent
+		// of filesystem mtime resolution.
+		writeFileSync(
+			join(root, "src/main.ts"),
+			'import { greet } from "./util";\nexport function run() { return greet(); }\nexport function late() { return greet(); }\n',
+		);
+		const earlier = new Date(Date.now() - 60_000);
+		for (const name of ["graph.json", "graph.cleaned.json"]) {
+			utimesSync(join(root, ".pi/graph", name), earlier, earlier);
 		}
+		const res = await run({ action: "impact", question: "greet" }, root);
+		const text = res.content[0]?.text ?? "";
+		expect(text).toMatch(/late\(\) \(via called by\)/);
+		expect(text).toMatch(
+			/\n\nGraph rebuilt first: \d+ file\(s\) changed since the last build \([^)]+\)\.$/,
+		);
+		const again = await run({ action: "query", question: "greet" }, root);
+		expect(again.content[0]?.text).not.toMatch(/Graph rebuilt first/);
+	});
+
+	test("impact folds indirect dependents by file above the tree limit", () => {
+		const row = (label: string, depth: number, where: string) => ({ label, depth, where });
+		const rows = [
+			row("seed()", 0, "a.ts"),
+			...Array.from({ length: 5 }, (_, i) => row(`d1_${i}()`, 1, `b${i}.ts`)),
+			...Array.from({ length: 24 }, (_, i) => row(`d2_${i}()`, 2, `c${i % 3}.ts`)),
+		];
+		const { rows: shown, folded } = impactRows(rows);
+		expect(shown.map((r) => r.depth)).toEqual([0, 1, 1, 1, 1, 1]);
+		expect(folded).toEqual(["  c0.ts (8)", "  c1.ts (8)", "  c2.ts (8)"]);
+		expect(impactRows(rows.slice(0, 20)).folded).toEqual([]);
 	});
 
 	test("query returns structured hits for the tree render", async () => {

@@ -13,7 +13,7 @@
  * schema; kept minimal (single tool, two modes) per the token-budget rule.
  */
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -43,7 +43,7 @@ import {
 	staleCards,
 	storeSummary,
 } from "./modules.ts";
-import { createGraphParseCache } from "./parse-cache.ts";
+import { createGraphParseCache, type GraphParseCache } from "./parse-cache.ts";
 import type { BuildProgress } from "./pipeline.ts";
 import {
 	type ImpactResult,
@@ -173,23 +173,66 @@ function loadGraph(cwd: string): (GraphData & { builtMs: number }) | undefined {
 }
 
 /**
- * Footer when sources changed after the build: the graph answers from old code, and an
- * impact list that misses a new caller is worse than none. Checks only files the graph
- * knows (one stat each); new files show up after the next build.
+ * Graph source files changed after the build (one stat each). New files are not seen;
+ * they show up after the next build. A deleted or moved file counts as changed.
  */
-export function staleNote(graph: GraphData, builtMs: number, cwd: string): string {
+export function staleCount(graph: GraphData, builtMs: number, cwd: string): number {
 	const files = new Set(graph.nodes.flatMap((n) => (n.source_file ? [n.source_file] : [])));
 	let changed = 0;
 	for (const rel of files) {
 		try {
 			if (statSync(join(cwd, rel)).mtimeMs > builtMs) changed++;
 		} catch {
-			changed++; // deleted or moved since the build
+			changed++;
 		}
 	}
-	return changed === 0
-		? ""
-		: `\n\nGraph is stale: ${changed} file(s) changed since the build. Run graph(action:"build") before trusting this.`;
+	return changed;
+}
+
+/**
+ * Rebuild a stale graph before answering. Scope is the repo root, the default build input.
+ * A failed rebuild keeps the old graph and says it is stale, so the answer is never silent.
+ */
+async function refreshGraph(
+	cwd: string,
+	changed: number,
+	parseCache: GraphParseCache,
+	signal?: AbortSignal,
+): Promise<string> {
+	const startedAt = Date.now();
+	try {
+		const { buildCodeGraphProgress } = await import("./pipeline.ts");
+		// ponytail: rebuilds "."; a graph built from a subfolder widens to the whole repo here.
+		await buildCodeGraphProgress(".", cwd, resolve(cwd, OUT_DIR), () => {}, signal, parseCache);
+		// A content-identical rebuild is a cache hit that does not rewrite the outputs; touch them
+		// so an mtime-only change does not trigger a rebuild on every call.
+		const now = new Date();
+		for (const name of ["graph.json", "graph.cleaned.json"]) {
+			const path = join(cwd, OUT_DIR, name);
+			if (existsSync(path)) utimesSync(path, now, now);
+		}
+		return `\n\nGraph rebuilt first: ${changed} file(s) changed since the last build (${formatDuration(Date.now() - startedAt, "btw")}).`;
+	} catch (error) {
+		return `\n\nGraph is stale: ${changed} file(s) changed since the build, and the rebuild failed (${getErrorMessage(error)}). Run graph(action:"build") before trusting this.`;
+	}
+}
+
+/**
+ * Load the graph; for query/impact, rebuild it first when sources changed. query/impact on
+ * old code can miss a new caller, and a cached rebuild takes about 2 s, so refresh and say
+ * so instead of telling the model to do it.
+ */
+async function loadFresh(
+	cwd: string,
+	skipRefresh: boolean,
+	parseCache: GraphParseCache,
+	signal?: AbortSignal,
+): Promise<{ graph: ReturnType<typeof loadGraph>; refreshed: string }> {
+	const graph = loadGraph(cwd);
+	const changed = graph && !skipRefresh ? staleCount(graph, graph.builtMs, cwd) : 0;
+	if (!graph || changed === 0) return { graph, refreshed: "" };
+	const refreshed = await refreshGraph(cwd, changed, parseCache, signal);
+	return { graph: loadGraph(cwd) ?? graph, refreshed };
 }
 
 /** Above this many same-named seeds, impact asks for `path` instead of printing every tree. */
@@ -222,11 +265,32 @@ function runImpact(graph: GraphData, question?: string, inFile?: string) {
 	return { content: [{ type: "text" as const, text: impactText(r, rows) }], details };
 }
 
+/** Above this many dependents, the tree shows direct dependents only; deeper ones group by file. */
+const IMPACT_TREE_MAX = 25;
+
+/**
+ * Large impact lists cost tokens per row. Keep seeds and direct dependents as a tree and
+ * fold depth 2+ into one row per file with a count: the agent still sees every affected
+ * file, and the footer still lists the tests.
+ */
+export function impactRows(rows: QueryHitRow[]): { rows: QueryHitRow[]; folded: string[] } {
+	if (rows.length <= IMPACT_TREE_MAX) return { rows, folded: [] };
+	const deep = new Map<string, number>();
+	for (const row of rows) {
+		if (row.depth > 1)
+			deep.set(row.where ?? row.label, (deep.get(row.where ?? row.label) ?? 0) + 1);
+	}
+	const folded = [...deep].sort(([a], [b]) => a.localeCompare(b)).map(([f, n]) => `  ${f} (${n})`);
+	return { rows: rows.filter((r) => r.depth <= 1), folded };
+}
+
 /** Tree plus a footer the agent acts on: dependent count, ambiguity, and tests to run. */
 function impactText(r: ImpactResult, rows: QueryHitRow[]): string {
 	const dependents = r.hits.length - r.seeds.length;
+	const { rows: shown, folded } = impactRows(rows);
 	return [
-		plain(rows),
+		plain(shown),
+		...(folded.length ? ["", "Indirect dependents (depth 2+), by file:", ...folded] : []),
 		"",
 		`${dependents} dependent(s) in ${r.files.length} file(s)${r.truncated ? " (truncated; narrow with path)" : ""}.`,
 		...(r.seeds.length > 1
@@ -498,7 +562,12 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					}
 				}
 
-				const graph = loadGraph(cwd);
+				const { graph, refreshed } = await loadFresh(
+					cwd,
+					action === "summarize",
+					parseCache,
+					signal,
+				);
 				if (!graph) {
 					return fail(
 						`No graph found. Run graph(action:"build") first to create ${OUT_DIR}/graph.json.`,
@@ -548,8 +617,8 @@ export default function registerGraph(pi: ExtensionAPI): void {
 						params.path as string | undefined,
 					);
 					if (typeof out === "string") return fail(out);
-					const stale = staleNote(graph, graph.builtMs, cwd);
-					if (stale) out.content[0] = { type: "text", text: `${out.content[0]?.text}${stale}` };
+					if (refreshed)
+						out.content[0] = { type: "text", text: `${out.content[0]?.text}${refreshed}` };
 					return out;
 				}
 
@@ -584,7 +653,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				const text =
 					rows.length === 0
 						? `No graph node name matches: ${tokenize(question).join(", ") || "(no keywords)"}. Query is lexical over TS/JS symbol/file names; retry with identifiers or use grep.`
-						: plainRows + staleNote(graph, graph.builtMs, cwd);
+						: plainRows + refreshed;
 				return {
 					content: [{ type: "text" as const, text }],
 					details: {
