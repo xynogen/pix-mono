@@ -17,6 +17,7 @@ import {
 } from "@xynogen/pix-pretty/diff-render";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { lang } from "@xynogen/pix-pretty/lang";
+import { fadeRowsOf } from "@xynogen/pix-pretty/text";
 import type {
 	PiPrettyApi,
 	RenderContextLike,
@@ -262,7 +263,9 @@ export function registerWriteTool(
 							.then((hlLines) => {
 								if (renderCtx.state._nfk !== pk) return;
 								const maxShow = renderCtx.expanded ? hlLines.length : 12;
-								const preview = hlLines.slice(0, maxShow).join("\n");
+								const preview = fadeRowsOf(hlLines.slice(0, maxShow + 1), theme, maxShow).join(
+									"\n",
+								);
 								const rem = hlLines.length - maxShow;
 								let out = `${base}\n${preview}`;
 								if (rem > 0) out += `\n${moreLines(rem, theme)}`;
