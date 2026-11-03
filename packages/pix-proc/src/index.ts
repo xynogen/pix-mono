@@ -15,6 +15,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
+import { type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
@@ -142,12 +143,28 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		ui = ctx.ui;
 		const orphans = await mgr.findOrphans();
 		if (orphans.length === 0) return;
-		const list = orphans.map((o) => `${o.handle} (${procLabel(o)})`).join(", ");
-		// Never kill silently (§3): show, then ask.
-		const choice = await ctx.ui.select(
-			`pix-proc: ${orphans.length} orphaned process group(s) from a previous session — ${list}`,
-			["Kill all", "Keep all"],
-		);
+		const title = `${orphans.length} orphaned process group(s) from a previous session`;
+		const labels = orphans.map((o) => `${o.handle} (${procLabel(o)})`);
+		// Never kill silently (§3): show, then ask. Keep is first so a reflexive Enter is safe.
+		const choice =
+			typeof ctx.ui.custom === "function"
+				? (
+						await showOverlay(ctx.ui as unknown as OverlayUI, {
+							mode: "confirm",
+							icon: icon("process"),
+							title,
+							body: labels,
+							choices: [
+								{ value: "Keep all", label: "Keep all", description: "Adopt and track them" },
+								{ value: "Kill all", label: "Kill all", description: "Terminate every group" },
+							],
+							approveValue: ["Keep all", "Kill all"],
+						})
+					).choice
+				: await ctx.ui.select(`pix-proc: ${title} — ${labels.join(", ")}`, [
+						"Keep all",
+						"Kill all",
+					]);
 		if (choice === "Kill all") {
 			for (const o of orphans) mgr.killOrphan(o);
 			ctx.ui.notify(`Killed ${orphans.length} orphaned process group(s).`, "warning");

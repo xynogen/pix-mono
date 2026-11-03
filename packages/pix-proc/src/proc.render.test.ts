@@ -178,22 +178,31 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 				"host-self",
 			);
 		let widget: Component | undefined;
+		let orphanPrompted = false;
 		const ui = {
-			select: async () => "Keep all",
 			setWidget(_key: string, factory?: (_tui: TUI, theme: Theme) => Component) {
 				widget = factory?.(tui, theme);
 			},
 			notify() {
 				throw new Error("Unexpected process action");
 			},
-			custom: async (
+			custom: async <T>(
 				factory: (
 					tui: TUI,
 					theme: Theme,
 					kb: KeybindingsManager,
-					done: (value: undefined) => void,
+					done: (value: T) => void,
 				) => Modal,
 			) => {
+				if (!orphanPrompted) {
+					// First overlay is the session_start orphan prompt: Enter must pick Keep all.
+					orphanPrompted = true;
+					const picked = Promise.withResolvers<T>();
+					const prompt = factory(tui, theme, kb, picked.resolve);
+					capture("orphan prompt", prompt);
+					prompt.handleInput("\r");
+					return picked.promise;
+				}
 				const modal = factory(tui, theme, kb, () => {});
 				capture("list", modal);
 				const pending = Promise.withResolvers<string[]>();

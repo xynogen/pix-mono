@@ -33,6 +33,16 @@ fallback
 ready                                                                           
 listening                                                                       
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+orphan prompt
+<accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>▸︎ 1 orphaned process group(s) from a previous session</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>proc-dev (serve)                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>────────────────────────────────────────────────────────────────────────────</muted+bg:customMessageBg><text+bg:customMessageBg> </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg>→ Keep all                        Adopt and track them</accent+bg:customMessageBg><text+bg:customMessageBg>                       </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>  Kill all</text+bg:customMessageBg><dim+bg:customMessageBg>                        Terminate every group</dim+bg:customMessageBg><text+bg:customMessageBg>                      </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><text+bg:customMessageBg>                                                                             </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><muted+bg:customMessageBg>↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc deny</muted+bg:customMessageBg><text+bg:customMessageBg>                   </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>
+<accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
 running capped and recent widget
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
 <toolTitle>▸︎   Proc    </toolTitle><muted> │ </muted><accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                       <muted> 5s </muted> 
