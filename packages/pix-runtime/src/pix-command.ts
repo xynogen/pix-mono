@@ -306,8 +306,16 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 		if (data && typeof data === "object" && "registered" in data) data.registered = true;
 	});
 	pi.registerCommand("pix", {
-		description: "pix: open shared settings (edit pix.json)",
-		handler: async (_args: string, ctx: ExtensionCommandContext) => {
+		description: "pix: open shared settings (edit pix.json); /pix <tab> opens that tab",
+		getArgumentCompletions: (prefix: string) => {
+			const p = prefix.trim().toLowerCase();
+			const items = [...TABS, ...packageSettings(pi).map((entry) => entry.label)]
+				.map((label) => label.toLowerCase())
+				.filter((name) => name.startsWith(p))
+				.map((name) => ({ value: name, label: name }));
+			return items.length ? items : null;
+		},
+		handler: async (args: string, ctx: ExtensionCommandContext) => {
 			// Re-parse pix.json so section parsers remain the single validation source.
 			await runtime.reload({ origin: "command", source: "pix" });
 			const panels = packageSettings(pi);
@@ -365,7 +373,8 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						),
 						...panels.map((entry) => entry.label),
 					].sort((a, b) => tabRank(a) - tabRank(b));
-					let tab = "Settings";
+					const wanted = (args ?? "").trim().toLowerCase();
+					let tab = tabs.find((name) => name.toLowerCase() === wanted) ?? "Settings";
 					let embedded:
 						| { render(width: number): string[]; handleInput(data: string): void; dispose?(): void }
 						| undefined;
@@ -455,6 +464,10 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						if (tab === "Binaries") binariesTab().refresh();
 						mountPanel();
 					};
+
+					// `/pix <tab>` opens straight into that tab.
+					if (tab === "Binaries") binariesTab().refresh();
+					mountPanel();
 
 					const rows = (): Row[] => {
 						const list = settings.filter((r) => (r.section === "Footer") === (tab === "Footer"));

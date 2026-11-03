@@ -105,6 +105,26 @@ test("standalone settings render directly in /pix without a second overlay and d
 		} as unknown as ExtensionCommandContext);
 		expect(opened).toBe(1);
 		expect(overlays).toBe(1);
+		// `/pix voice` opens straight into the Voice tab; completion lists tabs by prefix.
+		const pix = commands.get("pix");
+		expect(pix.getArgumentCompletions("vo")).toEqual([{ value: "voice", label: "voice" }]);
+		let direct = "";
+		await pix.handler("voice", {
+			ui: {
+				custom: async (factory: (...a: unknown[]) => { render(w: number): string[] }) => {
+					direct = factory(
+						{ requestRender() {}, terminal: { rows: 40 } },
+						theme,
+						getKeybindings(),
+						() => {},
+					)
+						.render(100)
+						.join("\n");
+					return null;
+				},
+			},
+		} as unknown as ExtensionCommandContext);
+		expect(direct).toContain("microphone: default");
 		bus.removeAllListeners();
 		const entries = new Map();
 		bus.emit("pix:settings", entries);
