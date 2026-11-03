@@ -121,9 +121,9 @@ transcribe:preview-32
    <dim>line 27</dim>                                                                      
    <dim>line 28</dim>                                                                      
    <dim>line 29</dim>                                                                      
-   <dim>line 30</dim>                                                                      
-   <dim>line 31</dim>                                                                      
-   <dim>line 32</dim>                                                                      
+   <muted>line 30</muted>                                                                      
+   <muted>line 31</muted>                                                                      
+   <muted>line 32</muted>                                                                      
    <muted>… 1 more line</muted>                                                                
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 transcribe:preview-full

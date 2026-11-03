@@ -16,6 +16,7 @@ import type {
 	ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
 import { type Component, Text } from "@earendil-works/pi-tui";
+import { fadeRowsOf } from "@xynogen/pix-pretty/text";
 import {
 	BODY_PAD,
 	bodyLine,
@@ -73,8 +74,11 @@ function allText(result: AgentToolResult<unknown>): string {
 function dimBody(body: string, theme: Theme, expanded: boolean): string {
 	const lines = body.split("\n");
 	const maxShow = expanded ? lines.length : MAX_PREVIEW_LINES;
-	const shown = lines.slice(0, maxShow);
-	const out = shown.map((line) => bodyLine(line, theme, (l) => theme.fg("dim", l)));
+	const out = fadeRowsOf(
+		lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme, (l) => theme.fg("dim", l))),
+		theme,
+		maxShow,
+	);
 	const remaining = lines.length - maxShow;
 	if (remaining > 0) out.push(moreLines(remaining, theme));
 	return out.join("\n");
