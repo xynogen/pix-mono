@@ -15,11 +15,16 @@ import { basename } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import type { AssistantMessage, AssistantMessageEvent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ReadonlyFooterDataProvider } from "@earendil-works/pi-coding-agent";
-import { mixColors, sliceByColumn, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import {
+	type mixColors,
+	sliceByColumn,
+	visibleWidth,
+	wrapTextWithAnsi,
+} from "@earendil-works/pi-tui";
 import type { ModelsDevModel } from "@xynogen/pix-data";
 import { benchScoreColor, formatCost, lookupBenchmark, resolveModelsDev } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { fadeText } from "@xynogen/pix-pretty/text";
+import { fadePaint, fadeText } from "@xynogen/pix-pretty/text";
 import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
 import { fmtTokenCount } from "@xynogen/pix-pretty/widget-format";
 import { config, onConfigChange } from "@xynogen/pix-runtime/config";
@@ -564,14 +569,7 @@ export default function (pi: ExtensionAPI) {
 							fadeText(
 								sliceByColumn(line, start, visibleWidth(line) - start, true),
 								width - start,
-								(text, fade) =>
-									fade === 0
-										? theme.fg("dim", text)
-										: theme.colors && theme.style
-											? theme.style(text, {
-													fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
-												})
-											: theme.fg("muted", text),
+								fadePaint(theme),
 							),
 					];
 				},
