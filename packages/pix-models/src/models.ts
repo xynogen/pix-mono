@@ -207,7 +207,11 @@ export function filterModelItems<T extends { value: string }>(
 	return [...rankSort(subMatches), ...extraFuzzy];
 }
 
-async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Promise<void> {
+async function showEnhancedPicker(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	initialSearch = "",
+): Promise<void> {
 	// Mirror the built-in /model selector, which calls refresh() then awaits
 	// getAvailable() (see model-selector.js). Without refresh(), this extension
 	// reads whatever `this.models` was last loaded into — which, depending on
@@ -436,6 +440,11 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 				listInternal.selectedIndex = Math.max(0, selectedIndex);
 				listInternal.invalidate();
 			};
+			// `/model <term>` opens pre-filtered, like Pi's own picker.
+			if (initialSearch) {
+				search.setValue(initialSearch);
+				applyFuzzy(initialSearch);
+			}
 
 			const pager = new ModalPager();
 			let reloading = false;
@@ -690,16 +699,15 @@ async function showEnhancedPicker(pi: ExtensionAPI, ctx: ExtensionContext): Prom
 }
 
 export default function modelPickerExtension(pi: ExtensionAPI) {
-	// Remove Pi's built-in /model so only the enhanced /models picker remains.
+	// Route Pi's built-in /model (autocomplete entry and submit shortcut) to this picker.
 	// Self-healing: re-applies on every load, so a Pi upgrade can't restore it.
 	patchOutBuiltinModelCommand();
 
-	const handler = async (_args: unknown, ctx: ExtensionContext) => {
-		await showEnhancedPicker(pi, ctx);
+	const handler = async (args: unknown, ctx: ExtensionContext) => {
+		await showEnhancedPicker(pi, ctx, typeof args === "string" ? args.trim() : "");
 	};
 	registerProjectPrefs(pi);
-	pi.registerCommand("models", {
-		description: "Enhanced model picker — shows benchlm rank + score",
-		handler,
-	});
+	const description = "Enhanced model picker — shows benchlm rank + score";
+	pi.registerCommand("models", { description, handler });
+	pi.registerCommand("model", { description, handler });
 }

@@ -109,6 +109,29 @@ export const BUILTIN_SLASH_COMMANDS = [
 		expect(out).toContain('import path11 from"node:path"');
 	});
 
+	it("neutralises the 1.5 minified array entry and submit shortcut, idempotently", () => {
+		// Real form from the 1.5 dist/bundle/chunks/*.js (trimmed).
+		const pi15 = `BUILTIN_SLASH_COMMANDS=[{name:"settings",description:"Open settings menu"},{name:"model",description:"Select model (opens selector UI)",argumentHint:"<provider/model>"},{name:"scoped-models",description:"x"}];if(text==="/scoped-models"){this.editor.setText(""),await this.showModelsSelector();return}if(text==="/model"||text.startsWith("/model ")){let searchTerm=text.startsWith("/model ")?text.slice(7).trim():void 0;this.editor.setText(""),await this.handleModelCommand(searchTerm);return}`;
+		const once = stripBuiltinModelCommand(pi15);
+		expect(once).toContain(
+			'[{name:"settings",description:"Open settings menu"},{name:"scoped-models"',
+		);
+		expect(once).toContain("if(false){let searchTerm=text.startsWith(");
+		expect(stripBuiltinModelCommand(once)).toBe(once);
+	});
+
+	it("neutralises the legacy pretty submit shortcut in interactive-mode.js", () => {
+		const legacy = `            if (text === "/model" || text.startsWith("/model ")) {
+                const searchTerm = text.startsWith("/model ") ? text.slice(7).trim() : undefined;
+                await this.handleModelCommand(searchTerm);
+            }
+            if (text === "/models" || text.startsWith("/models ")) {}`;
+		const once = stripBuiltinModelCommand(legacy);
+		expect(once).toMatch(/^ {12}if \(false\) \{\n/);
+		expect(once).toContain('if (text === "/models" || text.startsWith("/models "))');
+		expect(stripBuiltinModelCommand(once)).toBe(once);
+	});
+
 	it("round-trips through disk", () => {
 		const dir = mkdtempSync(join(tempDir(), "pix-patch-"));
 		const file = join(dir, "slash-commands.js");

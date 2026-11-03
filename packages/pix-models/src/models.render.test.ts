@@ -61,14 +61,15 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			handleInput(data: string): void | Promise<void>;
 		};
 		let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
+		const commands: string[] = [];
 		let level = "medium";
 		const selected: unknown[] = [];
 		let accept = true;
 		register({
 			on() {},
 			registerCommand(name: string, command: { handler: typeof handler }) {
-				expect(name).toBe("models");
-				handler = command.handler;
+				commands.push(name);
+				if (name === "models") handler = command.handler;
 			},
 			getThinkingLevel: () => level,
 			setThinkingLevel(value: string) {
@@ -80,6 +81,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			},
 		} as never);
 		expect(patchSpy).toHaveBeenCalledTimes(1);
+		expect(commands).toEqual(["models", "model"]);
 		if (!handler) throw new Error("models command not registered");
 		const models = [
 			{ provider: "fixture", id: "alpha", name: "Alpha", contextWindow: 200_000, reasoning: true },
@@ -247,6 +249,10 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			thinkingLevelMap: { high: "high", max: "max", xhigh: null },
 		});
 		expect(notifications.at(-1)).toBe("Thinking options for alpha: models.dev");
+		selected.length = 0;
+		// `/model beta` opens pre-filtered, so Enter picks beta, not the first row.
+		await handler(" beta ", ctx);
+		expect(selected[0]).toMatchObject({ id: "beta" });
 	} finally {
 		for (const restore of restores.reverse()) restore.mockRestore();
 		if (cache === undefined) delete process.env.XDG_CACHE_HOME;

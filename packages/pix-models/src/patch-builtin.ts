@@ -1,9 +1,12 @@
 /**
- * patch-builtin.ts — strip Pi's built-in /model slash command at load time.
+ * patch-builtin.ts — route Pi's built-in /model slash command to pix at load time.
  *
  * Built-in commands can't be removed via the extension API, so we edit Pi's
- * compiled slash-command source directly. Done on every load: idempotent and
- * self-healing across Pi upgrades, so no manual repatch is ever needed.
+ * compiled source directly: drop `/model` from BUILTIN_SLASH_COMMANDS
+ * (autocomplete) and disable the editor submit shortcut that opens Pi's own
+ * picker before extension commands run. Done on every load: idempotent and
+ * self-healing across Pi upgrades. An unknown host format is left unchanged,
+ * so the failure mode is Pi's own picker, never a crash.
  *
  * Pi's build layout has moved over time. Two forms are in the wild:
  *   - legacy:  <pkg>/dist/core/slash-commands.js  (readable, one entry/line)
@@ -74,6 +77,11 @@ const BUILTIN_COMMANDS_ARRAY = /BUILTIN_SLASH_COMMANDS\s*=\s*\[/;
 // requires a closing quote right after `model`, so `models`/`scoped-models`
 // never match.
 const BUILTIN_MODEL_COMMAND = /\{(?=[^{}]*\bname\s*:\s*["']model["'])[^{}]*\},?/g;
+// The interactive submit handler opens Pi's picker for `/model` before extension
+// commands run: `text === "/model" || text.startsWith("/model ")`. The variable name
+// is a backreference so a renamed minified binding still matches.
+const BUILTIN_MODEL_SUBMIT =
+	/\b([\w$]+)\s*===\s*(["'])\/model\2\s*\|\|\s*\1\.startsWith\(\s*(["'])\/model \3\s*\)/g;
 
 /** Infer pi-coding-agent package roots, most-specific first. */
 function packageRoots(): string[] {
@@ -129,63 +137,68 @@ function candidateFiles(root: string): string[] {
 		// no bundle dir on this host — legacy layout below
 	}
 	// Legacy readable output, kept as a fallback for older Pi builds.
-	files.push(join(root, "dist", "core", "slash-commands.js"));
+	files.push(
+		join(root, "dist", "core", "slash-commands.js"),
+		join(root, "dist", "modes", "interactive", "interactive-mode.js"),
+	);
 	return files;
 }
 
-/** All candidate paths across all roots (exported for tests). */
-function candidatePaths(): string[] {
-	return packageRoots().flatMap(candidateFiles);
-}
-
 /**
- * Locate the source file that actually declares BUILTIN_SLASH_COMMANDS.
+ * Source files of the first Pi install that declares BUILTIN_SLASH_COMMANDS.
  * Chunk filenames are content hashes, so we confirm by contents, not by name.
+ * Every file of that install is returned: in the legacy layout the submit
+ * handler lives outside slash-commands.js.
  */
-function findSlashCommandsFile(): string | null {
-	for (const p of candidatePaths()) {
-		if (!existsSync(p)) continue;
-		try {
-			if (BUILTIN_COMMANDS_ARRAY.test(readFileSync(p, "utf8"))) return p;
-		} catch {
-			// unreadable — skip
-		}
+function findPiSourceFiles(): string[] {
+	for (const root of packageRoots()) {
+		const files = candidateFiles(root).filter((p) => existsSync(p));
+		const declares = files.some((p) => {
+			try {
+				return BUILTIN_COMMANDS_ARRAY.test(readFileSync(p, "utf8"));
+			} catch {
+				return false; // unreadable — skip
+			}
+		});
+		if (declares) return files;
 	}
-	return null;
+	return [];
 }
 
 /**
- * Remove the built-in /model command line from Pi's slash-commands.js.
- * Idempotent: returns silently if the file is missing or already patched.
+ * Route Pi's built-in /model to the pix picker in Pi's compiled source.
+ * Idempotent: skips files that are missing, unreadable or already patched.
  */
 export function patchOutBuiltinModelCommand(): void {
-	const file = findSlashCommandsFile();
-	if (!file) return;
-
-	let source: string;
-	try {
-		source = readFileSync(file, "utf8");
-	} catch {
-		return;
-	}
-
-	const patched = stripBuiltinModelCommand(source);
-	if (patched === source) return; // already patched, or host format is unknown
-
-	try {
-		writeFileSync(file, patched, "utf8");
-	} catch {
-		// Read-only install — leave /model in place rather than crash.
+	for (const file of findPiSourceFiles()) {
+		let source: string;
+		try {
+			source = readFileSync(file, "utf8");
+		} catch {
+			continue;
+		}
+		const patched = stripBuiltinModelCommand(source);
+		if (patched === source) continue; // already patched, or host format is unknown
+		try {
+			writeFileSync(file, patched, "utf8");
+		} catch {
+			// Read-only install — leave /model in place rather than crash.
+		}
 	}
 }
 
 /**
- * Remove Pi's built-in `/model` entry from compiled slash-command source.
+ * Neutralise Pi's built-in `/model` in compiled source: remove its
+ * BUILTIN_SLASH_COMMANDS entry and turn its submit shortcut into `false`.
  *
  * The command objects are static, flat literals. Matching the entry's `name`
  * tolerates added properties and line wrapping without touching `/models`.
  */
 export function stripBuiltinModelCommand(source: string): string {
+	return stripArrayEntry(source).replace(BUILTIN_MODEL_SUBMIT, "false");
+}
+
+function stripArrayEntry(source: string): string {
 	const array = BUILTIN_COMMANDS_ARRAY.exec(source);
 	if (!array || array.index === undefined) return source;
 
@@ -201,4 +214,4 @@ export function stripBuiltinModelCommand(source: string): string {
 }
 
 // Export for tests
-export { candidatePaths, findSlashCommandsFile };
+export { findPiSourceFiles };
