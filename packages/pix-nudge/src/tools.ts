@@ -13,11 +13,7 @@
  * the tool is callable now. Names only the one matching tool — no inventory.
  */
 
-import type {
-	ExtensionAPI,
-	ToolResultEvent,
-	ToolResultEventResult,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ToolResultEvent } from "@earendil-works/pi-coding-agent";
 import { currentPlatform, type HostOs } from "@xynogen/pix-runtime/platform";
 import { NUDGE_ENTRY, type NudgeCard } from "./card.ts";
 
@@ -360,8 +356,45 @@ export default function registerToolsNudge(
 		return n === 1 || n % NUDGE_EVERY === 0;
 	};
 
+	/**
+	 * Resolve, load and card one nudge. Returns the note to append, or undefined when the
+	 * session lacks the tool or loading it failed. Loading a deferred target the way
+	 * tool_search does saves the model a discovery round-trip; the card keeps it visible.
+	 */
+	const fire = (
+		rule: Pick<Rule, "reason" | "tool" | "hint" | "note">,
+		summary: string,
+	): string | undefined => {
+		let active: string[] | undefined;
+		try {
+			// getActiveTools() returns string[] (tool NAMES), not ToolInfo[].
+			active = pi.getActiveTools() ?? undefined;
+		} catch {
+			active = undefined;
+		}
+		const nudge = nudgeFor(rule, registeredToolNames(pi), active);
+		if (!nudge) return undefined;
+		if (nudge.load && active) {
+			try {
+				pi.setActiveTools([...active, rule.tool]);
+			} catch {
+				return undefined;
+			}
+		}
+		const text = `[pix-nudge] ${nudge.text}`;
+		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
+			kind: "tool",
+			summary: `${summary} → ${rule.tool}${nudge.load ? " (loaded)" : ""}`,
+			body: text,
+		});
+		return text;
+	};
+	const append = (event: ToolResultEvent, text: string | undefined) =>
+		text ? { content: [...(event.content ?? []), { type: "text" as const, text }] } : undefined;
+
 	pi.on("tool_result", (event) => {
-		if (event.toolName === "read") return wholeRead(event);
+		if (event.toolName === "read" && !event.isError) return append(event, wholeRead(event));
+		if (event.toolName === "grep" && !event.isError) return append(event, identifierGrep(event));
 		if (event.toolName !== "bash") return;
 		const command = event.input?.command;
 		if (typeof command !== "string") return;
@@ -374,72 +407,50 @@ export default function registerToolsNudge(
 					? POWERSHELL_RULE
 					: undefined;
 		if (!rule) return;
-		let active: string[] | undefined;
-		try {
-			// getActiveTools() returns string[] (tool NAMES), not ToolInfo[].
-			active = pi.getActiveTools() ?? undefined;
-		} catch {
-			active = undefined;
-		}
-		const nudge = nudgeFor(rule, registeredToolNames(pi), active);
-		if (!nudge) return;
-		// Load the deferred target the same way tool_search does, so the model can call
-		// it next turn without a discovery round-trip. The card below makes it visible.
-		if (nudge.load && active) {
-			try {
-				pi.setActiveTools([...active, rule.tool]);
-			} catch {
-				return;
-			}
-		}
-
-		// Card body = the exact text appended to the model's tool result.
-		const text = `[pix-nudge] ${nudge.text}`;
-		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
-			kind: "tool",
-			summary: `bash ${rule.category} → ${rule.tool}${nudge.load ? " (loaded)" : ""}`,
-			body: text,
-		});
-		return {
-			content: [...(event.content ?? []), { type: "text" as const, text }],
-			structuredContent: event.structuredContent,
-		};
+		const text = fire(rule, `bash ${rule.category}`);
+		return text
+			? { ...append(event, text), structuredContent: event.structuredContent }
+			: undefined;
 	});
 
 	// A whole-file read of a large source file: the model usually needs one symbol or the
-	// shape, so point at the AST tools once. Nudged only when the target tool exists.
+	// shape, so point at the AST tools once.
 	let outlined = false;
-	const wholeRead = (event: ToolResultEvent): ToolResultEventResult | undefined => {
-		if (outlined || event.isError || event.input.offset !== undefined) return;
+	const wholeRead = (event: ToolResultEvent): string | undefined => {
+		if (outlined || event.input.offset !== undefined) return undefined;
 		const path = event.input.path;
-		if (typeof path !== "string" || !OUTLINE_FILE.test(path)) return;
+		if (typeof path !== "string" || !OUTLINE_FILE.test(path)) return undefined;
 		const text = event.content.map((c) => (c.type === "text" ? (c.text ?? "") : "")).join("");
-		if (text.split("\n").length < OUTLINE_MIN_LINES) return;
-		let active: string[] | undefined;
-		try {
-			active = pi.getActiveTools() ?? undefined;
-		} catch {
-			active = undefined;
-		}
-		const nudge = nudgeFor(OUTLINE_RULE, registeredToolNames(pi), active);
-		if (!nudge) return;
-		outlined = true;
-		if (nudge.load && active) {
-			try {
-				pi.setActiveTools([...active, OUTLINE_RULE.tool]);
-			} catch {
-				return;
-			}
-		}
-		const note = `[pix-nudge] ${nudge.text}`;
-		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
-			kind: "tool",
-			summary: `read whole file → ${OUTLINE_RULE.tool}${nudge.load ? " (loaded)" : ""}`,
-			body: note,
-		});
-		return { content: [...event.content, { type: "text" as const, text: note }] };
+		if (text.split("\n").length < OUTLINE_MIN_LINES) return undefined;
+		const note = fire(OUTLINE_RULE, "read whole file");
+		if (note) outlined = true;
+		return note;
+	};
+
+	// grep for one code identifier usually means "who uses this": text matches mix comments,
+	// strings and same-named locals. Point at the dependency graph once per session.
+	let traced = false;
+	const identifierGrep = (event: ToolResultEvent): string | undefined => {
+		const pattern = event.input.pattern;
+		if (traced || typeof pattern !== "string" || !CODE_IDENTIFIER.test(pattern)) return undefined;
+		const note = fire(IMPACT_RULE, "grep identifier");
+		if (note) traced = true;
+		return note;
 	};
 }
+
+/**
+ * One code identifier, not a word or a regex: camelCase, PascalCase with an inner capital,
+ * snake_case, or SCREAMING_CASE. Plain words ("error", "TODO") stay ordinary greps.
+ */
+const CODE_IDENTIFIER =
+	/^(?:[a-z]+[A-Z]\w*|[A-Z][a-z0-9]+[A-Z]\w*|[a-z]\w*_\w+|[A-Z][A-Z0-9]*_[A-Z0-9_]+)$/;
+const IMPACT_RULE: Pick<Rule, "reason" | "tool" | "hint" | "note"> = {
+	reason: "Grepped one identifier.",
+	tool: "graph",
+	hint: 'action:"impact" lists callers, users and tests; or `lsp_navigation` references',
+	note: "Keep grep for text, comments and non-TS files.",
+};
 
 /** Source files the AST tools understand. Markdown, JSON and logs stay plain reads. */
 const OUTLINE_FILE =

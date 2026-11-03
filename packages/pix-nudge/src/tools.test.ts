@@ -408,6 +408,36 @@ describe("registerToolsNudge handler", () => {
 	});
 });
 
+describe("identifier grep nudge", () => {
+	const grepEvent = (pattern: string) => ({
+		toolName: "grep",
+		input: { pattern },
+		content: [{ type: "text", text: "a.ts:1#ABC|x" }],
+		isError: false,
+	});
+	const tools = [...ALL_TOOLS, "graph", "lsp_navigation"];
+
+	test("one code identifier points at graph impact once per session", async () => {
+		const handler = makeHandler(["read", "grep"], tools);
+		const { ctx } = makeCtx();
+		const result = (await handler(grepEvent("frameToolResult"), ctx)) as Result;
+		expect(result?.content.at(-1)?.text).toMatch(
+			/^\[pix-nudge\] Grepped one identifier\. Loaded `graph` for you; call it directly next time \(action:"impact" lists callers, users and tests; or `lsp_navigation` references\)\./,
+		);
+		expect(await handler(grepEvent("MAX_LIMIT"), ctx)).toBeUndefined();
+	});
+
+	test("plain words and regexes stay ordinary greps", async () => {
+		const { ctx } = makeCtx();
+		for (const p of ["error", "TODO", "Theme", "foo|bar", "get.*Name", "a b"]) {
+			expect(await makeHandler(["grep"], tools)(grepEvent(p), ctx)).toBeUndefined();
+		}
+		for (const p of ["getName", "UserStore", "max_tokens", "MAX_LIMIT"]) {
+			expect(await makeHandler(["grep"], tools)(grepEvent(p), ctx)).toBeTruthy();
+		}
+	});
+});
+
 describe("whole-file read nudge", () => {
 	const lines = (n: number) => Array.from({ length: n }, (_, i) => `line ${i}`).join("\n");
 	const readEvent = (path: string, n: number, input: Record<string, unknown> = {}) => ({
