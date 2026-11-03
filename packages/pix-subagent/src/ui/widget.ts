@@ -8,9 +8,9 @@
  * Ported from tintinweb/pi-subagents (MIT), adapted for pix-mono.
  */
 
-import { mixColors, visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { fadeLine } from "@xynogen/pix-pretty/text";
+import { fadeLine, fadePaint } from "@xynogen/pix-pretty/text";
 import {
 	COLLAPSED_TOOL_GLYPH,
 	dotJoin,
@@ -315,16 +315,7 @@ export class AgentWidget {
 		const title = widgetTitle(theme, icon("agent"), "Agent");
 		const titleWidth = visibleWidth(title);
 		const w = Math.max(0, width - titleWidth);
-		const truncate = (line: string) =>
-			fadeLine(line, width, (text, fade) =>
-				fade === 0
-					? theme.fg("dim", text)
-					: theme.colors && theme.style
-						? theme.style(text, {
-								fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
-							})
-						: theme.fg("muted", text),
-			);
+		const truncate = (line: string) => fadeLine(line, width, fadePaint(theme));
 		const frame = SPINNER[this.widgetFrame % SPINNER.length] ?? "";
 
 		const finishedLines: string[] = [];

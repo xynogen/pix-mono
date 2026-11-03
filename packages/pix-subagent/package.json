@@ -42,7 +42,7 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-data": "^0.5.3",
-		"@xynogen/pix-pretty": "^1.35.1",
+		"@xynogen/pix-pretty": "^1.36.0",
 		"@xynogen/pix-runtime": "^0.16.0"
 	},
 	"peerDependencies": {
