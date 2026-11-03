@@ -2,6 +2,7 @@ import { constants } from "node:fs";
 import { access, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateToolArguments } from "@earendil-works/pi-ai";
 import type {
 	AgentToolUpdateCallback,
 	EditToolInput,
@@ -116,68 +117,199 @@ const hashFields = {
 		}),
 	),
 };
+const hashEdits = Type.Array(
+	Type.Union([
+		Type.Object(
+			{
+				op: Type.Literal("replace"),
+				...hashFields,
+				end: Type.Optional(
+					Type.String({
+						pattern: "^[1-9][0-9]*#[0-9A-F]{3}$",
+						description: "Inclusive end anchor. Omit for one line.",
+					}),
+				),
+			},
+			{ additionalProperties: false },
+		),
+		Type.Object(
+			{
+				op: Type.Union([Type.Literal("insert_before"), Type.Literal("insert_after")]),
+				...hashFields,
+			},
+			{ additionalProperties: false },
+		),
+	]),
+	{ minItems: 1 },
+);
+const exactEdits = Type.Array(
+	Type.Object(
+		{
+			oldText: Type.String({
+				minLength: 1,
+				description:
+					"Fallback only after a hash-anchor edit fails. Exact current source text; must match once.",
+			}),
+			newText: Type.String({ description: "Replacement text. Empty string deletes." }),
+		},
+		{ additionalProperties: false },
+	),
+	{ minItems: 1 },
+);
+const path = Type.String({ minLength: 1 });
 const editSchema = Type.Object(
 	{
-		path: Type.String({ minLength: 1 }),
+		path,
 		// ponytail: union whole arrays so the schema rejects mixed formats before execution.
-		edits: Type.Union(
-			[
-				Type.Array(
-					Type.Union([
-						Type.Object(
-							{
-								op: Type.Literal("replace"),
-								...hashFields,
-								end: Type.Optional(
-									Type.String({
-										pattern: "^[1-9][0-9]*#[0-9A-F]{3}$",
-										description: "Inclusive end anchor. Omit for one line.",
-									}),
-								),
-							},
-							{ additionalProperties: false },
-						),
-						Type.Object(
-							{
-								op: Type.Union([Type.Literal("insert_before"), Type.Literal("insert_after")]),
-								...hashFields,
-							},
-							{ additionalProperties: false },
-						),
-					]),
-					{ minItems: 1 },
-				),
-				Type.Array(
-					Type.Object(
-						{
-							oldText: Type.String({
-								minLength: 1,
-								description:
-									"Fallback only after a hash-anchor edit fails. Exact current source text; must match once.",
-							}),
-							newText: Type.String({ description: "Replacement text. Empty string deletes." }),
-						},
-						{ additionalProperties: false },
-					),
-					{ minItems: 1 },
-				),
-			],
-			{
-				description:
-					"Try hash-anchor edits first. Use exact-text edits only after a hash-anchor edit fails. Never mix formats.",
-			},
-		),
+		edits: Type.Union([hashEdits, exactEdits], {
+			description:
+				"Try hash-anchor edits first. Use exact-text edits only after a hash-anchor edit fails. Never mix formats.",
+		}),
 	},
 	{ additionalProperties: false },
 );
+// One branch each, so a bad call reports only the errors of the format it meant.
+const hashSchema = Type.Object({ path, edits: hashEdits }, { additionalProperties: false });
+const exactSchema = Type.Object({ path, edits: exactEdits }, { additionalProperties: false });
+
+const parseJson = (value: string): unknown => {
+	try {
+		return JSON.parse(value);
+	} catch {
+		return value;
+	}
+};
 
 export function prepareHashArguments(input: unknown): unknown {
 	if (!input || typeof input !== "object" || Array.isArray(input)) return input;
 	const args = { ...input } as Record<string, unknown>;
-	if (typeof args.edits === "string") args.edits = JSON.parse(args.edits);
+	if (typeof args.edits === "string") args.edits = parseJson(args.edits);
 	if (args.edits && typeof args.edits === "object" && !Array.isArray(args.edits))
 		args.edits = [args.edits];
+	// Top recorded failure: one edit item sent as a JSON string.
+	if (Array.isArray(args.edits))
+		args.edits = args.edits.map((item) => {
+			if (typeof item !== "string") return item;
+			const parsed = parseJson(item);
+			return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : item;
+		});
 	return args;
+}
+
+const EDIT_FIX = "Fix: resend only the broken field; keep one format per call.";
+
+function editFix(format: "hash" | "exact", path: string, problem: string): string {
+	if (/\.(pos|end)$/.test(path) && problem.startsWith("expected to match"))
+		return "LINE#HASH from read, hash is uppercase hex (12#A3F)";
+	if (/\.op$/.test(path)) return "op is replace, insert_before or insert_after";
+	if (/\.lines$/.test(path) && problem === "missing")
+		return "missing; add lines: [] of literal source lines ([] deletes)";
+	if (/\.lines(\.\d+)?$/.test(path)) return "lines is an array of strings, one per line";
+	if (/\.oldText$/.test(path) && problem !== "missing")
+		return "oldText is non-empty exact current source text";
+	if (problem === "unknown field") {
+		if (!path.startsWith("edits.")) return "unknown field; send only path and edits";
+		return format === "hash"
+			? "unknown field; hash items take op, pos, end?, lines"
+			: "unknown field; exact items take oldText, newText";
+	}
+	if (/^edits\.\d+$/.test(path)) return `${problem}; each edit is one object`;
+	if (path === "edits") return `${problem}; edits is a non-empty array of objects`;
+	return problem;
+}
+
+/**
+ * Normalize, then check with the host validator. A bad call fails with a few
+ * lines that name the field and the fix, for the format the call meant.
+ */
+export function prepareEditArguments(input: unknown): unknown {
+	const args = prepareHashArguments(input);
+	const edits = (args as { edits?: unknown } | undefined)?.edits;
+	const items = Array.isArray(edits) ? edits : [];
+	const kind = (item: unknown) =>
+		item && typeof item === "object"
+			? ["op", "pos", "end", "lines"].some((k) => k in item)
+				? "hash"
+				: ["oldText", "newText"].some((k) => k in item)
+					? "exact"
+					: undefined
+			: undefined;
+	const kinds = items.map(kind);
+	const at = (k: string) => kinds.flatMap((x, i) => (x === k ? [i] : [])).join(",");
+	if (kinds.includes("hash") && kinds.includes("exact"))
+		throw new Error(
+			badArgs(
+				"edit",
+				[`- edits: mixed formats (hash at [${at("hash")}], exact at [${at("exact")}])`],
+				EDIT_FIX,
+			),
+		);
+	const format = kinds.includes("exact") ? "exact" : "hash";
+	checkArgs(
+		"edit",
+		format === "hash" ? hashSchema : exactSchema,
+		args,
+		(path, problem) => editFix(format, path, problem),
+		EDIT_FIX,
+	);
+	return args;
+}
+
+// ponytail: pix-ask has a copy of this host-error reformatter (clip/badArgs/checkArgs). Move it
+// to pix-runtime when a third tool needs it (public API addition, minor bump).
+const clip = (text: string, max: number) =>
+	text.length > max ? `${text.slice(0, max - 1)}…` : text;
+
+function badArgs(tool: string, rows: string[], footer: string): string {
+	const head =
+		rows.length > 5 ? `${tool}: ${rows.length} bad arguments, first 5` : `${tool}: bad arguments`;
+	return [head, ...rows.slice(0, 5), footer].join("\n");
+}
+
+/** Host-validate `args`; on failure throw a short field/fix list, not the full-argument echo. */
+function checkArgs(
+	tool: string,
+	schema: object,
+	args: unknown,
+	fix: (path: string, problem: string, value: unknown) => string,
+	footer: string,
+): void {
+	try {
+		validateToolArguments(
+			{ name: tool, description: "", parameters: schema },
+			{ type: "toolCall", id: "", name: tool, arguments: args as never },
+		);
+		return;
+	} catch (error) {
+		// ponytail: reads pi-ai's "  - path: problem" rows; an unknown format rethrows the host error.
+		const text = (error instanceof Error ? error.message : String(error)).split(
+			"\n\nReceived arguments:",
+		)[0];
+		const seen = new Set<string>();
+		const rows = [...(text ?? "").matchAll(/^ {2}- (\S+): (.+)$/gm)].map(
+			([, path = "", problem = ""]) => {
+				const value =
+					path === "root"
+						? args
+						: path
+								.split(".")
+								.reduce<unknown>(
+									(v, k) =>
+										v && typeof v === "object" ? (v as Record<string, unknown>)[k] : undefined,
+									args,
+								);
+				const shown =
+					value === undefined ? "" : ` ${clip(JSON.stringify(value) ?? String(value), 40)}`;
+				// State a repeated fix once, so five rows stay a few hundred bytes.
+				const advice = fix(path, problem, value);
+				const said = seen.has(advice);
+				seen.add(advice);
+				return `- ${path.replace(/\.(\d+)/g, "[$1]")}${shown}: ${said ? "same fix" : advice}`;
+			},
+		);
+		if (!rows.length) throw error;
+		throw new Error(badArgs(tool, rows, footer));
+	}
 }
 
 export function editPath(path: string, cwd: string): string {
@@ -437,7 +569,7 @@ export function registerEditTool(
 		promptGuidelines: [
 			"For edit, try hash anchors from read first. Only if the hash-anchor edit fails, fall back to oldText/newText. If the file changed, read the affected region again before using current source text; never guess anchors or overwrite unseen changes.",
 		],
-		prepareArguments: prepareHashArguments,
+		prepareArguments: prepareEditArguments,
 		constrainedSampling: { type: "json_schema", strict: "prefer" },
 		renderShell: "self",
 

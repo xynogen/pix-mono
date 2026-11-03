@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-edit",
-	"version": "0.2.13",
+	"version": "0.2.14",
 	"description": "Pi tool \u2014 precise text replacement edit with diff rendering",
 	"type": "module",
 	"main": "src/index.ts",
@@ -43,6 +43,8 @@
 		"@xynogen/pix-runtime": "^0.16.0"
 	},
 	"peerDependencies": {
+		"typebox": "*",
+		"@earendil-works/pi-ai": "*",
 		"@earendil-works/pi-coding-agent": "*",
 		"@earendil-works/pi-tui": "*"
 	}

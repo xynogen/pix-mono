@@ -58,7 +58,7 @@
 		"@xynogen/pix-nudge": "^0.3.11",
 		"@xynogen/pix-read": "^0.4.7",
 		"@xynogen/pix-write": "^0.2.12",
-		"@xynogen/pix-edit": "^0.2.13",
+		"@xynogen/pix-edit": "^0.2.14",
 		"@xynogen/pix-find": "^0.3.8",
 		"@xynogen/pix-grep": "^0.3.9",
 		"@xynogen/pix-ls": "^0.3.8",
