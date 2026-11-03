@@ -7,8 +7,12 @@ import { installHooks } from "./install-hooks.ts";
 
 test("installs standard hooks, migrates legacy config, and preserves user hooks", () => {
 	const cwd = mkdtempSync(join(tempDir(), "pix-hooks-"));
+	// Inside a pre-commit hook, git exports GIT_INDEX_FILE etc. for the outer repo; drop them.
+	const env = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+	);
 	const git = (args: string[]) => {
-		const result = runToolSync("git", args, { cwd });
+		const result = runToolSync("git", args, { cwd, env });
 		expect(result.code).toBe(0);
 		return result.stdout.trim();
 	};
@@ -22,7 +26,7 @@ test("installs standard hooks, migrates legacy config, and preserves user hooks"
 			/\.md\$'; then\n.*\n\texit 0\nfi\nbun run check\nbun run typecheck\nexec bun run test\n$/,
 		);
 		// Markdown-only commits skip the checks; any other staged file runs them.
-		const runHook = () => runToolSync("bash", [target], { cwd });
+		const runHook = () => runToolSync("bash", [target], { cwd, env });
 		writeFileSync(join(cwd, "README.md"), "# x\n");
 		git(["add", "README.md"]);
 		expect(runHook().stdout).toMatch(/only Markdown staged; skipping checks/);
