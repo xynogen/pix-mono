@@ -170,7 +170,7 @@ as `/skill:<name>` slash commands.
 | `long-task` | Multi-session build state in files: `init.sh`, `features.json`, `PROGRESS.md`, one commit per feature |
 | `lsp` | Select, install with consent, and configure a language server in `.pi/lsp.json` |
 | `readme` | Create or update a deployment-focused README in a fixed style |
-| `report` | Short terminal-friendly report — verdict, one-line findings, star ratings, compact tables, ASCII diagrams |
+| `report` | Detailed terminal report — verdict, numbered findings with file:line, cause, impact and fix, checks, next steps; emoji only as status markers beside text labels |
 | `review` | Strict code review by severity, ending in a Pass / Pass with suggestions / Fail verdict |
 | `runner` | Generate or convert a task runner (just/make/mise/task/npm/sh; bundle with references) |
 | `search` | Deep code discovery and project context mapping with grep, graph, and LSP |
