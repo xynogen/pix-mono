@@ -84,26 +84,10 @@ fetch:preview32
    <dim>row 11</dim>                                                                       
    <dim>row 12</dim>                                                                       
    <dim>row 13</dim>                                                                       
-   <dim>row 14</dim>                                                                       
-   <dim>row 15</dim>                                                                       
-   <dim>row 16</dim>                                                                       
-   <dim>row 17</dim>                                                                       
-   <dim>row 18</dim>                                                                       
-   <dim>row 19</dim>                                                                       
-   <dim>row 20</dim>                                                                       
-   <dim>row 21</dim>                                                                       
-   <dim>row 22</dim>                                                                       
-   <dim>row 23</dim>                                                                       
-   <dim>row 24</dim>                                                                       
-   <dim>row 25</dim>                                                                       
-   <dim>row 26</dim>                                                                       
-   <dim>row 27</dim>                                                                       
-   <dim>row 28</dim>                                                                       
-   <dim>row 29</dim>                                                                       
-   <dim>row 30</dim>                                                                       
-   <dim>row 31</dim>                                                                       
-   <dim>row 32</dim>                                                                       
-   <muted>… 1 more line</muted>                                                                
+   <muted>row 14                                                                       </muted>
+   <muted>row 15                                                                       </muted>
+   <muted>row 16                                                                       </muted>
+	<muted>… 17 more lines</muted>                                                              
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 fetch:full
 

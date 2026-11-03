@@ -61,8 +61,11 @@ test("shows a bounded Markdown preview and the full content when expanded", asyn
 		const full = stripVTControlCharacters(
 			renderer(result, { isPartial: false, expanded: true }, theme, ctx).render(80).join("\n"),
 		);
-		expect(preview).toMatch(/Item 30[\s\S]*<muted>… 9 more lines<\/muted>/);
-		expect(preview).toMatch(/^ {3}<muted>… 9 more lines<\/muted> *$/m);
+		// 16 rendered rows; the last 3 fade (muted on a tag theme), then the hidden count.
+		expect(preview).toMatch(
+			/Item 10[\s\S]*<muted>[^\n]*Item 11[\s\S]*<muted>[^\n]*Item 13.*<\/muted>\n\s*<muted>… 26 more lines<\/muted>/,
+		);
+		expect(preview.split("\n").filter((line) => line.includes("Item"))).toHaveLength(14);
 		expect(full).toContain("Item 39");
 		expect(result.content[0]).toEqual({ type: "text", text: content });
 	} finally {

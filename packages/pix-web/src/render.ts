@@ -7,6 +7,7 @@ import {
 	type ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
 import { Box, type Component, Markdown, Text } from "@earendil-works/pi-tui";
+import { fadeRowsOf } from "@xynogen/pix-pretty/text";
 import {
 	BODY_PAD,
 	bodyLine,
@@ -43,8 +44,8 @@ interface CompactRendererConfig<TDetails> {
 	status?: (details: TDetails) => CollapsedToolStatus;
 }
 
-// ponytail: limit the preview by source lines; expand to see the full page.
-const MAX_PREVIEW_LINES = 32;
+// Preview budget in rendered rows; the last few fade out. Expand shows the full page.
+const MAX_PREVIEW_LINES = 16;
 
 function getText(lastComponent: Component | undefined): TextLike {
 	const component = lastComponent && unframeToolResult(lastComponent as TextLike);
@@ -128,18 +129,22 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 			text.setText(dimBody(body, theme, opts.expanded));
 			return opts.isPartial ? text : frameToolResult(text, theme, isError);
 		}
-		const lines = body.split("\n");
-		const preview = opts.expanded ? body : lines.slice(0, MAX_PREVIEW_LINES).join("\n");
-		const remaining = lines.length - MAX_PREVIEW_LINES;
 		const bodyView = new Box(0, 0);
-		bodyView.addChild(
-			new Markdown(preview, 3, 0, getMarkdownTheme(), {
-				color: (value) => theme.fg("dim", value),
-			}),
-		);
-		if (remaining > 0 && !opts.expanded) {
-			bodyView.addChild(new Text(moreLines(remaining, theme), 0, 0));
-		}
+		const markdown = new Markdown(body, 3, 0, getMarkdownTheme(), {
+			color: (value) => theme.fg("dim", value),
+		});
+		if (opts.expanded) bodyView.addChild(markdown);
+		// Fade the last preview rows of the rendered page instead of a hard cut.
+		else
+			bodyView.addChild({
+				invalidate: () => markdown.invalidate(),
+				render: (width: number) => {
+					const rows = markdown.render(width);
+					const hidden = rows.length - MAX_PREVIEW_LINES;
+					const shown = fadeRowsOf(rows, theme, MAX_PREVIEW_LINES);
+					return hidden > 0 ? [...shown, moreLines(hidden, theme)] : shown;
+				},
+			});
 		return frameToolResult(bodyView, theme, false);
 	};
 }
