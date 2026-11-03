@@ -223,37 +223,74 @@ type MaskEntry = {
 	}>;
 };
 
-/** Read results superseded by a later successful edit/write of the same path. */
+type ToolCallPart = {
+	type?: string;
+	id?: string;
+	arguments?: { path?: unknown; edits?: unknown };
+};
+
+/**
+ * First line a hash-anchor edit touches, or 1 when it cannot be known (exact-text edits,
+ * writes). Lines above it keep their numbers and hashes, so their anchors stay valid.
+ */
+export function firstEditedLine(args: ToolCallPart["arguments"]): number {
+	if (!Array.isArray(args?.edits)) return 1;
+	let first = Number.POSITIVE_INFINITY;
+	for (const e of args.edits as Array<{ pos?: unknown }>) {
+		const line = typeof e?.pos === "string" ? Number.parseInt(e.pos, 10) : Number.NaN;
+		if (!Number.isInteger(line) || line < 1) return 1;
+		first = Math.min(first, line);
+	}
+	return Number.isFinite(first) ? first : 1;
+}
+
+/** Last `N#HASH|` anchor line in a read result, or Infinity when it has none. */
+function lastReadLine(text: string): number {
+	let last = Number.POSITIVE_INFINITY;
+	for (const m of text.matchAll(/^(\d+)#[0-9A-F]{3}\|/gm)) last = Number(m[1]);
+	return last;
+}
+
+/**
+ * Read results superseded by a later successful edit/write of the same path. A read whose
+ * lines all sit above the first edited line stays: its anchors still match, and masking it
+ * only forced a re-read.
+ */
 export function staleReads(
 	entries: MaskEntry[],
 	resolvePath: (p: string) => string,
 ): Array<{ id: string; path: string }> {
-	const callPath = new Map<string, string>();
-	const reads = new Map<string, Array<{ id: string; path: string }>>();
+	const calls = new Map<string, { path: string; firstLine: number }>();
+	const reads = new Map<string, Array<{ id: string; path: string; lastLine: number }>>();
 	const stale: Array<{ id: string; path: string }> = [];
 	for (const { sourceEntry, messages } of entries) {
 		const msg = messages[0];
 		if (msg?.role === "assistant" && Array.isArray(msg.content)) {
-			for (const part of msg.content as Array<{
-				type?: string;
-				id?: string;
-				arguments?: { path?: unknown };
-			}>)
+			for (const part of msg.content as ToolCallPart[])
 				if (part.type === "toolCall" && part.id && typeof part.arguments?.path === "string")
-					callPath.set(part.id, resolvePath(part.arguments.path));
+					calls.set(part.id, {
+						path: resolvePath(part.arguments.path),
+						firstLine: firstEditedLine(part.arguments),
+					});
 		}
 		if (msg?.role !== "toolResult" || msg.isError || !msg.toolCallId) continue;
-		const path = callPath.get(msg.toolCallId);
-		if (!path) continue;
+		const call = calls.get(msg.toolCallId);
+		if (!call) continue;
+		const { path } = call;
 		if (msg.toolName === "read") {
 			const text = Array.isArray(msg.content)
 				? (msg.content[0] as { text?: unknown })?.text
 				: undefined;
 			if (typeof text === "string" && text.startsWith(MASK_PREFIX)) continue;
-			reads.set(path, [...(reads.get(path) ?? []), { id: sourceEntry.id, path }]);
+			const lastLine = typeof text === "string" ? lastReadLine(text) : Number.POSITIVE_INFINITY;
+			reads.set(path, [...(reads.get(path) ?? []), { id: sourceEntry.id, path, lastLine }]);
 		} else if (msg.toolName === "edit" || msg.toolName === "write") {
-			stale.push(...(reads.get(path) ?? []));
-			reads.delete(path);
+			const first = msg.toolName === "write" ? 1 : call.firstLine;
+			const hit = (reads.get(path) ?? []).filter((r) => r.lastLine >= first);
+			stale.push(...hit.map(({ id }) => ({ id, path })));
+			const kept = (reads.get(path) ?? []).filter((r) => r.lastLine < first);
+			if (kept.length) reads.set(path, kept);
+			else reads.delete(path);
 		}
 	}
 	return stale;

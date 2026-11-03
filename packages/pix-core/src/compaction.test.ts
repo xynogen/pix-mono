@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { resolve, sep } from "node:path";
 import registerCompaction, {
 	compactionThresholdTokens,
+	firstEditedLine,
 	formatFileLists,
 	maskedRead,
 	mergeFileLists,
@@ -201,6 +202,42 @@ describe("stale read masking", () => {
 		expect(staleReads([...masked, call("3", "a.ts"), result("3", "edit")], resolvePath)).toEqual(
 			[],
 		);
+	});
+
+	it("keeps a read whose lines all sit above the first hash-anchored edit", () => {
+		const anchors = (from: number, to: number) =>
+			Array.from({ length: to - from + 1 }, (_, i) => `${from + i}#ABC|x`).join("\n");
+		const editAt = (id: string, ...pos: string[]) => ({
+			sourceEntry: { id: `a-${id}`, type: "message" },
+			messages: [
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "toolCall",
+							id,
+							arguments: { path: "a.ts", edits: pos.map((p) => ({ pos: p })) },
+						},
+					],
+				},
+			],
+		});
+		const reads = [
+			call("1", "a.ts"),
+			result("1", "read", anchors(1, 40)), // above the edit: kept
+			call("2", "a.ts"),
+			result("2", "read", anchors(90, 120)), // spans the edit: stale
+		];
+		expect(
+			staleReads([...reads, editAt("3", "100#F00", "50#AAA"), result("3", "edit")], resolvePath),
+		).toEqual([{ id: "r-2", path: "/repo/a.ts" }]);
+		// An exact-text edit has no line: every earlier read is stale.
+		expect(staleReads([...reads, call("3", "a.ts"), result("3", "edit")], resolvePath)).toEqual([
+			{ id: "r-1", path: "/repo/a.ts" },
+			{ id: "r-2", path: "/repo/a.ts" },
+		]);
+		expect(firstEditedLine({ edits: [{ pos: "7#ABC" }, { pos: "3#DEF" }] })).toBe(3);
+		expect(firstEditedLine({ edits: [{ oldText: "x" }] })).toBe(1);
 	});
 
 	it("agent_before_settle emits a visible context_edit stub over the threshold", () => {
