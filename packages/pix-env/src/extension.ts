@@ -123,7 +123,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 					return new Text("", 0, 0);
 				return new Text(
-					`${formatToolCallTitle(theme, "read_env", context)} ${theme.fg("dim", args.action)}`,
+					`${formatToolCallTitle(theme, "read_env", context)} ${theme.fg("dim", String(args.action))}`,
 					0,
 					0,
 				);
