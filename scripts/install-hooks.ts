@@ -11,9 +11,21 @@ if [ -n "$files" ] && ! printf '%s\\n' "$files" | grep -qv '\\.md$'; then
 	echo "pre-commit: only Markdown staged; skipping checks (CI still runs them)."
 	exit 0
 fi
+# Splitting one change into several commits re-ran the full suite on an identical tree, which
+# tempted --no-verify. Skip only when this exact working tree (tracked + untracked) passed.
+stamp=$(git rev-parse --git-path pix-verified-tree)
+tmp=$(git rev-parse --git-path pix-tree-index)
+cp "\${GIT_INDEX_FILE:-$(git rev-parse --git-path index)}" "$tmp" 2>/dev/null || rm -f "$tmp"
+tree=$(GIT_INDEX_FILE="$tmp" git add -A && GIT_INDEX_FILE="$tmp" git write-tree)
+rm -f "$tmp"
+if [ -n "$tree" ] && [ "$(cat "$stamp" 2>/dev/null)" = "$tree" ]; then
+	echo "pre-commit: working tree $tree already passed; skipping checks."
+	exit 0
+fi
 bun run check
 bun run typecheck
-exec bun run test
+bun run test
+echo "$tree" > "$stamp"
 `;
 
 /** Earlier standard hooks that may be upgraded in place. */
@@ -22,6 +34,19 @@ const LEGACY_HOOKS = [
 # pix-mono pre-commit
 # ponytail: check the working tree without rewriting/staging; CI checks the committed snapshot.
 set -e
+bun run check
+bun run typecheck
+exec bun run test
+`,
+	`#!/bin/sh
+# pix-mono pre-commit
+# ponytail: check the working tree without rewriting/staging; CI checks the committed snapshot.
+set -e
+files=$(git diff --cached --name-only)
+if [ -n "$files" ] && ! printf '%s\\n' "$files" | grep -qv '\\.md$'; then
+	echo "pre-commit: only Markdown staged; skipping checks (CI still runs them)."
+	exit 0
+fi
 bun run check
 bun run typecheck
 exec bun run test

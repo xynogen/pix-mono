@@ -23,7 +23,7 @@ test("installs standard hooks, migrates legacy config, and preserves user hooks"
 		const target = installHooks(cwd) as string;
 		expect(target).toBe(join(cwd, ".git", "hooks", "pre-commit"));
 		expect(readFileSync(target, "utf8")).toMatch(
-			/\.md\$'; then\n.*\n\texit 0\nfi\nbun run check\nbun run typecheck\nexec bun run test\n$/,
+			/\nbun run check\nbun run typecheck\nbun run test\necho "\$tree" > "\$stamp"\n$/,
 		);
 		// Markdown-only commits skip the checks; any other staged file runs them.
 		const runHook = () => runToolSync("bash", [target], { cwd, env });
@@ -32,6 +32,15 @@ test("installs standard hooks, migrates legacy config, and preserves user hooks"
 		expect(runHook().stdout).toMatch(/only Markdown staged; skipping checks/);
 		writeFileSync(join(cwd, "a.ts"), "");
 		git(["add", "a.ts"]);
+		expect(runHook().stdout).not.toMatch(/skipping checks/);
+		// A tree that already passed skips; any change to it runs the checks again.
+		const tree = (() => {
+			git(["add", "-A"]);
+			return git(["write-tree"]);
+		})();
+		writeFileSync(join(cwd, ".git", "pix-verified-tree"), `${tree}\n`);
+		expect(runHook().stdout).toMatch(/already passed; skipping checks/);
+		writeFileSync(join(cwd, "b.ts"), "x"); // untracked file changes the tree
 		expect(runHook().stdout).not.toMatch(/skipping checks/);
 		expect(runToolSync("git", ["config", "--get", "core.hooksPath"], { cwd }).code).toBe(1);
 		if (process.platform !== "win32") chmodSync(target, 0o644);
