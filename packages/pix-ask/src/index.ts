@@ -12,6 +12,7 @@ import {
 import { withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
+import { prepareAskArguments } from "./args.ts";
 import { buildResponseText } from "./helpers.ts";
 import { AskQuestionnaire } from "./questionnaire.ts";
 import { rpcFallback } from "./rpc.ts";
@@ -50,6 +51,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 			],
 			executionMode: "sequential",
 			parameters: ParamsSchema,
+			prepareArguments: prepareAskArguments,
 
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				if (signal?.aborted) {
