@@ -147,6 +147,7 @@ as `/skill:<name>` slash commands.
 
 | Skill | Description |
 |---|---|
+| `agents` | Create, audit, or prune AGENTS.md / CLAUDE.md to verified, non-inferable rules only |
 | `ask-user` | Ask 1–4 structured questions before high-stakes, irreversible, or ambiguous decisions |
 | `audit` | Security audit, integrity check, and secret/vulnerability scan with evidence |
 | `bootstrap` | Scaffold a new project or tool from authoritative docs, with install consent |

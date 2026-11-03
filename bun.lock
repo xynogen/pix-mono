@@ -135,7 +135,7 @@
         "@xynogen/pix-prompts": "^0.5.12",
         "@xynogen/pix-read": "^0.4.7",
         "@xynogen/pix-runtime": "^0.16.1",
-        "@xynogen/pix-skills": "^0.10.7",
+        "@xynogen/pix-skills": "^0.10.8",
         "@xynogen/pix-subagent": "^0.10.15",
         "@xynogen/pix-todo": "^0.4.12",
         "@xynogen/pix-update": "^0.2.10",
@@ -483,7 +483,7 @@
     },
     "packages/pix-skills": {
       "name": "@xynogen/pix-skills",
-      "version": "0.10.7",
+      "version": "0.10.8",
       "dependencies": {
         "@xynogen/pix-gate": "^0.4.0",
         "@xynogen/pix-pretty": "^1.36.0",
