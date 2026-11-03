@@ -270,6 +270,10 @@ export function maskedRead(path: string): string {
 // (`minTokens`), because every pass breaks the prompt cache from that point on.
 const OUTPUT_MASK_PREFIX = "[pix compaction: output masked";
 const MASKABLE_TOOLS = new Set(["bash", "grep", "find", "ls", "read"]);
+// ponytail: fixed floor. In one long session, outputs under 2,000 chars were 65% of masked
+// items but 28% of the freed chars: the stub saves little and forces a re-run. Make it a
+// compaction setting if a model needs a different trade-off.
+const MIN_MASK_CHARS = 2_000;
 
 /** Older tool output to mask: id, stub text, and chars freed. */
 export function windowedMasks(
@@ -307,6 +311,7 @@ export function windowedMasks(
 	for (const r of older) {
 		if (!MASKABLE_TOOLS.has(r.tool) || skip.has(r.id)) continue;
 		if (r.text.startsWith(OUTPUT_MASK_PREFIX) || r.text.startsWith(MASK_PREFIX)) continue;
+		if (r.text.length < MIN_MASK_CHARS) continue;
 		const args = callArgs.get(r.callId) ?? {};
 		const target = [args.command, args.pattern, args.path, args.paths]
 			.flat()

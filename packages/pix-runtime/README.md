@@ -67,8 +67,8 @@ pix-core consumes both settings.
 
 Over that threshold, pix-core masks older tool output before it summarizes.
 `compaction.maskKeep` (default `10`) is the number of newest tool results kept as
-is. Older successful `bash`/`grep`/`find`/`ls`/`read` output becomes a one-line
-stub; errors stay. `compaction.maskMinTokens` (default `5000`) skips a pass that
+is. Older successful `bash`/`grep`/`find`/`ls`/`read` output of 2,000 chars or more
+becomes a one-line stub; smaller output and errors stay. `compaction.maskMinTokens` (default `5000`) skips a pass that
 would free fewer tokens, because each pass breaks the prompt cache. Both are
 `pix.json` calibration knobs with no `/pix` picker.
 

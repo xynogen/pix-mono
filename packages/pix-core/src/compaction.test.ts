@@ -270,6 +270,18 @@ describe("windowed output masking", () => {
 		expect(windowedMasks(entries, 10)).toEqual([]);
 	});
 
+	it("keeps small outputs: a stub would free little and force a re-run", () => {
+		const small = [
+			call("s1", { command: "git status" }),
+			result("s1", "bash", "x".repeat(1_999)),
+			call("s2", { command: "cat big" }),
+			result("s2", "bash", "x".repeat(2_000)),
+			call("s3", { command: "ls" }),
+			result("s3", "bash", big),
+		];
+		expect(windowedMasks(small, 1).map((m) => m.id)).toEqual(["r-s2"]);
+	});
+
 	function settle(contextEntries: unknown[], tokens = 10_000_000) {
 		const handlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
 		registerCompaction({
