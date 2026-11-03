@@ -54,7 +54,7 @@ export default function registerSpeak(pi: ExtensionAPI): void {
 		...({ exposure: "deferred" } as const),
 		label: "Text to speech",
 		renderShell: "self",
-		description: "Speak text aloud through the configured voice provider.",
+		description: "Text to speech: speak text aloud through the configured voice provider.",
 		promptSnippet: "speak(input, output_file?)",
 		renderCall: makeRenderCall("speak", (args) => String(args.input ?? "").slice(0, 60)),
 		renderResult,

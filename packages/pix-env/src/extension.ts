@@ -71,7 +71,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			...({ exposure: "deferred" } as const),
 			label: "Environment",
 			description:
-				'Inspect, read, add, or edit env variables. "info" returns names/types only. "read" reveals only requested names. "add" creates a new key; "edit" changes an existing key using name/value. Read disclosure and writes require user approval. Never request unrelated variables.',
+				'Inspect, read, add, or edit environment (env) variables: check which are set. "info" returns names/types only. "read" reveals only requested names. "add" creates a new key; "edit" changes an existing key using name/value. Read disclosure and writes require user approval. Never request unrelated variables.',
 			promptSnippet: "Inspect, read, add, or edit env variables with gated disclosure and writes",
 			parameters: Type.Object(
 				{

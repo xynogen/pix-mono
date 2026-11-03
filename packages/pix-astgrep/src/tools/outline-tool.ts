@@ -109,7 +109,7 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 		...({ exposure: "deferred" } as const),
 		label: "AST outline",
 		description:
-			"Top-level declarations/imports with line numbers; syntax only. Extra grammars require consent and may need an agent restart.",
+			"Outline a file or dir: list functions, classes, types and imports (top-level declarations) with line numbers; syntax only. Extra grammars require consent and may need an agent restart.",
 		promptSnippet: "ast_outline(path) — file or dir structure, syntax only.",
 		parameters: Type.Object({
 			path: Type.String({ description: "File or directory to outline." }),

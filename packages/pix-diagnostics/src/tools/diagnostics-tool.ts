@@ -144,7 +144,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 		label: "Diagnostics",
 		renderShell: "self",
 		description:
-			"LSP diagnostics: session reads cache; lsp checks explicit paths. Prefer fresh checks after edits.",
+			"LSP diagnostics (type errors, lint warnings) for files: session reads cache; lsp checks explicit paths. Prefer fresh checks after edits.",
 		promptSnippet: "Fresh LSP diagnostics or cached session findings.",
 		parameters: Type.Object({
 			source: StringEnum(["session", "lsp"] as const),
