@@ -1,6 +1,52 @@
 import { describe, expect, test } from "bun:test";
-import { stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
-import { fadeLine, fadeText } from "./text.ts";
+import { colorToRgb, rgbColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
+import { fadeLine, fadeRowsOf, fadeText, fadeTextRow } from "./text.ts";
+
+describe("fadeTextRow", () => {
+	const theme = { fg: (key: string, text: string) => `<${key}>${text}</${key}>` };
+	const hint = (n: number) => `+${n}`;
+	const body = Array.from({ length: 12 }, (_, i) => `\x1b[1mL${i}\x1b[22m`).join("\n");
+
+	test("returns a short body unchanged", () => {
+		expect(fadeTextRow("a\nb", theme, hint, 8)).toBe("a\nb");
+	});
+
+	test("keeps the head, fades the last rows (muted on a plain theme), then the hint", () => {
+		const rows = fadeTextRow(body, theme, hint, 9, 3).split("\n");
+		expect(rows).toHaveLength(10);
+		expect(rows[5]).toBe("\x1b[1mL5\x1b[22m");
+		expect(rows.slice(6, 9)).toEqual([
+			"<muted>L6</muted>",
+			"<muted>L7</muted>",
+			"<muted>L8</muted>",
+		]);
+		expect(rows[9]).toBe("+3");
+	});
+
+	test("fades at most a third of a short preview and keeps padding uncolored", () => {
+		const padded = Array.from({ length: 6 }, (_, i) => `   P${i}`);
+		const rows = fadeRowsOf(padded, theme, 4, 3);
+		expect(rows).toEqual(["   P0", "   P1", "   P2", "   <muted>P3</muted>"]);
+	});
+
+	test("fades toward the background but never reaches it", () => {
+		const reds: number[] = [];
+		// dim is red, background is black: the red channel measures how far each row faded.
+		const colors = {
+			dim: rgbColor(255, 0, 0),
+			customMessageBg: rgbColor(0, 0, 0),
+		};
+		const style = (text: string, { fg }: { fg: Parameters<typeof colorToRgb>[0] }) => {
+			reds.push(colorToRgb(fg).r);
+			return text;
+		};
+		fadeTextRow(body, { ...theme, colors, style }, hint, 9, 3);
+		expect(reds).toHaveLength(3);
+		expect(reds[0]).toBeGreaterThan(reds[1] ?? 0);
+		expect(reds[1]).toBeGreaterThan(reds[2] ?? 0);
+		expect(reds[2]).toBeGreaterThan(0);
+	});
+});
 
 describe("fadeText", () => {
 	test("leaves fitting text to the caller with no fade", () => {

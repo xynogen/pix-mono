@@ -5,7 +5,7 @@ import {
 	getCapabilities,
 	hyperlink,
 	MouseRegion,
-	mixColors,
+	type mixColors,
 	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
@@ -23,7 +23,7 @@ import {
 } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { icon } from "./icon-catalog.ts";
-import { fadeLine, fadeText } from "./text.ts";
+import { fadeLine, fadePaint, fadeRowsOf, fadeText } from "./text.ts";
 import type {
 	FgTheme,
 	TextComponentCtor,
@@ -343,14 +343,7 @@ export function widgetActivityRow(
 	width: number,
 	stats = "",
 ): string {
-	const paint = (text: string, fade: number) =>
-		fade === 0
-			? theme.fg("dim", text)
-			: theme.colors && theme.style
-				? theme.style(text, {
-						fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
-					})
-				: theme.fg("muted", text);
+	const paint = fadePaint(theme);
 	if (stats) {
 		const room = width - visibleWidth(stats) - 2;
 		if (room < visibleWidth(prefix)) return fadeLine(`${prefix}  ${stats}`, width, paint);
@@ -407,17 +400,7 @@ export function formatCollapsedToolRow(
 	if (width === undefined)
 		return `${title}${target ? ` ${theme.fg("dim", target)}` : ""}${metadata}`;
 	const room = width - visibleWidth(title) - visibleWidth(metadata) - 1;
-	const fitted =
-		target && room > 0
-			? fadeText(target, room, (text, fade) => {
-					if (fade === 0) return theme.fg("dim", text);
-					return theme.colors && theme.style
-						? theme.style(text, {
-								fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
-							})
-						: theme.fg("muted", text);
-				})
-			: "";
+	const fitted = target && room > 0 ? fadeText(target, room, fadePaint(theme)) : "";
 	return truncateToWidth(`${title}${fitted ? ` ${fitted}` : ""}${metadata}`, width, "…");
 }
 
@@ -524,9 +507,15 @@ export function renderDimPreview(
 	const highlight = opts.highlight;
 	const output = normalizeLineEndings(text).trim() || "done";
 	const lines = output.split("\n");
-	const body = lines
-		.slice(0, maxLines)
-		.map((line) => bodyLine(line, theme, (l) => dimLineWithHighlight(l, theme, highlight)));
+	// Highlight only the preview rows (+1 so the fade still knows it was cut), then fade the
+	// last of them instead of a hard cut.
+	const body = fadeRowsOf(
+		lines
+			.slice(0, maxLines + 1)
+			.map((line) => bodyLine(line, theme, (l) => dimLineWithHighlight(l, theme, highlight))),
+		theme,
+		maxLines,
+	);
 	const header = opts.header ? `${BODY_PAD}${theme.fg("dim", opts.header)}` : undefined;
 	const overflow = lines.length > maxLines ? moreLines(lines.length - maxLines, theme) : undefined;
 

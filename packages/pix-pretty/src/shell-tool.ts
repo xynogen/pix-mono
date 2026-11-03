@@ -14,6 +14,7 @@ import { resolveBaseBackground } from "./ansi.ts";
 import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { renderBashOutput } from "./renderers.ts";
+import { fadeRowsOf } from "./text.ts";
 import type { ToolContext } from "./tools/context.ts";
 import type {
 	BashParams,
@@ -226,7 +227,6 @@ export function registerShellTool(
 				}
 
 				const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-				const show = lines.slice(0, maxShow);
 				const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme)] : [];
 				// Every result (including single-line) is framed; the rules follow exit
 				// status: green ok, red failure. The `✓ exit N` header is dropped — the
@@ -234,7 +234,12 @@ export function registerShellTool(
 				const exitCode = d.exitCode as number | null;
 				const statusKey = exitCode === null || exitCode === 0 ? "success" : "error";
 				const paint = (s: string) => theme.fg(statusKey, s);
-				const body = show.map((line) => bodyLine(line, theme));
+				// Fade the last preview rows instead of a hard cut before the "… N more" row.
+				const body = fadeRowsOf(
+					lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
+					theme,
+					maxShow,
+				);
 				const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
 				text.setText(fillToolBackground(out.join("\n")));
 				return text;

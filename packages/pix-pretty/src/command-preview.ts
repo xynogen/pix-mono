@@ -1,12 +1,6 @@
-import {
-	mixColors,
-	Text,
-	truncateToWidth,
-	visibleWidth,
-	wrapTextWithAnsi,
-} from "@earendil-works/pi-tui";
+import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { hlBlock } from "./highlight.ts";
-import { fadeText } from "./text.ts";
+import { fadePaint, fadeText } from "./text.ts";
 import type { ThemeLike } from "./types.ts";
 import type { formatCollapsedToolRow } from "./utils.ts";
 
@@ -90,15 +84,7 @@ export function collapsedCommandRow(
 			const room = width - visibleWidth(prefix);
 			return [
 				room > 0
-					? `${prefix}${fadeText(plain, room, (text, fade) =>
-							fade === 0
-								? theme.fg("dim", text)
-								: theme.colors && theme.style
-									? theme.style(text, {
-											fg: mixColors(theme.colors.dim, theme.colors.customMessageBg, fade),
-										})
-									: theme.fg("muted", text),
-						)}`
+					? `${prefix}${fadeText(plain, room, fadePaint(theme))}`
 					: truncateToWidth(prefix, width, "…"),
 			];
 		},
