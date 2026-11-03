@@ -171,7 +171,7 @@ export interface ToolActivity {
 }
 
 export interface RunOptions {
-	/** ExtensionAPI instance — used for pi.exec() instead of execSync. */
+	/** ExtensionAPI instance of the parent session. */
 	pi: ExtensionAPI;
 	/** Manager-assigned id; suffixes session name to disambiguate parallel spawns (e.g. `Explore#a1b2c3d4`). */
 	agentId?: string;
