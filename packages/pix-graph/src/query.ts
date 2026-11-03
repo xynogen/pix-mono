@@ -205,3 +205,111 @@ export function shortestPath(graph: GraphData, from: string, to: string): GraphN
 	}
 	return path.map((id) => byNode.get(id)).filter((n): n is GraphNode => n !== undefined);
 }
+
+export interface ImpactResult {
+	/** Nodes the target resolved to. Empty means no match. */
+	seeds: GraphNode[];
+	/** Seeds (depth 0) and their dependents, in tree preorder. `via` reads from the parent. */
+	hits: QueryHit[];
+	/** Distinct files of the dependents (seeds excluded), sorted. */
+	files: string[];
+	/** Subset of `files` that are tests. */
+	tests: string[];
+	/** True when `limit` cut the walk short. */
+	truncated: boolean;
+}
+
+const TEST_FILE = /(\.(test|spec)\.[cm]?[jt]sx?$)|(^|\/)(__tests__|tests?)\//;
+const bare = (label: string): string => label.replace(/\(\)$/, "");
+
+/**
+ * Resolve `target` to seed nodes: exact id, then symbol/file label (`foo` matches `foo()`),
+ * then file path suffix. `inFile` narrows an ambiguous label by path fragment.
+ */
+function impactSeeds(graph: GraphData, target: string, inFile?: string): GraphNode[] {
+	const byId = graph.nodes.find((n) => n.id === target);
+	if (byId) return [byId];
+	const want = bare(target).toLowerCase();
+	const scoped = inFile ? graph.nodes.filter((n) => n.source_file?.includes(inFile)) : graph.nodes;
+	const byLabel = scoped.filter((n) => bare(n.label ?? "").toLowerCase() === want);
+	if (byLabel.length > 0) return byLabel;
+	return scoped.filter((n) => !n.source_location && n.source_file?.endsWith(target));
+}
+
+/**
+ * Reverse dependency walk: who calls or imports `target`, transitively. Answers
+ * "what breaks if I change this?" before an edit leaves callers behind. A file seed
+ * also counts callers of the symbols it contains. Only `calls` and `imports` edges
+ * are followed, against their direction, so callees and siblings never leak in.
+ */
+export function impact(
+	graph: GraphData,
+	target: string,
+	options: { inFile?: string; maxDepth?: number; limit?: number } = {},
+): ImpactResult {
+	const { inFile, maxDepth = 3, limit = 60 } = options;
+	const seeds = impactSeeds(graph, target.trim(), inFile?.trim() || undefined);
+	const empty = { seeds, hits: [], files: [], tests: [], truncated: false };
+	if (seeds.length === 0) return empty;
+
+	const incoming = new Map<string, Array<{ id: string; relation: string }>>();
+	const contains = new Map<string, string[]>();
+	for (const link of graph.links) {
+		if (link.relation === "contains") {
+			contains.set(link.source, [...(contains.get(link.source) ?? []), link.target]);
+		} else if (link.relation === "calls" || link.relation === "imports") {
+			const list = incoming.get(link.target) ?? [];
+			list.push({ id: link.source, relation: link.relation });
+			incoming.set(link.target, list);
+		}
+	}
+	const byNode = new Map(graph.nodes.map((n) => [n.id, n]));
+	const seedIds = new Set(seeds.map((s) => s.id));
+	// A file seed also owns its symbols' callers. Deeper files do not: that would pull in
+	// callers of unrelated symbols that merely share a file with a dependent.
+	const dependents = (id: string) =>
+		[
+			id,
+			...(seedIds.has(id) && !byNode.get(id)?.source_location ? (contains.get(id) ?? []) : []),
+		].flatMap((x) => incoming.get(x) ?? []);
+
+	// BFS for shortest depth; remember the parent so the output reads as a tree.
+	const children = new Map<string, Array<{ id: string; via: string; depth: number }>>();
+	const seen = new Set(seedIds);
+	let frontier = [...seedIds];
+	let count = 0;
+	let truncated = false;
+	for (let depth = 1; depth <= maxDepth && frontier.length > 0 && !truncated; depth++) {
+		const next: string[] = [];
+		for (const id of frontier) {
+			for (const edge of dependents(id)) {
+				if (seen.has(edge.id)) continue;
+				if (count >= limit) {
+					truncated = true;
+					break;
+				}
+				seen.add(edge.id);
+				count++;
+				const via = edge.relation === "calls" ? "called by" : "imported by";
+				children.set(id, [...(children.get(id) ?? []), { id: edge.id, via, depth }]);
+				next.push(edge.id);
+			}
+		}
+		frontier = next;
+	}
+
+	const hits: QueryHit[] = [];
+	const emit = (id: string, depth: number, via?: string): void => {
+		const node = byNode.get(id);
+		if (node) hits.push({ node, depth, ...(via ? { via } : {}) });
+		for (const c of children.get(id) ?? []) emit(c.id, c.depth, c.via);
+	};
+	for (const seed of seeds) emit(seed.id, 0);
+
+	const files = [
+		...new Set(
+			hits.flatMap((h) => (h.depth > 0 && h.node.source_file ? [h.node.source_file] : [])),
+		),
+	].sort();
+	return { seeds, hits, files, tests: files.filter((f) => TEST_FILE.test(f)), truncated };
+}

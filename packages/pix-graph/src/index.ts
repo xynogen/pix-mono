@@ -18,5 +18,12 @@ export { collectFiles, type Extraction, extract, type UnresolvedImport } from ".
 export { default as registerGraph } from "./graph.ts";
 export { renderGraphHtml } from "./html.ts";
 export { type BuildResult, buildCodeGraph } from "./pipeline.ts";
-export { type QueryHit, type QueryOptions, query, shortestPath } from "./query.ts";
+export {
+	type ImpactResult,
+	impact,
+	type QueryHit,
+	type QueryOptions,
+	query,
+	shortestPath,
+} from "./query.ts";
 export { type Boundary, boundaries, type ReportInput, renderGraphReport } from "./report.ts";

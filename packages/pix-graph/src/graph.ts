@@ -45,7 +45,13 @@ import {
 } from "./modules.ts";
 import { createGraphParseCache } from "./parse-cache.ts";
 import type { BuildProgress } from "./pipeline.ts";
-import { query as queryGraph, tokenize } from "./query.ts";
+import {
+	type ImpactResult,
+	impact,
+	type QueryHit,
+	query as queryGraph,
+	tokenize,
+} from "./query.ts";
 
 const OUT_DIR = `${projectDir()}/graph`; // "/" so prompt text reads the same on Windows
 // Also read graphs left by the CLI's old default / external graphify.
@@ -68,7 +74,7 @@ interface QueryHitRow {
 
 interface GraphResultDetails {
 	_type: "graphResult";
-	action: "build" | "query" | "summarize";
+	action: "build" | "query" | "impact" | "summarize";
 	outcome: "success" | "error" | "running";
 	/** Set while a build is in flight, for the progress-bar render. */
 	progress?: BuildProgress;
@@ -77,7 +83,7 @@ interface GraphResultDetails {
 	/** Elapsed ms since the build started. */
 	elapsedMs?: number;
 	/** Structured query result, for the colored hit render. */
-	query?: { question: string; traversal: "bfs" | "dfs"; hits: QueryHitRow[] };
+	query?: { question: string; traversal: "bfs" | "dfs" | "impact"; hits: QueryHitRow[] };
 }
 
 type Theme = {
@@ -165,6 +171,70 @@ function loadGraph(cwd: string): GraphData | undefined {
 	return undefined;
 }
 
+/** Above this many same-named seeds, impact asks for `path` instead of printing every tree. */
+const MAX_IMPACT_SEEDS = 5;
+
+/** Run action=impact. Returns an error string, or the tool result. */
+function runImpact(graph: GraphData, question?: string, inFile?: string) {
+	const target = question?.trim();
+	if (!target) return 'impact requires a "question" naming a symbol or file.';
+	const r = impact(graph, target, { inFile });
+	if (r.seeds.length === 0) {
+		return `No node named "${target}"${inFile ? ` in ${inFile}` : ""}. impact needs an exact symbol name, node id, or file path; use graph(action:"query") to find it.`;
+	}
+	if (r.seeds.length > MAX_IMPACT_SEEDS) {
+		const where = r.seeds.map((s) => `  ${s.source_file ?? s.id} (${s.label ?? s.id})`);
+		const more = where.length > 5 ? [`  … +${where.length - 5} more`] : [];
+		return [
+			`"${target}" matches ${r.seeds.length} nodes. Pass path (a file fragment) to pick one:`,
+			...where.slice(0, 5),
+			...more,
+		].join("\n");
+	}
+	const rows = toRows(r.hits);
+	const details: GraphResultDetails = {
+		_type: "graphResult",
+		action: "impact",
+		outcome: "success",
+		query: { question: target, traversal: "impact", hits: rows },
+	};
+	return { content: [{ type: "text" as const, text: impactText(r, rows) }], details };
+}
+
+/** Tree plus a footer the agent acts on: dependent count, ambiguity, and tests to run. */
+function impactText(r: ImpactResult, rows: QueryHitRow[]): string {
+	const dependents = r.hits.length - r.seeds.length;
+	return [
+		plain(rows),
+		"",
+		`${dependents} dependent(s) in ${r.files.length} file(s)${r.truncated ? " (truncated; narrow with path)" : ""}.`,
+		...(r.seeds.length > 1
+			? [`${r.seeds.length} nodes share this name; pass path to pick one.`]
+			: []),
+		r.tests.length ? `Tests: ${r.tests.join(", ")}` : "Tests: none reach it.",
+	].join("\n");
+}
+
+function toRows(hits: QueryHit[]): QueryHitRow[] {
+	return hits.map((h) => {
+		const row: QueryHitRow = { label: h.node.label ?? h.node.id, depth: h.depth };
+		if (h.via) row.via = h.via;
+		if (h.node.source_file) row.where = h.node.source_file;
+		return row;
+	});
+}
+
+/** Plain-text fallback (for non-TUI consumers) that mirrors the tree render. */
+function plain(rows: QueryHitRow[]): string {
+	return rows
+		.map((h) => {
+			const via = h.via ? ` (via ${h.via})` : "";
+			const where = h.where ? ` — ${h.where}` : "";
+			return `${"  ".repeat(h.depth)}${h.label}${via}${where}`;
+		})
+		.join("\n");
+}
+
 export default function registerGraph(pi: ExtensionAPI): void {
 	once(pi, "pix-graph", () => {
 		const cwd = process.cwd();
@@ -204,27 +274,33 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				"search (not semantic): it matches keywords against symbol/file names, then walks " +
 				'their neighbors. Pass identifiers or name fragments ("authenticate token"), not prose. ' +
 				'scope:"global" ranks whole modules (packages) with their summary, entry files, APIs and ' +
-				"dependencies, for architecture questions. action=summarize lists modules whose summary " +
+				"dependencies, for architecture questions. action=impact lists who calls or imports a " +
+				"symbol or file (question), transitively, with affected files and tests. " +
+				"action=summarize lists modules whose summary " +
 				"is missing or stale with their evidence; call it again with module+summary to store one.",
 			promptSnippet:
-				'graph(action, path?, question?, scope?, dfs?, module?, summary?) — build|query|summarize. query "<keywords>" matches names and traverses; scope:"global" ranks modules for architecture questions.',
+				'graph(action, path?, question?, scope?, dfs?, module?, summary?) — build|query|impact|summarize. query "<keywords>" matches names and traverses; scope:"global" ranks modules for architecture questions; impact "<symbol or file>" lists dependents.',
 			promptGuidelines: [
 				`To locate TS/JS code, if ${OUT_DIR}/graph.json exists, call graph(action:"query", question:"<identifier keywords>") before reading files. It matches names, not meaning; on no match, fall back to grep.`,
+				'Before changing a function, type, or file signature, call graph(action:"impact", question:"<name>") and update every listed caller and test in the same change.',
 				'After changing code, graph(action:"build") refreshes the graph so later queries stay accurate.',
 			],
 			parameters: Type.Object({
-				action: Type.Enum(["build", "query", "summarize"] as const, {
+				action: Type.Enum(["build", "query", "impact", "summarize"] as const, {
 					type: "string",
 					description:
-						'"build" (re)builds the graph; "query" answers from it; "summarize" lists or stores module summaries.',
+						'"build" (re)builds the graph; "query" answers from it; "impact" lists dependents of a symbol/file; "summarize" lists or stores module summaries.',
 				}),
 				path: Type.Optional(
-					Type.String({ description: "build: directory or file to scan (default: current dir)." }),
+					Type.String({
+						description:
+							"build: directory or file to scan (default: current dir). impact: path fragment that narrows an ambiguous name.",
+					}),
 				),
 				question: Type.Optional(
 					Type.String({
 						description:
-							"query: keywords matched against symbol/file names (e.g. 'exportStl mesh').",
+							"query: keywords matched against symbol/file names (e.g. 'exportStl mesh'). impact: exact symbol name, node id, or file path.",
 					}),
 				),
 				scope: Type.Optional(
@@ -267,6 +343,11 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					const trav = a.scope === "global" ? "global" : a.dfs ? "dfs" : "bfs";
 					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
 					return new Text(`${title} ${t.fg("muted", `query · ${trav}`)} ${q}`, 0, 0);
+				}
+				if (a.action === "impact") {
+					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
+					const scope = a.path ? ` ${t.fg("muted", `in ${a.path}`)}` : "";
+					return new Text(`${title} ${t.fg("muted", "impact")} ${q}${scope}`, 0, 0);
 				}
 				if (a.action === "summarize") {
 					const target = a.module ? ` ${t.fg("dim", a.module)}` : "";
@@ -323,7 +404,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 			},
 
 			async execute(_id, params, signal, onUpdate, ctx) {
-				const action = params.action as "build" | "query" | "summarize";
+				const action = params.action as "build" | "query" | "impact" | "summarize";
 				const details = (outcome: "success" | "error"): GraphResultDetails => ({
 					_type: "graphResult",
 					action,
@@ -439,6 +520,15 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					);
 				}
 
+				if (action === "impact") {
+					const out = runImpact(
+						graph,
+						params.question as string | undefined,
+						params.path as string | undefined,
+					);
+					return typeof out === "string" ? fail(out) : out;
+				}
+
 				// action === "query"
 				const question = (params.question as string | undefined)?.trim();
 				if (!question) return fail('query requires a "question".');
@@ -465,22 +555,12 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				}
 				const traversal = params.dfs ? "dfs" : "bfs";
 				const hits = queryGraph(graph, question, { mode: traversal });
-				const rows: QueryHitRow[] = hits.map((h) => {
-					const row: QueryHitRow = { label: h.node.label ?? h.node.id, depth: h.depth };
-					if (h.via) row.via = h.via;
-					if (h.node.source_file) row.where = h.node.source_file;
-					return row;
-				});
-				// Plain-text fallback (for non-TUI consumers) mirrors the tree render.
-				const plainRows = rows.map((h) => {
-					const via = h.via ? ` (via ${h.via})` : "";
-					const where = h.where ? ` — ${h.where}` : "";
-					return `${"  ".repeat(h.depth)}${h.label}${via}${where}`;
-				});
+				const rows = toRows(hits);
+				const plainRows = plain(rows);
 				const text =
 					rows.length === 0
 						? `No graph node name matches: ${tokenize(question).join(", ") || "(no keywords)"}. Query is lexical over TS/JS symbol/file names; retry with identifiers or use grep.`
-						: plainRows.join("\n");
+						: plainRows;
 				return {
 					content: [{ type: "text" as const, text }],
 					details: {

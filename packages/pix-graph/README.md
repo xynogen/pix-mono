@@ -14,13 +14,14 @@ only present when you install it.
 
 ## `graph` tool
 
-One tool, three actions:
+One tool, four actions:
 
 | Call | Effect |
 |---|---|
 | `graph(action:"build", path?)` | (Re)build/update the graph from source into `.pi/graph/`. Run again after edits to refresh. |
 | `graph(action:"query", question, dfs?)` | Lexical search: match keywords against symbol/file names, then traverse. BFS (default) for broad context, `dfs:true` to trace a path. |
 | `graph(action:"query", question, scope:"global")` | Rank whole modules (workspace packages) for architecture questions. Returns each module's summary and evidence card. |
+| `graph(action:"impact", question, path?)` | Reverse dependencies: who calls or imports a symbol or file, transitively (3 hops, 60 nodes). Ends with affected files and tests. `path` narrows an ambiguous name. |
 | `graph(action:"summarize")` | List up to 5 modules whose summary is missing or stale, with their evidence cards and a token estimate. |
 | `graph(action:"summarize", module, summary)` | Store a summary written by the agent. It must cite the module's card. |
 
@@ -64,7 +65,7 @@ const result = buildCodeGraph("src", process.cwd(), ".pi/graph");
 | `collectFiles`, `extract` | Walk a tree and parse TS/JS into `{ nodes, links, unresolved }` |
 | `buildGraph`, `cluster`, `communityLabels`, `cohesionScore`, `scoreAll` | Assemble, Louvain community detection, deterministic names |
 | `godNodes`, `surprisingConnections` | Graph analysis |
-| `query`, `shortestPath` | Traversal over a built graph |
+| `query`, `impact`, `shortestPath` | Traversal over a built graph |
 | `renderGraphReport`, `boundaries` | Human-readable report and package boundary cards |
 | `analyzeGraph`, `renderPatternReport` | Validate/clean an existing graph + extract repeated patterns |
 | `buildCodeGraph` | Full pipeline orchestrator |

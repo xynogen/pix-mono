@@ -207,6 +207,34 @@ describe("graph tool", () => {
 		expect(res.isError).toBe(true);
 	});
 
+	test("impact lists callers of a symbol and errors on an unknown name", async () => {
+		const root = fixture();
+		await run({ action: "build" }, root);
+		const res = await run({ action: "impact", question: "greet" }, root);
+		const text = res.content.map((c) => c.text).join("");
+		expect(res.isError).toBeFalsy();
+		expect(text).toMatch(/greet\(\)[\s\S]*run\(\) \(via called by\) — src\/main\.ts/);
+		expect(text).toMatch(/^\d+ dependent\(s\) in \d+ file\(s\)\.$/m);
+		const miss = await run({ action: "impact", question: "nope" }, root);
+		expect(miss.isError).toBe(true);
+	});
+
+	test("impact on a name with more than 5 nodes asks for path instead of walking", async () => {
+		const root = fixture();
+		for (let i = 0; i < 6; i++) {
+			writeFileSync(join(root, `src/dup${i}.ts`), "export function dup() {\n\treturn 1;\n}\n");
+		}
+		await run({ action: "build" }, root);
+		const res = await run({ action: "impact", question: "dup" }, root);
+		const text = res.content.map((c) => c.text).join("");
+		expect(res.isError).toBe(true);
+		expect(text).toMatch(
+			/^"dup" matches 6 nodes\. Pass path[^\n]*\n( {2}src\/dup\d\.ts \(dup\(\)\)\n){5} {2}… \+1 more$/,
+		);
+		const one = await run({ action: "impact", question: "dup", path: "dup3" }, root);
+		expect(one.isError).toBeFalsy();
+	});
+
 	test("query returns structured hits for the tree render", async () => {
 		const root = fixture();
 		await run({ action: "build" }, root);

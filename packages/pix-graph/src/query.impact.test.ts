@@ -1,0 +1,60 @@
+import { expect, test } from "bun:test";
+import type { GraphData } from "./analyzer.ts";
+import { impact } from "./query.ts";
+
+// a.ts: hash()  ←calls─ b.ts: save()  ←calls─ c.ts: run()
+// b.test.ts imports b.ts and calls save(); hash() also calls helper() (a callee, not a dependent).
+const node = (id: string, label: string, file: string, loc = true) => ({
+	id,
+	label,
+	source_file: file,
+	...(loc ? { source_location: "L1" } : {}),
+});
+const graph: GraphData = {
+	nodes: [
+		node("a", "a.ts", "src/a.ts", false),
+		node("a_hash", "hash()", "src/a.ts"),
+		node("a_helper", "helper()", "src/a.ts"),
+		node("b", "b.ts", "src/b.ts", false),
+		node("b_save", "save()", "src/b.ts"),
+		node("b_other", "other()", "src/b.ts"),
+		node("c_run", "run()", "src/c.ts"),
+		node("d_lone", "lone()", "src/d.ts"),
+		node("t", "b.test.ts", "src/b.test.ts", false),
+	],
+	links: [
+		{ source: "a", target: "a_hash", relation: "contains" },
+		{ source: "b", target: "b_save", relation: "contains" },
+		{ source: "b", target: "b_other", relation: "contains" },
+		{ source: "a_hash", target: "a_helper", relation: "calls" },
+		{ source: "b_save", target: "a_hash", relation: "calls" },
+		{ source: "c_run", target: "b_save", relation: "calls" },
+		{ source: "d_lone", target: "b_other", relation: "calls" },
+		{ source: "t", target: "b", relation: "imports" },
+		{ source: "t", target: "b_save", relation: "calls" },
+	],
+};
+
+test("symbol impact walks callers transitively, never callees or file siblings", () => {
+	const r = impact(graph, "hash");
+	expect(r.hits.map((h) => [h.node.id, h.depth, h.via])).toEqual([
+		["a_hash", 0, undefined],
+		["b_save", 1, "called by"],
+		["c_run", 2, "called by"],
+		["t", 2, "called by"],
+	]);
+	expect(r.files).toEqual(["src/b.test.ts", "src/b.ts", "src/c.ts"]);
+	expect(r.tests).toEqual(["src/b.test.ts"]);
+});
+
+test("file impact includes importers and callers of its own symbols", () => {
+	const ids = impact(graph, "src/b.ts").hits.map((h) => h.node.id);
+	expect(new Set(ids)).toEqual(new Set(["b", "t", "c_run", "d_lone"]));
+});
+
+test("maxDepth, limit and inFile bound the walk", () => {
+	expect(impact(graph, "hash", { maxDepth: 1 }).hits).toHaveLength(2);
+	expect(impact(graph, "hash", { limit: 1 }).truncated).toBe(true);
+	expect(impact(graph, "save", { inFile: "src/a.ts" }).seeds).toEqual([]);
+	expect(impact(graph, "nope").hits).toEqual([]);
+});
