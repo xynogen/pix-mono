@@ -178,6 +178,7 @@ describe("pix-prompts host-aware injection", () => {
 			"STE100-inspired, not strict STE100",
 			"Reply in the user's language unless asked otherwise",
 			"natural grammar and punctuation",
+			"Keep standard English technical terms as-is",
 			"Explain fully when asked",
 			"Clarity beats brevity",
 			"facts, numbers, units, conditions, scope, code, identifiers, commands, and error strings",

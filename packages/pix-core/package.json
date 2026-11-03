@@ -50,7 +50,7 @@
 		"@xynogen/pix-footer": "^0.2.13",
 		"@xynogen/pix-diagnostics": "^0.4.7",
 		"@xynogen/pix-display": "^0.3.4",
-		"@xynogen/pix-prompts": "^0.5.11",
+		"@xynogen/pix-prompts": "^0.5.12",
 		"@xynogen/pix-skills": "^0.10.7",
 		"@xynogen/pix-models": "^0.4.6",
 		"@xynogen/pix-update": "^0.2.9",
