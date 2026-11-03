@@ -265,32 +265,57 @@ function runImpact(graph: GraphData, question?: string, inFile?: string) {
 	return { content: [{ type: "text" as const, text: impactText(r, rows) }], details };
 }
 
-/** Above this many dependents, the tree shows direct dependents only; deeper ones group by file. */
+/** Above this many dependents, the tree shows direct dependents only; deeper ones fold. */
 const IMPACT_TREE_MAX = 25;
+
+/** `packages/<name>/...` → the package; anything else → its top-level folder. */
+const packageOf = (file: string): string => {
+	const parts = file.split("/");
+	return parts[0] === "packages" && parts[1] ? `packages/${parts[1]}` : (parts[0] ?? file);
+};
 
 /**
  * Large impact lists cost tokens per row. Keep seeds and direct dependents as a tree and
- * fold depth 2+ into one row per file with a count: the agent still sees every affected
- * file, and the footer still lists the tests.
+ * fold depth 2+ into one row per file with a count. When direct dependents alone exceed the
+ * limit, fold them too, per package: the agent still sees every affected area, and the
+ * footer still lists every test file.
  */
-export function impactRows(rows: QueryHitRow[]): { rows: QueryHitRow[]; folded: string[] } {
-	if (rows.length <= IMPACT_TREE_MAX) return { rows, folded: [] };
-	const deep = new Map<string, number>();
+export function impactRows(rows: QueryHitRow[]): {
+	rows: QueryHitRow[];
+	folded: string[];
+	foldedBy: "file" | "package";
+} {
+	if (rows.length <= IMPACT_TREE_MAX) return { rows, folded: [], foldedBy: "file" };
+	const direct = rows.filter((r) => r.depth <= 1);
+	const byPackage = direct.length > IMPACT_TREE_MAX;
+	const counts = new Map<string, number>();
 	for (const row of rows) {
-		if (row.depth > 1)
-			deep.set(row.where ?? row.label, (deep.get(row.where ?? row.label) ?? 0) + 1);
+		if (row.depth === 0 || (!byPackage && row.depth === 1)) continue;
+		const where = row.where ?? row.label;
+		const key = byPackage ? packageOf(where) : where;
+		counts.set(key, (counts.get(key) ?? 0) + 1);
 	}
-	const folded = [...deep].sort(([a], [b]) => a.localeCompare(b)).map(([f, n]) => `  ${f} (${n})`);
-	return { rows: rows.filter((r) => r.depth <= 1), folded };
+	const folded = [...counts]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([key, n]) => `  ${key} (${n})`);
+	return {
+		rows: byPackage ? rows.filter((r) => r.depth === 0) : direct,
+		folded,
+		foldedBy: byPackage ? "package" : "file",
+	};
 }
 
 /** Tree plus a footer the agent acts on: dependent count, ambiguity, and tests to run. */
 function impactText(r: ImpactResult, rows: QueryHitRow[]): string {
 	const dependents = r.hits.length - r.seeds.length;
-	const { rows: shown, folded } = impactRows(rows);
+	const { rows: shown, folded, foldedBy } = impactRows(rows);
+	const heading =
+		foldedBy === "package"
+			? "Dependents by package (too many to list; pass path to narrow):"
+			: "Indirect dependents (depth 2+), by file:";
 	return [
 		plain(shown),
-		...(folded.length ? ["", "Indirect dependents (depth 2+), by file:", ...folded] : []),
+		...(folded.length ? ["", heading, ...folded] : []),
 		"",
 		`${dependents} dependent(s) in ${r.files.length} file(s)${r.truncated ? " (truncated; narrow with path)" : ""}.`,
 		...(r.seeds.length > 1

@@ -267,10 +267,24 @@ describe("graph tool", () => {
 			...Array.from({ length: 5 }, (_, i) => row(`d1_${i}()`, 1, `b${i}.ts`)),
 			...Array.from({ length: 24 }, (_, i) => row(`d2_${i}()`, 2, `c${i % 3}.ts`)),
 		];
-		const { rows: shown, folded } = impactRows(rows);
+		const { rows: shown, folded, foldedBy } = impactRows(rows);
 		expect(shown.map((r) => r.depth)).toEqual([0, 1, 1, 1, 1, 1]);
 		expect(folded).toEqual(["  c0.ts (8)", "  c1.ts (8)", "  c2.ts (8)"]);
+		expect(foldedBy).toBe("file");
 		expect(impactRows(rows.slice(0, 20)).folded).toEqual([]);
+
+		// Too many direct dependents: everything but the seed folds per package.
+		const wide = [
+			row("seed()", 0, "packages/a/src/x.ts"),
+			...Array.from({ length: 30 }, (_, i) =>
+				row(`d${i}()`, 1, i < 20 ? `packages/b/src/f${i}.ts` : `scripts/s${i}.ts`),
+			),
+			row("deep()", 2, "packages/b/src/deep.ts"),
+		];
+		const out = impactRows(wide);
+		expect(out.rows.map((r) => r.depth)).toEqual([0]);
+		expect(out.folded).toEqual(["  packages/b (21)", "  scripts (10)"]);
+		expect(out.foldedBy).toBe("package");
 	});
 
 	test("query returns structured hits for the tree render", async () => {
