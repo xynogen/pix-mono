@@ -3,11 +3,12 @@ import type {
 	ToolDefinition,
 	ToolRenderResultOptions,
 } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Text, visibleWidth } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { type FadeTheme, fadePaint, fadeText } from "@xynogen/pix-pretty/text";
 import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
@@ -18,6 +19,7 @@ import {
 	padIcon,
 	pluralize,
 	renderCollapsedToolRow,
+	termW,
 	unframeToolResult,
 	viewportTextConstructor,
 } from "@xynogen/pix-pretty/utils";
@@ -37,10 +39,15 @@ type Call = {
 type Details = { calls?: Call[]; fullOutputPath?: string };
 type Renderers = Pick<ToolDefinition, "renderCall" | "renderResult" | "renderShell">;
 
+/**
+ * One child-call row: `<status> <tool> <args> · <time> · <cost>`. Collapsed, the args fill
+ * `width` and fade out at the edge instead of a fixed cut; expanded, they wrap in full.
+ */
 export function compactRow(
 	call: Pick<Call, "name" | "args" | "status" | "durationMs" | "cost">,
 	theme: Pick<ThemeLike, "fg"> | Parameters<NonNullable<ToolDefinition["renderCall"]>>[1],
 	expanded = false,
+	width = termW(),
 ) {
 	const [key, role] = {
 		ok: ["status.ok", "success"],
@@ -48,15 +55,22 @@ export function compactRow(
 		running: ["status.running", "warning"],
 		cancelled: ["status.blocked", "muted"],
 	}[call.status] as [Parameters<typeof icon>[0], "success" | "error" | "warning" | "muted"];
-	const args = !expanded && call.args.length > 80 ? `${call.args.slice(0, 77)}...` : call.args;
-	return dotJoin(
+	const title = `${theme.fg(role, padIcon(icon(key)))} ${theme.fg("toolTitle", call.name)}`;
+	const meta = dotJoin(
 		[
-			`${theme.fg(role, padIcon(icon(key)))} ${theme.fg("toolTitle", call.name)} ${theme.fg("dim", args)}`,
 			call.durationMs === undefined ? "" : theme.fg("muted", formatMs(call.durationMs)),
 			call.cost ? theme.fg("muted", costText(call.cost)) : "",
 		],
 		(text) => theme.fg("muted", text),
 	);
+	const tail = meta ? `${theme.fg("muted", " · ")}${meta}` : "";
+	const room = width - visibleWidth(title) - visibleWidth(tail) - 1;
+	const args = expanded
+		? theme.fg("dim", call.args)
+		: call.args && room > 0
+			? fadeText(call.args, room, fadePaint(theme as FadeTheme))
+			: "";
+	return `${title}${args ? ` ${args}` : ""}${tail}`;
 }
 
 export function compactRenderers(
@@ -309,7 +323,7 @@ export function renderResult(
 	if (shown.length < calls.length)
 		rows.push(`    ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
 	for (const call of shown) {
-		rows.push(`    ${compactRow(call, theme, options.expanded)}`);
+		rows.push(`    ${compactRow(call, theme, options.expanded, termW() - 4)}`);
 		if (options.expanded && call.result) {
 			const nestedOutput = output(
 				(call.name === "bash" || call.name === "powershell") && call.result.structuredContent

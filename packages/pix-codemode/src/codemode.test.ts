@@ -66,9 +66,17 @@ test("compact rows share child formatting and preserve native expanded component
 		).toBe(nativeResult);
 	}
 	expect(seen).toEqual([undefined, undefined, nativeCall, nativeResult]);
-	const longArgs = "x".repeat(120);
-	expect(compactRow({ name: "read", args: longArgs, status: "ok" }, theme)).toContain(
-		`${"x".repeat(77)}...`,
+	const longArgs = "x".repeat(300);
+	// Collapsed: args fill the row and fade out at the edge (no fixed cut, no ellipsis).
+	const row = compactRow(
+		{ name: "read", args: longArgs, status: "ok", durationMs: 12 },
+		theme,
+		false,
+		100,
+	);
+	expect(visibleWidth(row)).toBe(100);
+	expect(semanticRow(row)).toMatch(
+		/<toolTitle>read<\/toolTitle> <dim>x{60,}<\/dim><muted>x+ · [\d.]+m?s<\/muted>$/,
 	);
 	expect(compactRow({ name: "read", args: longArgs, status: "ok" }, theme, true)).toContain(
 		longArgs,

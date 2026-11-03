@@ -87,9 +87,9 @@
     },
     "packages/pix-codemode": {
       "name": "@xynogen/pix-codemode",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "dependencies": {
-        "@xynogen/pix-pretty": "^1.32.0",
+        "@xynogen/pix-pretty": "^1.36.0",
         "@xynogen/pix-runtime": "^0.16.0",
       },
       "peerDependencies": {
