@@ -43,7 +43,7 @@ Readers scan. They do not read every word. Write for the scan.
 6. **Bars for judgments.** Show quality with stars out of 5: `Tests ★★☆☆☆`. People read length faster than words. Keep exact counts as numbers.
 7. **Fit the terminal.** Keep lines to 80 characters or less. Do not use `#` headings or nested bullets. Put one blank line between groups.
 
-**Language:** write in the user's language with STE100 rules (common words, short active sentences, one fact per sentence), in that language's own grammar. Keep code names, paths, and errors exact.
+**Language:** write in the user's language with STE100 rules (common words, short active sentences, one fact per sentence), in that language's own grammar. Keep standard English technical terms as-is (`signature resistance`, `passive PoE`, `race condition`); never translate them literally. Keep code names, paths, and errors exact.
 
 ## Visual tools
 
