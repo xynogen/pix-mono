@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
+import { stripVTControlCharacters } from "node:util";
 import { CustomEditor, type KeybindingsManager } from "@earendil-works/pi-coding-agent";
-import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
+import { type EditorTheme, type TUI, visibleWidth } from "@earendil-works/pi-tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	attachSkillPicker,
@@ -38,6 +39,25 @@ const local: SkillItem[] = [
 	{ name: "commit", detail: "write commits" },
 	{ name: "tdd", detail: "test first" },
 ];
+
+test("an over-wide row fades its tail instead of ending in an ellipsis", () => {
+	const picker = new SkillPicker({
+		local: [{ name: "commit", detail: "x".repeat(200) }],
+		theme,
+		delayMs: 99_999,
+		search: async () => [],
+		done: () => {},
+		onChange: () => {},
+	});
+	try {
+		const row = picker.render(60).find((line) => line.includes("commit")) ?? "";
+		// Fallback theme (no colors): the cut row is plain text that runs to the right border.
+		expect(stripVTControlCharacters(row)).toMatch(/commit local x+ │$/);
+		expect(visibleWidth(row)).toBe(60);
+	} finally {
+		picker.dispose();
+	}
+});
 
 test("local skills filter by fuzzy name, remote results follow after the debounce", async () => {
 	let chosen: SkillItem | null = null;

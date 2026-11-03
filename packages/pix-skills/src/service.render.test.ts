@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { stripVTControlCharacters } from "node:util";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
 import { collapseSection, gateSection } from "@xynogen/pix-runtime/sections";
@@ -152,6 +153,32 @@ test("captures registered skill Text output and complete expanded instructions",
 		expect(
 			captureRows({ render: () => collapsedError }, { width: 80, surface: "component" })[0],
 		).toContain("<error>");
+		// Collapse off, not expanded: a long skill shows 8 lines (last 3 fading), then the hint.
+		await fixture.runtime.update(collapseSection, (current) => ({
+			...current,
+			enabled: false,
+			tools: {},
+		}));
+		const long = Array.from({ length: 30 }, (_, i) => `step ${i}`).join("\n");
+		const preview = tool.renderResult!(
+			{
+				content: [{ type: "text", text: long }],
+				details: { mode: "instructions", name: "test", lines: 30 },
+			},
+			{ expanded: false, isPartial: false },
+			theme as never,
+			makeRenderCtx() as never,
+		)
+			.render(80)
+			.join("\n");
+		// Header + steps 0..6, then the hint; the hidden steps are not rendered.
+		const plain = stripVTControlCharacters(preview)
+			.split("\n")
+			.map((row) => row.trim());
+		expect(plain.slice(1, 9)).toEqual([
+			...Array.from({ length: 7 }, (_, i) => `step ${i}`),
+			"+23 lines (ctrl+o to expand)",
+		]);
 		expect(output.join("\n")).toMatchSnapshot();
 	} finally {
 		if (agent === undefined) delete process.env.PI_CODING_AGENT_DIR;

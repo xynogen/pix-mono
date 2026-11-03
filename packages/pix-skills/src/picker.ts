@@ -7,9 +7,10 @@
  */
 
 import { CustomEditor, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { fuzzyFilter, matchesKey, type TUI, truncateToWidth } from "@earendil-works/pi-tui";
+import { fuzzyFilter, matchesKey, mixColors, type TUI } from "@earendil-works/pi-tui";
 import { chipTag, SKILL_TAG } from "@xynogen/pix-pretty/chips";
 import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import { fadeLine } from "@xynogen/pix-pretty/text";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
@@ -174,6 +175,18 @@ export class SkillPicker {
 			}`,
 			"",
 		];
+		// Overflow fades into the modal background instead of ending in "…".
+		const { colors, style } = theme as Partial<{
+			colors: Record<string, Parameters<typeof mixColors>[0]>;
+			style: (text: string, options: { fg: ReturnType<typeof mixColors> }) => string;
+		}>;
+		const muted = colors?.muted;
+		const base = colors?.customMessageBg;
+		// Ease in over a wide ramp and stop short of the background: a quiet fade, not a cutoff.
+		const fade = (text: string, amount: number) =>
+			muted && base && style
+				? style.call(theme, text, { fg: mixColors(muted, base, amount ** 1.6 * 0.8) })
+				: theme.fg(amount < 0.5 ? "dim" : "muted", text);
 		if (!results.length) rows.push(theme.fg("muted", "  no matching skills"));
 		for (const [i, item] of results.slice(start, start + MAX_VISIBLE).entries()) {
 			const isSel = start + i === this.selected;
@@ -181,7 +194,7 @@ export class SkillPicker {
 			const name = theme.fg(isSel ? "accent" : "dim", item.name);
 			const tag = theme.fg("muted", item.source ? "skills.sh" : "local");
 			rows.push(
-				truncateToWidth(`${marker} ${name} ${tag} ${theme.fg("muted", item.detail)}`, inner),
+				fadeLine(`${marker} ${name} ${tag} ${theme.fg("muted", item.detail)}`, inner, fade, 12),
 			);
 		}
 		if (this.status) rows.push("", theme.fg("muted", `  ${this.status}`));

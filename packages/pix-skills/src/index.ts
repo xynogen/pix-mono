@@ -16,6 +16,7 @@ import { copyFile, mkdir, readFile, realpath, rename, rm, stat } from "node:fs/p
 import { dirname, isAbsolute, join, relative, resolve, win32 } from "node:path";
 import { type ExtensionAPI, stripFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { type FadeTheme, fadeTextRow } from "@xynogen/pix-pretty/text";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
@@ -737,8 +738,16 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 					component.setText(formatRemoteSkillSearchSummary(details.query, details.results, theme));
 					return options.isPartial ? component : frameToolResult(component, theme, false);
 				}
+				const body = formatSkillSummary(formatExpandedSkillResult(details, text ?? ""), theme);
+				// Long skill bodies collapse to a fading preview; ctrl+o shows the full text.
 				component.setText(
-					formatSkillSummary(formatExpandedSkillResult(details, text ?? ""), theme),
+					options.expanded
+						? body
+						: fadeTextRow(body, theme as FadeTheme, (n) =>
+								renderCtx.keyHint
+									? renderCtx.keyHint("app.tools.expand", `+${n} lines`)
+									: theme.fg("muted", `+${n} lines (ctrl+o to expand)`),
+							),
 				);
 				return options.isPartial ? component : frameToolResult(component, theme, false);
 			}
