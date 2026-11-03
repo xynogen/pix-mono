@@ -330,6 +330,31 @@ describe("mcp-auth-flow explicit auth", () => {
 		expect(getOAuthState("stale")).not.toBe("old-state");
 	});
 
+	it("refuses non-web authorization URLs and keeps control chars encoded", async () => {
+		const { startAuth } = await import("../src/mcp-auth-flow.ts");
+		const run = (url: string) => {
+			mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
+				await provider.redirectToAuthorization(new URL(url));
+				return "REDIRECT";
+			});
+			return startAuth("guard", "https://api.example.com/mcp", {
+				url: "https://api.example.com/mcp",
+				auth: "oauth",
+			});
+		};
+		for (const [url, protocol] of [
+			["file:///etc/passwd", "file:"],
+			["javascript:alert(1)", "javascript:"],
+			["vscode://evil/run", "vscode:"],
+		]) {
+			const error = await run(url as string).catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(MockUnauthorizedError);
+			expect((error as Error).message).toBe(`Refused OAuth URL with protocol "${protocol}"`);
+		}
+		const ok = await run("https://auth.example.com/a\x1b[31m?q=\x9b\x07z");
+		expect(ok.authorizationUrl).toBe("https://auth.example.com/a%1B[31m?q=%C2%9B%07z");
+	});
+
 	it("preserves stored dynamic client info when tokens exist", async () => {
 		mocks.sdkAuth.mockImplementationOnce(async (provider: any) => {
 			expect(await provider.clientInformation()).toEqual({

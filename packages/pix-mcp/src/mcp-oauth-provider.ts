@@ -245,6 +245,14 @@ export class McpOAuthProvider implements OAuthClientProvider {
 			const { UnauthorizedError } = await loadSdk();
 			throw new UnauthorizedError(`Re-authentication required for MCP server: ${this.serverName}`);
 		}
+		// A server picks this URL. Open or show only web URLs; `file:` or a custom protocol could
+		// run a local handler. URL serialization already percent-encodes control chars.
+		if (authorizationUrl.protocol !== "http:" && authorizationUrl.protocol !== "https:") {
+			const { UnauthorizedError } = await loadSdk();
+			throw new UnauthorizedError(
+				`Refused OAuth URL with protocol ${JSON.stringify(authorizationUrl.protocol)}`,
+			);
+		}
 		// URL is passed to callback, not logged (may contain sensitive params)
 		await this.callbacks.onRedirect(authorizationUrl);
 	}
