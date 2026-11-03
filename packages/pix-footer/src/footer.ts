@@ -132,13 +132,16 @@ interface SessionTotals {
 	output: number;
 	cacheRead: number;
 	cost: number;
+	/** Every message cost is the provider-billed total, not a catalog estimate. */
+	billed: boolean;
 }
 
-function computeSessionTotals(entries: Iterable<unknown>): SessionTotals {
+export function computeSessionTotals(entries: Iterable<unknown>): SessionTotals {
 	let input = 0,
 		output = 0,
 		cacheRead = 0,
-		cost = 0;
+		cost = 0,
+		billed = true;
 	for (const e of entries as Iterable<{
 		type: string;
 		message?: { role: string; usage?: AssistantMessage["usage"] };
@@ -149,9 +152,11 @@ function computeSessionTotals(entries: Iterable<unknown>): SessionTotals {
 			output += u.output;
 			cacheRead += u.cacheRead;
 			cost += u.cost.total;
+			// A zero-cost message is exact either way; only a priced estimate makes the total approximate.
+			if (u.cost.total > 0 && !u.cost.totalFromProvider) billed = false;
 		}
 	}
-	return { input, output, cacheRead, cost };
+	return { input, output, cacheRead, cost, billed };
 }
 
 /**
@@ -166,8 +171,8 @@ export function computeTps(totalOutput: number, elapsedSec: number): number | nu
 	return Math.round(totalOutput / elapsedSec);
 }
 
-/** Tokens block (in/out + cache/cost). Always returns a string; caller decides visibility. */
-function renderTokens(
+/** Tokens block (in/out + cache/cost). `~$` marks a total with catalog estimates. */
+export function renderTokens(
 	totals: SessionTotals,
 	theme: Theme,
 	faded: boolean,
@@ -176,7 +181,7 @@ function renderTokens(
 	let s = parts.tokens
 		? `${icon("net.in")} ${fmtTokenCount(totals.input)} ${icon("net.out")} ${fmtTokenCount(totals.output)}`
 		: "";
-	if (parts.cost && totals.cost > 0) s += ` $${totals.cost.toFixed(3)}`;
+	if (parts.cost && totals.cost > 0) s += ` ${totals.billed ? "" : "~"}$${totals.cost.toFixed(3)}`;
 	return s ? theme.fg(faded ? "muted" : "dim", s) : "";
 }
 

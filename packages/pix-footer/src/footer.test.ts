@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { compactStatus, computeTps, renderThinkingLevel } from "./footer.ts";
+import { prettySection } from "@xynogen/pix-runtime/sections";
+import {
+	compactStatus,
+	computeSessionTotals,
+	computeTps,
+	renderThinkingLevel,
+	renderTokens,
+} from "./footer.ts";
 
 const theme = {
 	fg: (_color: string, text: string) => text,
@@ -59,5 +66,24 @@ describe("computeTps", () => {
 
 	test("null when there is no output", () => {
 		expect(computeTps(0, 5)).toBeNull();
+	});
+});
+
+describe("cost marker", () => {
+	const msg = (total: number, totalFromProvider?: boolean) => ({
+		type: "message",
+		message: {
+			role: "assistant",
+			usage: { input: 1, output: 1, cacheRead: 0, cost: { total, totalFromProvider } },
+		},
+	});
+	const theme = { fg: (_role: string, text: string) => text } as never;
+	const parts = { ...prettySection.defaults.footer, tokens: false, cost: true };
+	const cost = (...entries: unknown[]) =>
+		renderTokens(computeSessionTotals(entries), theme, false, parts);
+
+	test("billed totals show $; any catalog estimate shows ~$", () => {
+		expect(cost(msg(0.1, true), msg(0, false))).toMatch(/^ \$\d+\.\d{3}$/);
+		expect(cost(msg(0.1, true), msg(0.2))).toMatch(/^ ~\$\d+\.\d{3}$/);
 	});
 });
