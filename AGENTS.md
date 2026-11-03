@@ -222,6 +222,7 @@ Pix tool result renderers use one canonical completed-result shape: the unchange
 - Config-dependent tests use `createIsolatedRuntime()` from `@xynogen/pix-runtime/testing`.
 - Renderer tests use `@xynogen/pix-pretty/test-utils`.
 - Non-trivial logic leaves one runnable check behind. A trivial one-liner needs no test.
+- Batch verification. Do not run lint, typecheck, or tests after each small edit. Finish the whole change, then run them once at the end, before commit. Exception: a single targeted test to answer a specific question while debugging.
 
 ### 8.1 Assertions — Tiger Style
 
