@@ -12,6 +12,7 @@ import {
 	PIX_UNINSTALL_URL,
 	runWithRetry,
 	SPINNER,
+	stalePackages,
 	withSpinner,
 } from "./update.ts";
 
@@ -282,5 +283,21 @@ describe("runWithRetry", () => {
 		const exec: Exec = async () => ({ stdout: "", stderr: "killed", code: null });
 		const result = await runWithRetry(exec, spec, noSleep);
 		expect(result.ok).toBe(false);
+	});
+});
+
+describe("stalePackages", () => {
+	it("finds every stale package in yellow, newline-free progress output", () => {
+		const line = (src: string, ver: string, target: string) =>
+			`\x1b[33m${src} is still ${ver} (registry reports ${target}); npm registry metadata may be stale, try again in a few minutes\x1b[39m `;
+		const out = `Updating… ${line("npm:@xynogen/pix-core", "0.7.19", "0.7.20")}${line("npm:pi-foo", "1.0.0", "1.1.0")}Done.`;
+		expect(stalePackages(out)).toEqual([
+			"npm:@xynogen/pix-core is still 0.7.19 (registry reports 0.7.20)",
+			"npm:pi-foo is still 1.0.0 (registry reports 1.1.0)",
+		]);
+	});
+
+	it("returns nothing for clean output", () => {
+		expect(stalePackages("Updated npm:@xynogen/pix-core to 0.7.20\n")).toEqual([]);
 	});
 });

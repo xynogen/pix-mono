@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -62,6 +63,19 @@ export function formatUpdateSummary(before: string, after: string, attempts: num
 	const changed = before !== after && before !== "unknown" && after !== "unknown";
 	const summary = changed ? `Pi updated: ${before} → ${after}` : `Pi is up to date (${after}).`;
 	return attempts > 1 ? `${summary} Retried ${attempts - 1} transient failure(s).` : summary;
+}
+
+/**
+ * Packages Pi 1.5 left on an old version because npm registry metadata was stale.
+ * Pi writes these as yellow progress on stdout with exit 0, and with a trailing
+ * space instead of a newline, so match globally rather than per line.
+ */
+export function stalePackages(output: string): string[] {
+	return [
+		...stripVTControlCharacters(output).matchAll(
+			/(\S+) is still (\S+) \(registry reports ([^)]+)\)/g,
+		),
+	].map(([, source, ver, target]) => `${source} is still ${ver} (registry reports ${target})`);
 }
 
 export { SPINNER } from "@xynogen/pix-pretty/widget-format";
@@ -212,7 +226,13 @@ async function updatePackages(ctx: ExtensionCommandContext, progress?: ProgressH
 		ctx.ui.notify(`Pi package update failed.${timedOut} ${output || "No output."}`, "error");
 		return;
 	}
-	ctx.ui.notify("Pi packages updated.", "info");
+	const stale = stalePackages(output);
+	if (stale.length)
+		ctx.ui.notify(
+			`Pi packages updated, but some stayed old (npm registry metadata may be stale, retry in a few minutes):\n${stale.join("\n")}`,
+			"warning",
+		);
+	else ctx.ui.notify("Pi packages updated.", "info");
 }
 
 async function updateAll(ctx: ExtensionCommandContext) {
