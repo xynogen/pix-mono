@@ -182,6 +182,17 @@ describe("MCP tool result renderer", () => {
 		expect(display.lines).toEqual(["one", "two", "three", "four"]);
 	});
 
+	it("uses the host keyHint for the expand hint, with a literal fallback", () => {
+		const long = result([
+			{ type: "text", text: Array.from({ length: 200 }, (_, i) => `l${i}`).join("\n") },
+		]);
+		const render = (ctx: object) =>
+			renderMcpToolResult(long, collapsedOptions, plainTheme, ctx).render(80).join("\n");
+		const keyHint = (id: string, text: string) => `<${id}> alt+x ${text}`;
+		expect(render({ keyHint })).toContain("<app.tools.expand> alt+x to expand");
+		expect(render({})).toContain("(Ctrl+O to expand)");
+	});
+
 	it("shows full text when expanded", () => {
 		const display = formatMcpToolResultLines(
 			result([{ type: "text", text: "one\ntwo\nthree\nfour" }]),

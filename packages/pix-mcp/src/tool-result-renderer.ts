@@ -27,6 +27,8 @@ interface McpRenderCtx {
 	// CollapseState plus async-highlight cache slots for each rendered surface.
 	state?: CollapseState & HlState;
 	invalidate?: () => void;
+	/** Host-formatted key hint (Pi 1.5+); respects rebound keys. */
+	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
 }
 
 // A TOON header/scalar line: `key:`, `key[N]:`, or `key[N]{Col,Col}:`. Keys
@@ -454,7 +456,9 @@ export function renderMcpToolResult(
 	const content = (styled: string) =>
 		options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled);
 	const hint =
-		display.truncated && !options.expanded ? `\n${theme.fg("muted", "(Ctrl+O to expand)")}` : "";
+		display.truncated && !options.expanded
+			? `\n${context?.keyHint?.("app.tools.expand", "to expand") ?? theme.fg("muted", "(Ctrl+O to expand)")}`
+			: "";
 
 	// Highlight JSON in both preview and expanded views. Supported TOON was
 	// converted to pretty JSON by blockToLines; unsupported TOON keeps its
