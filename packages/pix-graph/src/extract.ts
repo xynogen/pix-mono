@@ -336,16 +336,20 @@ export function extract(
 	};
 
 	// Pass 2: calls/references from the enclosing top-level declaration (or the file) to imported
-	// entities. A use that is not a call (type annotation, `extends`, a passed constant) becomes
-	// `references`, so impact on an interface or const is not silently empty.
+	// or same-file entities. A use that is not a call (type annotation, `extends`, a passed
+	// constant) becomes `references`, so impact on an interface or const is not silently empty.
 	for (const { rel, source, fileId } of parsed) {
-		const bindings = bindingsByRel.get(rel);
-		if (!bindings || bindings.size === 0) continue;
+		const bindings = bindingsByRel.get(rel) ?? new Map();
+		const local = exportsByRel.get(rel)?.declared ?? new Map<string, string>();
+		if (bindings.size === 0 && local.size === 0) continue;
 		const emitted = new Set<string>();
+		// ponytail: name-based, no scope analysis. A parameter or local that shadows a top-level
+		// name of the same file adds a false edge; upgrade with the TS checker if that shows up.
 		const callee = (expr: ts.Node): string | undefined => {
 			if (ts.isIdentifier(expr)) {
 				const b = bindings.get(expr.text);
-				return b && b.name !== "*" ? resolveExport(b.file, b.name) : undefined;
+				if (b) return b.name !== "*" ? resolveExport(b.file, b.name) : undefined;
+				return local.get(expr.text);
 			}
 			const ns =
 				ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.expression)

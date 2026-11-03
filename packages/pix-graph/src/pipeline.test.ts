@@ -118,11 +118,12 @@ describe("extract", () => {
 			.filter((l) => l.relation === "calls")
 			.map((l) => `${l.source} -> ${l.target}`)
 			.sort();
-		// `draw` follows the aliased re-export; `a.it` the star re-export. Local `it()` and the
-		// same-named `render` in b/other.ts never link across packages.
+		// `draw` follows the aliased re-export; `a.it` the star re-export. Local `it()` links to
+		// its own file, and the same-named `render` in b/other.ts never links across packages.
 		expect(calls).toEqual([
 			"packages_b_src_index_ts_main -> packages_a_src_core_ts_it",
 			"packages_b_src_index_ts_main -> packages_a_src_core_ts_render",
+			"packages_b_src_index_ts_main -> packages_b_src_index_ts_it",
 		]);
 		expect(unresolved).toEqual([
 			{ source_file: "packages/b/src/index.ts", source_location: "L3", specifier: "./missing" },
@@ -160,9 +161,38 @@ describe("extract", () => {
 			.sort();
 		expect(edges).toEqual([
 			"calls run -> make",
+			"references cfg -> src_use_ts_obj",
 			"references run -> id",
 			"references run -> limit",
 			"references run -> opts",
+		]);
+	});
+
+	test("same-file uses link to the file's own top-level declarations", () => {
+		const root = mkdtempSync(join(tempDir(), "pix-graph-"));
+		dirs.push(root);
+		writeFileSync(
+			join(root, "one.ts"),
+			[
+				"const MAX = 5;",
+				"interface Row { n: number }",
+				"function helper(r: Row) { return r.n < MAX; }",
+				"export function main() { return helper({ n: MAX }); }",
+			].join("\n"),
+		);
+		const { links } = extract(collectFiles(root), root);
+		const edges = links
+			.filter((l) => l.relation === "calls" || l.relation === "references")
+			.map(
+				(l) =>
+					`${l.relation} ${l.source.replace("one_ts_", "")} -> ${l.target.replace("one_ts_", "")}`,
+			)
+			.sort();
+		expect(edges).toEqual([
+			"calls main -> helper",
+			"references helper -> max",
+			"references helper -> row",
+			"references main -> max",
 		]);
 	});
 
