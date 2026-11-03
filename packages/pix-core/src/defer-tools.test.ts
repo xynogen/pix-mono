@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import deferNonCoreTools, { demotedMcp } from "./defer-tools.ts";
+import deferNonCoreTools, { weightNative } from "./defer-tools.ts";
 
 test("keeps Windows PowerShell direct, defers other non-core tools, and activates loaders", () => {
 	const registered: Array<{ name: string; exposure?: string }> = [];
@@ -33,43 +33,47 @@ test("keeps Windows PowerShell direct, defers other non-core tools, and activate
 	]);
 	for (const fn of handlers) fn();
 	expect(active).toEqual(["read", "bash", "tool_search", "codemode"]);
-	expect(onResult).toHaveLength(1);
+	expect(onResult).toHaveLength(2); // tool_search pool widening + re-rank
 });
 
 const info = (name: string, source = "pkg") => ({ name, sourceInfo: { source } }) as never;
-const tools = [
-	info("mcp__kicad__list_libs", "mcp:kicad"),
-	info("grep"),
-	info("mcp__playwright__browser_find", "mcp:playwright"),
-	info("ast_search"),
-	info("mcp__kicad__save_project", "mcp:kicad"),
-];
-const loaded = [
-	"mcp__kicad__list_libs",
-	"grep",
-	"mcp__playwright__browser_find",
-	"ast_search",
-	"mcp__kicad__save_project",
-];
+const mcp = (server: string, n: number) =>
+	Array.from({ length: n }, (_, i) => `mcp__${server}__t${i}`);
+// BM25 order for "search file contents": 9 KiCad/Playwright hits, then the native tools.
+const ranked = [...mcp("kicad", 6), "grep", ...mcp("playwright", 3), "ast_search"];
+const tools = ranked.map((n) => info(n, n.startsWith("mcp__") ? `mcp:${n.split("__")[1]}` : "pkg"));
 
-test("demotedMcp drops MCP hits ranked below the first native hit", () => {
-	expect(demotedMcp(loaded, tools, "search file contents")).toEqual([
-		"mcp__playwright__browser_find",
-		"mcp__kicad__save_project",
+test("weightNative lifts native tools and drops unnamed MCP hits ranked below them", () => {
+	// grep (rank 6) beats every penalised hit. Playwright (7-9) ranked below grep: dropped.
+	// ast_search (10) ties with kicad t2 (2 + 8); the tie keeps BM25 order.
+	expect(weightNative(ranked, tools, "search file contents")).toEqual([
+		"grep",
+		"mcp__kicad__t0",
+		"mcp__kicad__t1",
+		"mcp__kicad__t2",
+		"ast_search",
+		"mcp__kicad__t3",
+		"mcp__kicad__t4",
+		"mcp__kicad__t5",
 	]);
 });
 
-test("demotedMcp keeps MCP tools whose server the query names, or with no native hit", () => {
-	expect(demotedMcp(loaded, tools, "kicad search")).toEqual(["mcp__playwright__browser_find"]);
-	expect(demotedMcp(["mcp__kicad__list_libs"], tools, "libs")).toEqual([]);
+test("weightNative keeps every MCP hit when the pool has no native tool", () => {
+	const onlyMcp = mcp("kicad", 3);
+	expect(weightNative(onlyMcp, tools, "footprint")).toEqual(onlyMcp);
 });
 
-test("tool_search result unloads demoted MCP tools and says so", () => {
-	let active = ["read", ...loaded];
-	const results: Array<(e: unknown) => unknown> = [];
+test("weightNative keeps the order of tools from a server the query names", () => {
+	const kicad = weightNative(ranked, tools, "kicad search");
+	expect(kicad.slice(0, 7)).toEqual([...mcp("kicad", 6), "grep"]);
+});
+
+test("tool_search asks for a wider pool, keeps the re-ranked top, unloads the rest", () => {
+	let active = ["read", ...ranked];
+	const handlers = new Map<string, (e: unknown) => unknown>();
 	const pi = {
 		registerTool: () => {},
-		on: (ev: string, fn: (e: unknown) => unknown) => ev === "tool_result" && results.push(fn),
+		on: (ev: string, fn: (e: unknown) => unknown) => handlers.set(ev, fn),
 		getActiveTools: () => active,
 		getAllTools: () => tools,
 		setActiveTools: (names: string[]) => {
@@ -77,20 +81,25 @@ test("tool_search result unloads demoted MCP tools and says so", () => {
 		},
 	};
 	deferNonCoreTools(pi as never);
+	const input: Record<string, unknown> = { query: "search file contents", limit: 3 };
+	handlers.get("tool_call")?.({ toolName: "tool_search", toolCallId: "c1", input });
+	expect(input.limit).toBe(9);
+
 	const text = [
-		"Loaded 5 tools. They are available from your next call:",
-		...loaded.map((n) => `- ${n}: d`),
+		"Loaded 11 tools. They are available from your next call:",
+		...ranked.map((n) => `- ${n}: d`),
 	];
-	const out = results[0]?.({
+	const out = handlers.get("tool_result")?.({
 		toolName: "tool_search",
+		toolCallId: "c1",
 		isError: false,
-		input: { query: "search file contents" },
+		input,
 		content: [{ type: "text", text: text.join("\n") }],
-		details: { loaded },
+		details: { loaded: ranked },
 	}) as { content: { text: string }[]; details: { loaded: string[] } };
-	expect(active).toEqual(["read", "mcp__kicad__list_libs", "grep", "ast_search"]);
-	expect(out.details.loaded).toEqual(["mcp__kicad__list_libs", "grep", "ast_search"]);
+	expect(active).toEqual(["read", "mcp__kicad__t0", "mcp__kicad__t1", "grep"]);
+	expect(out.details.loaded).toEqual(["grep", "mcp__kicad__t0", "mcp__kicad__t1"]);
 	expect(out.content[0]?.text).toMatch(
-		/^Loaded 3 tools\.[^\n]*\n- mcp__kicad__list_libs: d\n- grep: d\n- ast_search: d\nSkipped 2 MCP tool\(s\) ranked below native matches: mcp__playwright__browser_find, mcp__kicad__save_project\. Name the server in the query to load them\.$/,
+		/^Loaded 3 tools\.[^\n]*\n- grep: d\n- mcp__kicad__t0: d\n- mcp__kicad__t1: d\nRanked below native tools: mcp__kicad__t2\. Name the server in the query to load them\.$/,
 	);
 });

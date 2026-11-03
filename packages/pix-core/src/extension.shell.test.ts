@@ -68,12 +68,13 @@ test("core awaits member factories in order and stops on failure", async () => {
 		pending = extension(pi as never);
 		await entered.promise;
 		expect(seen).toEqual([members[0]!]);
-		expect(events).toEqual(["session_start", "tool_result"]); // Deferred-tool wrapper precedes runtime.
+		expect(events).toEqual(["session_start", "tool_call", "tool_result"]); // Deferred-tool wrapper precedes runtime.
 		release.resolve();
 		await pending;
 		expect(seen).toEqual(members);
 		expect(events).toEqual([
 			"session_start",
+			"tool_call",
 			"tool_result",
 			"session_before_compact",
 			"agent_before_settle",

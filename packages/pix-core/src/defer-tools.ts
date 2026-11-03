@@ -41,53 +41,97 @@ export default function deferNonCoreTools(pi: ExtensionAPI): void {
 		if (missing.length) pi.setActiveTools([...active, ...missing]);
 	});
 
+	// Pi's tool_search ranks with BM25 and no source weighting, so a generic query ("search file
+	// contents") fills slots with server tools whose descriptions share a word. Ask it for a
+	// wider pool, re-rank with an MCP penalty, then unload what falls past the requested limit.
+	const requested = new Map<string, number>();
+	pi.on("tool_call", (event) => {
+		if (event.toolName !== "tool_search") return;
+		const limit = Number(event.input.limit ?? DEFAULT_LIMIT);
+		if (!Number.isInteger(limit) || limit <= 0) return; // let tool_search report it
+		requested.set(event.toolCallId, limit);
+		event.input.limit = limit * POOL_FACTOR;
+	});
+
 	pi.on("tool_result", (event) => {
-		if (event.toolName !== "tool_search" || event.isError) return;
+		if (event.toolName !== "tool_search") return;
+		const limit = requested.get(event.toolCallId);
+		requested.delete(event.toolCallId);
+		if (limit === undefined || event.isError) return;
 		const loaded = (event.details as { loaded?: string[] } | undefined)?.loaded ?? [];
 		const query = String(event.input.query ?? "");
-		const drop = demotedMcp(loaded, pi.getAllTools(), query);
-		if (drop.length === 0) return;
-		const gone = new Set(drop);
-		pi.setActiveTools(pi.getActiveTools().filter((n) => !gone.has(n)));
-		const kept = loaded.filter((n) => !gone.has(n));
+		const tools = pi.getAllTools();
+		const kept = weightNative(loaded, tools, query).slice(0, limit);
+		const keep = new Set(kept);
+		const dropped = loaded.filter((n) => !keep.has(n));
+		if (dropped.length) pi.setActiveTools(pi.getActiveTools().filter((n) => !dropped.includes(n)));
+
 		const lines = event.content.flatMap((c) => (c.type === "text" ? c.text.split("\n") : []));
-		const rows = lines.filter((l) => !gone.has(/^- ([^:]+):/.exec(l)?.[1] ?? ""));
-		rows[0] = `Loaded ${kept.length} tool${kept.length === 1 ? "" : "s"}. They are available from your next call:`;
-		rows.push(
-			`Skipped ${drop.length} MCP tool(s) ranked below native matches: ${drop.join(", ")}. Name the server in the query to load them.`,
+		const row = new Map(
+			lines.flatMap((l) => {
+				const name = /^- ([^:]+):/.exec(l)?.[1];
+				return name ? [[name, l] as const] : [];
+			}),
 		);
+		const demoted = kept.length ? loaded.slice(0, limit).filter((n) => !keep.has(n)) : [];
+		const text = kept.length
+			? [
+					`Loaded ${kept.length} tool${kept.length === 1 ? "" : "s"}. They are available from your next call:`,
+					...kept.map((n) => row.get(n) ?? `- ${n}`),
+					...(demoted.length
+						? [
+								`Ranked below native tools: ${demoted.join(", ")}. Name the server in the query to load them.`,
+							]
+						: []),
+				].join("\n")
+			: "No matching tools found.";
 		return {
-			content: [{ type: "text" as const, text: rows.join("\n") }],
-			details: { ...(event.details as object), loaded: kept, skipped: drop },
+			content: [{ type: "text" as const, text }],
+			details: { ...(event.details as object), loaded: kept, demoted },
 		};
 	});
 }
+
+/** Pi's `DEFAULT_TOOL_SEARCH_LIMIT`; not exported from the package root. */
+const DEFAULT_LIMIT = 8;
+/** Pool size, as a multiple of the requested limit, that the re-rank chooses from. */
+const POOL_FACTOR = 3;
+// ponytail: one fixed penalty, in rank positions. 8 lifted the native tool into the top 8 on
+// every probe query of this session (grep, ast_outline, find, read_env, lsp_diagnostics) and
+// left server-specific queries ("kicad footprint", "browser click") unchanged.
+const MCP_PENALTY = 8;
 
 const isMcp = (t: ToolInfo | undefined): boolean =>
 	!!t && (t.name.startsWith("mcp__") || /mcp/i.test(t.sourceInfo?.source ?? ""));
 
 /** Server name of an MCP tool: its namespace, else the `mcp__<server>__tool` segment. */
 const serverOf = (t: ToolInfo): string =>
-	(t.namespace?.name ?? t.name.split("__")[1] ?? "").toLowerCase();
+	(t.namespace?.name.replace(/^mcp__/, "") ?? t.name.split("__")[1] ?? "").toLowerCase();
 
 /**
- * MCP hits that tool_search ranked below the first native hit, unless the query names their
- * server. MCP tools that outrank every native tool stay: they are the real answer. Pi's BM25
- * ranker has no source weighting, so a generic query ("search file contents") otherwise loads
- * unrelated server tools whose descriptions share a word.
+ * Re-rank tool_search hits: an MCP tool whose server the query does not name drops
+ * `MCP_PENALTY` positions, so a native tool with a slightly lower BM25 rank wins. Once the
+ * pool holds a native tool, such MCP hits ranked below the first native one are dropped:
+ * they only share a word with the query, and a short list beats loading unused schemas.
+ * A query that names a server keeps that server's order. Stable for ties.
  */
-export function demotedMcp(loaded: string[], tools: ToolInfo[], query: string): string[] {
+export function weightNative(ranked: string[], tools: ToolInfo[], query: string): string[] {
 	const byName = new Map(tools.map((t) => [t.name, t]));
-	const firstNative = loaded.findIndex((n) => byName.has(n) && !isMcp(byName.get(n)));
-	if (firstNative < 0) return [];
 	const terms = new Set(
 		query
 			.toLowerCase()
 			.split(/[^a-z0-9]+/)
 			.filter(Boolean),
 	);
-	return loaded.slice(firstNative + 1).filter((n) => {
-		const t = byName.get(n);
-		return t !== undefined && isMcp(t) && !terms.has(serverOf(t));
+	const hits = ranked.map((name, rank) => {
+		const t = byName.get(name);
+		const mcp = t !== undefined && isMcp(t);
+		return { name, rank, mcp, penal: mcp && !terms.has(serverOf(t)) };
 	});
+	const firstNative = hits.find((h) => !h.mcp)?.rank ?? Number.POSITIVE_INFINITY;
+	return hits
+		.filter((h) => !h.penal || h.rank < firstNative)
+		.map((h) => ({ ...h, weighted: h.rank + (h.penal ? MCP_PENALTY : 0) }))
+		.sort((a, b) => a.weighted - b.weighted || a.rank - b.rank)
+		.map((h) => h.name);
 }
