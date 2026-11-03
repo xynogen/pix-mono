@@ -13,7 +13,11 @@
  * the tool is callable now. Names only the one matching tool — no inventory.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ToolResultEvent,
+	ToolResultEventResult,
+} from "@earendil-works/pi-coding-agent";
 import { currentPlatform, type HostOs } from "@xynogen/pix-runtime/platform";
 import { NUDGE_ENTRY, type NudgeCard } from "./card.ts";
 
@@ -346,6 +350,7 @@ export default function registerToolsNudge(
 	const nudged = new Set<Category>();
 
 	pi.on("tool_result", (event) => {
+		if (event.toolName === "read") return wholeRead(event);
 		if (event.toolName !== "bash") return;
 		const command = event.input?.command;
 		if (typeof command !== "string") return;
@@ -390,4 +395,50 @@ export default function registerToolsNudge(
 			structuredContent: event.structuredContent,
 		};
 	});
+
+	// A whole-file read of a large source file: the model usually needs one symbol or the
+	// shape, so point at the AST tools once. Nudged only when the target tool exists.
+	let outlined = false;
+	const wholeRead = (event: ToolResultEvent): ToolResultEventResult | undefined => {
+		if (outlined || event.isError || event.input.offset !== undefined) return;
+		const path = event.input.path;
+		if (typeof path !== "string" || !OUTLINE_FILE.test(path)) return;
+		const text = event.content.map((c) => (c.type === "text" ? (c.text ?? "") : "")).join("");
+		if (text.split("\n").length < OUTLINE_MIN_LINES) return;
+		let active: string[] | undefined;
+		try {
+			active = pi.getActiveTools() ?? undefined;
+		} catch {
+			active = undefined;
+		}
+		const nudge = nudgeFor(OUTLINE_RULE, registeredToolNames(pi), active);
+		if (!nudge) return;
+		outlined = true;
+		if (nudge.load && active) {
+			try {
+				pi.setActiveTools([...active, OUTLINE_RULE.tool]);
+			} catch {
+				return;
+			}
+		}
+		const note = `[pix-nudge] ${nudge.text}`;
+		pi.appendEntry<NudgeCard>(NUDGE_ENTRY, {
+			kind: "tool",
+			summary: `read whole file → ${OUTLINE_RULE.tool}${nudge.load ? " (loaded)" : ""}`,
+			body: note,
+		});
+		return { content: [...event.content, { type: "text" as const, text: note }] };
+	};
 }
+
+/** Source files the AST tools understand. Markdown, JSON and logs stay plain reads. */
+const OUTLINE_FILE =
+	/\.(?:[cm]?[jt]sx?|py|go|rs|java|kt|rb|php|cs|c|cc|cpp|h|hpp|swift|scala|lua)$/;
+// ponytail: one fixed size. 300 lines is where a whole read costs more than outline + one symbol.
+const OUTLINE_MIN_LINES = 300;
+const OUTLINE_RULE: Pick<Rule, "reason" | "tool" | "hint" | "note"> = {
+	reason: "Read a large source file whole.",
+	tool: "ast_outline",
+	hint: "then `ast_read_symbol` for one function",
+	note: "Use read with offset/limit when you already know the lines.",
+};

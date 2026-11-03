@@ -398,3 +398,35 @@ describe("registerToolsNudge handler", () => {
 		expect(notices).toHaveLength(0);
 	});
 });
+
+describe("whole-file read nudge", () => {
+	const lines = (n: number) => Array.from({ length: n }, (_, i) => `line ${i}`).join("\n");
+	const readEvent = (path: string, n: number, input: Record<string, unknown> = {}) => ({
+		toolName: "read",
+		input: { path, ...input },
+		content: [{ type: "text", text: lines(n) }],
+		isError: false,
+	});
+	const tools = [...ALL_TOOLS, "ast_outline", "ast_read_symbol"];
+
+	test("a whole read of a large source file loads ast_outline once", async () => {
+		const handler = makeHandler(["read"], tools);
+		const { ctx } = makeCtx();
+		const result = (await handler(readEvent("src/big.ts", 400), ctx)) as Result;
+		expect(result?.content.at(-1)?.text).toMatch(
+			/^\[pix-nudge\] Read a large source file whole\. Loaded `ast_outline` for you; call it directly next time \(then `ast_read_symbol` for one function\)\./,
+		);
+		expect(loadedTools).toEqual(["read", "ast_outline"]);
+		expect(await handler(readEvent("src/other.ts", 400), ctx)).toBeUndefined();
+	});
+
+	test("skips small files, ranged reads, non-source files, and sessions without the tool", async () => {
+		const { ctx } = makeCtx();
+		const on = makeHandler(["read"], tools);
+		expect(await on(readEvent("src/small.ts", 299), ctx)).toBeUndefined();
+		expect(await on(readEvent("src/big.ts", 400, { offset: 1 }), ctx)).toBeUndefined();
+		expect(await on(readEvent("docs/big.md", 400), ctx)).toBeUndefined();
+		const off = makeHandler(["read"], ALL_TOOLS);
+		expect(await off(readEvent("src/big.ts", 400), ctx)).toBeUndefined();
+	});
+});
