@@ -21,7 +21,7 @@ One tool, four actions:
 | `graph(action:"build", path?)` | (Re)build/update the graph from source into `.pi/graph/`. Run again after edits to refresh. |
 | `graph(action:"query", question, dfs?)` | Lexical search: match keywords against symbol/file names, then traverse. BFS (default) for broad context, `dfs:true` to trace a path. |
 | `graph(action:"query", question, scope:"global")` | Rank whole modules (workspace packages) for architecture questions. Returns each module's summary and evidence card. |
-| `graph(action:"impact", question, path?)` | Reverse dependencies: who calls or imports a symbol or file, transitively (3 hops, 60 nodes). Ends with affected files and tests. `path` narrows an ambiguous name. |
+| `graph(action:"impact", question, path?)` | Reverse dependencies: who calls, uses (types, constants) or imports a symbol or file, transitively (3 hops, 60 nodes). Ends with affected files and tests. `path` narrows an ambiguous name. `query` and `impact` add a stale note when sources changed after the build. |
 | `graph(action:"summarize")` | List up to 5 modules whose summary is missing or stale, with their evidence cards and a token estimate. |
 | `graph(action:"summarize", module, summary)` | Store a summary written by the agent. It must cite the module's card. |
 

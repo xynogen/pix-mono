@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerGraph from "./graph.ts";
@@ -233,6 +233,24 @@ describe("graph tool", () => {
 		);
 		const one = await run({ action: "impact", question: "dup", path: "dup3" }, root);
 		expect(one.isError).toBeFalsy();
+	});
+
+	test("query and impact flag a graph older than its sources", async () => {
+		const root = fixture();
+		await run({ action: "build" }, root);
+		const fresh = await run({ action: "impact", question: "greet" }, root);
+		expect(fresh.content[0]?.text).toMatch(/Tests: none reach it\.$/);
+		const later = new Date(Date.now() + 60_000);
+		utimesSync(join(root, "src/util.ts"), later, later);
+		for (const args of [
+			{ action: "impact", question: "greet" },
+			{ action: "query", question: "greet" },
+		]) {
+			const res = await run(args, root);
+			expect(res.content[0]?.text).toMatch(
+				/\n\nGraph is stale: 1 file\(s\) changed since the build\. Run graph\(action:"build"\) before trusting this\.$/,
+			);
+		}
 	});
 
 	test("query returns structured hits for the tree render", async () => {

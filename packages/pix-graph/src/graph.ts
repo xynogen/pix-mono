@@ -13,7 +13,7 @@
  * schema; kept minimal (single tool, two modes) per the token-budget rule.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -156,19 +156,40 @@ function renderBuildProgress(d: GraphResultDetails, t: Theme): string {
 	return `${t.fg("accent", frame ?? "")} ${t.fg("toolTitle", t.bold("graph"))} ${bar} ${t.fg("toolTitle", pct)}  ${t.fg("muted", stats)}`;
 }
 
-function loadGraph(cwd: string): GraphData | undefined {
+function loadGraph(cwd: string): (GraphData & { builtMs: number }) | undefined {
 	for (const dir of [OUT_DIR, ...LEGACY_DIRS]) {
 		for (const name of ["graph.cleaned.json", "graph.json"]) {
 			const path = join(cwd, dir, name);
 			if (!existsSync(path)) continue;
 			try {
-				return JSON.parse(readFileSync(path, "utf8")) as GraphData;
+				const graph = JSON.parse(readFileSync(path, "utf8")) as GraphData;
+				return { ...graph, builtMs: statSync(path).mtimeMs };
 			} catch {
 				return undefined;
 			}
 		}
 	}
 	return undefined;
+}
+
+/**
+ * Footer when sources changed after the build: the graph answers from old code, and an
+ * impact list that misses a new caller is worse than none. Checks only files the graph
+ * knows (one stat each); new files show up after the next build.
+ */
+export function staleNote(graph: GraphData, builtMs: number, cwd: string): string {
+	const files = new Set(graph.nodes.flatMap((n) => (n.source_file ? [n.source_file] : [])));
+	let changed = 0;
+	for (const rel of files) {
+		try {
+			if (statSync(join(cwd, rel)).mtimeMs > builtMs) changed++;
+		} catch {
+			changed++; // deleted or moved since the build
+		}
+	}
+	return changed === 0
+		? ""
+		: `\n\nGraph is stale: ${changed} file(s) changed since the build. Run graph(action:"build") before trusting this.`;
 }
 
 /** Above this many same-named seeds, impact asks for `path` instead of printing every tree. */
@@ -526,7 +547,10 @@ export default function registerGraph(pi: ExtensionAPI): void {
 						params.question as string | undefined,
 						params.path as string | undefined,
 					);
-					return typeof out === "string" ? fail(out) : out;
+					if (typeof out === "string") return fail(out);
+					const stale = staleNote(graph, graph.builtMs, cwd);
+					if (stale) out.content[0] = { type: "text", text: `${out.content[0]?.text}${stale}` };
+					return out;
 				}
 
 				// action === "query"
@@ -560,7 +584,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				const text =
 					rows.length === 0
 						? `No graph node name matches: ${tokenize(question).join(", ") || "(no keywords)"}. Query is lexical over TS/JS symbol/file names; retry with identifiers or use grep.`
-						: plainRows;
+						: plainRows + staleNote(graph, graph.builtMs, cwd);
 				return {
 					content: [{ type: "text" as const, text }],
 					details: {

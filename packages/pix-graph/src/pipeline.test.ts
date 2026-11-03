@@ -129,6 +129,43 @@ describe("extract", () => {
 		]);
 	});
 
+	test("non-call uses of imports become references; keys and member names do not", () => {
+		const root = mkdtempSync(join(tempDir(), "pix-graph-"));
+		dirs.push(root);
+		const put = (rel: string, body: string) => {
+			mkdirSync(join(root, rel, ".."), { recursive: true });
+			writeFileSync(join(root, rel), body);
+		};
+		put(
+			"src/types.ts",
+			"export interface Opts { a: number }\nexport const LIMIT = 3;\nexport function make() {}\nexport type Id = string;\n",
+		);
+		put(
+			"src/use.ts",
+			[
+				'import { type Opts, LIMIT, make } from "./types.ts";',
+				'import * as t from "./types.ts";',
+				"export function run(o: Opts): t.Id { make(); return String(o.a + LIMIT); }",
+				"export const cfg = { make: 1, LIMIT: 2, x: obj.make };",
+				"declare const obj: { make: number };",
+			].join("\n"),
+		);
+		const { links } = extract(collectFiles(root), root);
+		const edges = links
+			.filter((l) => l.relation === "calls" || l.relation === "references")
+			.map(
+				(l) =>
+					`${l.relation} ${l.source.replace("src_use_ts_", "")} -> ${l.target.replace("src_types_ts_", "")}`,
+			)
+			.sort();
+		expect(edges).toEqual([
+			"calls run -> make",
+			"references run -> id",
+			"references run -> limit",
+			"references run -> opts",
+		]);
+	});
+
 	test("respects ignore files and scans un-ignored hidden dirs", () => {
 		const root = fixture();
 		const put = (rel: string, body = "export const x = 1;\n") => {

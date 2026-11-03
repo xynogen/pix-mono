@@ -236,11 +236,18 @@ function impactSeeds(graph: GraphData, target: string, inFile?: string): GraphNo
 	return scoped.filter((n) => !n.source_location && n.source_file?.endsWith(target));
 }
 
+/** Dependency edges impact follows backwards, and how each reads from the dependent side. */
+const VIA: Record<string, string> = {
+	calls: "called by",
+	references: "used by",
+	imports: "imported by",
+};
+
 /**
- * Reverse dependency walk: who calls or imports `target`, transitively. Answers
- * "what breaks if I change this?" before an edit leaves callers behind. A file seed
- * also counts callers of the symbols it contains. Only `calls` and `imports` edges
- * are followed, against their direction, so callees and siblings never leak in.
+ * Reverse dependency walk: who calls, references or imports `target`, transitively.
+ * Answers "what breaks if I change this?" before an edit leaves callers behind. A file
+ * seed also counts dependents of the symbols it contains. Only dependency edges are
+ * followed, against their direction, so callees and siblings never leak in.
  */
 export function impact(
 	graph: GraphData,
@@ -257,7 +264,7 @@ export function impact(
 	for (const link of graph.links) {
 		if (link.relation === "contains") {
 			contains.set(link.source, [...(contains.get(link.source) ?? []), link.target]);
-		} else if (link.relation === "calls" || link.relation === "imports") {
+		} else if (link.relation in VIA) {
 			const list = incoming.get(link.target) ?? [];
 			list.push({ id: link.source, relation: link.relation });
 			incoming.set(link.target, list);
@@ -290,7 +297,7 @@ export function impact(
 				}
 				seen.add(edge.id);
 				count++;
-				const via = edge.relation === "calls" ? "called by" : "imported by";
+				const via = VIA[edge.relation] ?? edge.relation;
 				children.set(id, [...(children.get(id) ?? []), { id: edge.id, via, depth }]);
 				next.push(edge.id);
 			}

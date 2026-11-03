@@ -335,26 +335,46 @@ export function extract(
 		return undefined;
 	};
 
-	// Pass 2: calls from the enclosing top-level declaration (or the file) to imported entities.
+	// Pass 2: calls/references from the enclosing top-level declaration (or the file) to imported
+	// entities. A use that is not a call (type annotation, `extends`, a passed constant) becomes
+	// `references`, so impact on an interface or const is not silently empty.
 	for (const { rel, source, fileId } of parsed) {
 		const bindings = bindingsByRel.get(rel);
 		if (!bindings || bindings.size === 0) continue;
 		const emitted = new Set<string>();
-		const callee = (expr: ts.LeftHandSideExpression): string | undefined => {
+		const callee = (expr: ts.Node): string | undefined => {
 			if (ts.isIdentifier(expr)) {
 				const b = bindings.get(expr.text);
 				return b && b.name !== "*" ? resolveExport(b.file, b.name) : undefined;
 			}
-			if (ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.expression)) {
-				const b = bindings.get(expr.expression.text);
-				return b?.name === "*" ? resolveExport(b.file, expr.name.text) : undefined;
-			}
-			return undefined;
+			const ns =
+				ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.expression)
+					? [expr.expression.text, expr.name.text]
+					: ts.isQualifiedName(expr) && ts.isIdentifier(expr.left)
+						? [expr.left.text, expr.right.text]
+						: undefined;
+			if (!ns) return undefined;
+			const b = bindings.get(ns[0] as string);
+			return b?.name === "*" ? resolveExport(b.file, ns[1] as string) : undefined;
 		};
 		for (const stmt of source.statements) {
 			if (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) continue;
 			const decl = declName(stmt);
 			const from = decl ? entityNodeId(fileId, decl.name) : fileId;
+			const link = (relation: "calls" | "references", target: string, at: ts.Node) => {
+				const key = `${relation}\0${from}\0${target}`;
+				if (target === from || emitted.has(key)) return;
+				emitted.add(key);
+				links.push({
+					source: from,
+					target,
+					relation,
+					confidence: "EXTRACTED",
+					confidence_score: 1,
+					source_file: rel,
+					source_location: line(source, at),
+				});
+			};
 			const visit = (node: ts.Node): void => {
 				if (ts.isCallExpression(node)) {
 					// `await import("./x.ts")` is a lazy dependency; keep it as a file import.
@@ -368,19 +388,38 @@ export function extract(
 						if (target) addImport(rel, source, node, target);
 					}
 					const target = callee(node.expression);
-					const key = `${from}\0${target}`;
-					if (target && target !== from && !emitted.has(key)) {
-						emitted.add(key);
-						links.push({
-							source: from,
-							target,
-							relation: "calls",
-							confidence: "EXTRACTED",
-							confidence_score: 1,
-							source_file: rel,
-							source_location: line(source, node),
-						});
-					}
+					if (target) link("calls", target, node);
+					// The callee is handled; walk only the arguments and type arguments.
+					for (const child of [...(node.typeArguments ?? []), ...node.arguments]) visit(child);
+					if (!target) visit(node.expression);
+					return;
+				}
+				// `ns.X` / `ns.T`: one reference to the member, not a second one to the namespace.
+				// Otherwise walk only the left side: `obj.foo` must not match an imported `foo`.
+				if (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node)) {
+					const target = callee(node);
+					if (target) link("references", target, node);
+					else visit(ts.isQualifiedName(node) ? node.left : node.expression);
+					return;
+				}
+				// Object keys and member names are labels, not uses of a same-named import.
+				if (
+					(ts.isPropertyAssignment(node) ||
+						ts.isPropertySignature(node) ||
+						ts.isPropertyDeclaration(node) ||
+						ts.isMethodDeclaration(node) ||
+						ts.isMethodSignature(node)) &&
+					ts.isIdentifier(node.name)
+				) {
+					ts.forEachChild(node, (c) => {
+						if (c !== node.name) visit(c);
+					});
+					return;
+				}
+				if (ts.isIdentifier(node)) {
+					const target = callee(node);
+					if (target) link("references", target, node);
+					return;
 				}
 				ts.forEachChild(node, visit);
 			};
