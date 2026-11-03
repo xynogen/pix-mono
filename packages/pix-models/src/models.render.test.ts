@@ -69,7 +69,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			on() {},
 			registerCommand(name: string, command: { handler: typeof handler }) {
 				commands.push(name);
-				if (name === "models") handler = command.handler;
+				if (name === "model") handler = command.handler;
 			},
 			getThinkingLevel: () => level,
 			setThinkingLevel(value: string) {
@@ -81,7 +81,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			},
 		} as never);
 		expect(patchSpy).toHaveBeenCalledTimes(1);
-		expect(commands).toEqual(["models", "model"]);
+		expect(commands).toEqual(["model"]);
 		if (!handler) throw new Error("models command not registered");
 		const models = [
 			{ provider: "fixture", id: "alpha", name: "Alpha", contextWindow: 200_000, reasoning: true },

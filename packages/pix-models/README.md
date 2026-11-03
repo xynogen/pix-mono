@@ -1,10 +1,10 @@
 # pix-models
 
-Pi extension — enhanced `/models` picker with coding score/rank.
+Pi extension — enhanced `/model` picker with coding score/rank.
 
 ## What it does
 
-Registers a `/models` slash command — a richer TUI picker replacing Pi's built-in `/model` selector.
+Takes over Pi's built-in `/model` command with a richer TUI picker. `/model <term>` opens it pre-filtered.
 
 - **Each row** — model id, context window, per-M-token cost, and a coding score/rank (star bar) when available.
 - **Sorting** — by coding score (best first), then alphabetically for unscored models. Fuzzy search filters as you type.

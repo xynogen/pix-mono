@@ -1,8 +1,7 @@
 /**
- * models.ts — enhanced /models command with benchlm rank + score
+ * models.ts — enhanced /model command with benchlm rank + score
  *
- * Replaces (or supplements) the built-in /model selector by registering
- * /models (plural). Each row shows:
+ * Takes over Pi's built-in /model name (see patch-builtin.ts). Each row shows:
  *   <name>  <provider> · <ctx> · <cost> · 🏅 #rank score
  *
  * Sorted by benchlm rank when available (best first), then alphabetical.
@@ -703,11 +702,11 @@ export default function modelPickerExtension(pi: ExtensionAPI) {
 	// Self-healing: re-applies on every load, so a Pi upgrade can't restore it.
 	patchOutBuiltinModelCommand();
 
-	const handler = async (args: unknown, ctx: ExtensionContext) => {
-		await showEnhancedPicker(pi, ctx, typeof args === "string" ? args.trim() : "");
-	};
 	registerProjectPrefs(pi);
-	const description = "Enhanced model picker — shows benchlm rank + score";
-	pi.registerCommand("models", { description, handler });
-	pi.registerCommand("model", { description, handler });
+	pi.registerCommand("model", {
+		description: "Enhanced model picker — shows benchlm rank + score",
+		handler: async (args, ctx) => {
+			await showEnhancedPicker(pi, ctx, typeof args === "string" ? args.trim() : "");
+		},
+	});
 }

@@ -16,7 +16,7 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 |---|---|
 | `pix-welcome` | ASCII π banner + startup health checks (version, auth, models, gitignore) |
 | `pix-footer` | Status bar: mode / git branch / model / cost / live TPS |
-| `pix-models` | `/models` — enhanced model picker with coding score/rank, context, cost |
+| `pix-models` | `/model` — enhanced model picker with coding score/rank, context, cost |
 | `pix-update` | `/update` — self-update Pi + refresh extensions |
 | `pix-commands` | Slash commands — `/clear` and concurrent, context-isolated `/btw` side questions |
 | `pix-diagnostics` | Compact LSP diagnostic widget |
