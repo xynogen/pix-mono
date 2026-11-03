@@ -97,7 +97,7 @@ export interface ToolExecOptions {
 	onStatus?: (status: ToolStatus) => void;
 	/** Test seam for the host OS. */
 	host?: HostPlatform;
-	/** Cap on captured stdout/stderr bytes each (default 50 MB). */
+	/** Cap on captured stdout/stderr bytes each (default 50 MB). Past it the child is stopped. */
 	maxBuffer?: number;
 	/** Args are already quoted for the target (cmd.exe `/c` lines); Node must not re-quote. */
 	verbatim?: boolean;
@@ -111,7 +111,7 @@ export interface ToolRunResult {
 	/** Raw stdout for binary output (clipboard images, archives). */
 	stdoutBytes: Buffer;
 	timedOut: boolean;
-	/** Output passed `maxBuffer` and was cut. A zero exit code is then not a complete result. */
+	/** Output passed `maxBuffer`; the child was stopped and output cut. Never a complete result. */
 	truncated: boolean;
 	/** The binary that ran and where it was found. */
 	tool: ResolvedTool;
@@ -220,7 +220,11 @@ function collect(
 		let truncated = false;
 		const push = (list: Buffer[], chunk: Buffer, len: number): number => {
 			const room = cap - len;
-			if (chunk.length > room) truncated = true;
+			// Like pi.exec: stop a runaway child instead of draining output nobody keeps.
+			if (chunk.length > room) {
+				truncated = true;
+				stop();
+			}
 			if (room <= 0) return len;
 			list.push(chunk.length > room ? chunk.subarray(0, room) : chunk);
 			return len + Math.min(chunk.length, room);

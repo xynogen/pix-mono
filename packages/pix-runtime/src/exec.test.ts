@@ -124,9 +124,21 @@ describe("runTool / runToolSync", () => {
 		const s = sandbox();
 		echoTool(s.pathDir, "pixecho");
 		const r = await runTool("pixecho", ["abcdefgh"], { env: s.env, maxBuffer: 3 });
-		expect(r).toMatchObject({ code: 0, stdout: "abc", truncated: true });
+		expect(r).toMatchObject({ stdout: "abc", truncated: true });
 		const full = await runTool("pixecho", ["ab"], { env: s.env });
 		expect(full.truncated).toBe(false);
+	});
+
+	test.skipIf(isWin)("output past maxBuffer stops a runaway child", async () => {
+		const s = sandbox();
+		const name = "pixflood";
+		writeFileSync(join(s.pathDir, name), "#!/bin/sh\nexec yes\n");
+		chmodSync(join(s.pathDir, name), 0o755);
+		const started = Date.now();
+		const r = await runTool(name, [], { env: s.env, maxBuffer: 1024 });
+		expect(r).toMatchObject({ truncated: true, timedOut: false });
+		expect(r.stdout.length).toBe(1024);
+		expect(Date.now() - started).toBeLessThan(5_000);
 	});
 
 	test.skipIf(isWin)("a timeout stops descendants that hold stdout open", async () => {
