@@ -28,6 +28,17 @@ export class SectionRegistry {
 		return this.byKey.get(key);
 	}
 
+	/**
+	 * Swap in a newer definition for a known key (Pi reload re-evaluates modules, but the
+	 * runtime singleton on globalThis survives with the old schema). True when it changed.
+	 */
+	adopt(handle: SectionHandle<string, unknown>): boolean {
+		if (!this.byKey.has(handle.key) || this.byKey.get(handle.key) === handle.__section)
+			return false;
+		this.byKey.set(handle.key, handle.__section);
+		return true;
+	}
+
 	all(): ConfigSection<unknown>[] {
 		return [...this.byKey.values()];
 	}

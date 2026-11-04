@@ -40,6 +40,7 @@ import {
 	type SectionHandle,
 	stripDefaults,
 } from "./schema.ts";
+import { builtinSections } from "./sections/index.ts";
 
 export interface InitOptions {
 	origin?: ConfigChangeOrigin;
@@ -110,6 +111,13 @@ class RuntimeImpl implements PixRuntime {
 
 	get ready(): boolean {
 		return this.current !== null;
+	}
+
+	/** Adopt newer section definitions; drop the snapshot so the next read re-resolves them. */
+	adoptSections(handles: readonly SectionHandle<string, unknown>[]): void {
+		let changed = false;
+		for (const handle of handles) changed = this.registry.adopt(handle) || changed;
+		if (changed) this.current = null;
 	}
 
 	private parseContext(): ParseContext {
@@ -491,6 +499,16 @@ export function pixRuntime(): PixRuntime {
 	if (!g[SINGLETON_KEY]) g[SINGLETON_KEY] = new RuntimeImpl();
 	return g[SINGLETON_KEY];
 }
+
+// A reload re-evaluates this module but keeps the singleton: hand it this copy's schemas,
+// or new keys (e.g. a new footer flag) are dropped on every read and write.
+// ponytail: last-evaluated copy wins. Version-skewed copies loading after a newer one
+// would hand back older schemas; compare a schema version here if that ever happens.
+(
+	(globalThis as Global)[SINGLETON_KEY] as
+		| { adoptSections?: (h: readonly SectionHandle<string, unknown>[]) => void }
+		| undefined
+)?.adoptSections?.(builtinSections);
 
 /** Test/entry hook: create an isolated runtime with injected adapters. */
 export function createRuntime(adapters: RuntimeAdapters = {}): PixRuntime {

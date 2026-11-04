@@ -6,7 +6,7 @@ import { migrate } from "./migrations.ts";
 import { FileStorage, type StorageAdapter } from "./persistence.ts";
 import { SectionRegistry } from "./registry.ts";
 import { createRuntime } from "./runtime.ts";
-import { stripDefaults } from "./schema.ts";
+import { defineSection, stripDefaults } from "./schema.ts";
 import { collapseSection } from "./sections/collapse.ts";
 import { compactionSection } from "./sections/compaction.ts";
 import { editSection } from "./sections/edit.ts";
@@ -525,5 +525,31 @@ describe("events and lifecycle", () => {
 		// The skewed registry can't diff/persist an unknown section — no change,
 		// but crucially no crash.
 		expect(change).toBeUndefined();
+	});
+
+	it("a reloaded schema adds new keys to the surviving runtime (Pi /reload)", async () => {
+		// Regression: the singleton outlives a reload with the old pretty schema, so new
+		// footer flags were dropped on every read and the /pix toggle never stuck.
+		const { agentDir } = fresh();
+		const { footer: _, ...oldDefaults } = prettySection.defaults;
+		const oldPretty = defineSection({
+			key: "pretty",
+			defaults: oldDefaults as typeof prettySection.defaults,
+			parse: () => oldDefaults as typeof prettySection.defaults,
+		});
+		const runtime = createRuntime({
+			agentDir,
+			storage: new FileStorage(agentDir),
+			registry: new SectionRegistry([oldPretty]),
+		}) as ReturnType<typeof createRuntime> & {
+			adoptSections(h: readonly (typeof prettySection)[]): void;
+		};
+		expect(runtime.get(prettySection).footer).toBeUndefined();
+		runtime.adoptSections([prettySection]);
+		await runtime.update(prettySection, { footer: { clock: false } });
+		expect(runtime.get(prettySection).footer.clock).toBe(false);
+		expect(JSON.parse(readFileSync(join(agentDir, "pix.json"), "utf8")).pretty.footer).toEqual({
+			clock: false,
+		});
 	});
 });
