@@ -6,7 +6,7 @@ Moved out of `AGENTS.md`. Read it before you tag, publish, or change CI.
 
 ## 12. CI / CD
 
-**CI** runs on every push to `main` and on PRs: `bun run static-analysis` (biome ci → tsc → deps → package smoke → audit) → `bun run test` → coverage ratchet. It runs on `ubuntu-latest` only.
+**CI** runs on every push to `main` and on PRs: `bun run static-analysis` (biome ci → tsc → deps → package smoke → audit) → one test run with coverage (`scripts/coverage-ratchet.ts`: fails on a failing test or a coverage drop). It runs on `ubuntu-latest` only.
 
 **CD** starts on a release tag push (`release-YYYYMMDD-HHMM`), never on a direct branch push.
 

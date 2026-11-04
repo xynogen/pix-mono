@@ -45,8 +45,6 @@ jobs:
       - name: Static analysis
         run: bun run static-analysis
 
-      - name: Test
-        run: bun run test
-
-      - name: Coverage (ratchet)
+      # One suite run: the ratchet runs `bun test --coverage` and fails on test failures too.
+      - name: Test + coverage (ratchet)
         run: bun scripts/coverage-ratchet.ts

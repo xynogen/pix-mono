@@ -305,7 +305,7 @@ Pre-commit runs lint/format, typecheck, and tests; stop on failure and never byp
 
 ## 12. CI / CD
 
-CI runs `bun run static-analysis` → `bun run test` → coverage ratchet on every push to `main` and on PRs. CD starts only on a `release-YYYYMMDD-HHMM` tag push.
+CI runs `bun run static-analysis` → one test run with coverage (`scripts/coverage-ratchet.ts`) on every push to `main` and on PRs. CD starts only on a `release-YYYYMMDD-HHMM` tag push.
 
 When the user says "publish", read [`docs/release.md`](docs/release.md) and follow its runbook exactly.
 

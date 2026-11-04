@@ -160,14 +160,6 @@ Not bundled by `pix-core`. Install each one only if you want it. Each one stays 
 | [`@xynogen/pix-proc`](https://www.npmjs.com/package/@xynogen/pix-proc) | `proc` tool — run and manage long-lived processes (`npm run dev`, `vite`, `python`) that outlive a turn; spawns background processes |
 | [`@xynogen/pix-search`](https://www.npmjs.com/package/@xynogen/pix-search) | `@` file picker with fuzzy + git-recency ranking and a live preview; overrides Pi's built-in `@` autocomplete |
 
-### Roadmap — third-party extensions
-
-Upstream Pi extensions that Pix uses now. We plan to replace each one with a maintained `@xynogen/pix-*` package.
-
-| Package | Description |
-| --- | --- |
-| [`pi-lens`](https://github.com/apmantza/pi-lens) | LSP core merged into `pix-diagnostics`. Still upstream: linters, formatters, structural (ast-grep) analysis, security/dependency scans |
-
 ### Foundation layer
 
 Installed with any feature package. Install one directly only when you build your own extension against it. The `Depends on` column shows the full tree.

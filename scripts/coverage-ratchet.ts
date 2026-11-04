@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 export {};
-// coverage-ratchet.ts — fails if coverage drops below thresholds.
+// coverage-ratchet.ts — CI's only test run: runs the suite with coverage, fails on any test
+// failure, then fails if coverage drops below thresholds.
 // Current baseline ~72% funcs / 70% lines. Threshold set slightly below to ratchet.
 const THRESHOLDS = { funcs: 60, lines: 58 } as const;
 
@@ -8,9 +9,17 @@ const proc = Bun.spawn(["bun", "test", "--isolate", "--coverage", "--coverage-re
 	stdout: "pipe",
 	stderr: "pipe",
 });
-const out = await new Response(proc.stdout).text();
-const err = await new Response(proc.stderr).text();
-await proc.exited;
+const [out, err, code] = await Promise.all([
+	new Response(proc.stdout).text(),
+	new Response(proc.stderr).text(),
+	proc.exited,
+]);
+process.stdout.write(out);
+process.stderr.write(err);
+if (code !== 0) {
+	console.error(`Tests failed (exit ${code}); coverage not checked.`);
+	process.exit(code);
+}
 const combined = `${out}\n${err}`;
 // Strip ANSI
 const clean = combined.replace(/\x1b\[[0-9;]*m/g, "");
@@ -18,7 +27,6 @@ const clean = combined.replace(/\x1b\[[0-9;]*m/g, "");
 const line = clean.split("\n").find((l) => l.includes("All files"));
 if (!line) {
 	console.error("Coverage: could not find 'All files' summary");
-	console.error(clean.slice(-2000));
 	process.exit(1);
 }
 // "All files  |  72.56 |  70.36 |"

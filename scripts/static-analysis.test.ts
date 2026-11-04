@@ -83,7 +83,8 @@ describe("pre-publish static analysis", () => {
 	test("CI uses the same agent-readable gate", () => {
 		const workflow = readFileSync(join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
 		expect(workflow).toContain("run: bun run static-analysis");
-		expect(workflow).toContain("run: bun run test");
+		// The ratchet is the single test run: it fails on test failures, then on coverage.
+		expect(workflow).toContain("run: bun scripts/coverage-ratchet.ts");
 	});
 });
 
