@@ -9,90 +9,91 @@
  * Every member exposes a default-exported `(pi) => void` factory through its
  * public root or `./extension` subpath. One `pi install npm:@xynogen/pix-core`
  * then boots all of them.
+ *
+ * Members load by dynamic import, so a missing or broken member is skipped and
+ * reported on session_start instead of stopping Pi from starting.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import registerAsk from "@xynogen/pix-ask";
-import registerBash from "@xynogen/pix-bash/extension";
-import registerCommands from "@xynogen/pix-commands/extension";
-import registerData from "@xynogen/pix-data";
-import registerDiagnostics from "@xynogen/pix-diagnostics/extension";
-import registerDisplay from "@xynogen/pix-display";
-import registerEdit from "@xynogen/pix-edit/extension";
-import registerFind from "@xynogen/pix-find/extension";
-import registerFooter from "@xynogen/pix-footer/extension";
-import registerGate from "@xynogen/pix-gate";
-import registerGrep from "@xynogen/pix-grep/extension";
-import registerLs from "@xynogen/pix-ls/extension";
-import registerModels from "@xynogen/pix-models/extension";
-import registerNotify from "@xynogen/pix-notify";
-import registerNudge from "@xynogen/pix-nudge/extension";
-import registerOptimizer from "@xynogen/pix-optimizer";
-import registerPowerShell from "@xynogen/pix-powershell/extension";
-import registerPretty from "@xynogen/pix-pretty";
-import registerPrompts from "@xynogen/pix-prompts/extension";
-import registerRead from "@xynogen/pix-read/extension";
-import registerRuntime from "@xynogen/pix-runtime";
+import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { once } from "@xynogen/pix-runtime/once";
-import registerSkills from "@xynogen/pix-skills";
-import registerSubagent from "@xynogen/pix-subagent/extension";
-import registerTodo from "@xynogen/pix-todo";
-import registerUpdate from "@xynogen/pix-update/extension";
-import registerWelcome from "@xynogen/pix-welcome/extension";
-import registerWrite from "@xynogen/pix-write/extension";
 import registerCompaction from "./compaction.ts";
 import deferNonCoreTools from "./defer-tools.ts";
 import registerPlanMode from "./plan-mode.ts";
 
 type PixExtension = (pi: ExtensionAPI) => void | Promise<void>;
 
-// Compile-time boundary: every member must accept the Pi host contract.
-const MEMBERS = [
+// Local factories run directly. Strings are member specifiers, imported at load time.
+const MEMBERS: readonly (PixExtension | string)[] = [
 	// Must run first: it wraps registerTool so non-core member tools register deferred.
 	deferNonCoreTools,
 	// pix-runtime owns pix.json (init/reload/flush) and the /pix settings command.
 	// It must run first so every config consumer below reads a live runtime.
-	registerRuntime,
+	"@xynogen/pix-runtime",
 	// pix-data warms model caches (modelgrep + BenchLM).
-	registerData,
+	"@xynogen/pix-data",
 	// pix-pretty seeds the global icon mode (initIconMode) and registers
 	// FFF commands. It must run before icon() consumers (footer,
 	// display, models, welcome, optimizer) so the mode is set when they paint.
-	registerPretty,
-	registerWelcome,
-	registerFooter,
-	registerModels,
-	registerUpdate,
-	registerCommands,
-	registerNudge,
-	registerDiagnostics,
-	registerDisplay,
-	registerPrompts,
-	registerSkills,
-	registerRead,
-	registerWrite,
-	registerEdit,
-	registerFind,
-	registerGrep,
-	registerLs,
-	registerBash,
+	"@xynogen/pix-pretty",
+	"@xynogen/pix-welcome/extension",
+	"@xynogen/pix-footer/extension",
+	"@xynogen/pix-models/extension",
+	"@xynogen/pix-update/extension",
+	"@xynogen/pix-commands/extension",
+	"@xynogen/pix-nudge/extension",
+	"@xynogen/pix-diagnostics/extension",
+	"@xynogen/pix-display",
+	"@xynogen/pix-prompts/extension",
+	"@xynogen/pix-skills",
+	"@xynogen/pix-read/extension",
+	"@xynogen/pix-write/extension",
+	"@xynogen/pix-edit/extension",
+	"@xynogen/pix-find/extension",
+	"@xynogen/pix-grep/extension",
+	"@xynogen/pix-ls/extension",
+	"@xynogen/pix-bash/extension",
 	// Enabled automatically on native Windows; not registered on other hosts.
-	registerPowerShell,
-	registerTodo,
-	registerAsk,
-	registerOptimizer,
-	registerGate,
-	registerNotify,
-	registerSubagent,
+	"@xynogen/pix-powershell/extension",
+	"@xynogen/pix-todo",
+	"@xynogen/pix-ask",
+	"@xynogen/pix-optimizer",
+	"@xynogen/pix-gate",
+	"@xynogen/pix-notify",
+	"@xynogen/pix-subagent/extension",
 	// Custom compaction: replaces pi's built-in summary + trigger (reads
 	// compaction section; runs after runtime is live).
 	registerCompaction,
 	// /plan: plan manager modal. Plan mode (read + bash + write to .pi/plans) turns on
 	// for new/edit. Tab in an empty prompt, or ctrl+alt+p, toggles it.
 	registerPlanMode,
-] satisfies readonly PixExtension[];
+];
+
+async function resolveMember(member: PixExtension | string): Promise<PixExtension> {
+	if (typeof member !== "string") return member;
+	const mod: { default?: unknown } = await import(member);
+	if (typeof mod.default !== "function") throw new Error("no default factory export");
+	return mod.default as PixExtension;
+}
 
 export default async function (pi: ExtensionAPI): Promise<void> {
 	once(pi, "pix-core", () => {});
-	for (const register of MEMBERS) await register(pi);
+	const failed: string[] = [];
+	// ponytail: sequential on purpose. Parallel import() under Pi's jiti loader returns broken modules.
+	for (const [i, member] of MEMBERS.entries()) {
+		const name = typeof member === "string" ? member : member.name || `#${i}`;
+		try {
+			await (await resolveMember(member))(pi);
+		} catch (error) {
+			// Module errors append a multi-line require stack; the first line names the cause.
+			failed.push(`${name}: ${getErrorMessage(error).split("\n")[0]}`);
+		}
+	}
+	if (failed.length === 0) return;
+	pi.on("session_start", (_event, ctx) =>
+		ctx.ui.notify(
+			`pix-core skipped ${failed.length} member(s):\n${failed.join("\n")}\nReinstall pix-core, or run \`bun install\` in a dev checkout.`,
+			"warning",
+		),
+	);
 }

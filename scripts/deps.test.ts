@@ -52,7 +52,10 @@ function internalImports(
 	);
 	for (const file of files) {
 		const source = readFileSync(file, "utf8");
-		for (const match of source.matchAll(/(?:from\s*|import\s*\()(["'])(@xynogen\/[^"']+)\1/g)) {
+		// Line-leading specifiers are pix-core MEMBERS entries, loaded by dynamic import.
+		for (const match of source.matchAll(
+			/(?:from\s*|import\s*\(|^\s*)(["'])(@xynogen\/[^"']+)\1/gm,
+		)) {
 			if (match[2]) imports.push({ file, specifier: match[2] });
 		}
 	}
@@ -305,8 +308,8 @@ describe("dependency hygiene", () => {
 		const extension = readFileSync(join(packagesDir, "pix-core", "src", "extension.ts"), "utf8");
 		const violations = Object.keys(core.pkg.dependencies ?? {})
 			.filter((name) => name.startsWith("@xynogen/"))
-			.filter((name) => !extension.includes(`from "${name}`))
-			.map((name) => `${name}: dependency is not imported by pix-core/src/extension.ts`);
+			.filter((name) => !extension.includes(`"${name}`))
+			.map((name) => `${name}: dependency is not listed by pix-core/src/extension.ts`);
 		expect(violations).toEqual([]);
 	});
 

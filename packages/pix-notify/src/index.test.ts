@@ -15,8 +15,9 @@ const linux: HostPlatform = {
 	exe: "",
 };
 
-// A fake freedesktop sound theme under XDG_DATA_DIRS.
-const share = mkdtempSync(join(tempDir(), "pix-notify-"));
+// A fake freedesktop sound theme under XDG_DATA_DIRS. That list is ":"-separated, so drop a
+// Windows drive letter (C:) or the split cuts the path. Driveless paths stay on the current drive.
+const share = mkdtempSync(join(tempDir(), "pix-notify-")).replace(/^[A-Za-z]:/, "");
 const stereo = join(share, "sounds", "freedesktop", "stereo");
 mkdirSync(stereo, { recursive: true });
 for (const f of [

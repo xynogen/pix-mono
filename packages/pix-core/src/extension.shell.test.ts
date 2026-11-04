@@ -5,7 +5,7 @@ import { withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerPlanMode from "./plan-mode.ts";
 
 // ponytail: core has no renderer. Stub member factories to prove ordering without settings patches or sessions.
-test("core awaits member factories in order and stops on failure", async () => {
+test("core awaits member factories in order and skips a failing member", async () => {
 	const fixture = await withUiFixture({ hostTheme: true });
 	const members = [
 		"@xynogen/pix-runtime",
@@ -93,16 +93,23 @@ test("core awaits member factories in order and stops on failure", async () => {
 		]);
 		seen.length = 0;
 		fail = true;
-		const failed = await extension(pi as never).then(
-			() => undefined,
-			(error: unknown) => error,
+		const starts: Array<(event: unknown, ctx: unknown) => void> = [];
+		await extension({
+			...pi,
+			on: (event: string, h: (typeof starts)[0]) => event === "session_start" && starts.push(h),
+		} as never);
+		// A failing member is skipped; the rest still load and one warning is shown on session_start.
+		expect(seen).toEqual(members);
+		const notices: Array<[string, string]> = [];
+		// The warning handler registers after every member, so it is the last session_start.
+		starts.at(-1)?.({}, { ui: { notify: (m: string, l: string) => notices.push([m, l]) } });
+		const warning = notices.find(([, level]) => level === "warning");
+		expect(warning?.[0]).toMatch(
+			/^pix-core skipped 1 member\(s\):\n@xynogen\/pix-runtime: fixture registration failed\n/,
 		);
-		expect(failed).toBeInstanceOf(Error);
-		expect((failed as Error).message).toBe("fixture registration failed");
-		expect(seen).toEqual([members[0]!]);
-		// The real source must still import each declared member. No independent core rendering exists.
+		// The real source must still list each declared member. No independent core rendering exists.
 		const source = readFileSync(new URL("./extension.ts", import.meta.url), "utf8");
-		for (const member of members) expect(source).toContain(`from "${member}"`);
+		for (const member of members) expect(source).toContain(`"${member}"`);
 	} finally {
 		release.resolve();
 		try {
