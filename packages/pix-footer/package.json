@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-footer",
-	"version": "0.2.14",
-	"description": "Pi extension \u2014 status bar footer (model, tokens, git, TPS)",
+	"version": "0.2.15",
+	"description": "Pi extension — status bar footer (model, tokens, git, TPS)",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {
@@ -44,8 +44,8 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-data": "^0.5.3",
-		"@xynogen/pix-pretty": "^1.36.0",
-		"@xynogen/pix-runtime": "^0.16.0"
+		"@xynogen/pix-pretty": "^1.37.0",
+		"@xynogen/pix-runtime": "^0.17.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

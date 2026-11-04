@@ -52,7 +52,7 @@
 	},
 	"dependencies": {
 		"@ast-grep/napi": "^0.45.0",
-		"@xynogen/pix-pretty": "^1.32.0",
-		"@xynogen/pix-runtime": "^0.16.0"
+		"@xynogen/pix-pretty": "^1.37.0",
+		"@xynogen/pix-runtime": "^0.17.0"
 	}
 }

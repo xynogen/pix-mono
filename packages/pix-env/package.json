@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-env",
 	"version": "0.4.3",
-	"description": "Pi extension \u2014 broker .env secrets to tools via $KEY references with gated injection",
+	"description": "Pi extension — broker .env secrets to tools via $KEY references with gated injection",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
@@ -37,8 +37,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.32.0",
-		"@xynogen/pix-runtime": "^0.16.0"
+		"@xynogen/pix-pretty": "^1.37.0",
+		"@xynogen/pix-runtime": "^0.17.0"
 	},
 	"peerDependencies": {
 		"typebox": "*",

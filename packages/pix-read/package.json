@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-read",
-	"version": "0.4.7",
-	"description": "Pi tool \u2014 file read with syntax highlight",
+	"version": "0.4.8",
+	"description": "Pi tool — file read with syntax highlight",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {
@@ -39,8 +39,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.32.0",
-		"@xynogen/pix-runtime": "^0.16.0"
+		"@xynogen/pix-pretty": "^1.37.0",
+		"@xynogen/pix-runtime": "^0.17.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
