@@ -3,7 +3,7 @@
  *
  * `renderWidget` reads a `DiagnosticStore` and renders a top rule and one compact line:
  *
- *   LSP │ <N error> · <N warning> · <N clean> · <N checked> · <recent files>
+ *   LSP │ <N error> · <N warning> · <N clean> · <N checked> · <age> · <recent files>
  *
  * The render path does no file I/O — it reads only in-memory store state. The
  * default export wires one store, one lazy LSP manager, the two tools, and the
@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
-import { mixColors, stripTerminalSequences } from "@earendil-works/pi-tui";
+import { mixColors, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { fadeLine } from "@xynogen/pix-pretty/text";
 import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
@@ -35,6 +35,20 @@ type ThemeLike = Pick<Theme, "fg" | "style"> & {
 
 const MAX_RECENT = 3;
 const WIDGET_KEY = "pi-lens-lsp";
+/** Repaint period for the age segment, so it keeps counting with no new check. */
+const AGE_TICK_MS = 30_000;
+/** Past this age the last check is shown as stale (warning color). */
+const STALE_MS = 5 * 60_000;
+
+/** Compact age of the last check: `now`, `45s ago`, `3m ago`, `2h ago`, `1d ago`. */
+export function formatAge(ms: number): string {
+	const s = Math.max(0, Math.floor(ms / 1000));
+	if (s < 5) return "now";
+	if (s < 60) return `${s}s ago`;
+	if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+	if (s < 86_400) return `${Math.floor(s / 3600)}h ago`;
+	return `${Math.floor(s / 86_400)}d ago`;
+}
 
 /** Count errors and warnings across every stored snapshot. */
 function severityCounts(store: DiagnosticStore): { errors: number; warnings: number } {
@@ -50,7 +64,12 @@ function severityCounts(store: DiagnosticStore): { errors: number; warnings: num
 }
 
 /** Render the one-line widget, or `[]` when no file has state yet. */
-export function renderWidget(store: DiagnosticStore, width: number, theme: ThemeLike): string[] {
+export function renderWidget(
+	store: DiagnosticStore,
+	width: number,
+	theme: ThemeLike,
+	now = Date.now(),
+): string[] {
 	const w = Math.max(0, width);
 	if (w === 0) return [];
 	const checkedFiles = store.recent().filter((snapshot) => snapshot.state !== "touched");
@@ -67,6 +86,12 @@ export function renderWidget(store: DiagnosticStore, width: number, theme: Theme
 	if (unavailable > 0) parts.push(theme.fg("warning", `${unavailable} unavailable`));
 	if (clean > 0) parts.push(theme.fg("success", `${icon("status.ok")} ${clean} clean`));
 	parts.push(theme.fg("muted", `${checkedFiles.length} checked`));
+	// Newest check first (store.recent order): its age shows how fresh the counts are.
+	const age = now - (checkedFiles[0]?.checkedAt ?? now);
+	const ageText =
+		age >= STALE_MS
+			? theme.fg("warning", `stale · ${formatAge(age)}`)
+			: theme.fg("muted", formatAge(age));
 
 	const files = checkedFiles
 		.slice(0, MAX_RECENT)
@@ -82,7 +107,12 @@ export function renderWidget(store: DiagnosticStore, width: number, theme: Theme
 		widgetTitle(theme, icon("lsp"), "LSP") + dotJoin(parts, (text) => theme.fg("muted", text));
 	const fileText = files.join(", ") + more;
 	const row = fileText ? summary + theme.fg("muted", " · ") + paintFade(fileText, 0) : summary;
-	return [rule(w, (glyphs) => theme.fg("borderMuted", glyphs)), fadeLine(row, w, paintFade)];
+	const line = rule(w, (glyphs) => theme.fg("borderMuted", glyphs));
+	// Age sits at the far right. Counts win: if they do not fit beside it, the age is dropped.
+	const ageW = visibleWidth(ageText);
+	if (visibleWidth(summary) + 1 + ageW > w) return [line, fadeLine(row, w, paintFade)];
+	const left = fadeLine(row, w - ageW - 1, paintFade);
+	return [line, left + " ".repeat(Math.max(1, w - visibleWidth(left) - ageW)) + ageText];
 }
 
 // ─── Extension ────────────────────────────────────────────────────────────────
@@ -214,6 +244,7 @@ function updateWidget(
 					  ) => {
 							render(width: number): string[];
 							invalidate(): void;
+							dispose?(): void;
 					  }),
 				options?: { placement?: "aboveEditor" | "belowEditor" },
 			) => void;
@@ -227,10 +258,19 @@ function updateWidget(
 	}
 	ctx.ui.setWidget?.(
 		WIDGET_KEY,
-		(_tui, theme) => ({
-			render: (width) => renderWidget(store, width, theme),
-			invalidate() {},
-		}),
+		(tui, theme) => {
+			// Repaint so the age keeps counting; cleared when the widget is replaced.
+			const tick = setInterval(
+				() => (tui as { requestRender?: () => void } | undefined)?.requestRender?.(),
+				AGE_TICK_MS,
+			);
+			tick.unref?.();
+			return {
+				render: (width) => renderWidget(store, width, theme),
+				invalidate() {},
+				dispose: () => clearInterval(tick),
+			};
+		},
 		{ placement: "aboveEditor" },
 	);
 }

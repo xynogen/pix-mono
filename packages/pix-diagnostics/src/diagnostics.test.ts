@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rgbColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import { roleTheme, semanticRow } from "../../../scripts/ui-capture.ts";
-import { renderWidget } from "./diagnostics.ts";
+import { formatAge, renderWidget } from "./diagnostics.ts";
 import { DiagnosticStore } from "./store.ts";
 
 const roles = roleTheme();
@@ -15,14 +15,45 @@ describe("diagnostic widget", () => {
 	test("draws a full-width top rule above the LSP row", () => {
 		const store = new DiagnosticStore();
 		store.set({ filePath: "/repo/a.ts", checkedAt: 1, state: "clean", diagnostics: [] });
-		const lines = renderWidget(store, 80, theme as never);
+		const lines = renderWidget(store, 80, theme as never, 1);
 		expect(semanticRow(lines[0]!)).toBe(`<borderMuted>${"─".repeat(80)}</borderMuted>`);
-		expect(stripTerminalSequences(lines[1]!)).toMatch(
-			/^.+ LSP {6}│ \S+ 1 clean · 1 checked · a\.ts$/,
-		);
+		// Counts and files on the left, the age right-aligned at the row end.
+		const plain = stripTerminalSequences(lines[1]!);
+		expect(plain).toMatch(/^.+ LSP {6}│ \S+ 1 clean · 1 checked · a\.ts +now$/);
+		expect(visibleWidth(plain)).toBe(80);
 		expect(semanticRow(lines[1]!)).toMatch(
 			/^<toolTitle>.+ LSP {5}<\/toolTitle><muted> │ <\/muted><success>.+ 1 clean<\/success>/,
 		);
+	});
+
+	test("shows the age of the newest check and flags it stale after five minutes", () => {
+		const store = new DiagnosticStore();
+		const t = 1_000_000;
+		store.set({
+			filePath: "/repo/old.ts",
+			checkedAt: t - 3_600_000,
+			state: "clean",
+			diagnostics: [],
+		});
+		store.set({ filePath: "/repo/new.ts", checkedAt: t, state: "clean", diagnostics: [] });
+		const row = (now: number) => semanticRow(renderWidget(store, 200, theme as never, now)[1]!);
+		// The newest check sets the age; muted while fresh, last on the row.
+		expect(row(t + 45_000)).toMatch(/ +<muted>45s ago<\/muted>$/);
+		expect(row(t + 4 * 60_000)).toMatch(/ +<muted>4m ago<\/muted>$/);
+		// Five minutes without a check: warning color and an explicit word.
+		expect(row(t + 5 * 60_000)).toMatch(/ +<warning>stale · 5m ago<\/warning>$/);
+	});
+
+	test("formats the age compactly", () => {
+		expect([0, 4_999, 5_000, 59_999, 60_000, 7_200_000, 90_000_000].map(formatAge)).toEqual([
+			"now",
+			"now",
+			"5s ago",
+			"59s ago",
+			"1m ago",
+			"2h ago",
+			"1d ago",
+		]);
 	});
 
 	test("shows the LSP role, severity counts, and recent files", () => {
@@ -37,7 +68,7 @@ describe("diagnostic widget", () => {
 			],
 		});
 
-		const text = renderWidget(store, 320, theme as never).join("\n");
+		const text = renderWidget(store, 320, theme as never, 10).join("\n");
 		expect(text).toMatch(/LSP.*1 error.*1 warning.*a\.ts/);
 	});
 
@@ -63,7 +94,7 @@ describe("diagnostic widget", () => {
 			});
 		}
 
-		const text = renderWidget(store, 200, theme as never).join("\n");
+		const text = renderWidget(store, 200, theme as never, 10).join("\n");
 		expect(text).toMatch(/d\.ts, c\.ts, b\.ts \+2/);
 		expect(text).not.toContain("clean.ts");
 	});
@@ -74,7 +105,7 @@ describe("diagnostic widget", () => {
 		store.set({ filePath: "/repo/b.ts", checkedAt: 2, state: "unconfirmed", diagnostics: [] });
 		store.set({ filePath: "/repo/c.ts", checkedAt: 3, state: "unavailable", diagnostics: [] });
 		store.set({ filePath: "/repo/touched.ts", checkedAt: 4, state: "touched", diagnostics: [] });
-		const text = renderWidget(store, 320, theme as never).join("\n");
+		const text = renderWidget(store, 320, theme as never, 10).join("\n");
 		expect(text).toMatch(/LSP.*1 unconfirmed.*1 unavailable.*1 clean.*3 checked.*c\.ts, b\.ts/);
 	});
 
@@ -94,7 +125,7 @@ describe("diagnostic widget", () => {
 			state: "unconfirmed",
 			diagnostics: [],
 		});
-		const text = renderWidget(store, 320, theme as never).join("\n");
+		const text = renderWidget(store, 320, theme as never, 10).join("\n");
 		expect(text).toMatch(/LSP.*1 error.*1 unconfirmed.*2 checked.*unknown\.ts, error\.ts/);
 	});
 
@@ -102,7 +133,7 @@ describe("diagnostic widget", () => {
 		const store = new DiagnosticStore();
 		store.set({ filePath: "/repo/a.ts", checkedAt: 1, state: "unconfirmed", diagnostics: [] });
 		const plain = { fg: (_role: string, text: string) => text };
-		const text = renderWidget(store, 80, plain as never).join("\n");
+		const text = renderWidget(store, 80, plain as never, 10).join("\n");
 		expect(text).toMatch(/LSP.*1 unconfirmed.*1 checked.*a\.ts/);
 	});
 
@@ -110,14 +141,12 @@ describe("diagnostic widget", () => {
 		const store = new DiagnosticStore();
 		store.set({ filePath: "/repo/first.ts", checkedAt: 1, state: "clean", diagnostics: [] });
 		store.set({ filePath: "/repo/second.ts", checkedAt: 2, state: "clean", diagnostics: [] });
-		const row = renderWidget(store, 100, theme)[1]!;
-		const text = stripTerminalSequences(row);
-		expect(text).toMatch(/^.+ LSP {6}│ \S+ 2 clean · 2 checked · second\.ts, first\.ts$/);
-		for (const width of [80, 100, 200]) {
-			expect(stripTerminalSequences(renderWidget(store, width, theme)[1]!)).toBe(text);
-		}
+		const left = (width: number) =>
+			stripTerminalSequences(renderWidget(store, width, theme, 10)[1]!).replace(/ +now$/, "");
+		expect(left(100)).toMatch(/^.+ LSP {6}│ \S+ 2 clean · 2 checked · second\.ts, first\.ts$/);
+		for (const width of [80, 200]) expect(left(width)).toBe(left(100));
 		for (const width of [1, 16, 24, 40, 60, 80]) {
-			expect(visibleWidth(renderWidget(store, width, theme)[1]!)).toBeLessThanOrEqual(width);
+			expect(visibleWidth(renderWidget(store, width, theme, 10)[1]!)).toBeLessThanOrEqual(width);
 		}
 	});
 
@@ -129,17 +158,17 @@ describe("diagnostic widget", () => {
 			state: "clean",
 			diagnostics: [],
 		});
-		const row = renderWidget(store, 60, theme)[1]!;
-		expect(stripTerminalSequences(row)).toMatch(/^.+ LSP {6}│ \S+ 1 clean · 1 checked · 界/);
+		const row = renderWidget(store, 60, theme, 10)[1]!;
+		expect(stripTerminalSequences(row)).toMatch(/^.+ LSP {6}│ \S+ 1 clean · 1 checked · 界.* now$/);
 		expect(semanticRow(row)).toMatch(/<dim>.*<\/dim><muted>.*<\/muted>/);
 		expect(visibleWidth(row)).toBeLessThanOrEqual(60);
-		expect(renderWidget(store, 0, theme)).toEqual([]);
+		expect(renderWidget(store, 0, theme, 10)).toEqual([]);
 	});
 
 	test("returns no row before LSP checks a file", () => {
 		const store = new DiagnosticStore();
 		store.set({ filePath: "/repo/touched.ts", checkedAt: 1, state: "touched", diagnostics: [] });
-		expect(renderWidget(store, 80, theme as never)).toEqual([]);
+		expect(renderWidget(store, 80, theme as never, 10)).toEqual([]);
 	});
 
 	test("fits the row to the terminal width", () => {
@@ -158,7 +187,7 @@ describe("diagnostic widget", () => {
 				},
 			],
 		});
-		const [, line] = renderWidget(store, 24, theme as never);
+		const [, line] = renderWidget(store, 24, theme as never, 10);
 		expect(visibleWidth(line ?? "")).toBeLessThanOrEqual(24);
 	});
 });

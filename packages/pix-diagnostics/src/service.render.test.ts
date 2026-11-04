@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, setSystemTime, test } from "bun:test";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { rgbColor } from "@earendil-works/pi-tui";
 import { makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
@@ -14,6 +14,8 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 	let snapshots: DiagnosticSnapshot[] = [];
 	const output: string[] = [];
 	const roles = roleTheme();
+	// Pin the clock: the widget shows the age of the newest check (`checkedAt` 1-8 ms).
+	setSystemTime(new Date(8));
 	const theme = {
 		...roles,
 		colors: { dim: rgbColor(180, 180, 180), muted: rgbColor(70, 70, 70) },
@@ -171,7 +173,9 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 				{} as never,
 			);
 			if (typeof widget !== "function") throw new Error("Missing subscribed widget");
-			rows(label, widget({}, theme), width, "component");
+			const component = widget({}, theme) as { render(width: number): string[]; dispose?(): void };
+			rows(label, component, width, "component");
+			component.dispose?.();
 		};
 		snapshots = [
 			{
@@ -214,6 +218,7 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 		await showWidget("widget:narrow", 24);
 		expect(output.join("\n")).toMatchSnapshot();
 	} finally {
+		setSystemTime();
 		try {
 			await handlers.get("session_shutdown")?.({}, ctx);
 		} finally {
