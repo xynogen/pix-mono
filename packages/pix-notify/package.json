@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-notify",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Pi extension — sound + popup when the agent waits on you (herdr-aware, OS-agnostic)",
 	"type": "module",
 	"main": "src/index.ts",
