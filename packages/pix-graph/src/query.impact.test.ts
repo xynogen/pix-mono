@@ -52,6 +52,26 @@ test("file impact includes importers and callers of its own symbols", () => {
 	expect(new Set(ids)).toEqual(new Set(["b", "t", "c_run", "d_lone"]));
 });
 
+test("symbol impact reaches tests that only import or mock its file", () => {
+	const g: GraphData = {
+		nodes: [
+			node("x", "x.ts", "src/x.ts", false),
+			node("x_fn", "fn()", "src/x.ts"),
+			node("m", "m.test.ts", "src/m.test.ts", false),
+			node("p", "page.ts", "src/page.ts", false),
+		],
+		links: [
+			{ source: "x", target: "x_fn", relation: "contains" },
+			{ source: "m", target: "x", relation: "imports" },
+			{ source: "p", target: "x", relation: "imports" },
+		],
+	};
+	const r = impact(g, "fn");
+	expect(r.tests).toEqual(["src/m.test.ts"]);
+	// A non-test importer may use other symbols of the file, so it is not a dependent of fn().
+	expect(r.files).toEqual(["src/m.test.ts"]);
+});
+
 test("pageRank favors depended-on nodes; query breaks lexical ties with it", () => {
 	const rank = pageRank(graph);
 	const sum = [...rank.values()].reduce((a, b) => a + b, 0);

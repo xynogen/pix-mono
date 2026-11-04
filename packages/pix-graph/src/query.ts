@@ -298,9 +298,11 @@ export function impact(
 
 	const incoming = new Map<string, Array<{ id: string; relation: string }>>();
 	const contains = new Map<string, string[]>();
+	const ownerOf = new Map<string, string>();
 	for (const link of graph.links) {
 		if (link.relation === "contains") {
 			contains.set(link.source, [...(contains.get(link.source) ?? []), link.target]);
+			ownerOf.set(link.target, link.source);
 		} else if (link.relation in VIA) {
 			const list = incoming.get(link.target) ?? [];
 			list.push({ id: link.source, relation: link.relation });
@@ -309,13 +311,20 @@ export function impact(
 	}
 	const byNode = new Map(graph.nodes.map((n) => [n.id, n]));
 	const seedIds = new Set(seeds.map((s) => s.id));
+	const isTest = (id: string) => TEST_FILE.test(byNode.get(id)?.source_file ?? "");
 	// A file seed also owns its symbols' callers. Deeper files do not: that would pull in
 	// callers of unrelated symbols that merely share a file with a dependent.
-	const dependents = (id: string) =>
-		[
-			id,
-			...(seedIds.has(id) && !byNode.get(id)?.source_location ? (contains.get(id) ?? []) : []),
-		].flatMap((x) => incoming.get(x) ?? []);
+	// A symbol seed also reaches tests that import or mock its file (`vi.mock("./x")`)
+	// without calling it; non-test importers stay out, since they may use other symbols.
+	const dependents = (id: string) => {
+		const node = byNode.get(id);
+		const own = seedIds.has(id) && !node?.source_location ? (contains.get(id) ?? []) : [];
+		const file = seedIds.has(id) && node?.source_location ? ownerOf.get(id) : undefined;
+		const tests = file
+			? (incoming.get(file) ?? []).filter((e) => e.relation === "imports" && isTest(e.id))
+			: [];
+		return [...[id, ...own].flatMap((x) => incoming.get(x) ?? []), ...tests];
+	};
 
 	// BFS for shortest depth; remember the parent so the output reads as a tree.
 	const children = new Map<string, Array<{ id: string; via: string; depth: number }>>();

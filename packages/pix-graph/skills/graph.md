@@ -81,8 +81,8 @@ The `.pi/` directory is gitignored, so the graph never gets committed.
   `calls` = a call from a declaration to an imported symbol; `imports` = a file
   imports another file.
 - A node's `source_file` tells you exactly where to open next.
-- `calls` edges follow import bindings only. A call through a callback, a method
-  on an object, or a tsconfig `paths` alias is not in the graph. Confirm by reading the file.
+- `calls` edges follow import bindings only. A call through a callback or a method
+  on an object is not in the graph, and neither are URL/route strings. Confirm by reading the file.
 
 ## Scope and limits
 

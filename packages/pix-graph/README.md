@@ -3,7 +3,9 @@
 Native-TS code knowledge graph — extract, cluster, analyze, and query a codebase
 without Python or an external service. TS/JS is parsed with the TypeScript
 compiler API into a graph of files and symbols. Imports resolve to real files
-(relative paths and workspace packages through `package.json` exports), and
+(relative paths, tsconfig `paths`/`baseUrl` aliases, and workspace packages through
+`package.json` exports; `require`, `import()` and `vi.mock`/`jest.mock`/`mock.module`
+strings count as imports, so tests that mock a module show in `impact`), and
 `calls` edges follow import bindings and re-exports. Communities are found with
 Louvain over file-level dependencies; questions are answered by BFS/DFS traversal
 over the graph, or by ranking whole modules for architecture questions.
@@ -86,8 +88,8 @@ a graph built by either tool works with the other's `query`.
   Upgrade path: add a Leiden refinement pass over the Louvain communities.
 - **Lexical query seeds, no embeddings.** Global scope gains meaning only from
   stored summaries. Upgrade path: BM25 or a similarity model if recall proves weak.
-- **No tsconfig `paths` aliases.** Imports through them stay unresolved.
-  Upgrade path: read `compilerOptions.paths` in `resolve.ts`.
+- **String references other than module specifiers are invisible.** Route URLs,
+  redirects, and config keys are plain strings, not edges. Use grep for those.
 - **Code only.** For docs, PDFs, images, or video, use external graphify.
 
 ## Install

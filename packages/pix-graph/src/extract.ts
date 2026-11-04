@@ -189,11 +189,27 @@ export interface UnresolvedImport {
 	specifier: string;
 }
 
+const MOCK_OWNERS = new Set(["vi", "jest", "mock"]);
+const MOCK_METHODS = new Set(["mock", "doMock", "module", "importActual", "requireActual"]);
+
+/** Calls whose first string argument is a module specifier. */
+function isModuleCall(expr: ts.Expression): boolean {
+	if (expr.kind === ts.SyntaxKind.ImportKeyword) return true;
+	if (ts.isIdentifier(expr)) return expr.text === "require";
+	return (
+		ts.isPropertyAccessExpression(expr) &&
+		ts.isIdentifier(expr.expression) &&
+		MOCK_OWNERS.has(expr.expression.text) &&
+		MOCK_METHODS.has(expr.name.text)
+	);
+}
+
 /**
  * Extract a deterministic structural graph from TS/JS source files.
  * Produces file + entity nodes, `contains` (ownership), file→file `imports`, and
  * `calls` edges from the enclosing declaration to the imported entity. Imports resolve
- * relative paths and workspace packages (`package.json` name + exports). Calls resolve
+ * relative paths, tsconfig `paths`/`baseUrl` aliases, workspace packages (`package.json` name +
+ * exports), and module strings in `require`/`import()`/test mocks. Calls resolve
  * only through import bindings (named, default-free, namespace `ns.fn()`), following
  * `export … from` re-exports, so a common name like `it` or `render` never links
  * unrelated packages.
@@ -229,8 +245,8 @@ export function extract(
 
 	const resolveSpec = (rel: string, source: ts.SourceFile, at: ts.Node, spec: string) => {
 		const target = resolver.resolve(rel, spec);
-		// Relative and workspace-package specifiers should resolve; npm/node modules need not.
-		if (!target && (spec.startsWith(".") || resolver.isWorkspace(spec))) {
+		// Relative, alias, and workspace-package specifiers should resolve; npm/node modules need not.
+		if (!target && resolver.isInternal(rel, spec)) {
 			unresolved.push({ source_file: rel, source_location: line(source, at), specifier: spec });
 		}
 		return target;
@@ -436,13 +452,10 @@ export function extract(
 					return;
 				}
 				if (ts.isCallExpression(node)) {
-					// `await import("./x.ts")` is a lazy dependency; keep it as a file import.
+					// `import("./x")`, `require("./x")`, and test mocks (`vi.mock`, `jest.mock`,
+					// `mock.module`) name a module by string; keep each as a file import.
 					const [arg] = node.arguments;
-					if (
-						node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-						arg &&
-						ts.isStringLiteral(arg)
-					) {
+					if (arg && ts.isStringLiteralLike(arg) && isModuleCall(node.expression)) {
 						const target = resolveSpec(rel, source, node, arg.text);
 						if (target) addImport(rel, source, node, target);
 					}

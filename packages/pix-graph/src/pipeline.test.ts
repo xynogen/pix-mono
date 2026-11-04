@@ -130,6 +130,61 @@ describe("extract", () => {
 		]);
 	});
 
+	test("tsconfig paths/baseUrl aliases and test mocks resolve to file imports", () => {
+		const root = mkdtempSync(join(tempDir(), "pix-graph-"));
+		dirs.push(root);
+		const put = (rel: string, body: string) => {
+			mkdirSync(join(root, rel, ".."), { recursive: true });
+			writeFileSync(join(root, rel), body);
+		};
+		// Solution-style root config; the aliases live in the referenced app config (with comments).
+		put("web/tsconfig.json", '{ "files": [], "references": [{ "path": "./tsconfig.app.json" }] }');
+		put(
+			"web/tsconfig.app.json",
+			'{\n// JSONC\n"compilerOptions": { "baseUrl": "src", "paths": { "@/*": ["./*"], "#ui": ["./ui/index.tsx"] } } }',
+		);
+		put("web/src/ui/index.tsx", "export function Button() {}\n");
+		put("web/src/lib/feed.ts", "export function feed() {}\n");
+		put(
+			"web/src/app/page.tsx",
+			[
+				'import { feed } from "@/lib/feed";',
+				'import { Button } from "#ui";',
+				'import { x } from "lib/feed";',
+				'import { y } from "@/lib/gone";',
+				'import React from "react";',
+				"export function Page() { feed(); Button(); }",
+			].join("\n"),
+		);
+		put(
+			"web/src/app/page.test.ts",
+			'vi.mock("@/lib/feed", () => ({}));\nconst m = require("../ui");\n',
+		);
+		const { links, unresolved } = extract(collectFiles(root), root);
+
+		const imports = links
+			.filter((l) => l.relation === "imports")
+			.map((l) => `${l.source} -> ${l.target}`)
+			.sort();
+		expect(imports).toEqual([
+			"web_src_app_page_test_ts -> web_src_lib_feed_ts",
+			"web_src_app_page_test_ts -> web_src_ui_index_tsx",
+			"web_src_app_page_tsx -> web_src_lib_feed_ts",
+			"web_src_app_page_tsx -> web_src_ui_index_tsx",
+		]);
+		expect(links).toContainEqual(
+			expect.objectContaining({
+				relation: "calls",
+				source: "web_src_app_page_tsx_page",
+				target: "web_src_lib_feed_ts_feed",
+			}),
+		);
+		// An alias that matches `paths` but has no file is reported; npm modules are not.
+		expect(unresolved).toEqual([
+			{ source_file: "web/src/app/page.tsx", source_location: "L4", specifier: "@/lib/gone" },
+		]);
+	});
+
 	test("non-call uses of imports become references; keys and member names do not", () => {
 		const root = mkdtempSync(join(tempDir(), "pix-graph-"));
 		dirs.push(root);
