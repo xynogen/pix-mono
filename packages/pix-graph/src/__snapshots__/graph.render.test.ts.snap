@@ -14,7 +14,7 @@ exports[`captures actual graph calls, progress, trees and terminal result states
     "",
     "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/     ",
     "(view: /graph) · parsed 3 · reused 0                                            ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "collapsed": [
     "",
@@ -33,25 +33,25 @@ exports[`captures actual graph calls, progress, trees and terminal result states
     "",
     "<muted>dfs · 0 nodes</muted>                                                                   ",
     "  <muted>no matching nodes</muted>                                                             ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "error": [
     "",
     "<error>✗︎</error> <error>Build failed: Operation aborted</error>                                               ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "expanded": [
     "",
     "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/     ",
     "(view: /graph) · parsed 3 · reused 0                                            ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "fallback": [
     "",
     "one                                                                             ",
     "                                                                                ",
     "two                                                                             ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "hiddenCall": [],
   "partial": [
@@ -73,12 +73,12 @@ exports[`captures actual graph calls, progress, trees and terminal result states
     "  <muted>├─ </muted><toolTitle>loadToken</toolTitle> <muted>(calls)</muted>  <muted>src/token.ts</muted>                                            ",
     "  <muted>│  └─ </muted><toolTitle>cache</toolTitle> <muted>(reads)</muted>                                                           ",
     "  <muted>└─ </muted><toolTitle>request</toolTitle> <muted>(called by)</muted>                                                        ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "wide": [
     "",
     "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/ (view: /graph) · parsed 3 · reused 0        ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
   ],
 }
 `;

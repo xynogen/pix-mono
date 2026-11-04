@@ -94,8 +94,8 @@ it("captures registered find scopes, highlights, batch and result states", async
 		const long = matches(`src/${"detail-".repeat(18)}end.ts`);
 		captures.long80 = await render(long);
 		captures.long120 = await render(long, { width: 120 });
-		expect(captures.single?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
-		expect(captures.error?.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+		expect(captures.single?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
+		expect(captures.error?.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 		expect(captures).toMatchSnapshot();
 	} finally {
 		if (color === undefined) delete process.env.FORCE_COLOR;

@@ -161,13 +161,13 @@ describe("graph tool", () => {
 				.render(20)
 				.join("\n");
 
-		expect(render("success")).toContain("[success]- - - - - - - - - - [/success]");
+		expect(render("success")).toContain("[success]────────────────────[/success]");
 		expect(render("success")).not.toContain("└─");
-		expect(render("error")).toContain("[error]- - - - - - - - - - [/error]");
-		expect(render("success", false, true)).toContain("[success]- - - - - - - - - - [/success]");
-		expect(render("running")).not.toContain("- -");
-		expect(render("success", true)).not.toContain("- -");
-		expect(render(undefined)).toContain("[success]- - - - - - - - - - [/success]");
+		expect(render("error")).toContain("[error]────────────────────[/error]");
+		expect(render("success", false, true)).toContain("[success]────────────────────[/success]");
+		expect(render("running")).not.toContain("───");
+		expect(render("success", true)).not.toContain("───");
+		expect(render(undefined)).toContain("[success]────────────────────[/success]");
 	});
 
 	test("build mode writes the graph and reports counts", async () => {

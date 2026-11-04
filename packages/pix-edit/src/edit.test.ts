@@ -162,7 +162,7 @@ describe("registerEditTool", () => {
 
 		const lines = result?.render(80) ?? [];
 		expect(lines[0]).toContain("rendering diff");
-		expect(lines.at(-1)).toBe(`[success]${"- ".repeat(40)}[/success]`);
+		expect(lines.at(-1)).toBe(`[success]${"─".repeat(80)}[/success]`);
 		expect(lines.join("\n")).toContain("rendering diff");
 		expect(lines.join("\n")).not.toContain("✓ edit");
 	});
@@ -225,7 +225,7 @@ describe("registerEditTool", () => {
 				?.render(width) ?? [];
 
 		expect(render({ timer: 1 })[0]).toContain(diagnostic);
-		expect(render({ timer: 1 }).at(-1)).toBe(`[error]${"- ".repeat(40)}[/error]`);
+		expect(render({ timer: 1 }).at(-1)).toBe(`[error]${"─".repeat(80)}[/error]`);
 		expect(render({ timer: 1 }).join("\n")).toContain(diagnostic);
 		const collapsed = render({ collapsed: true }, false, false, 80, makeTheme()).join("\n");
 		expect(collapsed).toContain("edit");
@@ -233,7 +233,7 @@ describe("registerEditTool", () => {
 		expect(collapsed).toContain("failed");
 		expect(render({ collapsed: true }, false, false, 80, makeTheme())).toHaveLength(1);
 		expect(render({ collapsed: true }, true).join("\n")).toContain(diagnostic);
-		expect(render({ collapsed: true }, true).at(-1)).toBe(`[error]${"- ".repeat(40)}[/error]`);
+		expect(render({ collapsed: true }, true).at(-1)).toBe(`[error]${"─".repeat(80)}[/error]`);
 		expect(render({}, false, true)).toEqual([expect.stringContaining(diagnostic)]);
 	});
 });

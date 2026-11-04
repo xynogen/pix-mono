@@ -13,7 +13,7 @@ import {
 // semantic color each token got without matching raw ANSI.
 const tagTheme = { fg: (k: string, t: string) => `«${k}»${t}` };
 
-test("default terminal MCP results use a status-colored dashed close", () => {
+test("default terminal MCP results use a status-colored solid close", () => {
 	const result = { content: [{ type: "text" as const, text: "done" }], details: {} };
 	const success = renderMcpToolResult(result, { expanded: false, isPartial: false }, tagTheme, {
 		isError: false,
@@ -27,12 +27,12 @@ test("default terminal MCP results use a status-colored dashed close", () => {
 	).render(40);
 
 	expect(success[0]).toBe("«toolOutput»done");
-	expect(success.at(-1)).toBe(`«success»${"- ".repeat(20)}`);
+	expect(success.at(-1)).toBe(`«success»${"─".repeat(40)}`);
 	expect(failed[0]).toBe("«toolOutput»done");
-	expect(failed.at(-1)).toBe(`«error»${"- ".repeat(20)}`);
+	expect(failed.at(-1)).toBe(`«error»${"─".repeat(40)}`);
 });
 
-test("expanded MCP results use the same status-colored dashed close", () => {
+test("expanded MCP results use the same status-colored solid close", () => {
 	const result = { content: [{ type: "text" as const, text: "done" }], details: {} };
 	const success = renderMcpToolResult(result, { expanded: true, isPartial: false }, tagTheme, {
 		isError: false,
@@ -46,9 +46,9 @@ test("expanded MCP results use the same status-colored dashed close", () => {
 	).render(8);
 
 	expect(success[0]).toBe("«toolOut");
-	expect(success.at(-1)).toBe("«success»- - - - ");
+	expect(success.at(-1)).toBe("«success»────────");
 	expect(failed[0]).toBe("«toolOut");
-	expect(failed.at(-1)).toBe("«error»- - - - ");
+	expect(failed.at(-1)).toBe("«error»────────");
 });
 
 test("failed MCP results collapse with an error marker and expand the full diagnostic", async () => {
@@ -79,7 +79,7 @@ test("failed MCP results collapse with an error marker and expand the full diagn
 			expanded: true,
 		}).render(120);
 		expect(expanded.join("\n")).toContain("retry later");
-		expect(expanded.at(-1)).toBe(`«error»${"- ".repeat(60)}`);
+		expect(expanded.at(-1)).toBe(`«error»${"─".repeat(120)}`);
 	} finally {
 		await fixture.restore();
 	}

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "bun:test";
 
 import { join } from "node:path";
 import {
+	type Color,
+	colorToRgb,
 	getCapabilities,
 	rgbColor,
 	setCapabilities,
@@ -18,6 +20,7 @@ import {
 	bodyLine,
 	clickToggle,
 	dotJoin,
+	fadeRulePaint,
 	fillToolBackground,
 	formatCollapsedToolRow,
 	formatJson,
@@ -284,7 +287,7 @@ describe("frameToolResult", () => {
 		const theme: FgTheme = { fg: (key, text) => `[${key}]${text}[/${key}]` };
 		const framed = frameToolResult(child, theme, false);
 
-		expect(framed.render(8)).toEqual(["result", "[success]- - - - [/success]"]);
+		expect(framed.render(8)).toEqual(["result", "[success]────────[/success]"]);
 		framed.setText("updated");
 		expect(framed.render(8)[0]).toBe("updated");
 		framed.invalidate();
@@ -309,7 +312,7 @@ describe("frameToolResult", () => {
 
 		expect(frameToolResult(child, theme, true).render(4)).toEqual([
 			"failed",
-			"[error]- - [/error]",
+			"[error]────[/error]",
 		]);
 	});
 
@@ -322,7 +325,7 @@ describe("frameToolResult", () => {
 		const rerendered = frameToolResult(first, nextTheme, true);
 
 		expect(rerendered).toBe(first);
-		expect(rerendered.render(4)).toEqual(["result", "<error>- - </error>"]);
+		expect(rerendered.render(4)).toEqual(["result", "<error>────</error>"]);
 	});
 
 	it("keeps solid top and bottom rules for explicit sections", () => {
@@ -339,26 +342,54 @@ describe("frameToolResult", () => {
 });
 
 describe("rule", () => {
-	it("renders solid and dashed rules at exact width", () => {
+	it("renders a solid rule at exact width", () => {
 		expect(plain(rule(7))).toBe("───────");
-		expect(plain(rule(7, undefined, "dashed"))).toBe("- - - -");
-		expect(rule(6, (value) => `<rule>${value}</rule>`, "dashed")).toBe("<rule>- - - </rule>");
+		expect(rule(6, (value) => `<rule>${value}</rule>`)).toBe("<rule>──────</rule>");
+	});
+});
+
+describe("fadeRulePaint", () => {
+	const green = rgbColor(0, 200, 0);
+	const bg = rgbColor(0, 0, 0);
+	const cells: number[] = [];
+	const theme = {
+		fg: (_k: "success" | "error", s: string) => `[flat:${s.length}]`,
+		colors: { success: green, error: green, toolSuccessBg: bg, toolErrorBg: bg },
+		style: (s: string, o: { fg: Color }) => {
+			cells.push(colorToRgb(o.fg).g);
+			return s;
+		},
+	};
+
+	it("fades both ends toward the background and keeps the middle flat", () => {
+		const out = fadeRulePaint(theme, "success", 3)("─".repeat(10));
+		expect(out).toBe("───[flat:4]───");
+		const [l0 = 0, l1 = 0, l2 = 0, r0 = 0, r1 = 0, r2 = 0] = cells;
+		// Left rises toward full color, right falls back, mirrored.
+		expect(l0).toBeLessThan(l1);
+		expect(l1).toBeLessThan(l2);
+		expect(l2).toBeLessThan(200);
+		expect([r0, r1, r2]).toEqual([l2, l1, l0]);
+	});
+
+	it("stays a flat theme.fg rule without color data", () => {
+		expect(fadeRulePaint({ fg: theme.fg }, "error")("────")).toBe("[flat:4]");
 	});
 });
 
 describe("ruleFrame", () => {
-	it("keeps body unchanged and places footer below the dashed close", () => {
+	it("keeps body unchanged and places footer below the solid close", () => {
 		const out = ruleFrame(["a", "b"], ["… +3 more"], 10);
 		expect(out).toHaveLength(4);
 		expect(out[0]).toBe("a");
 		expect(out[1]).toBe("b");
-		expect(plain(out[2]!)).toBe("- - - - - ");
+		expect(plain(out[2]!)).toBe("──────────");
 		expect(out[3]).toBe("… +3 more");
 	});
 
 	it("paints only the close via the supplied status paint", () => {
 		const green = (s: string) => `<G>${s}</G>`;
-		expect(ruleFrame(["x"], [], 4, green)).toEqual(["x", "<G>- - </G>"]);
+		expect(ruleFrame(["x"], [], 4, green)).toEqual(["x", "<G>────</G>"]);
 	});
 });
 
@@ -638,27 +669,27 @@ describe("renderDimPreview", () => {
 		expect(out).toContain("body");
 	});
 
-	it("keeps the body first and adds one dashed close", () => {
+	it("keeps the body first and adds one solid close", () => {
 		const lines = plain(renderDimPreview("a\nb", theme, { frame: true, header: "2 files" })).split(
 			"\n",
 		);
 		expect(lines.slice(0, -1).map((line) => line.trimEnd())).toEqual(["	a", "	b"]);
-		expect(lines.at(-1)).toMatch(/^(?:- ){3,}-?$/);
+		expect(lines.at(-1)).toMatch(/^─{3,}$/);
 	});
 
-	it("paints the dashed close when a paint fn is given", () => {
+	it("paints the solid close when a paint fn is given", () => {
 		const tag: FgTheme = { fg: (k, v) => `<${k}>${v}` };
 		const lines = renderDimPreview("a\nb", tag, {
 			frame: true,
 			paint: (s: string) => tag.fg("success", s),
 		}).split("\n");
-		expect(plain(lines.at(-1) ?? "")).toMatch(/^<success>(?:- ){3,}-?/);
+		expect(plain(lines.at(-1) ?? "")).toMatch(/^<success>─{3,}/);
 	});
 
-	it("puts overflow metadata below the dashed close", () => {
+	it("puts overflow metadata below the solid close", () => {
 		const body = Array.from({ length: MAX_PREVIEW_LINES + 2 }, (_, i) => `L${i}`);
 		const lines = plain(renderDimPreview(body.join("\n"), theme, { frame: true })).split("\n");
-		expect(lines.at(-2)).toMatch(/^(?:- ){3,}-?$/);
+		expect(lines.at(-2)).toMatch(/^─{3,}$/);
 		expect(lines.at(-1)).toContain("… 2 more lines");
 	});
 

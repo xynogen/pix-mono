@@ -11,7 +11,7 @@ exports[`W1 capture: registered download call and self results: compact success 
   "",
   "dl-fixed-otter-42 queued                                                        ",
   "https://example.test/file.iso                                                   ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -19,7 +19,7 @@ exports[`W1 capture: registered download call and self results: compact error 1`
 [
   "",
   "aria2c not found                                                                ",
-  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  "<error>────────────────────────────────────────────────────────────────────────────────</error>",
 ]
 `;
 
@@ -28,7 +28,7 @@ exports[`W1 capture: registered download call and self results: expanded success
   "",
   "dl-fixed-otter-42 queued                                                        ",
   "second line                                                                     ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -36,7 +36,7 @@ exports[`W1 capture: registered download call and self results: expanded error 1
 [
   "",
   "aria2c not found                                                                ",
-  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  "<error>────────────────────────────────────────────────────────────────────────────────</error>",
 ]
 `;
 
@@ -52,6 +52,6 @@ exports[`W1 capture: registered download call and self results: fallback 1`] = `
 [
   "",
   "no active downloads                                                             ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;

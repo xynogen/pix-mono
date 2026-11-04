@@ -185,8 +185,8 @@ test("SSH self-shell command, file, info and result states", async () => {
 			true,
 		);
 		captures.reopened = render(output, true, false, true);
-		expect(captures.success?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
-		expect(captures.error?.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+		expect(captures.success?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
+		expect(captures.error?.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 		// Every info body row shares one indent, so keys line up under the header.
 		const configBody = captures.config?.slice(1, -1) ?? [];
 		expect(configBody.length).toBeGreaterThan(1);

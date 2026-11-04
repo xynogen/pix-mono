@@ -9,7 +9,7 @@ exports[`captures registered ls calls, grid, tree, batch and result states 1`] =
     "                                                                                ",
     "===== lib =====                                                                 ",
     "beta.txt                                                                        ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "batchCall": [
     "",
@@ -30,7 +30,7 @@ exports[`captures registered ls calls, grid, tree, batch and result states 1`] =
   "error": [
     "",
     "<error>ENOENT: cannot list src</error>                                                         ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "expanded": [
     "",
@@ -38,22 +38,22 @@ exports[`captures registered ls calls, grid, tree, batch and result states 1`] =
     "<raw.rule>├── </raw.rule><accent></accent> <accent>folder</accent>                                                                    ",
     "<raw.rule>├── </raw.rule><muted></muted> <text>alpha.txt</text>                                                                 ",
     "<raw.rule>└── </raw.rule><muted></muted> <text>name with spaces.txt</text>                                                      ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "expandedError": [
     "",
     "<error>ENOENT: cannot list src</error>                                                         ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "fallback": [
     "",
     "   <dim>listed</dim>                                                                       ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "grid": [
     "",
     "<syntaxNumber></syntaxNumber> <syntaxNumber>.env</syntaxNumber>   <accent></accent> <accent>folder</accent>   <muted></muted> <text>alpha.txt</text>   <muted></muted> <text>name with spaces.txt</text>                        ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "hiddenCall": [],
   "partial": [
@@ -66,7 +66,7 @@ exports[`captures registered ls calls, grid, tree, batch and result states 1`] =
   "single": [
     "",
     "<muted></muted> <text>alpha.txt</text>                                                                     ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "tree": [
     "",
@@ -74,7 +74,7 @@ exports[`captures registered ls calls, grid, tree, batch and result states 1`] =
     "<raw.rule>├── </raw.rule><accent></accent> <accent>folder</accent>                                                                    ",
     "<raw.rule>├── </raw.rule><muted></muted> <text>alpha.txt</text>                                                                 ",
     "<raw.rule>└── </raw.rule><muted></muted> <text>name with spaces.txt</text>                                                      ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
 }
 `;

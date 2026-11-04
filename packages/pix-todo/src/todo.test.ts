@@ -1100,7 +1100,7 @@ describe("todo card layout", () => {
 		expect(rendered).toContain("alpha");
 		expect(rendered).toContain("[text]○ alpha"); // pending card, no id number
 		expect(rendered).not.toContain("[success]✓ [/] [toolTitle]<b>todo</b>[/]");
-		expect(rendered.split("\n").at(-1)).toBe(`[success]${"- ".repeat(40)}[/]`);
+		expect(rendered.split("\n").at(-1)).toBe(`[success]${"─".repeat(80)}[/]`);
 	});
 
 	test("opening a new todo card collapses the previously open one", async () => {

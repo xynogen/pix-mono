@@ -8,12 +8,12 @@ exports[`captures registered write/create completion and the configured diff spl
     "<toolDiffRemoved+bg:toolErrorBg>▌ 1</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><syntaxKeyword+bg:toolErrorBg>const</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> count = </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                                                                                              </bg:toolErrorBg>",
     "<toolDiffAdded+bg:toolSuccessBg>▌ 1</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><syntaxKeyword+bg:toolSuccessBg>const</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> count = </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>3</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                                                                                              </bg:toolSuccessBg>",
     "<raw.rule>─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</raw.rule>",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</success>",
+    "<success>─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "belowSplitPending": [
     "",
     "<muted>  rendering diff…</muted>                                                                                                                                    ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</success>",
+    "<success>─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "collapsed": [
     "",
@@ -48,12 +48,12 @@ exports[`captures registered write/create completion and the configured diff spl
   "error": [
     "",
     "<error>EACCES: created.ts</error>                                                              ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "expandedError": [
     "",
     "<error>EACCES: created.ts</error>                                                              ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "hiddenCall": [],
   "new": [
@@ -61,29 +61,29 @@ exports[`captures registered write/create completion and the configured diff spl
     "   <success>✓ new file (2 lines)</success>                                                         ",
     "<syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                                ",
     "<syntaxComment>// preserved trailing spaces  </syntaxComment>                                                  ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "newExpanded": [
     "",
     "   <success>✓ new file (2 lines)</success>                                                         ",
     "<syntaxKeyword>const</syntaxKeyword> count = <syntaxNumber>3</syntaxNumber>;                                                                ",
     "<syntaxComment>// preserved trailing spaces  </syntaxComment>                                                  ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "newExpandedPending": [
     "",
     "   <success>✓ new file (2 lines)</success>                                                         ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "newPending": [
     "",
     "   <success>✓ new file (2 lines)</success>                                                         ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "noChange": [
     "",
     "   <muted>✓ no changes</muted>                                                                 ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "partialError": [
     "",
@@ -94,12 +94,12 @@ exports[`captures registered write/create completion and the configured diff spl
     "<raw.rule>──────────────────────────────────────────────────────────────────────────┊──────────────────────────────────────────────────────────────────────────</raw.rule> ",
     "<toolDiffRemoved+bg:toolErrorBg>▌ 1</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><syntaxKeyword+bg:toolErrorBg>const</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> count = </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                   </bg:toolErrorBg><raw.rule>│</raw.rule><toolDiffAdded+bg:toolSuccessBg>▌ 1</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><syntaxKeyword+bg:toolSuccessBg>const</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> count = </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>3</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                   </bg:toolSuccessBg> ",
     "<raw.rule>──────────────────────────────────────────────────────────────────────────┊──────────────────────────────────────────────────────────────────────────</raw.rule> ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "splitPending": [
     "",
     "<muted>  rendering diff…</muted>                                                                                                                                     ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "unified": [
     "",
@@ -107,12 +107,12 @@ exports[`captures registered write/create completion and the configured diff spl
     "<toolDiffRemoved+bg:toolErrorBg>▌ 1</toolDiffRemoved+bg:toolErrorBg><toolDiffRemoved+bg:toolErrorBg+bold>- </toolDiffRemoved+bg:toolErrorBg+bold><raw.rule+bg:toolErrorBg+bold>│ </raw.rule+bg:toolErrorBg+bold><syntaxKeyword+bg:toolErrorBg>const</syntaxKeyword+bg:toolErrorBg><bg:toolErrorBg> count = </bg:toolErrorBg><syntaxNumber+bg:diff.removeHighlight>1</syntaxNumber+bg:diff.removeHighlight><bg:toolErrorBg>;                                                         </bg:toolErrorBg>",
     "<toolDiffAdded+bg:toolSuccessBg>▌ 1</toolDiffAdded+bg:toolSuccessBg><toolDiffAdded+bg:toolSuccessBg+bold>+ </toolDiffAdded+bg:toolSuccessBg+bold><raw.rule+bg:toolSuccessBg+bold>│ </raw.rule+bg:toolSuccessBg+bold><syntaxKeyword+bg:toolSuccessBg>const</syntaxKeyword+bg:toolSuccessBg><bg:toolSuccessBg> count = </bg:toolSuccessBg><syntaxNumber+bg:diff.addHighlight>3</syntaxNumber+bg:diff.addHighlight><bg:toolSuccessBg>;                                                         </bg:toolSuccessBg>",
     "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "unifiedPending": [
     "",
     "<muted>  rendering diff…</muted>                                                               ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "writeCall": [
     "",

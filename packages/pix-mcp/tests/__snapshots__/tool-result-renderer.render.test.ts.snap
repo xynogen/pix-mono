@@ -12,7 +12,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "                                                                                ",
     "<syntaxVariable>Parameters</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation>                                                                     ",
     "  query (string)                                                                ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "direct-collapsed": [
     "",
@@ -26,26 +26,26 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "                                                                                ",
     "Expected parameters:                                                            ",
     "  query (string)                                                                ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "direct-reexpanded": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
     "<toolOutput>one</toolOutput>                                                                             ",
     "<toolOutput>two</toolOutput>                                                                             ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "direct-success": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
     "<toolOutput>done</toolOutput>                                                                            ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "empty": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                   ",
     "<toolOutput>(empty result)</toolOutput>                                                                  ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "format-preview-cap": [
     "one                                                                             ",
@@ -57,14 +57,14 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "",
     "<muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                   ",
     "[image: image/png]                                                              ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "list": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>mcp list demo</toolTitle+bold>                                                                ",
     "<syntaxVariable>demo</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> 1 tools                                                                   ",
     "- demo_search - Find records                                                    ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "long-expanded": [
     "",
@@ -74,7 +74,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "<syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString>",
     "<syntaxString>xxxxxxxxxxxxxxxxxxxxx"</syntaxString>                                                          ",
     "}                                                                               ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "long-preview": [
     "",
@@ -82,7 +82,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "{                                                                               ",
     "  <syntaxVariable>"value"</syntaxVariable>: <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString>›",
     "}                                                                               ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "partial": [
     "",
@@ -101,7 +101,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "                                                                                ",
     "Expected parameters:                                                            ",
     "  query (string)                                                                ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "proxy-success": [
     "",
@@ -110,7 +110,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "  <syntaxVariable>"query"</syntaxVariable>: <syntaxString>"records"</syntaxString>                                                            ",
     "}                                                                               ",
     "<toolOutput>done</toolOutput>                                                                            ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "search": [
     "",
@@ -119,7 +119,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "<toolOutput>- demo_search - Find records</toolOutput>                                                    ",
     "                                                                                ",
     "<toolOutput>Use mcp({ describe: "tool_name" }) for one schema.</toolOutput>                              ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "status": [
     "",
@@ -129,7 +129,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "✓︎  demo (1 tools)                                                               ",
     "                                                                                ",
     "mcp({ server: "name" }) to list tools, mcp({ search: "..." }) to search         ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "toon-json": [
     "",
@@ -143,7 +143,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "    }                                                                           ",
     "  ]                                                                             ",
     "}                                                                               ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "truncated-preview-with-hint": [
     "",
@@ -229,14 +229,14 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
     "<muted>row 79</muted>                                                                          ",
     "<muted>row 80</muted>                                                                          ",
     "<muted>… +1 more (ctrl+o to expand)</muted>                                                    ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "unsupported-toon": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
     "<syntaxVariable>nested</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation>                                                                         ",
     "  <syntaxVariable>child</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> <syntaxKeyword>true</syntaxKeyword>                                                                   ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
 }
 `;

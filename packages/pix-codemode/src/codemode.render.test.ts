@@ -48,7 +48,7 @@ function capture(component: TextComponentLike, width: 80 | 120): string[] {
 	return captureRows({ render: (w) => component.render!(w) }, { width, surface: "component" });
 }
 function close(lines: string[], role: "success" | "error", width: number) {
-	expect(lines.at(-1)).toBe(`<${role}>${"- ".repeat(width / 2)}</${role}>`);
+	expect(lines.at(-1)).toBe(`<${role}>${"─".repeat(width)}</${role}>`);
 }
 
 // hlBlock does synchronous cli-highlight work, then resolves its async signature.

@@ -13,7 +13,7 @@ exports[`captures registered read pending, completed, expanded and non-text stat
     "                                                                                ",
     "   <muted>──── missing.txt ────────────────────────────────────────────────────────────</muted>",
     "   <dim>ENOENT: missing.txt</dim>                                                          ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "call": [
     "",
@@ -39,12 +39,12 @@ exports[`captures registered read pending, completed, expanded and non-text stat
     "<raw.lineNumber>  9</raw.lineNumber> <raw.rule>│</raw.rule>                                                                           ",
     "<raw.lineNumber> 10</raw.lineNumber> <raw.rule>│</raw.rule> <syntaxKeyword>const</syntaxKeyword> text = <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString><raw.dim>›</raw.dim>",
     "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "error": [
     "",
     "<error>ENOENT: sample.ts</error>                                                               ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "expanded": [
     "",
@@ -56,27 +56,27 @@ exports[`captures registered read pending, completed, expanded and non-text stat
     "<raw.lineNumber>   </raw.lineNumber> <raw.rule>│</raw.rule> <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString>",
     "<raw.lineNumber>   </raw.lineNumber> <raw.rule>│</raw.rule> <syntaxString>xxxxxxxxxxxxxxxxxEND"</syntaxString>;                                                    ",
     "<raw.rule>────────────────────────────────────────────────────────────────────────────────</raw.rule>",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "expandedError": [
     "",
     "<error>ENOENT: sample.ts</error>                                                               ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "expandedPending": [
     "",
     "   <muted>reading…</muted>                                                                     ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "fallback": [
     "",
     "   <dim>read complete</dim>                                                                ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "image": [
     "",
     "   <syntaxType></syntaxType> <dim>image/png · 3 B</dim>                                                            ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "partial": [
     "",
@@ -85,7 +85,7 @@ exports[`captures registered read pending, completed, expanded and non-text stat
   "pending": [
     "",
     "   <muted>reading…</muted>                                                                     ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
 }
 `;

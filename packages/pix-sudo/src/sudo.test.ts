@@ -792,9 +792,9 @@ describe("sudo_run tool execute()", () => {
 			isError,
 		});
 
-		expect(renderOpenResult(host, makeResult("success"))).toContain("- -");
+		expect(renderOpenResult(host, makeResult("success"))).toContain("───");
 		for (const outcome of ["error", "denied", "timed-out", "cancelled"]) {
-			expect(renderOpenResult(host, makeResult(outcome, outcome === "error"))).toContain("- -");
+			expect(renderOpenResult(host, makeResult(outcome, outcome === "error"))).toContain("───");
 		}
 		expect(renderOpenResult(host, makeResult("running"), true).split("\n")).toEqual([
 			expect.stringContaining("running"),
@@ -813,8 +813,8 @@ describe("sudo_run tool execute()", () => {
 			isError: true,
 		};
 
-		expect(renderOpenResult(host, success)).toContain("- -");
-		expect(renderOpenResult(host, error)).toContain("- -");
+		expect(renderOpenResult(host, success)).toContain("───");
+		expect(renderOpenResult(host, error)).toContain("───");
 	});
 
 	test("sanitizes multiline commands in compact rows", async () => {

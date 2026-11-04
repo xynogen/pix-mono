@@ -193,7 +193,7 @@ describe("registerReadTool", () => {
 		};
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ timer: 1 })).toContain("- -");
+		expect(render({ timer: 1 })).toContain("───");
 		expect(render({ collapsed: true })).toContain("✗  read missing.ts · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});
@@ -245,11 +245,11 @@ describe("registerReadTool", () => {
 		const fallback = { content: [{ type: "text", text: "read complete" }], details: undefined };
 
 		const imageLines = render(image, false);
-		expect(imageLines.at(-1)).toBe(`[success]${"- ".repeat(12)}[/]`);
+		expect(imageLines.at(-1)).toBe(`[success]${"─".repeat(24)}[/]`);
 		const fallbackLines = render(fallback, false);
 		expect(fallbackLines[0]).toContain("read complete");
-		expect(fallbackLines.at(-1)).toBe(`[success]${"- ".repeat(12)}[/]`);
-		expect(render(fallback, false, true).at(-1)).toBe(`[success]${"- ".repeat(12)}[/]`);
+		expect(fallbackLines.at(-1)).toBe(`[success]${"─".repeat(24)}[/]`);
+		expect(render(fallback, false, true).at(-1)).toBe(`[success]${"─".repeat(24)}[/]`);
 		expect(render(fallback, true)).toEqual([expect.stringContaining("read complete")]);
 	});
 });

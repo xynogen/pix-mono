@@ -48,7 +48,7 @@ describe("proc renderer", () => {
 		expect(lines.length).toBeGreaterThan(2);
 		expect(lines[1]).toMatch(/^ {2}/);
 	});
-	test("collapsed success shows the process glyph and a dashed close", () => {
+	test("collapsed success shows the process glyph and a solid close", () => {
 		const rendered = tool()
 			.renderResult(
 				result(true, ["proc-swift-otter-42 started — npm run dev (pid 1234)"]),
@@ -76,7 +76,7 @@ describe("proc renderer", () => {
 		expect(rendered).toContain("start requires a command");
 	});
 
-	test("expanded success and error close with status-colored dashes", () => {
+	test("expanded success and error close with a status-colored rule", () => {
 		const theme = {
 			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
 			bold: (text: string) => text,
@@ -98,7 +98,7 @@ describe("proc renderer", () => {
 				isError: true,
 			})
 			.render(20);
-		expect(success.at(-1)).toBe(`<success>${"- ".repeat(10)}</success>`);
-		expect(error.at(-1)).toBe(`<error>${"- ".repeat(10)}</error>`);
+		expect(success.at(-1)).toBe(`<success>${"─".repeat(20)}</success>`);
+		expect(error.at(-1)).toBe(`<error>${"─".repeat(20)}</error>`);
 	});
 });

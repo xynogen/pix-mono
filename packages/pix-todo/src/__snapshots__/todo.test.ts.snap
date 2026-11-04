@@ -12,7 +12,7 @@ exports[`W1 capture: registered todo boards and self shell: empty 1`] = `
 [
   "",
   "<muted>(no todos)</muted>                                                                      ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -22,7 +22,7 @@ exports[`W1 capture: registered todo boards and self shell: mixed 1`] = `
   "<text>To Do (2)        </text><muted> │ </muted><accent>In Progress (1)</accent><muted> │ </muted><success>Done (1)</success><muted> │ </muted><error>Blocked (1)</error>                    ",
   "<text>○︎ Pending card …</text><muted> │ </muted><accent+bold>◐︎ Active      </accent+bold><muted> │ </muted><success>●︎ Done </success><muted> │ </muted><error>⊘︎ Blocked </error>                        ",
   "<text>○︎ Second pending</text><muted> │ </muted>               <muted> │ </muted>        <muted> │ </muted>                                ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -32,7 +32,7 @@ exports[`W1 capture: registered todo boards and self shell: expanded 1`] = `
   "<text>To Do (2)        </text><muted> │ </muted><accent>In Progress (1)</accent><muted> │ </muted><success>Done (1)</success><muted> │ </muted><error>Blocked (1)</error>                    ",
   "<text>○︎ Pending card …</text><muted> │ </muted><accent+bold>◐︎ Active      </accent+bold><muted> │ </muted><success>●︎ Done </success><muted> │ </muted><error>⊘︎ Blocked </error>                        ",
   "<text>○︎ Second pending</text><muted> │ </muted>               <muted> │ </muted>        <muted> │ </muted>                                ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -49,7 +49,7 @@ exports[`W1 capture: registered todo boards and self shell: error 1`] = `
 [
   "",
   "No todo with id 99.                                                             ",
-  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  "<error>────────────────────────────────────────────────────────────────────────────────</error>",
 ]
 `;
 
@@ -59,7 +59,7 @@ exports[`W1 capture: registered todo boards and self shell: wide board 1`] = `
   "<text>To Do (2)                  </text><muted> │ </muted><accent>In Progress (1)</accent><muted> │ </muted><success>Done (1)</success><muted> │ </muted><error>Blocked (1)</error>                                                  ",
   "<text>○︎ Pending card with a lon…</text><muted> │ </muted><accent+bold>◐︎ Active      </accent+bold><muted> │ </muted><success>●︎ Done </success><muted> │ </muted><error>⊘︎ Blocked </error>                                                      ",
   "<text>○︎ Second pending          </text><muted> │ </muted>               <muted> │ </muted>        <muted> │ </muted>                                                              ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 

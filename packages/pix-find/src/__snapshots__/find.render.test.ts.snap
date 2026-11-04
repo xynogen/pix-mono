@@ -9,7 +9,7 @@ exports[`captures registered find scopes, highlights, batch and result states 1`
     "                                                                                ",
     "   <muted>──── *.txt ──────────────────────────────────────────────────────────────────</muted>",
     "   <dim>notes.txt</dim>                                                                    ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "batchCall": [
     "",
@@ -30,12 +30,12 @@ exports[`captures registered find scopes, highlights, batch and result states 1`
   "empty": [
     "",
     "   <dim>found</dim>                                                                        ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "error": [
     "",
     "<error>Invalid glob pattern: [</error>                                                         ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "expanded": [
     "",
@@ -43,23 +43,23 @@ exports[`captures registered find scopes, highlights, batch and result states 1`
     "   <dim>src/BETA</dim><success+bold>.TS</success+bold>                                                                  ",
     "                                                                                ",
     "   <dim>[200 limit reached]</dim>                                                          ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "expandedError": [
     "",
     "<error>Invalid glob pattern: [</error>                                                         ",
-    "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+    "<error>────────────────────────────────────────────────────────────────────────────────</error>",
   ],
   "hiddenCall": [],
   "long120": [
     "",
     "   <dim>src/detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-d</dim>",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "long80": [
     "",
     "   <dim>src/detail-detail-detail-detail-detail-detail-detail-detail-detail-detail-det</dim>",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "matches": [
     "",
@@ -67,7 +67,7 @@ exports[`captures registered find scopes, highlights, batch and result states 1`
     "   <dim>src/BETA</dim><success+bold>.TS</success+bold>                                                                  ",
     "                                                                                ",
     "   <dim>[200 limit reached]</dim>                                                          ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "partial": [
     "",
@@ -79,7 +79,7 @@ exports[`captures registered find scopes, highlights, batch and result states 1`
   "single": [
     "",
     "   <dim>src/alpha</dim><success+bold>.ts</success+bold>                                                                 ",
-    "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
 }
 `;

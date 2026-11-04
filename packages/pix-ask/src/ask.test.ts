@@ -331,7 +331,7 @@ describe("registerAsk", () => {
 			)
 			.render(40);
 		expect(expanded[0]?.trimEnd()).toBe("1: REST");
-		expect(expanded.at(-1)).toBe("- ".repeat(20));
+		expect(expanded.at(-1)).toBe("─".repeat(40));
 
 		const partial = tool
 			.renderResult(
@@ -370,7 +370,7 @@ describe("registerAsk", () => {
 			)
 			.render(40);
 		expect(error[0]?.trimEnd()).toBe("At least one question is required.");
-		expect(error.at(-1)).toBe(`[error]${"- ".repeat(20)}[/error]`);
+		expect(error.at(-1)).toBe(`[error]${"─".repeat(40)}[/error]`);
 
 		const completed = tool
 			.renderResult(
@@ -381,7 +381,7 @@ describe("registerAsk", () => {
 			)
 			.render(40);
 		expect(completed[0]?.trimEnd()).toBe("At least one question is required.");
-		expect(completed.at(-1)).toBe(`[error]${"- ".repeat(20)}[/error]`);
+		expect(completed.at(-1)).toBe(`[error]${"─".repeat(40)}[/error]`);
 
 		const fixture = await withUiFixture();
 		try {

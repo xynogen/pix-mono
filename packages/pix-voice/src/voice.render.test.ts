@@ -81,7 +81,7 @@ test("captures registered voice self shells without audio or provider execution"
 				);
 				if (!isPartial)
 					expect(rendered.at(-1)).toBe(
-						`<${isError ? "error" : "success"}>${"- ".repeat(40)}</${isError ? "error" : "success"}>`,
+						`<${isError ? "error" : "success"}>${"─".repeat(80)}</${isError ? "error" : "success"}>`,
 					);
 			}
 			await fixture.runtime.update(collapseSection, (current) => ({

@@ -79,9 +79,7 @@ async function capture(
 }
 
 function expectClose(rows: string[], role: "success" | "error", width = 80) {
-	expect(rows.at(-1)).toMatch(
-		new RegExp(`^<${role}>(?:- ){${Math.floor(width / 2)}}<\\/${role}>$`),
-	);
+	expect(rows.at(-1)).toMatch(new RegExp(`^<${role}>─{${width}}<\\/${role}>$`));
 }
 
 describe("grep UI", () => {

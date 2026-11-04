@@ -14,25 +14,25 @@ compact success
 
 proc-dev started                                                                
 ready                                                                           
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 expanded
 
 proc-dev started                                                                
 ready                                                                           
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 compact error
 
 start requires a command                                                        
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 expanded error
 
 start requires a command                                                        
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 fallback
 
 ready                                                                           
 listening                                                                       
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 orphan prompt
 <accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
 <accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>▸︎ 1 orphaned process group(s) from a previous session</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                        </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>

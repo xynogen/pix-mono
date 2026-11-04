@@ -7,22 +7,22 @@ exports[`captures registered diagnostics tools and the subscribed widget without
 lsp_diagnostics:success
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_diagnostics:partial
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 lsp_diagnostics:error
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 lsp_diagnostics:no-details
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_diagnostics:no-details-error
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 lsp_diagnostics:hidden-call
 lsp_diagnostics:collapsed
 
@@ -33,7 +33,7 @@ lsp_diagnostics:expanded
 lsp_diagnostics:expanded-result
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_navigation:call
 
 <warning>◐︎ </warning> <toolTitle+bold>lsp_navigation</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                           
@@ -41,7 +41,7 @@ lsp_navigation:success
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_navigation:partial
 
 <success>●︎</success> src/a.ts:3:4                                                                  
@@ -50,17 +50,17 @@ lsp_navigation:error
 
 <error>✗︎</error> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 lsp_navigation:no-details
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_navigation:no-details-error
 
 <error>✗︎</error> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 lsp_navigation:hidden-call
 lsp_navigation:collapsed
 
@@ -72,29 +72,29 @@ lsp_navigation:expanded-result
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_diagnostic_mark:call
 
 <warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                                
 lsp_diagnostic_mark:success
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_diagnostic_mark:partial
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
 lsp_diagnostic_mark:error
 
 <error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 lsp_diagnostic_mark:no-details
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_diagnostic_mark:no-details-error
 
 <error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 lsp_diagnostic_mark:hidden-call
 lsp_diagnostic_mark:collapsed
 
@@ -105,7 +105,7 @@ lsp_diagnostic_mark:expanded
 lsp_diagnostic_mark:expanded-result
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 widget:touched-only (no registered row)
 widget:clean
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>

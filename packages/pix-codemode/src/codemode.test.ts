@@ -298,7 +298,7 @@ test("tool_search renders query, one row per loaded tool, and a collapsed summar
 			card.updateResult(result, false);
 			const done = rows();
 			expect(done.at(-1)).toBe(
-				`<${isError ? "error" : "success"}>${"- ".repeat(40)}</${isError ? "error" : "success"}>`,
+				`<${isError ? "error" : "success"}>${"─".repeat(80)}</${isError ? "error" : "success"}>`,
 			);
 			if (isError) {
 				expect(done.join("\n")).toContain("query must not be empty");

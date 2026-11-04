@@ -180,9 +180,9 @@ describe("lsp_diagnostics tool", () => {
 describe("renderClose", () => {
 	const theme = { fg: (role: string, text: string) => `[${role}]${text}[/${role}]` } as never;
 	test("frames success and error, leaves partial unframed", () => {
-		expect(renderClose("success", theme, 40)).toContain("[success]- - -");
-		expect(renderClose("error", theme, 40)).toContain("[error]- - -");
-		expect(renderClose("partial", theme, 40)).not.toContain("- - -");
+		expect(renderClose("success", theme, 40)).toContain("[success]─────");
+		expect(renderClose("error", theme, 40)).toContain("[error]─────");
+		expect(renderClose("partial", theme, 40)).not.toContain("─────");
 	});
 });
 

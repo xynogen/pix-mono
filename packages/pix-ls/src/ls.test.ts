@@ -90,7 +90,7 @@ describe("registerLsTool", () => {
 			tool.renderResult?.(result, { isPartial: false }, theme, makeRenderCtx())?.getText() ?? "";
 		// Single entry is now framed just like multi-entry — no inline row and no
 		// floating "N entries" header; one shape regardless of count.
-		expect(out).toContain("- -");
+		expect(out).toContain("───");
 		expect(out).toContain("README.md");
 		expect(strip(out)).not.toContain("entries");
 		const multi = {
@@ -99,7 +99,7 @@ describe("registerLsTool", () => {
 		};
 		const multiOut =
 			tool.renderResult?.(multi, { isPartial: false }, theme, makeRenderCtx())?.getText() ?? "";
-		expect(multiOut).toContain("- -");
+		expect(multiOut).toContain("───");
 	});
 
 	it("collapses structured errors and restores the exact diagnostic on expansion", () => {
@@ -122,7 +122,7 @@ describe("registerLsTool", () => {
 		};
 
 		expect(render({ timer: 1 })).toContain(diagnostic);
-		expect(render({ timer: 1 })).toContain("- -");
+		expect(render({ timer: 1 })).toContain("───");
 		expect(render({ collapsed: true })).toContain("✗  ls missing-dir · failed");
 		expect(render({ collapsed: true }, true)).toContain(diagnostic);
 	});

@@ -88,12 +88,12 @@ function renderFramed(
 
 function expectFrame(lines: string[], color: "success" | "error") {
 	expect(lines.length).toBeGreaterThan(1);
-	expect(lines.at(-1)).toBe(`<${color}>${"- ".repeat(20)}</${color}>`);
+	expect(lines.at(-1)).toBe(`<${color}>${"─".repeat(40)}</${color}>`);
 }
 
 function expectUnframed(lines: string[]) {
 	expect(lines.some((line) => line.trim().length > 0)).toBe(true);
-	expect(lines).not.toContain(`${"- ".repeat(20)}`);
+	expect(lines).not.toContain(`${"─".repeat(40)}`);
 }
 
 function renderCall(
@@ -295,7 +295,7 @@ describe("subagent utility compact renderers", () => {
 				invalidate: () => {},
 			})
 			.render(36)
-			.filter((row) => row.trim() && !row.startsWith("- "));
+			.filter((row) => row.trim() && !row.startsWith("─"));
 		// Heading/guidance at the body column (3), list rows at 5, their wraps hang at 7.
 		const shape = rows.map((row) => `${row.length - row.trimStart().length}:${row.trim()}`);
 		expect(shape[0]).toBe("3:● Models · 1");

@@ -11,7 +11,7 @@ exports[`AST captures six default host-box tools without executing the engine: a
 "
                                                                                 
  <success>✓︎</success> src/a.ts:12:3  greet(user)                                                   
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;
 
@@ -30,7 +30,7 @@ exports[`AST captures six default host-box tools without executing the engine: a
  +++ src/a.ts                                                                   
  -12: greet(user)                                                               
  +12: welcome(user)                                                             
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;
 
@@ -47,7 +47,7 @@ exports[`AST captures six default host-box tools without executing the engine: a
  <success>✓︎</success> src/a.ts                                                                     
    1: function_declaration  greet                                               
    8: class_declaration  Widget                                                 
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;
 
@@ -66,7 +66,7 @@ exports[`AST captures six default host-box tools without executing the engine: a
    return user;                                                                 
  }                                                                              
                                                                                 
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;
 
@@ -84,7 +84,7 @@ exports[`AST captures six default host-box tools without executing the engine: a
  function greet(user: string) {                                                 
    return user;                                                                 
  }                                                                              
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;
 
@@ -100,7 +100,7 @@ exports[`AST captures six default host-box tools without executing the engine: s
                                                                                 
  <success>✓︎</success> src/a.ts  (3)                                                                
  src/b.ts  (1)                                                                  
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;
 
@@ -115,7 +115,7 @@ exports[`AST captures six default host-box tools without executing the engine: e
 "
                                                                                 
  <success>✓︎</success> No matches in 2 file(s).                                                     
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;
 
@@ -123,7 +123,7 @@ exports[`AST captures six default host-box tools without executing the engine: c
 "
                                                                                 
  <error>✗︎</error> Cannot read src/a.ts.                                                        
- <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error> 
+ <error>──────────────────────────────────────────────────────────────────────────────</error> 
                                                                                 "
 `;
 
@@ -131,7 +131,7 @@ exports[`AST captures six default host-box tools without executing the engine: d
 "
                                                                                 
  <error>✗︎</error> ast-grep engine unavailable                                                  
- <error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error> 
+ <error>──────────────────────────────────────────────────────────────────────────────</error> 
                                                                                 "
 `;
 
@@ -146,6 +146,6 @@ exports[`AST captures six default host-box tools without executing the engine: n
 "
                                                                                 
  <success>✓︎</success> No matches.                                                                  
- <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success> 
+ <success>──────────────────────────────────────────────────────────────────────────────</success> 
                                                                                 "
 `;

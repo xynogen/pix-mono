@@ -28,6 +28,7 @@ import {
 	BODY_PAD,
 	bodyLine,
 	dotJoin,
+	fadeRulePaint,
 	fillToolBackground,
 	formatCollapsedToolRow,
 	formatToolCallTitle,
@@ -235,7 +236,7 @@ export function registerShellTool(
 				// collapsed row already carries status.
 				const exitCode = d.exitCode as number | null;
 				const statusKey = exitCode === null || exitCode === 0 ? "success" : "error";
-				const paint = (s: string) => theme.fg(statusKey, s);
+				const paint = fadeRulePaint(theme, statusKey);
 				// Fade the last preview rows instead of a hard cut before the "… N more" row.
 				const body = fadeRowsOf(
 					lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),

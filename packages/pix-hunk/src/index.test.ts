@@ -130,7 +130,7 @@ test("renders a compact colored summary and hides internal ids from expanded UI"
 			renderContext(true, true),
 		),
 	);
-	expect(expanded).toContain("[success]- - - - - - - -");
+	expect(expanded).toContain("[success]───────────────");
 	expect(expanded).toContain("[dim]src/a.ts:h1[/dim] [muted]· 1 comment[/muted]");
 	expect(expanded).not.toContain("[text]navigate");
 	expect(expanded).not.toContain("[text]comment");
@@ -167,7 +167,7 @@ test("renders a compact colored summary and hides internal ids from expanded UI"
 			renderContext(true, true),
 		),
 	);
-	expect(failedExpanded).toContain("[error]- - - - - - - -");
+	expect(failedExpanded).toContain("[error]───────────────");
 	expect(failedExpanded).toContain("[error]list: session gone[/error]");
 });
 

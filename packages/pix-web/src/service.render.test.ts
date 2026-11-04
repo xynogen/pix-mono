@@ -55,7 +55,7 @@ test("captures registered fetch and search Markdown without links or external ex
 					makeRenderCtx() as never,
 				),
 			);
-			expect(completed.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
+			expect(completed.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 			rows(
 				`${tool.name}:partial`,
 				tool.renderResult?.(
@@ -78,7 +78,7 @@ test("captures registered fetch and search Markdown without links or external ex
 					makeRenderCtx() as never,
 				),
 			);
-			expect(error.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+			expect(error.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 			await fixture.runtime.update(collapseSection, (current) => ({
 				...current,
 				enabled: true,

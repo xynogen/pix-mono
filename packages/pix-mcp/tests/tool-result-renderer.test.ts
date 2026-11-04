@@ -130,7 +130,7 @@ describe("MCP tool call renderer", () => {
 });
 
 describe("MCP tool result renderer", () => {
-	it("keeps output first and ends with a dashed separator", () => {
+	it("keeps output first and ends with a solid separator", () => {
 		const lines = renderMcpToolResult(
 			result([{ type: "text", text: JSON.stringify({ ok: true }) }]),
 			{ expanded: true, isPartial: false },
@@ -141,7 +141,7 @@ describe("MCP tool result renderer", () => {
 
 		expect(lines[0]).toContain("{");
 		expect(lines.slice(0, -1).join("\n")).toContain('"ok"');
-		expect(lines.at(-1)).toBe("- ".repeat(6));
+		expect(lines.at(-1)).toBe("─".repeat(12));
 	});
 
 	it("caps collapsed text at the preview limit and notes how many lines were hidden", () => {
@@ -338,7 +338,7 @@ describe("MCP tool result renderer", () => {
 			collapsedOptions,
 			plainTheme,
 		).render(40);
-		expect(rows).toEqual([body, "- ".repeat(20)]);
+		expect(rows).toEqual([body, "─".repeat(40)]);
 	});
 
 	it("clips a long JSON string value to one row in preview but wraps it when expanded", () => {

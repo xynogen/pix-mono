@@ -5,7 +5,7 @@ exports[`shared shell completed, error, partial, collapsed and expanded captures
   "   one                                                                          ",
   "                                                                                ",
   "   two                                                                          ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -14,7 +14,7 @@ exports[`shared shell completed, error, partial, collapsed and expanded captures
   "<error>one                                                                             </error>",
   "                                                                                ",
   "two                                                                             ",
-  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  "<error>────────────────────────────────────────────────────────────────────────────────</error>",
 ]
 `;
 
@@ -37,7 +37,7 @@ exports[`shared shell completed, error, partial, collapsed and expanded captures
   "   one                                                                          ",
   "                                                                                ",
   "   two                                                                          ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -46,7 +46,7 @@ exports[`shared shell completed, error, partial, collapsed and expanded captures
   "   <dim>one                                                                          </dim>",
   "                                                                                ",
   "two                                                                             ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -64,7 +64,7 @@ exports[`frame, result close and unified/split diff actual captures: success clo
   "body                                                                            ",
   "                                                                                ",
   "last                                                                            ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -73,7 +73,7 @@ exports[`frame, result close and unified/split diff actual captures: error close
   "body                                                                            ",
   "                                                                                ",
   "last                                                                            ",
-  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  "<error>────────────────────────────────────────────────────────────────────────────────</error>",
 ]
 `;
 

@@ -95,7 +95,7 @@ test("captures registered skill Text output and complete expanded instructions",
 					makeRenderCtx({ expanded: true }) as never,
 				),
 			);
-			expect(rendered.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
+			expect(rendered.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 			if (item.details.mode === "instructions")
 				expect(
 					rendered
@@ -140,7 +140,7 @@ test("captures registered skill Text output and complete expanded instructions",
 					makeRenderCtx({ expanded: true, isError }) as never,
 				),
 			);
-			if (isError) expect(rendered.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+			if (isError) expect(rendered.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 		}
 		const collapsedError = tool.renderResult!(
 			error,

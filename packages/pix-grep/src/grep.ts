@@ -31,6 +31,7 @@ import type {
 import {
 	appendNotices,
 	countRipgrepMatches,
+	fadeRulePaint,
 	fillToolBackground,
 	formatToolCallTitle,
 	frameToolResult,
@@ -398,7 +399,7 @@ export function registerGrepTool(
 				renderDimPreview(output, theme, {
 					frame: !isPartial,
 					ctx: renderCtx,
-					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
+					paint: fadeRulePaint(theme, renderCtx.isError ? "error" : "success"),
 					highlight: d?._type === "grepResult" && !d.patterns ? grepHighlight(d) : undefined,
 				}),
 			);

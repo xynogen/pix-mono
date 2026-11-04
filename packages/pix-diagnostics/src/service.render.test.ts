@@ -117,7 +117,7 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 				);
 				if (state !== "partial")
 					expect(rendered.at(-1)).toBe(
-						`<${isError ? "error" : "success"}>${"- ".repeat(40)}</${isError ? "error" : "success"}>`,
+						`<${isError ? "error" : "success"}>${"─".repeat(80)}</${isError ? "error" : "success"}>`,
 					);
 				else expect(rendered).toHaveLength(item.text.split("\n").length + 1);
 			}

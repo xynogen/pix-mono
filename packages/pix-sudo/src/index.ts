@@ -35,6 +35,7 @@ import {
 	BODY_PAD,
 	bodyLine,
 	dotJoin,
+	fadeRulePaint,
 	fillToolBackground,
 	formatCollapsedToolRow,
 	formatToolCallTitle,
@@ -550,7 +551,7 @@ export default function (pi: ExtensionAPI): void {
 			// status: green ok, red failure, dim unknown. The `✓ exit N` header is
 			// dropped — the collapsed row already carries status.
 			const statusKey = details.outcome === "success" ? "success" : "error";
-			const paint = (s: string) => theme.fg(statusKey, s);
+			const paint = fadeRulePaint(theme, statusKey);
 			const body = fadeRowsOf(
 				lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
 				theme,

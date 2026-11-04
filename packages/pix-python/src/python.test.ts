@@ -226,14 +226,14 @@ describe("python_run", () => {
 			expect(ok.at(-2)).toMatch(
 				/^\s+<success>.+<\/success> <muted>exit 0 · \d+ms · \/p\/\.venv\/bin\/python3<\/muted>\s*$/,
 			);
-			expect(ok.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
+			expect(ok.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 
 			const bad = render("error", 1, "Traceback\nZeroDivisionError: division by zero");
 			expect(bad).toContainEqual(
 				expect.stringMatching(/<error>ZeroDivisionError: division by zero<\/error>/),
 			);
 			expect(bad.at(-2)).toMatch(/<error>.+<\/error> <muted>exit 1/);
-			expect(bad.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+			expect(bad.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 
 			// Success with stderr (warnings) uses the warning role, not error.
 			expect(render("success", 0, "DeprecationWarning: x")).toContainEqual(

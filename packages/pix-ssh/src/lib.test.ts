@@ -404,16 +404,16 @@ describe("ssh result renderer", () => {
 			.render(24)
 			.join("\n");
 
-	it("uses dashed status closes in normal and expanded output", () => {
+	it("uses solid status closes in normal and expanded output", () => {
 		const renderer = register();
 		const success = render(renderer, undefined).split("\n");
 		expect(success[0]).toContain("done");
-		expect(success.at(-1)).toBe(`[success]${"- ".repeat(12)}[/]`);
+		expect(success.at(-1)).toBe(`[success]${"─".repeat(24)}[/]`);
 		expect(render(renderer, undefined, false, false, {}, true).split("\n").at(-1)).toBe(
-			`[success]${"- ".repeat(12)}[/]`,
+			`[success]${"─".repeat(24)}[/]`,
 		);
 		expect(render(renderer, undefined, true).split("\n").at(-1)).toBe(
-			`[error]${"- ".repeat(12)}[/]`,
+			`[error]${"─".repeat(24)}[/]`,
 		);
 		for (const outcome of ["denied", "timed-out", "cancelled", "error"]) {
 			expect(
@@ -424,7 +424,7 @@ describe("ssh result renderer", () => {
 					sudo: false,
 					outcome,
 				}),
-			).toContain("[error]- - ");
+			).toContain("[error]────");
 		}
 	});
 
@@ -439,14 +439,14 @@ describe("ssh result renderer", () => {
 		};
 		const partial = render(renderer, running, false, true);
 		expect(partial.split("\n")[0]).toContain("running");
-		expect(partial).not.toContain(`[success]${"- ".repeat(12)}[/]`);
+		expect(partial).not.toContain(`[success]${"─".repeat(24)}[/]`);
 		const open = render(renderer, running);
 		expect(open.split("\n")[0]).toContain("running");
-		expect(open).not.toContain(`[success]${"- ".repeat(12)}[/]`);
+		expect(open).not.toContain(`[success]${"─".repeat(24)}[/]`);
 		const success = { ...running, outcome: "success", exitCode: 0, _render: "done" };
 		const collapsed = render(renderer, success, false, false, { collapsed: true }, false);
 		expect(collapsed.split("\n")[0]).toContain("success");
-		expect(collapsed).not.toContain(`[success]${"- ".repeat(12)}[/]`);
+		expect(collapsed).not.toContain(`[success]${"─".repeat(24)}[/]`);
 	});
 });
 

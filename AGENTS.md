@@ -203,12 +203,11 @@ Transient diagnostics use one shared above-editor slot: one bounded line, newest
 
 ### 7.4 Tool result shape
 
-Pix tool result renderers use one canonical completed-result shape: the unchanged body followed by a full-width, status-colored dashed close. Normal and expanded output use the same outer shape.
+Pix tool result renderers use one canonical completed-result shape: the unchanged body followed by a full-width, status-colored solid close. Normal and expanded output use the same outer shape.
 
 - Use `frameToolResult()` from `@xynogen/pix-pretty/utils`. Do not hand-build rules or duplicate frame logic.
 - Successful completed results use the `success` theme role. Failed results (`isError`) use `error`.
 - Do not add a top rule, `└─`, or continuation indentation to ordinary tool results.
-- Keep solid rules only for intentional inner/detail sections, not outer result chrome.
 - Partial/streaming output stays unframed until completion, so terminal chrome does not move.
 - Auto-collapsed one-line summaries stay unframed and include a status glyph or text label, so color is not the only status signal.
 - Persistent live widgets are separate surfaces: indent child rows by two spaces without tree connectors. A download-progress widget may keep one solid full-width rule above its heading. Clear completed rows after `collapse.delaySec`.

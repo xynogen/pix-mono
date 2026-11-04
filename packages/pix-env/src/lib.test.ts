@@ -391,9 +391,9 @@ describe("read_env tool", () => {
 		const successLines = success.render(20);
 		const failureLines = failure.render(20);
 		expect(successLines[0]?.trimEnd()).toBe("HOST = string");
-		expect(successLines[1]).toBe(`[success]${"- ".repeat(10)}[/]`);
+		expect(successLines[1]).toBe(`[success]${"─".repeat(20)}[/]`);
 		expect(failureLines[0]?.trimEnd()).toBe("HOST = string");
-		expect(failureLines[1]).toBe(`[error]${"- ".repeat(10)}[/]`);
+		expect(failureLines[1]).toBe(`[error]${"─".repeat(20)}[/]`);
 	});
 
 	test("read rejects missing names and no-UI disclosure", async () => {

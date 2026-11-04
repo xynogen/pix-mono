@@ -136,8 +136,8 @@ it("captures registered read pending, completed, expanded and non-text states", 
 		};
 		captures.fallback = await render(fallback);
 		captures.partial = await render(fallback, { isPartial: true });
-		expect(captures.image?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
-		expect(captures.error?.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+		expect(captures.image?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
+		expect(captures.error?.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 		// ponytail: local renderer captures do not replace anchored execution or raw-byte checks.
 		expect(
 			stripVTControlCharacters(

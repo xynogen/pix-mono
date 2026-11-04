@@ -15,10 +15,12 @@ import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
 import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import {
+	fadeRulePaint,
 	formatCollapsedToolRow,
 	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	rule,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
@@ -132,8 +134,7 @@ export function renderClose(
 ): string {
 	if (outcome === "partial") return "";
 	const role = outcome === "error" ? "error" : "success";
-	const glyph = "- ".repeat(Math.ceil(width / 2)).slice(0, width);
-	return theme.fg(role, glyph);
+	return rule(width, fadeRulePaint(theme, role));
 }
 
 export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolDeps): void {

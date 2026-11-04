@@ -176,8 +176,8 @@ it("captures registered write/create completion and the configured diff split th
 			isError: true,
 		});
 		captures.partialError = await render(error, { isError: true, isPartial: true });
-		expect(captures.new?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
-		expect(captures.error?.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+		expect(captures.new?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
+		expect(captures.error?.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 		expect(captures).toMatchSnapshot();
 	} finally {
 		try {

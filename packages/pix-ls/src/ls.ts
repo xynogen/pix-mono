@@ -27,6 +27,7 @@ import type {
 } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
+	fadeRulePaint,
 	fillToolBackground,
 	formatToolCallTitle,
 	frameToolResult,
@@ -232,7 +233,7 @@ export function registerLsTool(
 			if (d?._type === "lsResult" && Array.isArray(d.paths)) {
 				// Batch: text is already `===== dir =====` section blocks, not a single
 				// tree — render as a dim framed block, no per-tree icon layout.
-				const paint = (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s);
+				const paint = fadeRulePaint(theme, renderCtx.isError ? "error" : "success");
 				const lines = String(d.text ?? d.path).split("\n");
 				const out = isPartial ? lines : ruleFrame(lines, [], undefined, paint);
 				text.setText(fillToolBackground(out.join("\n")));
@@ -244,7 +245,7 @@ export function registerLsTool(
 				// Rules follow status color like bash — green ok, red error. Color can
 				// encode status but not the count, so the count stays in the collapsed row.
 				const tree = renderTree(d.text as string, d.path as string, theme, renderCtx);
-				const paint = (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s);
+				const paint = fadeRulePaint(theme, renderCtx.isError ? "error" : "success");
 				const lines = tree.split("\n");
 				const out = isPartial ? lines : ruleFrame(lines, [], undefined, paint);
 				text.setText(fillToolBackground(out.join("\n")));

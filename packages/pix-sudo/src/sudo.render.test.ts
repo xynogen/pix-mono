@@ -135,8 +135,8 @@ test("sudo self-shell calls and all result states", async () => {
 		captures.collapsed = render(output, false, false, true);
 		captures.collapsedError = render(result("denied"), false, false, true);
 		captures.reopened = render(output, true, false, true);
-		expect(captures.success?.at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
-		expect(captures.error?.at(-1)).toBe(`<error>${"- ".repeat(40)}</error>`);
+		expect(captures.success?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
+		expect(captures.error?.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
 		// ponytail: one JSON row array per state keeps the capture small without changing any row bytes.
 		expect(
 			Object.entries(captures)

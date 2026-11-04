@@ -36,6 +36,7 @@ import type {
 import {
 	BODY_PAD,
 	dotJoin,
+	fadeRulePaint,
 	fillToolBackground,
 	formatToolCallTitle,
 	frameToolResult,
@@ -506,7 +507,7 @@ export function registerReadTool(
 				const key = `read:${d.filePath}:${d.offset}:${d.lineCount}:${process.stdout.columns ?? 80}:${renderCtx.expanded ? "full" : "preview"}:${isPartial ? "partial" : "complete"}`;
 				// One framed shape; rules follow status color. The line count lives in the
 				// collapsed row — no floating "N lines" header above the frame.
-				const paint = (s: string) => theme.fg("success", s);
+				const paint = fadeRulePaint(theme, "success");
 				if (renderCtx.state._rk !== key) {
 					renderCtx.state._rk = key;
 					const loading = `${BODY_PAD}${theme.fg("muted", "reading…")}`;

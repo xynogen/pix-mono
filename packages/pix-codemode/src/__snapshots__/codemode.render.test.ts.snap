@@ -71,7 +71,7 @@ exports[`long result wraps preview and expansion at 80 columns: preview 1`] = `
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>",
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>          ",
   "<toolOutput>last</toolOutput>                                                                            ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -82,7 +82,7 @@ exports[`long result wraps preview and expansion at 80 columns: expanded 1`] = `
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>",
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>          ",
   "<toolOutput>last</toolOutput>                                                                            ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -102,7 +102,7 @@ exports[`long result wraps preview and expansion at 120 columns: preview 1`] = `
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>",
   "<toolOutput>abcdefghijabcdefghijabcdefghij</toolOutput>                                                                                          ",
   "<toolOutput>last</toolOutput>                                                                                                                    ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -113,7 +113,7 @@ exports[`long result wraps preview and expansion at 120 columns: expanded 1`] = 
   "<toolOutput>abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij</toolOutput>",
   "<toolOutput>abcdefghijabcdefghijabcdefghij</toolOutput>                                                                                          ",
   "<toolOutput>last</toolOutput>                                                                                                                    ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -122,7 +122,7 @@ exports[`JSON output omits host header and closes with success 1`] = `
   "<syntaxPunctuation>{</syntaxPunctuation>                                                                               ",
   "  <syntaxVariable>"ok"</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> <syntaxKeyword>true</syntaxKeyword>                                                                    ",
   "<syntaxPunctuation>}</syntaxPunctuation>                                                                               ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -135,7 +135,7 @@ exports[`collapsed success hides the call and expansion restores the body: colla
 exports[`collapsed success hides the call and expansion restores the body: expanded 1`] = `
 [
   "<toolOutput>plain</toolOutput>                                                                           ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -143,7 +143,7 @@ exports[`failed output remains visible with an error close 1`] = `
 [
   "<error>Script error:</error>                                                                   ",
   "<error>bad input</error>                                                                       ",
-  "<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>",
+  "<error>────────────────────────────────────────────────────────────────────────────────</error>",
 ]
 `;
 
@@ -167,21 +167,21 @@ exports[`mixed call status, empty output and image placeholder: statuses 1`] = `
   "    <error>✗︎ </error> <toolTitle>read</toolTitle> <dim>file1</dim><muted> · 0.1s · $0.01</muted>                                                ",
   "    <muted>⊘︎ </muted> <toolTitle>read</toolTitle> <dim>file2</dim><muted> · 0.1s · $0.01</muted>                                                ",
   "       <toolOutput>plain</toolOutput>                                                                    ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
 exports[`mixed call status, empty output and image placeholder: empty 1`] = `
 [
   "<muted>(empty output)</muted>                                                                  ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
 exports[`mixed call status, empty output and image placeholder: image 1`] = `
 [
   "<toolOutput>[image: image/png]</toolOutput>                                                              ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
 
@@ -190,6 +190,6 @@ exports[`unknown host output and full-output path remain intact 1`] = `
   "<toolOutput>new host header</toolOutput>                                                                 ",
   "<toolOutput>raw output</toolOutput>                                                                      ",
   "<muted>Full output: fixtures/full.txt</muted>                                                  ",
-  "<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;

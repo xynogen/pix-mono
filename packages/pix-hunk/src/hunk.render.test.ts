@@ -106,7 +106,7 @@ test("hunk captures local self-shell states without running commands", async () 
 				makeRenderCtx() as never,
 			),
 		);
-		expect(fallback.split("\n").at(-1)).toBe(`<success>${"- ".repeat(40)}</success>`);
+		expect(fallback.split("\n").at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 		expect(
 			rows(
 				tool.renderResult?.(

@@ -27,6 +27,7 @@ import type {
 } from "@xynogen/pix-pretty/types";
 import {
 	appendNotices,
+	fadeRulePaint,
 	fillToolBackground,
 	formatToolCallTitle,
 	frameToolResult,
@@ -310,7 +311,7 @@ export function registerFindTool(
 				renderDimPreview(output, theme, {
 					frame: !isPartial,
 					ctx: renderCtx,
-					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
+					paint: fadeRulePaint(theme, renderCtx.isError ? "error" : "success"),
 					highlight:
 						d?._type === "findResult" && !d.patterns ? globHighlight(d.pattern) : undefined,
 				}),

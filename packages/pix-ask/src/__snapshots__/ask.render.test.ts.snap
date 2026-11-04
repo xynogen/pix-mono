@@ -10,11 +10,11 @@ waiting @80
 answered @80
 
 <muted>1:</muted> <success>REST</success>                                                                         
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 error @80
 
 At least one question is required.                                              
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 cancelled @80
 
 <warning>⚠︎ </warning> <toolTitle+bold>ask_user</toolTitle+bold> <muted>·</muted> <muted>cancelled</muted>                                                         

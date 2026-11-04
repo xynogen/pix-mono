@@ -45,6 +45,7 @@ import {
 	BODY_PAD,
 	bodyLine,
 	dotJoin,
+	fadeRulePaint,
 	fillToolBackground,
 	formatCollapsedToolRow,
 	formatToolCallTitle,
@@ -1109,7 +1110,7 @@ export default function (pi: ExtensionAPI): void {
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
 			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme, renderCtx)] : [];
 			const statusKey = details.outcome === "success" ? "success" : "error";
-			const paint = (s: string) => theme.fg(statusKey, s);
+			const paint = fadeRulePaint(theme, statusKey);
 			const body = fadeRowsOf(
 				lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
 				theme,

@@ -10,14 +10,14 @@ fetch:markdown
                                                                                 
    <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                             
    <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                   
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 fetch:partial
 
    <dim>Loading...</dim>                                                                   
 fetch:error
 
    <dim>offline</dim>                                                                      
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 fetch:collapsed-success
 
 <success>✓︎ </success> <toolTitle+bold>fetch</toolTitle+bold> <dim>https://example.test/guide</dim> <muted>·</muted> <muted>2 items · fixture</muted>                         
@@ -34,7 +34,7 @@ fetch:expanded
                                                                                 
    <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                             
    <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                   
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 search:call
 
 <warning>◐︎ </warning> <toolTitle+bold>search</toolTitle+bold> <dim>code guide</dim>                                                            
@@ -44,14 +44,14 @@ search:markdown
                                                                                 
    <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                             
    <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                   
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 search:partial
 
    <dim>Loading...</dim>                                                                   
 search:error
 
    <dim>offline</dim>                                                                      
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>
+<error>────────────────────────────────────────────────────────────────────────────────</error>
 search:collapsed-success
 
 <success>✓︎ </success> <toolTitle+bold>search</toolTitle+bold> <dim>“code guide”</dim> <muted>·</muted> <muted>2 items · fixture</muted>                                      
@@ -68,7 +68,7 @@ search:expanded
                                                                                 
    <mdListBullet>- </mdListBullet><dim+bold>Read</dim+bold><dim> the code.</dim>                                                             
    <mdListBullet>- </mdListBullet><dim+italic>Test</dim+italic><dim> it.</dim>                                                                   
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 fetch:preview32
 
    <dim>row 1</dim>                                                                        
@@ -88,7 +88,7 @@ fetch:preview32
    <muted>row 15                                                                       </muted>
    <muted>row 16                                                                       </muted>
 	<muted>… 17 more lines (ctrl+o to expand)</muted>                                           
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 fetch:full
 
    <dim>row 1</dim>                                                                        
@@ -124,15 +124,15 @@ fetch:full
    <dim>row 31</dim>                                                                       
    <dim>row 32</dim>                                                                       
    <dim>row 33</dim>                                                                       
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 fetch:empty
 
    <muted>(empty)</muted>                                                                      
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
+<success>────────────────────────────────────────────────────────────────────────────────</success>
 fetch:host-error
 
    <error>host failed</error>                                                                  
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"
+<error>────────────────────────────────────────────────────────────────────────────────</error>"
 `;
 
 exports[`captures actual web command rows with fixed provider maps and no saves 1`] = `

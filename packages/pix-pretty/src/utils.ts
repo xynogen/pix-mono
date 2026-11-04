@@ -1,11 +1,12 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+	type Color,
 	type Component,
 	getCapabilities,
 	hyperlink,
 	MouseRegion,
-	type mixColors,
+	mixColors,
 	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
@@ -90,9 +91,7 @@ type ResultComponent = ViewportComponent & {
 };
 
 type FramableComponent = Partial<ResultComponent> & Partial<TextComponentLike>;
-type ResultFrameTheme = {
-	fg: (key: "success" | "error", text: string) => string;
-};
+type ResultFrameTheme = StatusRuleTheme;
 
 const RESULT_FRAME = Symbol("pix.resultFrame");
 type FramedResultComponent = ResultComponent & {
@@ -622,12 +621,47 @@ export function linkedShortPath(cwd: string, home: string, p: string): string {
 /** Paints a rule line. Callers pass `(s) => theme.fg(status, s)` so the frame
  *  tint follows the active theme (success/error/warning). Default = neutral FG_RULE. */
 export type RulePaint = (glyphs: string) => string;
-export type RuleStyle = "solid" | "dashed";
 
-/** Render a full-width solid rule or a spaced ASCII dashed separator. */
-export function rule(w: number, paint?: RulePaint, style: RuleStyle = "solid"): string {
-	const glyphs = style === "dashed" ? "- ".repeat(Math.ceil(w / 2)).slice(0, w) : "─".repeat(w);
+/** Render a full-width solid rule. */
+export function rule(w: number, paint?: RulePaint): string {
+	const glyphs = "─".repeat(w);
 	return paint ? paint(glyphs) : `${FG_RULE}${glyphs}${RST}`;
+}
+
+/** Theme slice for {@link fadeRulePaint}. Without `colors`/`style` the rule stays flat. */
+export type StatusRuleTheme = {
+	fg: (key: "success" | "error", text: string) => string;
+	colors?: Readonly<Record<string, Color | undefined>>;
+	style?: (text: string, style: { fg: Color }) => string;
+};
+
+/**
+ * Status-colored rule paint that fades in on the left and out on the right: the last
+ * `fadeColumns` cells at each end mix toward the tool background. Themes without color
+ * data get the plain `theme.fg(role, …)` rule.
+ */
+export function fadeRulePaint(
+	theme: StatusRuleTheme,
+	role: "success" | "error",
+	fadeColumns = 8,
+): RulePaint {
+	return (glyphs) => {
+		const cells = [...glyphs];
+		const edge = Math.min(fadeColumns, Math.floor(cells.length / 2));
+		const fg = theme.colors?.[role];
+		const bg = theme.colors?.[role === "error" ? "toolErrorBg" : "toolSuccessBg"];
+		if (!fg || !bg || !theme.style || edge < 1) return theme.fg(role, glyphs);
+		// Cell i from the edge (0 = outermost) is faintest at the edge, full color past `edge`.
+		// Call as a method: Pi's Theme.style reads `this`.
+		const cell = (ch: string, i: number) =>
+			theme.style?.(ch, { fg: mixColors(fg, bg, 1 - (i + 1) / (edge + 1)) }) ?? ch;
+		const left = cells.slice(0, edge).map(cell).join("");
+		const right = cells
+			.slice(-edge)
+			.map((ch, i) => cell(ch, edge - 1 - i))
+			.join("");
+		return left + theme.fg(role, cells.slice(edge, -edge).join("")) + right;
+	};
 }
 
 /** Narrow theme for helpers that paint only `muted`. Pi's Theme and FgTheme both fit. */
@@ -778,7 +812,7 @@ function decorateToolResult(
 		},
 		wantsKeyRelease: component.wantsKeyRelease,
 		render(width) {
-			const paint = (line: string) => frameTheme.fg(failed ? "error" : "success", line);
+			const paint = fadeRulePaint(frameTheme, failed ? "error" : "success");
 			const lines = component.render?.(width) ?? [];
 			return solid ? sectionFrame(lines, [], width, paint) : ruleFrame(lines, [], width, paint);
 		},
@@ -799,7 +833,7 @@ export function unframeToolResult<T extends FramableComponent>(component: T): T 
 }
 
 /**
- * Default completed-tool chrome: unchanged body, full-width dashed close, then
+ * Default completed-tool chrome: unchanged body, full-width solid close, then
  * footer lines. Existing callers inherit this distro-wide presentation.
  */
 export function ruleFrame(
@@ -808,7 +842,7 @@ export function ruleFrame(
 	width?: number,
 	paint?: RulePaint,
 ): string[] {
-	return [...bodyLines, rule(width ?? termW(), paint, "dashed"), ...footerLines];
+	return [...bodyLines, rule(width ?? termW(), paint), ...footerLines];
 }
 
 /** Explicit solid top/bottom frame for sections that need stronger separation. */

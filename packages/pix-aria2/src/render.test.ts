@@ -90,7 +90,7 @@ function result(ok: boolean, lines: string[], error?: string) {
 }
 
 describe("download renderer", () => {
-	test("uses compact output with a dashed close when collapsed", () => {
+	test("uses compact output with a solid close when collapsed", () => {
 		const rendered = tool()
 			.renderResult(
 				result(true, ["dl-sleek-pika-63 queued — https://example.com/archlinux.iso"]),
@@ -120,7 +120,7 @@ describe("download renderer", () => {
 		expect(rendered).toContain("aria2c not found");
 	});
 
-	test("closes expanded success and error details with status-colored dashes", () => {
+	test("closes expanded success and error details with a status-colored rule", () => {
 		const theme = {
 			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
 			bold: (text: string) => text,
@@ -144,8 +144,8 @@ describe("download renderer", () => {
 			.render(20);
 
 		expect(success[0]?.trimEnd()).toBe("queued");
-		expect(success.at(-1)).toBe(`<success>${"- ".repeat(10)}</success>`);
+		expect(success.at(-1)).toBe(`<success>${"─".repeat(20)}</success>`);
 		expect(error[0]?.trimEnd()).toBe("failed");
-		expect(error.at(-1)).toBe(`<error>${"- ".repeat(10)}</error>`);
+		expect(error.at(-1)).toBe(`<error>${"─".repeat(20)}</error>`);
 	});
 });

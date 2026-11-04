@@ -13,7 +13,7 @@ exports[`hunk captures local self-shell states without running commands: collaps
 exports[`hunk captures local self-shell states without running commands: expanded 1`] = `
 "
 <dim>src/a.ts:h1</dim> <muted>· 1 comment</muted>                                                         
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+<success>────────────────────────────────────────────────────────────────────────────────</success>"
 `;
 
 exports[`hunk captures local self-shell states without running commands: partial 1`] = `
@@ -30,7 +30,7 @@ exports[`hunk captures local self-shell states without running commands: expande
 "
 <dim>complete</dim>                                                                        
 <error>list: session gone</error>                                                              
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"
+<error>────────────────────────────────────────────────────────────────────────────────</error>"
 `;
 
 exports[`hunk captures local self-shell states without running commands: long error 1`] = `
@@ -38,12 +38,12 @@ exports[`hunk captures local self-shell states without running commands: long er
 <dim>complete</dim>                                                                                                                
 <error>list: session gone: detail detail detail detail detail detail detail detail detail detail detail detail detail detail   </error>
 <error>detail detail detail detail detail detail END</error>                                                                           
-<error>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </error>"
+<error>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</error>"
 `;
 
 exports[`hunk captures local self-shell states without running commands: no details 1`] = `
 "
 raw fallback                                                                    
   detail                                                                        
-<success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>"
+<success>────────────────────────────────────────────────────────────────────────────────</success>"
 `;

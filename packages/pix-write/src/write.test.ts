@@ -99,7 +99,7 @@ describe("registerWriteTool", () => {
 				?.render(width) ?? [];
 
 		expect(render({ timer: 1 })[0]).toContain(diagnostic);
-		expect(render({ timer: 1 }).at(-1)).toBe(`[error]${"- ".repeat(40)}[/error]`);
+		expect(render({ timer: 1 }).at(-1)).toBe(`[error]${"─".repeat(80)}[/error]`);
 		expect(render({ timer: 1 }).join("\n")).toContain(diagnostic);
 		const collapsed = render({ collapsed: true }, false, false, 80, makeTheme()).join("\n");
 		expect(collapsed).toContain("write");
@@ -107,7 +107,7 @@ describe("registerWriteTool", () => {
 		expect(collapsed).toContain("failed");
 		expect(render({ collapsed: true }, false, false, 80, makeTheme())).toHaveLength(1);
 		expect(render({ collapsed: true }, true).join("\n")).toContain(diagnostic);
-		expect(render({ collapsed: true }, true).at(-1)).toBe(`[error]${"- ".repeat(40)}[/error]`);
+		expect(render({ collapsed: true }, true).at(-1)).toBe(`[error]${"─".repeat(80)}[/error]`);
 		expect(render({}, false, true)).toEqual([expect.stringContaining(diagnostic)]);
 	});
 });
