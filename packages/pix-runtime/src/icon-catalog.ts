@@ -58,6 +58,12 @@ const CATALOG = {
 	"net.in": { nerd: "\u21E1", unicode: "\u21E1", ascii: "in" },
 	"net.out": { nerd: "\u21E3", unicode: "\u21E3", ascii: "out" },
 	score: { nerd: "\u26A1", unicode: "\u26A1", ascii: "S" },
+	// Distinct shapes: chip (CPU), card (GPU), stick (RAM). md-memory looks like the CPU chip.
+	"sys.cpu": { nerd: "\u{F4BC}", unicode: `\u2699${VS}`, ascii: "cpu" },
+	"sys.gpu": { nerd: "\u{F08AE}", unicode: `\u25A6${VS}`, ascii: "gpu" },
+	"sys.ram": { nerd: "\u{EFC5}", unicode: `\u2630${VS}`, ascii: "ram" },
+	"sys.temp": { nerd: "\u{F050F}", unicode: `\u2668${VS}`, ascii: "t" },
+	clock: { nerd: "\u{F0150}", unicode: `\u25F7${VS}`, ascii: "@" },
 
 	// ── misc ──────────────────────────────────────────────────────────────
 	ok: { nerd: "\u2713", unicode: "\u2713", ascii: "ok" },

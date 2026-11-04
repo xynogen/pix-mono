@@ -62,7 +62,9 @@ test("Settings and Footer actual overlay captures", async () => {
 		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot(
 			"footer changed",
 		);
-		for (let i = 0; i < 12; i++) component.handleInput("\x1b[B");
+		// `wrap` is the last footer flag: move past every other one.
+		const footerFlags = Object.keys(prettySection.defaults.footer).length;
+		for (let i = 0; i < footerFlags - 1; i++) component.handleInput("\x1b[B");
 		expect(captureRows(component, { width: 80, surface: "component" }).join("\n")).toMatch(
 			/wrap line.*off/,
 		);

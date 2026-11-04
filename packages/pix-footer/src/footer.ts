@@ -2,7 +2,7 @@
  * Footer extension — pure-prompt style.
  *
  * Layout:
- *   [MODE] | ~/cwd (branch *±⇡n⇣n) | context        model · thinking · price · score | statuses | tokens | TPS
+ *   [MODE] | ~/cwd (branch *±⇡n⇣n) | context        model · thinking · price · score | statuses | tokens | TPS | cpu gpu ram temp | clock
  *   (right block is flush right when it fits; otherwise one joined line)
  *
  * - Branch shown with zsh-style dirty/ahead/behind markers.
@@ -31,6 +31,7 @@ import { fmtTokenCount } from "@xynogen/pix-pretty/widget-format";
 import { config, onConfigChange } from "@xynogen/pix-runtime/config";
 import { runGit } from "@xynogen/pix-runtime/os";
 import { prettySection } from "@xynogen/pix-runtime/sections";
+import { type CpuTimes, readSystemStats, type SystemStats } from "@xynogen/pix-runtime/sysstat";
 
 // ─── Pure formatting helpers ─────────────────────────────────────────
 
@@ -208,6 +209,31 @@ function renderCtxUsage(
 	);
 }
 
+type SysIcon = "sys.cpu" | "sys.gpu" | "sys.ram" | "sys.temp";
+
+/** "cpu 12% gpu 3% ram 58% 56°": icon muted, value dim, warning/error past load limits. */
+export function renderSystem(stats: SystemStats, theme: Theme): string {
+	const seg = (key: SysIcon, n: number | undefined, unit: string, warn: number, err: number) =>
+		n === undefined
+			? ""
+			: theme.fg("muted", `${icon(key)} `) +
+				theme.fg(n >= err ? "error" : n >= warn ? "warning" : "dim", `${n}${unit}`);
+	return [
+		seg("sys.cpu", stats.cpu, "%", 70, 90),
+		seg("sys.gpu", stats.gpu, "%", 70, 90),
+		seg("sys.ram", stats.ram, "%", 80, 92),
+		seg("sys.temp", stats.temp, "°", 75, 90),
+	]
+		.filter(Boolean)
+		.join(" ");
+}
+
+/** Local wall clock, "HH:MM". */
+export function renderClock(now: Date, theme: Theme): string {
+	const hhmm = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+	return theme.fg("muted", `${icon("clock")} `) + theme.fg("dim", hhmm);
+}
+
 /** Branch + dirty/ahead/behind markers. */
 function renderBranch(
 	branch: string | null,
@@ -358,6 +384,13 @@ export default function (pi: ExtensionAPI) {
 	let gitStatus: GitStatus | null = null;
 	let gitTimer: ReturnType<typeof setInterval> | null = null;
 	let currentCwd = "";
+	let sysStats: SystemStats = {};
+	let cpuPrev: CpuTimes | undefined;
+	const sampleSystem = () => {
+		const next = readSystemStats(cpuPrev);
+		cpuPrev = next.times;
+		sysStats = next.stats;
+	};
 
 	// ── TPS tracking ──────────────────────────────────────────────
 
@@ -503,9 +536,13 @@ export default function (pi: ExtensionAPI) {
 		warnUi = ctx.ui;
 		void refreshGit(currentCwd);
 		if (gitTimer) clearInterval(gitTimer);
+		sampleSystem();
 		gitTimer = setInterval(() => {
 			// ponytail: currentCwd avoids capturing stale ctx after session replacement
 			if (currentCwd) void refreshGit(currentCwd);
+			// Same 2s tick refreshes host stats and the clock.
+			sampleSystem();
+			requestRender?.();
 		}, GIT_POLL_MS);
 
 		ctx.ui.setFooter((tui, theme: Theme, footerData: ReadonlyFooterDataProvider) => {
@@ -562,6 +599,8 @@ export default function (pi: ExtensionAPI) {
 						parts.statuses ? otherPart : "",
 						tokens,
 						parts.tps && liveTps ? theme.fg("accent", liveTps) : "",
+						parts.system ? renderSystem(sysStats, theme) : "",
+						parts.clock ? renderClock(new Date(Date.now()), theme) : "",
 					]
 						.filter(Boolean)
 						.join(sep);

@@ -36,6 +36,7 @@
 		"./testing": "./src/testing.ts",
 		"./exec": "./src/exec.ts",
 		"./os": "./src/os.ts",
+		"./sysstat": "./src/sysstat.ts",
 		"./audio": "./src/audio.ts",
 		"./safe-path": "./src/safe-path.ts",
 		"./which": "./src/which.ts",

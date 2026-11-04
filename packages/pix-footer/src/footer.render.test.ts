@@ -4,6 +4,7 @@ import { type Color, colorToHex, rgbColor, visibleWidth } from "@earendil-works/
 import { benchlm, modelgrep } from "@xynogen/pix-data";
 import * as os from "@xynogen/pix-runtime/os";
 import { prettySection } from "@xynogen/pix-runtime/sections";
+import * as sysstat from "@xynogen/pix-runtime/sysstat";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerFooter from "./footer.ts";
 
@@ -43,6 +44,13 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		{ id: "fixture/capture", benchmarks: { artificial_analysis: { coding: 70 } } },
 	]);
 	const benchmarks = spyOn(benchlm, "getCached").mockReturnValue([]);
+	// Host load varies, so pin it; the 10s clock renders as 00:00 under the pinned TZ.
+	const stats = spyOn(sysstat, "readSystemStats").mockReturnValue({
+		stats: { cpu: 12, gpu: 95, ram: 58, temp: 56 },
+		times: { busy: 0, total: 0 },
+	});
+	const tz = process.env.TZ;
+	process.env.TZ = "UTC";
 	const hooks = new Map<string, (event: unknown, ctx?: unknown) => Promise<void> | void>();
 	let component: { render(width: number): string[]; dispose(): void } | undefined;
 	let branch = "main";
@@ -115,7 +123,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		};
 		const defaults = prettySection.defaults.footer;
 		const flags = Object.keys(defaults) as (keyof typeof defaults)[];
-		expect(flags).toHaveLength(13);
+		expect(flags).toHaveLength(15);
 		take("idle / 80");
 		take("idle / 120", 120);
 		const wide = footer.render(240);
@@ -232,6 +240,9 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 			git.mockRestore();
 			models.mockRestore();
 			benchmarks.mockRestore();
+			stats.mockRestore();
+			if (tz === undefined) delete process.env.TZ;
+			else process.env.TZ = tz;
 			await fixture.restore();
 		}
 	}
