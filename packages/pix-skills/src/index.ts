@@ -25,6 +25,7 @@ import {
 	getErrorMessage,
 	hideCollapsedToolCall,
 	humanSize,
+	moreLines,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
@@ -743,11 +744,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 				component.setText(
 					options.expanded
 						? body
-						: fadeTextRow(body, theme as FadeTheme, (n) =>
-								renderCtx.keyHint
-									? renderCtx.keyHint("app.tools.expand", `+${n} lines`)
-									: theme.fg("muted", `+${n} lines (ctrl+o to expand)`),
-							),
+						: fadeTextRow(body, theme as FadeTheme, (n) => moreLines(n, theme, renderCtx)),
 				);
 				return options.isPartial ? component : frameToolResult(component, theme, false);
 			}

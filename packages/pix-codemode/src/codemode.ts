@@ -8,10 +8,11 @@ import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { type FadeTheme, fadePaint, fadeText } from "@xynogen/pix-pretty/text";
+import { type FadeTheme, fadePaint, fadeRowsOf, fadeText } from "@xynogen/pix-pretty/text";
 import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
+	expandHint,
 	formatJson,
 	formatToolCallTitle,
 	frameToolResult,
@@ -155,6 +156,7 @@ type Context = {
 	lastComponent?: TextComponentLike;
 	/** Host-recorded execution time (Pi >= 1.1). */
 	durationMs?: number;
+	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
 };
 const PreviewText = viewportTextConstructor(Text);
 const costText = (cost: number) => `$${cost >= 0.01 ? cost.toFixed(2) : cost.toPrecision(2)}`;
@@ -197,6 +199,7 @@ export function renderCall(args: { code?: string }, theme: ThemeLike, ctx: Conte
 		ctx.invalidate,
 		ctx.expanded,
 		3,
+		ctx,
 	);
 }
 
@@ -384,8 +387,12 @@ export function renderResult(
 	const preview =
 		!options.expanded && rows.length > MAX_PREVIEW_LINES
 			? [
-					...rows.slice(0, MAX_PREVIEW_LINES),
-					theme.fg("muted", `… +${rows.length - MAX_PREVIEW_LINES} lines`),
+					...fadeRowsOf(
+						rows.slice(0, MAX_PREVIEW_LINES + 1),
+						theme as FadeTheme,
+						MAX_PREVIEW_LINES,
+					),
+					`${theme.fg("muted", `… +${rows.length - MAX_PREVIEW_LINES} lines `)}${expandHint(theme, ctx)}`,
 				]
 			: rows;
 	if (result.details?.fullOutputPath)

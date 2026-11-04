@@ -468,6 +468,8 @@ export default function (pi: ExtensionAPI): void {
 				renderCtx.state,
 				renderCtx.invalidate,
 				renderCtx.expanded,
+				3,
+				renderCtx,
 			);
 		}) as never,
 
@@ -543,7 +545,7 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme)] : [];
+			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme, renderCtx)] : [];
 			// Every result (including single-line) is framed; the rules follow exit
 			// status: green ok, red failure, dim unknown. The `✓ exit N` header is
 			// dropped — the collapsed row already carries status.

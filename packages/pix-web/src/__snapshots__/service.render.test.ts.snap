@@ -87,7 +87,7 @@ fetch:preview32
    <muted>row 14                                                                       </muted>
    <muted>row 15                                                                       </muted>
    <muted>row 16                                                                       </muted>
-	<muted>… 17 more lines</muted>                                                              
+	<muted>… 17 more lines (ctrl+o to expand)</muted>                                           
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 fetch:full
 

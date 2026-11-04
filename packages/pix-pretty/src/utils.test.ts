@@ -780,9 +780,15 @@ describe("bodyLine / moreLines", () => {
 		expect([...visible].length).toBe(termW() - 2); // 1 tab char = 3 cells
 	});
 
-	it("writes an aligned muted overflow footer", () => {
-		expect(moreLines(1, tag)).toBe(`${BODY_PAD}<muted>… 1 more line</muted>`);
-		expect(moreLines(3, tag)).toBe(`${BODY_PAD}<muted>… 3 more lines</muted>`);
+	it("writes an aligned muted overflow footer with the expand hint", () => {
+		// Shape: `<pad>… N more line(s) (<key> to expand)`; the key comes from the host.
+		const plain = (s: string) => s.replace(/<\/?[a-z]+>/g, "");
+		expect(plain(moreLines(1, tag))).toBe(`${BODY_PAD}… 1 more line (ctrl+o to expand)`);
+		expect(plain(moreLines(3, tag))).toBe(`${BODY_PAD}… 3 more lines (ctrl+o to expand)`);
+		const keyHint = (_id: string, text: string) => `alt+x ${text}`;
+		expect(plain(moreLines(2, tag, { keyHint }))).toBe(
+			`${BODY_PAD}… 2 more lines (alt+x to expand)`,
+		);
 	});
 });
 

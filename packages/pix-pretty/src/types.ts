@@ -74,6 +74,8 @@ export type RenderContextLike<
 	toolCallId?: string;
 	/** Host-recorded execution time of the final result (Pi >= 1.1). Undefined while partial. */
 	durationMs?: number;
+	/** Host-styled `<keys> <description>` for a keybinding (Pi >= 1.5). Use for the expand hint. */
+	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
 };
 
 type SessionContextLike = ExtensionContext;

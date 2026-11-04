@@ -22,10 +22,10 @@ exports[`truncated and expanded call at 80 columns: preview 1`] = `
   "   <syntaxKeyword>const</syntaxKeyword> n10 = <syntaxNumber>10</syntaxNumber>;",
   "   <syntaxKeyword>const</syntaxKeyword> n11 = <syntaxNumber>11</syntaxNumber>;",
   "   <syntaxKeyword>const</syntaxKeyword> n12 = <syntaxNumber>12</syntaxNumber>;",
-  "   <syntaxKeyword>const</syntaxKeyword> n13 = <syntaxNumber>13</syntaxNumber>;",
-  "   <syntaxKeyword>const</syntaxKeyword> n14 = <syntaxNumber>14</syntaxNumber>;",
-  "   <syntaxKeyword>const</syntaxKeyword> n15 = <syntaxNumber>15</syntaxNumber>;",
-  "<muted>   … +4 lines</muted>",
+  "   <muted>const n13 = 13;</muted>",
+  "   <muted>const n14 = 14;</muted>",
+  "   <muted>const n15 = 15;</muted>",
+  "<muted>   … +4 lines (ctrl+o to expand)</muted>",
 ]
 `;
 

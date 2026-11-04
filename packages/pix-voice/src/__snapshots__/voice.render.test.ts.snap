@@ -124,7 +124,7 @@ transcribe:preview-32
    <muted>line 30</muted>                                                                      
    <muted>line 31</muted>                                                                      
    <muted>line 32</muted>                                                                      
-   <muted>… 1 more line</muted>                                                                
+   <muted>… 1 more line (ctrl+o to expand)</muted>                                             
 <success>- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </success>
 transcribe:preview-full
 

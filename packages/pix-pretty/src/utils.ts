@@ -445,6 +445,8 @@ export type DimPreviewOptions = {
 	frame?: boolean;
 	/** Tint the frame rules (green ok, red error) — same status color as bash/ls. */
 	paint?: RulePaint;
+	/** Renderer context: the overflow row shows the user's expand key. */
+	ctx?: ExpandHintCtx;
 };
 
 /** Compile a highlight pattern into a global RegExp, or null when it can't
@@ -517,7 +519,8 @@ export function renderDimPreview(
 		maxLines,
 	);
 	const header = opts.header ? `${BODY_PAD}${theme.fg("dim", opts.header)}` : undefined;
-	const overflow = lines.length > maxLines ? moreLines(lines.length - maxLines, theme) : undefined;
+	const overflow =
+		lines.length > maxLines ? moreLines(lines.length - maxLines, theme, opts.ctx) : undefined;
 
 	if (opts.frame) {
 		// One shape regardless of line count: a single framed box, no floating
@@ -697,9 +700,29 @@ export function bodyLine(
 	return `${BODY_PAD}${sectionRule(line, theme, termW() - 3) ?? paint(line)}`;
 }
 
-/** Muted `… N more lines` footer for a truncated tool-result body. */
-export function moreLines(count: number, theme: MutedTheme): string {
-	return `${BODY_PAD}${theme.fg("muted", `… ${pluralize(count, "more line")}`)}`;
+/** Renderer context slice that knows the user's expand key (Pi's `ToolRenderContext`). */
+export type ExpandHintCtx = {
+	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
+	/** Expanded view: renderers that take this context show every row, no hint. */
+	expanded?: boolean;
+};
+
+/**
+ * `(ctrl+o to expand)` with the user's configured key, styled like Pi's own hint.
+ * Without a host `keyHint` (tests, old hosts), the key falls back to `ctrl+o`.
+ */
+export function expandHint(theme: MutedTheme, ctx?: ExpandHintCtx): string {
+	const hint =
+		ctx?.keyHint?.("app.tools.expand", "to expand") ?? theme.fg("muted", "ctrl+o to expand");
+	return `${theme.fg("muted", "(")}${hint}${theme.fg("muted", ")")}`;
+}
+
+/**
+ * Muted `… N more lines (ctrl+o to expand)` footer for a truncated tool-result body.
+ * Pass the renderer context so the hint shows the user's own expand key.
+ */
+export function moreLines(count: number, theme: MutedTheme, ctx?: ExpandHintCtx): string {
+	return `${BODY_PAD}${theme.fg("muted", `… ${pluralize(count, "more line")} `)}${expandHint(theme, ctx)}`;
 }
 
 /** Decorate completed tool output with status-colored default chrome. */

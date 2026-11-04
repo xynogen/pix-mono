@@ -35,6 +35,7 @@ interface RenderCtx {
 	state: Record<string, unknown>;
 	expanded: boolean;
 	invalidate: () => void;
+	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
 }
 
 interface CompactRendererConfig<TDetails> {
@@ -59,13 +60,16 @@ function allText(result: AgentToolResult<unknown>): string {
 		.join("\n");
 }
 
-function dimBody(body: string, theme: Theme, expanded: boolean): string {
+function dimBody(body: string, theme: Theme, ctx: RenderCtx, expanded: boolean): string {
 	const lines = body.split("\n");
 	const maxShow = expanded ? lines.length : MAX_PREVIEW_LINES;
-	const shown = lines.slice(0, maxShow);
-	const out = shown.map((line) => bodyLine(line, theme, (l) => theme.fg("dim", l)));
+	const out = fadeRowsOf(
+		lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme, (l) => theme.fg("dim", l))),
+		theme,
+		maxShow,
+	);
 	const remaining = lines.length - maxShow;
-	if (remaining > 0) out.push(moreLines(remaining, theme));
+	if (remaining > 0) out.push(moreLines(remaining, theme, ctx));
 	return out.join("\n");
 }
 
@@ -126,7 +130,7 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 
 		if (opts.isPartial || isError) {
 			const text = getText(ctx.lastComponent);
-			text.setText(dimBody(body, theme, opts.expanded));
+			text.setText(dimBody(body, theme, ctx, opts.expanded));
 			return opts.isPartial ? text : frameToolResult(text, theme, isError);
 		}
 		const bodyView = new Box(0, 0);
@@ -142,7 +146,7 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 					const rows = markdown.render(width);
 					const hidden = rows.length - MAX_PREVIEW_LINES;
 					const shown = fadeRowsOf(rows, theme, MAX_PREVIEW_LINES);
-					return hidden > 0 ? [...shown, moreLines(hidden, theme)] : shown;
+					return hidden > 0 ? [...shown, moreLines(hidden, theme, ctx)] : shown;
 				},
 			});
 		return frameToolResult(bodyView, theme, false);

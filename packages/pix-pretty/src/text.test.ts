@@ -29,6 +29,23 @@ describe("fadeTextRow", () => {
 		expect(rows).toEqual(["   P0", "   P1", "   P2", "   <muted>P3</muted>"]);
 	});
 
+	test("blank rows take no fade step: the steps land on the last rows with text", () => {
+		const rows = fadeRowsOf(["A", "B", "C", "D", "", "E", "F", "G", "H", "I"], theme, 9, 3);
+		expect(rows).toEqual([
+			"A",
+			"B",
+			"C",
+			"D",
+			"",
+			"E",
+			"<muted>F</muted>",
+			"<muted>G</muted>",
+			"<muted>H</muted>",
+		]);
+		const gap = fadeRowsOf(["A", "B", "C", "D", "E", "F", "G", "", "H", "I"], theme, 9, 3);
+		expect(gap.slice(5)).toEqual(["<muted>F</muted>", "<muted>G</muted>", "", "<muted>H</muted>"]);
+	});
+
 	test("fades toward the background but never reaches it", () => {
 		const reds: number[] = [];
 		// dim is red, background is black: the red channel measures how far each row faded.
@@ -42,9 +59,11 @@ describe("fadeTextRow", () => {
 		};
 		fadeTextRow(body, { ...theme, colors, style }, hint, 9, 3);
 		expect(reds).toHaveLength(3);
-		expect(reds[0]).toBeGreaterThan(reds[1] ?? 0);
-		expect(reds[1]).toBeGreaterThan(reds[2] ?? 0);
-		expect(reds[2]).toBeGreaterThan(0);
+		// Painted bottom-up: the last row is faintest but still above the background.
+		const [last = 0, middle = 0, first = 0] = reds;
+		expect(first).toBeGreaterThan(middle);
+		expect(middle).toBeGreaterThan(last);
+		expect(last).toBeGreaterThan(0);
 	});
 });
 

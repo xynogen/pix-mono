@@ -243,7 +243,7 @@ export function registerLsTool(
 				// "N entries" header (the collapsed row already carries the count).
 				// Rules follow status color like bash — green ok, red error. Color can
 				// encode status but not the count, so the count stays in the collapsed row.
-				const tree = renderTree(d.text as string, d.path as string, theme);
+				const tree = renderTree(d.text as string, d.path as string, theme, renderCtx);
 				const paint = (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s);
 				const lines = tree.split("\n");
 				const out = isPartial ? lines : ruleFrame(lines, [], undefined, paint);

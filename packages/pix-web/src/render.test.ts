@@ -63,7 +63,7 @@ test("shows a bounded Markdown preview and the full content when expanded", asyn
 		);
 		// 16 rendered rows; the last 3 fade (muted on a tag theme), then the hidden count.
 		expect(preview).toMatch(
-			/Item 10[\s\S]*<muted>[^\n]*Item 11[\s\S]*<muted>[^\n]*Item 13.*<\/muted>\n\s*<muted>… 26 more lines<\/muted>/,
+			/Item 10[\s\S]*<muted>[^\n]*Item 11[\s\S]*<muted>[^\n]*Item 13.*<\/muted>\n\s*<muted>… 26 more lines .*ctrl\+o to expand/,
 		);
 		expect(preview.split("\n").filter((line) => line.includes("Item"))).toHaveLength(14);
 		expect(full).toContain("Item 39");

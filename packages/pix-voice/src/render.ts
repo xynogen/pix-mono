@@ -44,6 +44,7 @@ interface RenderCtx {
 	state: Record<string, unknown>;
 	expanded: boolean;
 	invalidate: () => void;
+	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
 }
 
 interface CompactRendererConfig<TDetails> {
@@ -71,7 +72,7 @@ function allText(result: AgentToolResult<unknown>): string {
 		.join("\n");
 }
 
-function dimBody(body: string, theme: Theme, expanded: boolean): string {
+function dimBody(body: string, theme: Theme, ctx: RenderCtx, expanded: boolean): string {
 	const lines = body.split("\n");
 	const maxShow = expanded ? lines.length : MAX_PREVIEW_LINES;
 	const out = fadeRowsOf(
@@ -80,7 +81,7 @@ function dimBody(body: string, theme: Theme, expanded: boolean): string {
 		maxShow,
 	);
 	const remaining = lines.length - maxShow;
-	if (remaining > 0) out.push(moreLines(remaining, theme));
+	if (remaining > 0) out.push(moreLines(remaining, theme, ctx));
 	return out.join("\n");
 }
 
@@ -140,7 +141,7 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 			return text;
 		}
 
-		text.setText(dimBody(body, theme, opts.expanded));
+		text.setText(dimBody(body, theme, ctx, opts.expanded));
 		return opts.isPartial ? text : frameToolResult(text, theme, isError);
 	};
 }

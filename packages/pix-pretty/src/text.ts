@@ -129,6 +129,8 @@ export function fadeTextRow(
  * `maxLines` rows, the last `fadeRows` of them fading. Returns all rows unchanged when
  * they fit, so `fadeRowsOf(lines, theme, expanded ? Infinity : MAX)` replaces
  * `lines.slice(0, max)`. The caller adds its own "… N more" / hint row.
+ *
+ * Blank rows never take a fade step: the steps go to the last rows with text.
  */
 export function fadeRowsOf(
 	lines: string[],
@@ -140,13 +142,15 @@ export function fadeRowsOf(
 	const paint = fadePaint(theme);
 	// At most a third of the preview fades, so short previews stay readable.
 	const rows = Math.min(fadeRows, Math.floor(maxLines / 3));
-	return lines.slice(0, maxLines).map((line, i) => {
-		const step = i - (maxLines - rows) + 1;
-		if (step <= 0) return line;
-		// Keep leading padding uncolored; stop at 0.85 so the last row stays faintly readable.
-		const plain = stripTerminalSequences(line);
+	const shown = lines.slice(0, maxLines);
+	// Walk up from the bottom: the last text row is faintest, blank rows are skipped.
+	for (let i = shown.length - 1, step = rows; i >= 0 && step > 0; i--) {
+		const plain = stripTerminalSequences(shown[i] ?? "");
 		const text = plain.trimStart();
-		if (!text) return plain;
-		return plain.slice(0, plain.length - text.length) + paint(text, (step / (rows + 1)) * 0.85);
-	});
+		if (!text) continue;
+		// Keep leading padding uncolored; stop at 0.85 so the last row stays faintly readable.
+		shown[i] = plain.slice(0, plain.length - text.length) + paint(text, (step / (rows + 1)) * 0.85);
+		step--;
+	}
+	return shown;
 }

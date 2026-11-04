@@ -177,7 +177,7 @@ test("captures registered skill Text output and complete expanded instructions",
 			.map((row) => row.trim());
 		expect(plain.slice(1, 9)).toEqual([
 			...Array.from({ length: 7 }, (_, i) => `step ${i}`),
-			"+23 lines (ctrl+o to expand)",
+			"… 23 more lines (ctrl+o to expand)",
 		]);
 		expect(output.join("\n")).toMatchSnapshot();
 	} finally {

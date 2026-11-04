@@ -397,6 +397,7 @@ export function registerGrepTool(
 			text.setText(
 				renderDimPreview(output, theme, {
 					frame: !isPartial,
+					ctx: renderCtx,
 					paint: (s: string) => theme.fg(renderCtx.isError ? "error" : "success", s),
 					highlight: d?._type === "grepResult" && !d.patterns ? grepHighlight(d) : undefined,
 				}),

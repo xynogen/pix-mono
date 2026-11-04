@@ -92,6 +92,7 @@ function codeCard(
 	state: Record<string, unknown>,
 	invalidate: () => void,
 	expanded: boolean,
+	ctx?: RenderContextLike,
 ) {
 	let replacement: string | undefined;
 	return {
@@ -119,6 +120,7 @@ function codeCard(
 					{
 						width,
 						wrapLongLines: expanded,
+						ctx,
 					},
 				).then(
 					(out) => {
@@ -308,6 +310,7 @@ function register(pi: ExtensionAPI): void {
 				rc.state,
 				rc.invalidate,
 				rc.expanded,
+				rc,
 			);
 		}) as never,
 

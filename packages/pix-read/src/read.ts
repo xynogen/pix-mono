@@ -485,6 +485,7 @@ export function registerReadTool(
 				text.setText(
 					renderDimPreview(full || batch.index, theme, {
 						header: batch.index,
+						ctx: renderCtx,
 						...(renderCtx.expanded ? { maxLines: Number.MAX_SAFE_INTEGER } : {}),
 					}),
 				);
@@ -521,7 +522,7 @@ export function registerReadTool(
 						maxShow,
 						theme,
 						// Expanded view wraps long lines so no source tail is hidden behind ›.
-						{ wrapLongLines: renderCtx.expanded },
+						{ wrapLongLines: renderCtx.expanded, ctx: renderCtx },
 					)
 						.then((rendered: string) => {
 							if (renderCtx.state._rk !== key) return;

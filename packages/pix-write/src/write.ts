@@ -151,11 +151,10 @@ export function registerWriteTool(
 						.then((lines) => {
 							if (renderCtx.state._previewKey !== previewKey) return;
 							const maxShow = renderCtx.expanded ? lines.length : 16;
-							const preview = lines.slice(0, maxShow).join("\n");
+							const preview = fadeRowsOf(lines.slice(0, maxShow + 1), theme, maxShow).join("\n");
 							const rem = lines.length - maxShow;
 							let out = `${hdr}\n\n${preview}`;
-							if (rem > 0)
-								out += `\n${theme.fg("muted", `… (${rem} more lines, ${lines.length} total)`)}`;
+							if (rem > 0) out += `\n${moreLines(rem, theme, renderCtx)}`;
 							renderCtx.state._previewText = out;
 							renderCtx.invalidate();
 						})
@@ -268,7 +267,7 @@ export function registerWriteTool(
 								);
 								const rem = hlLines.length - maxShow;
 								let out = `${base}\n${preview}`;
-								if (rem > 0) out += `\n${moreLines(rem, theme)}`;
+								if (rem > 0) out += `\n${moreLines(rem, theme, renderCtx)}`;
 								renderCtx.state._nft = out;
 								renderCtx.invalidate();
 							})

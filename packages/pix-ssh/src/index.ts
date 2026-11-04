@@ -997,6 +997,8 @@ export default function (pi: ExtensionAPI): void {
 				renderCtx.state,
 				renderCtx.invalidate,
 				renderCtx.expanded,
+				3,
+				renderCtx,
 			);
 		}) as never,
 
@@ -1105,7 +1107,7 @@ export default function (pi: ExtensionAPI): void {
 			}
 
 			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme)] : [];
+			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme, renderCtx)] : [];
 			const statusKey = details.outcome === "success" ? "success" : "error";
 			const paint = (s: string) => theme.fg(statusKey, s);
 			const body = fadeRowsOf(

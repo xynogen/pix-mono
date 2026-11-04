@@ -430,6 +430,8 @@ export function createAgentTool(
 				renderCtx.state,
 				renderCtx.invalidate,
 				renderCtx.expanded,
+				3,
+				renderCtx,
 			);
 		},
 

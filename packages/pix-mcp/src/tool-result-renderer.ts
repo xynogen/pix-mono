@@ -2,7 +2,9 @@ import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/p
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
+import { type FadeTheme, fadeRowsOf } from "@xynogen/pix-pretty/text";
 import {
+	expandHint,
 	formatJson,
 	formatToolCallTitle,
 	frameToolResult,
@@ -455,10 +457,11 @@ export function renderMcpToolResult(
 	const frame = frameToolResult;
 	const content = (styled: string) =>
 		options.expanded ? new Text(styled, 0, 0) : new ClippedLines(styled);
-	const hint =
-		display.truncated && !options.expanded
-			? `\n${context?.keyHint?.("app.tools.expand", "to expand") ?? theme.fg("muted", "(Ctrl+O to expand)")}`
-			: "";
+	// One footer row, like every pix tool: `… +N more (ctrl+o to expand)`.
+	const more = (footer: string) =>
+		options.expanded
+			? theme.fg("muted", footer)
+			: `${theme.fg("muted", `${footer} `)}${expandHint(theme, context)}`;
 
 	// Highlight JSON in both preview and expanded views. Supported TOON was
 	// converted to pretty JSON by blockToLines; unsupported TOON keeps its
@@ -483,21 +486,24 @@ export function renderMcpToolResult(
 			theme,
 		);
 		if (hl) {
-			const footerLine = footer ? `\n${theme.fg("muted", footer)}` : "";
-			const styled = `${hl}${footerLine}${hint}`;
+			// Fade the tail of a cut preview; expanded and untruncated bodies stay as is.
+			const rows = hl.split("\n");
+			const faded = display.truncated
+				? fadeRowsOf([...rows, ""], theme as FadeTheme, rows.length).join("\n")
+				: hl;
+			const footerLine = footer ? `\n${more(footer)}` : "";
+			const styled = `${faded}${footerLine}`;
 			// Preview clips each line to one row; expanded wraps to show everything.
 			return frame(content(styled), theme, isError);
 		}
 	}
 
-	const output = display.lines
-		.map((line, i) =>
-			display.truncated && i === display.lines.length - 1
-				? theme.fg("muted", line)
-				: theme.fg("toolOutput", line),
-		)
-		.join("\n");
+	const body = display.truncated ? display.lines.slice(0, -1) : display.lines;
+	const plain = body.map((line) => theme.fg("toolOutput", line));
+	const output = [
+		...(display.truncated ? fadeRowsOf([...plain, ""], theme as FadeTheme, plain.length) : plain),
+		...(display.truncated ? [more(display.lines.at(-1) ?? "")] : []),
+	].join("\n");
 
-	const styled = `${output}${hint}`;
-	return frame(content(styled), theme, isError);
+	return frame(content(output), theme, isError);
 }

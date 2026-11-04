@@ -7,8 +7,18 @@ import { MAX_PREVIEW_LINES } from "./config.ts";
 import { hlBlock } from "./highlight.ts";
 import { dirIcon, fileColor, fileIcon } from "./icons.ts";
 import { lang } from "./lang.ts";
+import { type FadeTheme, fadeRowsOf } from "./text.ts";
 import type { FgTheme } from "./types.ts";
-import { BODY_PAD, lnum, normalizeLineEndings, pluralize, rule, termW } from "./utils.ts";
+import {
+	BODY_PAD,
+	type ExpandHintCtx,
+	expandHint,
+	lnum,
+	normalizeLineEndings,
+	pluralize,
+	rule,
+	termW,
+} from "./utils.ts";
 
 /** Layout controls for {@link renderFileContent}. */
 export interface RenderFileContentOptions {
@@ -20,6 +30,8 @@ export interface RenderFileContentOptions {
 	 * expanded views pass `true` so no source text is hidden.
 	 */
 	wrapLongLines?: boolean;
+	/** Renderer context: the overflow row shows the user's expand key. */
+	ctx?: ExpandHintCtx;
 }
 
 /** Render syntax-highlighted file content with line numbers. */
@@ -66,10 +78,15 @@ export async function renderFileContent(
 		out.push(`${lnum(ln, nw)} ${FG_RULE}│${RST} ${display}${RST}`);
 	}
 
+	// A cut preview fades its last code rows (rule row 0 stays as is).
+	if (theme && total > maxLines) out.splice(1, Infinity, ...fadeTail(out.slice(1), theme));
 	out.push(rule(tw));
 	if (total > maxLines) {
+		const more = `${BODY_PAD}… ${pluralize(total - maxLines, "more line")} (${total} total) `;
 		out.push(
-			`${FG_DIM}${BODY_PAD}… ${pluralize(total - maxLines, "more line")} (${total} total)${RST}`,
+			theme
+				? `${theme.fg("muted", more)}${expandHint(theme, options.ctx)}`
+				: `${FG_DIM}${more}${RST}`,
 		);
 	}
 	return out.join("\n");
@@ -101,10 +118,15 @@ export function renderBashOutput(
 }
 
 /** Render ls output using the configured style (grid or tree). */
-export function renderTree(text: string, basePath: string, theme?: FgTheme): string {
+export function renderTree(
+	text: string,
+	basePath: string,
+	theme?: FgTheme,
+	ctx?: ExpandHintCtx,
+): string {
 	return config(prettySection).lsStyle === "tree"
-		? renderLsTree(text, basePath, theme)
-		: renderLsGrid(text, basePath, theme);
+		? renderLsTree(text, basePath, theme, ctx)
+		: renderLsGrid(text, basePath, theme, ctx);
 }
 
 /** Vertical tree view with connectors and icons. */
@@ -115,17 +137,23 @@ function entryColor(isDir: boolean, name: string, theme?: FgTheme): string {
 	return isDir ? theme.fg("accent", name) : fileColor(name, name, theme);
 }
 
-function renderLsTree(text: string, _basePath: string, theme?: FgTheme): string {
+function renderLsTree(
+	text: string,
+	_basePath: string,
+	theme?: FgTheme,
+	ctx?: ExpandHintCtx,
+): string {
 	const lines = text.trim().split("\n").filter(Boolean);
 	if (!lines.length) return `${FG_DIM}(empty directory)${RST}`;
 
 	const out: string[] = [];
 	const total = lines.length;
-	const show = lines.slice(0, MAX_PREVIEW_LINES);
+	const max = ctx?.expanded ? total : MAX_PREVIEW_LINES;
+	const show = lines.slice(0, max);
 
 	for (let i = 0; i < show.length; i++) {
 		const entry = (show[i] ?? "").trim();
-		const isLast = i === show.length - 1 && total <= MAX_PREVIEW_LINES;
+		const isLast = i === show.length - 1 && total <= max;
 		const prefix = isLast ? "└── " : "├── ";
 		const connector = `${FG_RULE}${prefix}${RST}`;
 
@@ -137,22 +165,35 @@ function renderLsTree(text: string, _basePath: string, theme?: FgTheme): string 
 		out.push(`${connector}${icon}${displayName}`);
 	}
 
-	if (total > MAX_PREVIEW_LINES) {
+	if (theme && total > max) out.splice(0, Infinity, ...fadeTail(out, theme));
+	if (total > max) {
 		out.push(
-			`${FG_RULE}└── ${RST}${FG_DIM}… ${pluralize(total - MAX_PREVIEW_LINES, "more entry", "more entries")}${RST}`,
+			`${FG_RULE}└── ${RST}${FG_DIM}… ${pluralize(total - max, "more entry", "more entries")} ${RST}${theme ? expandHint(theme, ctx) : ""}`,
 		);
 	}
 
 	return out.join("\n");
 }
 
+/** Fade the last text rows of an already-cut preview (blank rows take no step). */
+function fadeTail(rows: string[], theme: FgTheme): string[] {
+	// One sentinel row past the end tells fadeRowsOf the preview was cut.
+	return fadeRowsOf([...rows, ""], theme as FadeTheme, rows.length);
+}
+
 /** Horizontal grid with icons (like eza/ls). */
-function renderLsGrid(text: string, _basePath: string, theme?: FgTheme): string {
+function renderLsGrid(
+	text: string,
+	_basePath: string,
+	theme?: FgTheme,
+	ctx?: ExpandHintCtx,
+): string {
 	const lines = text.trim().split("\n").filter(Boolean);
 	if (!lines.length) return `${FG_DIM}(empty directory)${RST}`;
 
 	const total = lines.length;
-	const show = lines.slice(0, MAX_PREVIEW_LINES);
+	const max = ctx?.expanded ? total : MAX_PREVIEW_LINES;
+	const show = lines.slice(0, max);
 
 	// Build styled cells + measure their visible widths
 	const cells: string[] = [];
@@ -174,9 +215,10 @@ function renderLsGrid(text: string, _basePath: string, theme?: FgTheme): string 
 	const GAP = 3; // spaces between columns
 	const rows = layoutGrid(cells, cellWidths, tw, GAP);
 
-	if (total > MAX_PREVIEW_LINES) {
+	if (theme && total > max) rows.splice(0, Infinity, ...fadeTail(rows, theme));
+	if (total > max) {
 		rows.push(
-			`${FG_DIM}… ${pluralize(total - MAX_PREVIEW_LINES, "more entry", "more entries")}${RST}`,
+			`${FG_DIM}… ${pluralize(total - max, "more entry", "more entries")} ${RST}${theme ? expandHint(theme, ctx) : ""}`,
 		);
 	}
 

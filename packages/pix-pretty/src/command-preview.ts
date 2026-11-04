@@ -1,8 +1,8 @@
 import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { hlBlock } from "./highlight.ts";
-import { fadePaint, fadeText } from "./text.ts";
+import { fadePaint, fadeRowsOf, fadeText } from "./text.ts";
 import type { ThemeLike } from "./types.ts";
-import type { formatCollapsedToolRow } from "./utils.ts";
+import { type ExpandHintCtx, expandHint, type formatCollapsedToolRow } from "./utils.ts";
 
 export function commandPreview(
 	header: string,
@@ -14,6 +14,8 @@ export function commandPreview(
 	expanded = false,
 	/** Body column: under the tool name (2-col status glyph + space). */
 	indent = 3,
+	/** Renderer context: the cut-off row shows the user's expand key. */
+	ctx?: ExpandHintCtx,
 ) {
 	type Slot = { code: string; language: string | undefined; theme: typeof theme; styled: string };
 	let slot = state.commandPreview as Slot | undefined;
@@ -50,12 +52,14 @@ export function commandPreview(
 			// ponytail: wrap without rewriting shell syntax or quoted strings. Add a shell parser only for semantic formatting.
 			const padding = " ".repeat(indent);
 			const lines = wrapTextWithAnsi(current.styled, Math.max(1, width - indent));
-			const shown = expanded ? lines : lines.slice(0, 16);
+			const shown = expanded ? lines : fadeRowsOf(lines.slice(0, 17), theme, 16);
 			return [
 				truncateToWidth(`${header}${separator}`, width, "…"),
 				...shown.map((line) => `${padding}${line}`),
 				...(shown.length < lines.length
-					? [theme.fg("muted", `${padding}… +${lines.length - shown.length} lines`)]
+					? [
+							`${theme.fg("muted", `${padding}… +${lines.length - shown.length} lines `)}${expandHint(theme, ctx)}`,
+						]
 					: []),
 			];
 		},

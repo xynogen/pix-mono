@@ -189,8 +189,11 @@ describe("MCP tool result renderer", () => {
 		const render = (ctx: object) =>
 			renderMcpToolResult(long, collapsedOptions, plainTheme, ctx).render(80).join("\n");
 		const keyHint = (id: string, text: string) => `<${id}> alt+x ${text}`;
-		expect(render({ keyHint })).toContain("<app.tools.expand> alt+x to expand");
-		expect(render({})).toContain("(Ctrl+O to expand)");
+		// One footer row: `… +N more (<key> to expand)`.
+		expect(render({ keyHint })).toMatch(
+			/… \+\d+ more .*\(.*<app\.tools\.expand> alt\+x to expand.*\)/,
+		);
+		expect(render({})).toMatch(/… \+\d+ more .*ctrl\+o to expand/);
 	});
 
 	it("shows full text when expanded", () => {
@@ -244,7 +247,7 @@ describe("MCP tool result renderer", () => {
 			.join("\n");
 
 		expect(output).toContain("line 4");
-		expect(output).not.toContain("Ctrl+O to expand");
+		expect(output).not.toContain("to expand");
 		expect(output).not.toContain("…");
 	});
 
@@ -261,7 +264,7 @@ describe("MCP tool result renderer", () => {
 			.join("\n");
 
 		expect(output).toContain("line 4");
-		expect(output).not.toContain("Ctrl+O to expand");
+		expect(output).not.toContain("to expand");
 		expect(output).not.toContain("…");
 	});
 
