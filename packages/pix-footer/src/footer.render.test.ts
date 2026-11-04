@@ -121,6 +121,9 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		const wide = footer.render(240);
 		expect(wide).toHaveLength(1);
 		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/PLAN.*capture.*2[/]3.*2 !1/);
+		// Model block left, extension statuses flush right with a padded gap between.
+		expect(visibleWidth(wide[0] ?? "")).toBe(240);
+		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/\S {3,}\S.*2[/]3.*\S$/);
 		expect(defaults.wrap).toBe(false);
 		expect(footer.render(40)).toHaveLength(1);
 		const clipped = footer.render(40)[0]!;
@@ -137,16 +140,15 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		}
 		await fixture.runtime.update(prettySection, { footer: { wrap: true } });
 		expect(footer.render(240)).toHaveLength(1);
+		// The flush-right gap collapses back to one separator when the row is too narrow.
+		const joined = stripVTControlCharacters(wide[0] ?? "").replace(/ {3,}/, " | ");
 		for (const width of [16, 40, 80, 120]) {
 			const rows = footer.render(width);
-			if (visibleWidth(wide[0] ?? "") > width) expect(rows.length).toBeGreaterThan(1);
+			if (visibleWidth(joined) > width) expect(rows.length).toBeGreaterThan(1);
 			else expect(rows).toHaveLength(1);
 			expect(rows.every((row) => visibleWidth(row) <= width)).toBe(true);
-			expect(rows.map(stripVTControlCharacters).join(" ").replace(/\s+/g, " ").trim()).toBe(
-				stripVTControlCharacters(wide[0] ?? "")
-					.replace(/\s+/g, " ")
-					.trim(),
-			);
+			const flat = rows.map(stripVTControlCharacters).join(" ").replace(/ {3,}/, " | ");
+			expect(flat.replace(/\s+/g, " ").trim()).toBe(joined.replace(/\s+/g, " ").trim());
 		}
 		await fixture.runtime.update(prettySection, { footer: { statuses: false } });
 		expect(stripVTControlCharacters(footer.render(240)[0] ?? "")).toMatch(/PLAN.*capture/);

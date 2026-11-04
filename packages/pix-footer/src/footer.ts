@@ -2,7 +2,8 @@
  * Footer extension — pure-prompt style.
  *
  * Layout:
- *   [MODE] | ~/cwd (branch *±⇡n⇣n) | context | model | extension statuses | tokens | TPS
+ *   [MODE] | ~/cwd (branch *±⇡n⇣n) | context        model · thinking · price · score | statuses | tokens | TPS
+ *   (right block is flush right when it fits; otherwise one joined line)
  *
  * - Branch shown with zsh-style dirty/ahead/behind markers.
  * - TPS: live during stream, holds 5s after turn ends, then clears.
@@ -547,11 +548,16 @@ export default function (pi: ExtensionAPI) {
 					const loc = parts.cwd
 						? theme.fg("muted", `${icon("cwd")}  `) + theme.fg("accent", shortCwd(ctx.cwd))
 						: "";
-					const line = [
+					const left = [
 						parts.mode ? modePart : "",
 						loc + (parts.git ? branchSeg : ""),
 						parts.git ? markersSeg : "",
 						parts.context ? ctxUsage : "",
+					]
+						.filter(Boolean)
+						.join(sep);
+					// Model group (id · thinking · price · score) and live data sit flush right when they fit.
+					const right = [
 						model,
 						parts.statuses ? otherPart : "",
 						tokens,
@@ -559,7 +565,10 @@ export default function (pi: ExtensionAPI) {
 					]
 						.filter(Boolean)
 						.join(sep);
+					const line = [left, right].filter(Boolean).join(sep);
 					if (!line || width < 1) return [];
+					const gap = width - visibleWidth(left) - visibleWidth(right);
+					if (left && right && gap >= 3) return [left + " ".repeat(gap) + right];
 					if (parts.wrap) return wrapTextWithAnsi(line, width);
 					if (visibleWidth(line) <= width) return [line];
 					const head = sliceByColumn(line, 0, Math.max(0, width - 8), true);
