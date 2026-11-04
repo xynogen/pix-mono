@@ -1,110 +1,68 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import {
-	chmodSync,
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	readlinkSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { afterEach, beforeEach, expect, test } from "bun:test";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { tempDir } from "@xynogen/pix-runtime/paths";
+import { type DevLinkOptions, devLink } from "./dev-link.ts";
 
 let root = "";
+let options: DevLinkOptions;
+const settingsFile = () => options.settingsFile;
+const sources = () =>
+	(JSON.parse(readFileSync(settingsFile(), "utf8")).packages as Array<string | { source: string }>).map((p) =>
+		typeof p === "string" ? p : p.source,
+	);
+const linkedTo = (name: string, base = join(options.npmDir, "node_modules")) =>
+	realpathSync(join(base, "@xynogen", name));
 
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), "pix-dev-link-"));
-	mkdirSync(join(root, "scripts"), { recursive: true });
-	writeFileSync(
-		join(root, "scripts", "dev-link.sh"),
-		readFileSync(join(import.meta.dir, "dev-link.sh")),
-	);
-	chmodSync(join(root, "scripts", "dev-link.sh"), 0o755);
-
-	for (const [name, dependencies] of [
-		["pix-app", { "@xynogen/pix-lib": "^1.0.0", maria2: "^0.4.1" }],
+	root = mkdtempSync(join(tempDir(), "pix-dev-link-"));
+	const packages: Array<[string, Record<string, string>, object?]> = [
+		["pix-app", { "@xynogen/pix-lib": "^1.0.0", maria2: "^0.4.1" }, { extensions: ["./index.ts"] }],
 		["pix-lib", { "@xynogen/pix-leaf": "^1.0.0" }],
 		["pix-leaf", {}],
-	] as const) {
-		const dir = join(root, "packages", name);
-		mkdirSync(dir, { recursive: true });
+		["pix-member", {}, { extensions: ["./index.ts"] }],
+		["pix-core", { "@xynogen/pix-member": "^1.0.0" }, { extensions: ["./index.ts"] }],
+	];
+	for (const [name, dependencies, pi] of packages) {
+		mkdirSync(join(root, "packages", name), { recursive: true });
 		writeFileSync(
-			join(dir, "package.json"),
-			JSON.stringify({
-				name: `@xynogen/${name}`,
-				version: "1.0.0",
-				dependencies,
-				...(name === "pix-app" ? { pi: { extensions: ["./index.ts"] } } : {}),
-			}),
+			join(root, "packages", name, "package.json"),
+			JSON.stringify({ name: `@xynogen/${name}`, version: "1.0.0", dependencies, pi }),
 		);
 	}
-
-	mkdirSync(join(root, "pi"), { recursive: true });
-	mkdirSync(join(root, "home", ".pi", "agent"), { recursive: true });
-	writeFileSync(join(root, "home", ".pi", "agent", "settings.json"), '{"packages":[]}\n');
-
-	const bin = join(root, "bin");
-	mkdirSync(bin);
-	writeFileSync(
-		join(bin, "bun"),
-		`#!/usr/bin/env bash\nprintf '%s\\n' "$*" > "${join(root, "bun-args")}"\nmkdir -p "${join(root, "node_modules", "maria2", "dist")}"\ntouch "${join(root, "node_modules", "maria2", "dist", "index.js")}"\n`,
-	);
-	chmodSync(join(bin, "bun"), 0o755);
+	mkdirSync(join(root, "agent"));
+	options = {
+		root,
+		npmDir: join(root, "agent", "npm"),
+		settingsFile: join(root, "agent", "settings.json"),
+		unlink: false,
+		names: [],
+	};
+	// A legacy npm entry with options: linking must keep the options and swap only the source.
+	writeFileSync(settingsFile(), JSON.stringify({ packages: [{ source: "npm:@xynogen/pix-app", extensions: [] }] }));
 });
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-// dev-link.sh is a bash script. In PowerShell on Windows, `bash` can be the WSL stub
-// with no Linux installed, so skip unless a real bash runs.
-const hasBash = spawnSync("bash", ["-c", "echo ok"], { encoding: "utf8" }).stdout?.trim() === "ok";
+test("links the selected package closure and registers it by local path", () => {
+	devLink({ ...options, names: ["pix-app"] });
+	for (const name of ["pix-app", "pix-lib", "pix-leaf"]) {
+		const dir = realpathSync(join(root, "packages", name));
+		expect(linkedTo(name)).toBe(dir);
+		expect(linkedTo(name, join(root, "node_modules"))).toBe(dir);
+	}
+	expect(existsSync(join(options.npmDir, "node_modules", "@xynogen", "pix-core"))).toBe(false);
+	const settings = JSON.parse(readFileSync(settingsFile(), "utf8"));
+	expect(settings.packages).toEqual([{ source: join(root, "packages", "pix-app").replaceAll("\\", "/"), extensions: [] }]);
+});
 
-describe("dev-link", () => {
-	test.skipIf(!hasBash)("discovers and registers pix-codemode from its manifest", () => {
-		const dir = join(root, "packages", "pix-codemode");
-		mkdirSync(dir);
-		writeFileSync(join(dir, "package.json"), readFileSync(join(import.meta.dir, "..", "packages", "pix-codemode", "package.json")));
-		const result = spawnSync("bash", [join(root, "scripts", "dev-link.sh"), "pix-codemode"], {
-			cwd: root,
-			env: { ...process.env, HOME: join(root, "home"), PI_NPM_DIR: join(root, "pi"), PATH: `${join(root, "bin")}:${process.env.PATH}` },
-			encoding: "utf8",
-		});
-		expect(result.status).toBe(0);
-		expect(readlinkSync(join(root, "pi", "node_modules", "@xynogen", "pix-codemode"))).toBe(dir);
-		const settings = JSON.parse(readFileSync(join(root, "home", ".pi", "agent", "settings.json"), "utf8"));
-		expect(settings.packages.map((p: string) => p.replaceAll("\\", "/"))).toEqual([dir.replaceAll("\\", "/")]);
-	});
-	test.skipIf(!hasBash)("installs workspace dependencies and links selected package dependency closure", () => {
-		const result = spawnSync("bash", [join(root, "scripts", "dev-link.sh"), "pix-app"], {
-			cwd: root,
-			env: {
-				...process.env,
-				HOME: join(root, "home"),
-				PI_NPM_DIR: join(root, "pi"),
-				PATH: `${join(root, "bin")}:${process.env.PATH}`,
-			},
-			encoding: "utf8",
-		});
-
-		expect(result.stderr).toBe("");
-		expect(result.status).toBe(0);
-		expect(readFileSync(join(root, "bun-args"), "utf8").trim()).toBe(
-			"install --frozen-lockfile",
-		);
-		for (const name of ["pix-app", "pix-lib", "pix-leaf"]) {
-			expect(readlinkSync(join(root, "pi", "node_modules", "@xynogen", name))).toBe(
-				join(root, "packages", name),
-			);
-		}
-		expect(existsSync(join(root, "node_modules", "maria2", "dist", "index.js"))).toBe(true);
-		// dev-link.sh is bash, so it writes "/" paths on Windows too. Compare with one separator.
-		const slash = (p: string) => p.replaceAll("\\", "/");
-		expect(
-			JSON.parse(
-				readFileSync(join(root, "home", ".pi", "agent", "settings.json"), "utf8"),
-			).packages.map(slash),
-		).toEqual([slash(join(root, "packages", "pix-app"))]);
-	});
+test("skips pix-core members in settings and unlink restores everything", () => {
+	writeFileSync(settingsFile(), JSON.stringify({ packages: ["npm:@xynogen/pix-member"] }));
+	devLink(options);
+	expect(sources()).toEqual(["pix-app", "pix-core"].map((n) => join(root, "packages", n).replaceAll("\\", "/")));
+	devLink({ ...options, unlink: true });
+	expect(sources()).toEqual([]);
+	expect(existsSync(join(options.npmDir, "node_modules", "@xynogen", "pix-app"))).toBe(false);
+	// Unlinking a junction must never delete the repo package behind it.
+	expect(existsSync(join(root, "packages", "pix-app", "package.json"))).toBe(true);
 });

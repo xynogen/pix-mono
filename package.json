@@ -9,7 +9,6 @@
 	],
 	"scripts": {
 		"prepare": "bun scripts/install-hooks.ts",
-		"dev": "bun test --watch --isolate",
 		"test": "bun test --isolate",
 		"typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/pix-mcp/tsconfig.json && tsc --noEmit -p packages/pix-mcp/tsconfig.tests.json",
 		"check": "biome check",
@@ -17,14 +16,11 @@
 		"ci": "biome ci",
 		"distro:install": "bun scripts/distro.ts install",
 		"distro:uninstall": "bun scripts/distro.ts uninstall",
-		"dev:link": "bash scripts/dev-link.sh",
-		"dev:unlink": "bash scripts/dev-link.sh --unlink",
+		"dev:link": "bun scripts/dev-link.ts",
+		"dev:unlink": "bun scripts/dev-link.ts --unlink",
 		"publish:all": "bun scripts/publish-all.ts",
 		"publish:dry": "bun scripts/publish-all.ts --dry-run",
 		"static-analysis": "bun scripts/static-analysis.ts",
-		"graph:build": "bun packages/pix-graph/src/cli.ts build",
-		"graph:analyze": "bun packages/pix-graph/src/analyze-graph.ts",
-		"profile:startup": "node --experimental-strip-types --no-warnings scripts/profile-startup.ts",
 		"profile:render": "node --experimental-strip-types --no-warnings scripts/profile-render.ts"
 	},
 	"devDependencies": {
