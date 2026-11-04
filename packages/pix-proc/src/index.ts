@@ -12,6 +12,7 @@
  * pix-gate for command gating on proc, same as bash.
  */
 
+import { type FSWatcher, watch } from "node:fs";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
@@ -30,7 +31,7 @@ import {
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine, statusWord } from "./format.ts";
-import { ProcManager } from "./manager.ts";
+import { PROC_DIR, ProcManager } from "./manager.ts";
 import { MODAL_LOG_LINES, ProcModal, type ProcModalResult } from "./modal.ts";
 import { processRow } from "./widget.ts";
 
@@ -82,6 +83,24 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		pollTimer = setInterval(() => void tick(), POLL_MS);
 	}
 
+	// Wake the idle widget when another agent writes a pidfile. inotify-backed:
+	// no polling while nothing runs; the 1s tick only runs while rows are shown.
+	let watcher: FSWatcher | undefined;
+	function watchProcDir(): void {
+		if (watcher) return;
+		try {
+			watcher = watch(PROC_DIR, { persistent: false }, (_event, file) => {
+				if (file?.endsWith(".pid")) startPolling();
+			});
+			watcher.on("error", () => {
+				watcher?.close();
+				watcher = undefined;
+			});
+		} catch {
+			// No fs.watch (some network mounts): foreign rows still show while our own poll runs.
+		}
+	}
+
 	/** Running rows plus just-finished ones for collapseDelayMs — shared by widget and /proc. */
 	function visibleProcs(now: number): ProcMeta[] {
 		const all = mgr.list();
@@ -96,7 +115,7 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			const at = lastCleared.get(m.handle) ?? now;
 			return now - at < collapseDelayMs();
 		});
-		return [...running, ...recent];
+		return [...running, ...mgr.foreign(), ...recent];
 	}
 
 	async function tick(): Promise<void> {
@@ -141,6 +160,8 @@ export default function registerRunner(pi: ExtensionAPI): void {
 
 	pi.on("session_start", async (_event, ctx) => {
 		ui = ctx.ui;
+		watchProcDir();
+		if (mgr.foreign().length > 0) startPolling();
 		const orphans = await mgr.findOrphans();
 		if (orphans.length === 0) return;
 		const title = `${orphans.length} orphaned process group(s) from a previous session`;
@@ -182,6 +203,8 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			clearInterval(pollTimer);
 			pollTimer = undefined;
 		}
+		watcher?.close();
+		watcher = undefined;
 		ui?.setWidget(WIDGET_KEY, undefined);
 		await mgr.shutdown();
 	});
@@ -307,7 +330,7 @@ export default function registerRunner(pi: ExtensionAPI): void {
 	}
 
 	function doList(): ProcResultDetails {
-		const all = mgr.list();
+		const all = [...mgr.list(), ...mgr.foreign()];
 		if (all.length === 0) return ok("list", "no processes");
 		return ok("list", ...all.map((m) => statusLine(m, Date.now())));
 	}

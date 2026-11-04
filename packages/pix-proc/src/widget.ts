@@ -10,7 +10,7 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 		fade === 0
 			? theme.fg("dim", text)
 			: theme.style(text, { fg: mixColors(theme.colors.dim, theme.colors.muted, fade) });
-	const timer = ` ${humanUptime(now - m.startTime)} `;
+	const timer = humanUptime(now - m.startTime);
 	const timerWidth = visibleWidth(timer);
 	const badge = theme.fg("muted", timer);
 	if (width < timerWidth + 4) return fadeLine(badge, width, paint);
@@ -45,7 +45,7 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 	const prefix = `${chips}${separator}${fadeText(identity, 24, (t, f) => (f === 0 ? theme.fg("accent", t) : theme.style(t, { fg: mixColors(theme.colors.accent, theme.colors.muted, f) })))}${separator}`;
 	const metadata = badge;
 	const metadataWidth = visibleWidth(metadata);
-	const available = width - metadataWidth - 2;
+	const available = width - metadataWidth - 1;
 	const prefixWidth = visibleWidth(prefix);
 	const label = stripTerminalSequences(procLabel({ command: m.command }))
 		.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")
@@ -55,6 +55,6 @@ export function processRow(m: ProcMeta, now: number, width: number, theme: Theme
 		prefixWidth >= available
 			? fadeLine(prefix, available, paint)
 			: prefix + fadeText(label, available - prefixWidth, paint);
-	const gap = " ".repeat(width - metadataWidth - visibleWidth(body) - 1);
-	return `${body}${gap}${metadata} `;
+	const gap = " ".repeat(Math.max(1, width - metadataWidth - visibleWidth(body)));
+	return `${body}${gap}${metadata}`;
 }

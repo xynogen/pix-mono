@@ -45,8 +45,8 @@ orphan prompt
 <accent+bg:customMessageBg>╰──────────────────────────────────────────────────────────────────────────────╯</accent+bg:customMessageBg>
 running capped and recent widget
 <borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>
-<toolTitle>▸︎   Proc    </toolTitle><muted> │ </muted><accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                       <muted> 5s </muted> 
-<toolTitle>            </toolTitle><muted> │ </muted><error>✗︎ exited(1)</error><muted> · </muted><accent>proc-old</accent><muted> · </muted><dim>compile</dim>                           <muted> 10s </muted> 
+<toolTitle>▸︎   Proc    </toolTitle><muted> │ </muted><accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                          <muted>5s</muted>
+<toolTitle>            </toolTitle><muted> │ </muted><error>✗︎ exited(1)</error><muted> · </muted><accent>proc-old</accent><muted> · </muted><dim>compile</dim>                              <muted>10s</muted>
 list
 <accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>
 <accent+bg:customMessageBg>│</accent+bg:customMessageBg><bg:customMessageBg> </bg:customMessageBg><accent+bg:customMessageBg+bold>Processes</accent+bg:customMessageBg+bold><text+bg:customMessageBg>                                                                    </text+bg:customMessageBg><accent+bg:customMessageBg>│</accent+bg:customMessageBg>

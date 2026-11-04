@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROC_DIR, ProcManager } from "./manager.ts";
 
@@ -104,6 +104,15 @@ describe.skipIf(process.platform === "win32")("ProcManager lifecycle", () => {
 		const started = first.start("sleep 5", "/tmp", "frontend");
 		mgr = new ProcManager();
 		try {
+			// While its owner lives it is a read-only foreign row, not an orphan.
+			expect(mgr.foreign()).toContainEqual(
+				expect.objectContaining({ handle: started.handle, name: "frontend", foreign: true }),
+			);
+			expect((await mgr.findOrphans()).map((o) => o.handle)).not.toContain(started.handle);
+			// Simulate the owner crashing: same process here, so drop the owner field.
+			const pidPath = join(PROC_DIR, `${started.handle}.pid`);
+			const { owner: _owner, ...rest } = JSON.parse(readFileSync(pidPath, "utf8"));
+			writeFileSync(pidPath, JSON.stringify(rest));
 			const orphan = (await mgr.findOrphans()).find((o) => o.handle === started.handle);
 			expect(orphan).toMatchObject({ name: "frontend", cwd: "/tmp", startTime: started.startTime });
 			if (!orphan) return;

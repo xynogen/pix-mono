@@ -22,6 +22,7 @@ import {
 	existsSync,
 	mkdirSync,
 	openSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	statSync,
@@ -91,6 +92,28 @@ function pgidAlive(pgid: number): boolean {
 	}
 }
 
+/** Is one pid alive? Used for the session that owns a pidfile. */
+function pidAlive(pid: unknown): boolean {
+	if (!safeGroupId(pid)) return false;
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+interface PidFile {
+	pgid: number;
+	startTicks?: string;
+	command: string;
+	name?: string;
+	cwd?: string;
+	startTime?: number;
+	/** Pi process that started it. A live owner means the process is not an orphan. */
+	owner?: number;
+}
+
 export interface Orphan {
 	handle: string;
 	pgid: number;
@@ -102,6 +125,8 @@ export interface Orphan {
 
 export class ProcManager {
 	private readonly procs = new Map<string, LiveProc>();
+	private foreignStamp = -1;
+	private foreignCache: ProcMeta[] = [];
 
 	constructor(private readonly logMaxBytes = MAX_LOG_BYTES) {
 		if (!Number.isSafeInteger(logMaxBytes) || logMaxBytes < 1)
@@ -241,6 +266,7 @@ export class ProcManager {
 				name,
 				cwd,
 				startTime: meta.startTime,
+				owner: process.pid,
 			}),
 		);
 		child.on("close", (code, signal) => {
@@ -300,9 +326,15 @@ export class ProcManager {
 		n: number,
 	): Promise<{ lines: string[]; logPath: string; capped: boolean; logError?: string } | undefined> {
 		const live = this.procs.get(handle);
-		if (!live) return undefined;
-		const lines = await this.readTail(live.logPath, n);
-		return { lines, logPath: live.logPath, capped: live.meta.capped, logError: live.meta.logError };
+		const logPath = live?.logPath ?? (this.isForeign(handle) ? this.logPathFor(handle) : undefined);
+		if (!logPath) return undefined;
+		const lines = await this.readTail(logPath, n);
+		return {
+			lines,
+			logPath,
+			capped: live?.meta.capped ?? false,
+			logError: live?.meta.logError,
+		};
 	}
 
 	/** Freshest complete line, for the widget/list. Does not move any cursor. */
@@ -351,7 +383,7 @@ export class ProcManager {
 	/** SIGTERM the whole group, then SIGKILL after grace. */
 	async stop(handle: string, graceMs = 2000): Promise<{ ok: boolean; note: string }> {
 		const live = this.procs.get(handle);
-		if (!live) return { ok: false, note: `unknown handle ${handle}` };
+		if (!live) return { ok: false, note: this.unknownNote(handle) };
 		if (live.meta.status !== "running") {
 			return {
 				ok: true,
@@ -369,7 +401,7 @@ export class ProcManager {
 	/** Remove a stopped process + its files. Refuses while running. */
 	rm(handle: string): { ok: boolean; note: string } {
 		const live = this.procs.get(handle);
-		if (!live) return { ok: false, note: `unknown handle ${handle}` };
+		if (!live) return { ok: false, note: this.unknownNote(handle) };
 		if (live.meta.status === "running")
 			return { ok: false, note: `${handle} still running — stop it first` };
 		this.closeFd(live);
@@ -377,6 +409,60 @@ export class ProcManager {
 		silent(() => rmSync(this.pidPath(handle), { force: true }));
 		this.procs.delete(handle);
 		return { ok: true, note: `${handle} removed` };
+	}
+
+	private isForeign(handle: string): boolean {
+		return this.foreignCache.some((m) => m.handle === handle);
+	}
+
+	private unknownNote(handle: string): string {
+		return this.isForeign(handle)
+			? `${handle} belongs to another agent — stop it there`
+			: `unknown handle ${handle}`;
+	}
+
+	/**
+	 * Live processes another session started (subagent, other Pi), read-only.
+	 * Pidfiles are re-parsed only when PROC_DIR's mtime moves (an entry was added
+	 * or removed); otherwise a call costs one stat plus one signal-0 per row.
+	 */
+	foreign(): ProcMeta[] {
+		try {
+			const stamp = statSync(PROC_DIR).mtimeMs;
+			if (stamp !== this.foreignStamp) {
+				this.foreignStamp = stamp;
+				this.foreignCache = [];
+				for (const f of readdirSync(PROC_DIR)) {
+					if (!f.endsWith(".pid")) continue;
+					const handle = f.slice(0, -4);
+					let raw: PidFile;
+					try {
+						raw = JSON.parse(readFileSync(join(PROC_DIR, f), "utf8")) as PidFile;
+					} catch {
+						continue; // half-written or corrupt pidfile; the next dir change re-reads it
+					}
+					if (!safeGroupId(raw.pgid)) continue;
+					const ticks = readStartTicks(raw.pgid);
+					if (raw.startTicks && ticks && raw.startTicks !== ticks) continue; // pid reused
+					this.foreignCache.push({
+						handle,
+						command: raw.command,
+						cwd: raw.cwd ?? "",
+						name: raw.name,
+						pid: raw.pgid,
+						pgid: raw.pgid,
+						startTime: raw.startTime ?? Date.now(),
+						startTicks: raw.startTicks,
+						status: "running",
+						capped: false,
+						foreign: true,
+					});
+				}
+			}
+		} catch {
+			return []; // PROC_DIR missing or unreadable: nothing to show
+		}
+		return this.foreignCache.filter((m) => !this.procs.has(m.handle) && pgidAlive(m.pgid));
 	}
 
 	/** Find orphaned process groups from a dead session (pgid alive + start ticks match). */
@@ -393,14 +479,7 @@ export class ProcManager {
 			const handle = f.slice(0, -4);
 			if (this.procs.has(handle)) continue; // ours, this session
 			try {
-				const raw = JSON.parse(await readFile(join(PROC_DIR, f), "utf8")) as {
-					pgid: number;
-					startTicks?: string;
-					command: string;
-					name?: string;
-					cwd?: string;
-					startTime?: number;
-				};
+				const raw = JSON.parse(await readFile(join(PROC_DIR, f), "utf8")) as PidFile;
 				if (!safeGroupId(raw.pgid) || !pgidAlive(raw.pgid)) {
 					rmSync(join(PROC_DIR, f), { force: true }); // stale or corrupt pidfile
 					continue;
@@ -411,6 +490,8 @@ export class ProcManager {
 					rmSync(join(PROC_DIR, f), { force: true }); // pgid recycled — not ours
 					continue;
 				}
+				// Another live session (a subagent here, or another Pi) still owns it.
+				if (raw.owner === process.pid || pidAlive(raw.owner)) continue;
 				orphans.push({
 					handle,
 					pgid: raw.pgid,

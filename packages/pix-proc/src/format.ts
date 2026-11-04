@@ -18,6 +18,8 @@ export interface ProcMeta {
 	capped: boolean;
 	/** Why output stopped being recorded, or why the spawn failed. */
 	logError?: string;
+	/** Started by another session (subagent, other Pi). Shown read-only; its owner manages it. */
+	foreign?: boolean;
 }
 
 export const MAX_LOG_LINES = 1000;

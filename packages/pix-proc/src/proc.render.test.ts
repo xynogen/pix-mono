@@ -248,8 +248,8 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 		const updatedRows = widget.render(80).map(stripTerminalSequences);
 		expect(updatedRows[0]).toMatch(/^─{80}$/);
 		expect(updatedRows).toHaveLength(3);
-		expect(updatedRows[1]).toMatch(/^\S+\s+Proc +│ \S+.* 6s {2}$/);
-		expect(updatedRows[2]).toMatch(/^ +│ \S+.* 10s {2}$/);
+		expect(updatedRows[1]).toMatch(/^\S+\s+Proc +│ \S+.* 6s$/);
+		expect(updatedRows[2]).toMatch(/^ +│ \S+.* 10s$/);
 		expect(visibleWidth(updatedRows[1]!.split("│")[0]!)).toBe(
 			visibleWidth(updatedRows[2]!.split("│")[0]!),
 		);

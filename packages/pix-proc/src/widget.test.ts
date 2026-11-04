@@ -28,7 +28,7 @@ describe("process activity row", () => {
 	test("keeps identity, state chips, and right-aligned timer on one row", () => {
 		const row = processRow({ ...meta, capped: true, logError: "disk full" }, 42_000, 100, theme);
 		const text = stripTerminalSequences(row);
-		expect(text).toMatch(/^\S+ running · log error · capped · proc-dev · bun run dev +42s {2}$/);
+		expect(text).toMatch(/^\S+ running · log error · capped · proc-dev · bun run dev +42s$/);
 		expect(visibleWidth(row)).toBe(100);
 		const semantic = captureRows(
 			{ render: () => [row] },
@@ -36,7 +36,7 @@ describe("process activity row", () => {
 		).join("\n");
 		expect(semantic).toMatch(/<accent>proc-dev<\//);
 		expect(semantic).toMatch(/<error>log error<\//);
-		expect(semantic).toMatch(/<muted> 42s <\//);
+		expect(semantic).toMatch(/<muted>42s<\/muted>$/);
 		expect(semantic).not.toContain("bg:");
 	});
 
@@ -50,9 +50,9 @@ describe("process activity row", () => {
 			expect(stripTerminalSequences(row)).toMatch(
 				new RegExp(`^\\S+ ${word.replace(/[()]/g, "\\$&")} · proc-dev · `),
 			);
-			expect(stripTerminalSequences(row)).toMatch(/ 1m05s {2}$/);
+			expect(stripTerminalSequences(row)).toMatch(/ 1m05s$/);
 		}
-		expect(stripTerminalSequences(processRow(meta, 66_000, 100, theme))).toMatch(/ 1m06s {2}$/);
+		expect(stripTerminalSequences(processRow(meta, 66_000, 100, theme))).toMatch(/ 1m06s$/);
 	});
 
 	for (const light of [false, true]) {
@@ -81,13 +81,13 @@ describe("process activity row", () => {
 			expect(fadeColors.length).toBe(8);
 			expect(new Set(fadeColors).size).toBe(8);
 			expect(fadeColors.at(-1)).toBe(colorToHex(colors.muted));
-			expect(stripTerminalSequences(row)).toMatch(/ 42s {2}$/);
+			expect(stripTerminalSequences(row)).toMatch(/ 42s$/);
 
 			for (const command of ["界e\u0301🙂".repeat(40), "a".repeat(200)]) {
 				for (let width = 0; width <= 120; width++) {
 					const narrow = processRow({ ...meta, command }, 42_000, width, fadeTheme);
 					expect(visibleWidth(narrow)).toBeLessThanOrEqual(width);
-					if (width >= 9) expect(stripTerminalSequences(narrow)).toMatch(/ 42s {2}$/);
+					if (width >= 9) expect(stripTerminalSequences(narrow)).toMatch(/ 42s$/);
 				}
 			}
 		});
@@ -100,7 +100,7 @@ describe("process activity row", () => {
 			100,
 			theme,
 		);
-		expect(stripTerminalSequences(row)).toMatch(/^\S+ running · Frontend · bun run dev +42s {2}$/);
+		expect(stripTerminalSequences(row)).toMatch(/^\S+ running · Frontend · bun run dev +42s$/);
 	});
 
 	test("keeps terminal controls and masked environment secrets out of labels", () => {
