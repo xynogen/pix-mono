@@ -69,6 +69,36 @@ describe("registerWriteTool", () => {
 		expect(callState._previewKey).not.toBe(previewKey);
 	});
 
+	it("never shrinks the streaming create preview while a new chunk highlights", async () => {
+		// Regression: each chunk reset the card to its header row, so once the card's top
+		// had scrolled off-screen pi-tui cleared and repainted the whole terminal.
+		const { pi, tool } = capturePi();
+		registerWriteTool(pi, noopFactory, makeToolContext(), noopTrack);
+		const theme = makeTheme();
+		const state: Record<string, unknown> = {};
+		let settle = () => {};
+		const ctx = {
+			...makeRenderCtx({ state }),
+			invalidate: () => settle(),
+		};
+		const paint = async (content: string) => {
+			const landed = new Promise<void>((resolve) => {
+				settle = resolve;
+			});
+			const rows = tool.renderCall?.({ path: "streaming-new.ts", content }, theme, ctx)?.render(80);
+			await landed;
+			return rows?.length ?? 0;
+		};
+		const first = "const a = 1;\nconst b = 2;\nconst c = 3;";
+		await paint(first);
+		const settled = tool.renderCall?.({ path: "streaming-new.ts", content: first }, theme, ctx);
+		const settledRows = settled?.render(80).length ?? 0;
+		// The next chunk renders synchronously before its highlight resolves.
+		const whileHighlighting = await paint(`${first}\nconst d = 4;`);
+		expect(settledRows).toBeGreaterThan(1);
+		expect(whileHighlighting).toBeGreaterThanOrEqual(settledRows);
+	});
+
 	it("collapses structured errors and restores the exact diagnostic on expansion", () => {
 		const { pi, tool } = capturePi();
 		registerWriteTool(pi, noopFactory, makeToolContext(), noopTrack);

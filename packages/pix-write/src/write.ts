@@ -145,7 +145,9 @@ export function registerWriteTool(
 				const previewKey = `create:${diffThemeCacheKey(theme)}:${fp}:${String(args.content).length}:${renderCtx.expanded ? "full" : "preview"}`;
 				if (renderCtx.state._previewKey !== previewKey) {
 					renderCtx.state._previewKey = previewKey;
-					renderCtx.state._previewText = hdr;
+					// Keep the previous body until the new highlight lands. Dropping to the bare
+					// header shrinks the card on every streamed chunk, and once its top has
+					// scrolled off-screen pi-tui must clear and repaint the whole terminal.
 					const lg = lang(fp);
 					hlBlock(String(args.content), lg, theme)
 						.then((lines) => {
@@ -153,14 +155,15 @@ export function registerWriteTool(
 							const maxShow = renderCtx.expanded ? lines.length : 16;
 							const preview = fadeRowsOf(lines.slice(0, maxShow + 1), theme, maxShow).join("\n");
 							const rem = lines.length - maxShow;
-							let out = `${hdr}\n\n${preview}`;
-							if (rem > 0) out += `\n${moreLines(rem, theme, renderCtx)}`;
-							renderCtx.state._previewText = out;
+							let body = `\n\n${preview}`;
+							if (rem > 0) body += `\n${moreLines(rem, theme, renderCtx)}`;
+							renderCtx.state._previewText = body;
 							renderCtx.invalidate();
 						})
 						.catch(() => {});
 				}
-				text.setText(renderCtx.state._previewText ?? hdr);
+				// The body is stored apart from the header so a changed header never pairs with stale text.
+				text.setText(hdr + (renderCtx.state._previewText ?? ""));
 				return text;
 			}
 
