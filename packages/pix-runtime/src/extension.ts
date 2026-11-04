@@ -5,7 +5,6 @@ import {
 	type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
 import { syncBinaryStore } from "./binaries/store.ts";
-import { bindHerdrNotify } from "./herdr-notify.ts";
 import { bindAgentStateEvents, resetAgentState, resetUnattendedState } from "./herdr-state.ts";
 import { once } from "./once.ts";
 import { registerPixCommand } from "./pix-command.ts";
@@ -26,7 +25,6 @@ export default function registerRuntime(pi: ExtensionAPI): void {
 
 		registerPixCommand(pi, runtime);
 		const unbindAgentState = bindAgentStateEvents(pi.events);
-		const unbindHerdrNotify = bindHerdrNotify(pi.events);
 
 		// User `!` commands: PowerShell on Windows, $SHELL on POSIX (zsh gets rc + aliases).
 		const shell = userShell();
@@ -65,7 +63,6 @@ export default function registerRuntime(pi: ExtensionAPI): void {
 		pi.on("session_shutdown", async () => {
 			resetAgentState(pi.events);
 			resetUnattendedState(pi.events);
-			unbindHerdrNotify();
 			unbindAgentState();
 			await runtime.flush();
 		});

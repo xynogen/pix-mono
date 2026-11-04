@@ -92,6 +92,7 @@ npm:@xynogen/pix-search
 npm:@xynogen/pix-web
 npm:@xynogen/pix-voice
 npm:@xynogen/pix-gate
+npm:@xynogen/pix-notify
 "
 
 info() { printf '%b›%b %s\n' "$blue" "$reset" "$*"; }

@@ -34,6 +34,8 @@ import { prettySection } from "./pretty.ts";
 
 export {
 	fetchSection,
+	type NotifyConfig,
+	notifySection,
 	searchSection,
 	type ToolboxConfig,
 	toolboxSection,
@@ -42,7 +44,13 @@ export {
 	type WebConfig,
 } from "./services.ts";
 
-import { fetchSection, searchSection, toolboxSection, voiceSection } from "./services.ts";
+import {
+	fetchSection,
+	notifySection,
+	searchSection,
+	toolboxSection,
+	voiceSection,
+} from "./services.ts";
 
 /** All built-in sections, in stable registration order. */
 export const builtinSections = [
@@ -56,5 +64,6 @@ export const builtinSections = [
 	fetchSection,
 	searchSection,
 	voiceSection,
+	notifySection,
 	toolboxSection,
 ] as const;

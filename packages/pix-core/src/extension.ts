@@ -25,6 +25,7 @@ import registerGate from "@xynogen/pix-gate";
 import registerGrep from "@xynogen/pix-grep/extension";
 import registerLs from "@xynogen/pix-ls/extension";
 import registerModels from "@xynogen/pix-models/extension";
+import registerNotify from "@xynogen/pix-notify";
 import registerNudge from "@xynogen/pix-nudge/extension";
 import registerOptimizer from "@xynogen/pix-optimizer";
 import registerPowerShell from "@xynogen/pix-powershell/extension";
@@ -81,6 +82,7 @@ const MEMBERS = [
 	registerAsk,
 	registerOptimizer,
 	registerGate,
+	registerNotify,
 	registerSubagent,
 	// Custom compaction: replaces pi's built-in summary + trigger (reads
 	// compaction section; runs after runtime is live).

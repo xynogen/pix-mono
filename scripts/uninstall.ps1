@@ -74,6 +74,7 @@ $__pixUninstaller = {
 		"npm:@xynogen/pix-web"
 		"npm:@xynogen/pix-voice"
 		"npm:@xynogen/pix-gate"
+		"npm:@xynogen/pix-notify"
 	)
 
 	# --- logging helpers ---------------------------------------------------------

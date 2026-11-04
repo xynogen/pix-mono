@@ -1,0 +1,49 @@
+{
+	"name": "@xynogen/pix-notify",
+	"version": "0.1.0",
+	"description": "Pi extension — sound + popup when the agent waits on you (herdr-aware, OS-agnostic)",
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"test": "bun test"
+	},
+	"files": [
+		"src",
+		"!src/**/*.test.*",
+		"README.md",
+		"LICENSE"
+	],
+	"pi": {
+		"extensions": [
+			"src/index.ts"
+		]
+	},
+	"keywords": [
+		"pi",
+		"pi-package",
+		"pi-extension",
+		"notify",
+		"herdr"
+	],
+	"author": "xynogen",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/xynogen/pix-mono.git",
+		"directory": "packages/pix-notify"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@xynogen/pix-runtime": "^0.16.2",
+		"@xynogen/pix-pretty": "^1.36.0"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	}
+}

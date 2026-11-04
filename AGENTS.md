@@ -151,6 +151,7 @@ Owned by `pix-runtime` (init/reload/flush + the `/pix` settings command). Auto-c
 | `edit` | pix-diagnostics (opt-in syntax guard for edits) |
 | `optimizer` | pix-optimizer (caveman/rtk/ponytail state) |
 | `gate` | pix-gate (rules, auto-approve patterns) |
+| `notify` | pix-notify (on/off, system sound) |
 
 Loader: `@xynogen/pix-runtime/config` · sections: `@xynogen/pix-runtime/sections` · collapse: `@xynogen/pix-runtime/collapse`. Full schema in `packages/pix-runtime/README.md`.
 

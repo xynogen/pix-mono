@@ -113,6 +113,29 @@ export const CATALOG = {
 			asset: (h, v) => (h.os === "win32" ? `aria2-${v}-win-64bit-build1.zip` : undefined),
 		},
 	},
+	herdr: {
+		usedBy: ["pix-notify"],
+		os: ["linux", "darwin"],
+		optional: true,
+		hint: { default: "see herdr.dev — only used inside a herdr pane" },
+	},
+	paplay: {
+		usedBy: ["pix-notify"],
+		os: LINUX,
+		optional: true,
+		// PulseAudio's player; PipeWire ships the same job as pw-play.
+		names: ["paplay", "pw-play"],
+		versionArgs: null,
+		hint: {
+			default: "apt install pulseaudio-utils · dnf install pulseaudio-utils · pacman -S libpulse",
+		},
+	},
+	afplay: {
+		usedBy: ["pix-notify"],
+		os: ["darwin"],
+		versionArgs: null,
+		hint: { default: "built into macOS" },
+	},
 	ffmpeg: {
 		usedBy: ["pix-voice"],
 		os: ["linux", "win32", "darwin"],
@@ -237,7 +260,7 @@ export const CATALOG = {
 		hint: { default: "npm install -g @earendil-works/pi-coding-agent" },
 	},
 	powershell: {
-		usedBy: ["pix-powershell", "pix-ask", "pix-voice"],
+		usedBy: ["pix-powershell", "pix-ask", "pix-voice", "pix-notify"],
 		os: ["win32", "linux"],
 		wslOnly: true,
 		// WSL reaches Windows PowerShell through interop as powershell.exe.

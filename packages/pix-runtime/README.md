@@ -10,7 +10,7 @@ See `DESIGN.md` for the full contract.
 ## What it does
 
 - Versioned, sparse `pix.json` (`$version: 1`) — defaults resolve in code.
-- Typed sections: `collapse`, `pretty`, `io`, `compaction`, `edit`, `optimizer`, `gate`, `fetch`, `search`, `voice`, `toolbox`.
+- Typed sections: `collapse`, `pretty`, `io`, `compaction`, `edit`, `optimizer`, `gate`, `fetch`, `search`, `voice`, `notify`, `toolbox`.
 - `/pix` has a Footer tab for `pretty.footer` visibility.
 - Startup imports legacy service config files and archives them only after a successful save.
 - Atomic writes behind a serialized in-process queue and a short-lived
@@ -297,37 +297,11 @@ const done = beginAgentActivity(pi.events, "subagent", "Agent running");
 done();
 ```
 
-### herdr notification bridge
+### Notifications
 
-`src/herdr-notify.ts` (exported as `bindHerdrNotify`) is a leaf subscriber on
-`pix:agent-state`. When the agent transitions INTO `blocked` it spawns:
-
-```bash
-herdr notification show <message> --sound request
-```
-
-so a user away from their terminal gets a popup and sound. `request` is herdr's
-built-in "needs attention" cue. The trigger is edge-triggered: it fires once per
-entry into `blocked`, not repeatedly, and nested blocks stay a single
-notification.
-
-The bridge is fire-and-forget. The child is `detached`, `unref`'d, and
-`stdio: "ignore"`, and a missing `herdr` binary is swallowed, so it never blocks
-the prompt path or throws. herdr owns the toast's color, position, and sound via
-its own server config (`[toast]` / `[notification]`); pix only reports the moment
-and the message. Compaction and other autonomous work never enter `blocked`, so
-they never notify.
-
-It is wired automatically by the runtime extension: bound at session start,
-unbound at shutdown. No manual setup beyond running inside a herdr pane.
-
-Two environment variables control it:
-
-- `HERDR_ENV` — herdr sets this to `1` inside its own pane. The bridge only runs
-  when `HERDR_ENV === "1"`; outside a herdr pane it is a no-op and spawns
-  nothing.
-- `PIX_HERDR_NOTIFY` — set to `0` to silence notifications even inside a herdr
-  pane.
+The runtime only emits `pix:agent-state`. The sound/popup on `blocked` lives in
+[`@xynogen/pix-notify`](../pix-notify): herdr notification inside a herdr pane,
+the configured system sound everywhere else.
 
 ## Testing
 

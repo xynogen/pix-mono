@@ -47,6 +47,18 @@ export const voiceSection = defineSection({
 		return result;
 	},
 });
+const notifyDefaults = { enabled: true, sound: "auto" };
+export type NotifyConfig = typeof notifyDefaults;
+export const notifySection = defineSection({
+	key: "notify",
+	defaults: notifyDefaults,
+	parse(raw): NotifyConfig {
+		const item = isObj(raw) ? raw : {};
+		const sound = typeof item.sound === "string" && item.sound.trim() ? item.sound.trim() : "auto";
+		return { enabled: boolOr(item.enabled, true), sound };
+	},
+});
+
 export interface ToolboxConfig {
 	disabledTools?: string[];
 	loadedTools?: string[];

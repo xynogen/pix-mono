@@ -33,6 +33,7 @@ test("core awaits member factories in order and stops on failure", async () => {
 		"@xynogen/pix-ask",
 		"@xynogen/pix-optimizer",
 		"@xynogen/pix-gate",
+		"@xynogen/pix-notify",
 		"@xynogen/pix-subagent/extension",
 	];
 	const originals = new Map<string, Record<string, unknown>>();
