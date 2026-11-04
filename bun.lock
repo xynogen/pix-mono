@@ -11,7 +11,7 @@
         "@earendil-works/pi-tui": "1.5.0",
         "@types/bun": "latest",
         "@types/node": "^22",
-        "@xynogen/pix-runtime": "^0.16.0",
+        "@xynogen/pix-runtime": "^0.17.0",
         "typebox": "^1.1.38",
         "typescript": "^5.7.0",
         "typescript-language-server": "^6.0.1",
@@ -917,7 +917,7 @@
 
     "@xynogen/pix-read": ["@xynogen/pix-read@workspace:packages/pix-read"],
 
-    "@xynogen/pix-runtime": ["@xynogen/pix-runtime@0.16.1", "", { "dependencies": { "xxhash-wasm": "1.1.0" }, "peerDependencies": { "@ast-grep/napi": "^0.45.0", "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" }, "optionalPeers": ["@ast-grep/napi"] }, "sha512-YN39GqpJcLtgsZ29iz94PjBg4oLeyDhKevMTW89KH0s99CqfY4nI2Yshcjy6HimF+rvFp3jqwiD6FTMUUxk4sQ=="],
+    "@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
 
     "@xynogen/pix-search": ["@xynogen/pix-search@workspace:packages/pix-search"],
 
@@ -1366,92 +1366,6 @@
     "@earendil-works/pi-coding-agent/chalk": ["chalk@6.0.0", "", {}, "sha512-2uNTXIuTTxk7ciZgAU1BQcgnchcG0xXnrs6jzkQfj9SsRa9M2s5zE8WT96hS6KmG4MzWHSrvH43DF1m4XRkrFg=="],
 
     "@earendil-works/pi-coding-agent/typebox": ["typebox@1.3.27", "", {}, "sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA=="],
-
-    "@xynogen/pix-9router/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-aria2/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-ask/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-astgrep/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-bash/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-codemode/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-commands/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-core/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-data/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-diagnostics/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-display/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-edit/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-env/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-find/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-footer/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-gate/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-graph/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-grep/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-hunk/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-ls/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-mcp/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-models/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-notify/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-nudge/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-optimizer/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-powershell/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-pretty/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-proc/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-prompts/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-python/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-read/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-search/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-skills/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-ssh/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-subagent/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-sudo/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-todo/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-toolbox/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-update/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-voice/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-web/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-welcome/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
-
-    "@xynogen/pix-write/@xynogen/pix-runtime": ["@xynogen/pix-runtime@workspace:packages/pix-runtime"],
 
     "body-parser/content-type": ["content-type@2.1.0", "", {}, "sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag=="],
 
