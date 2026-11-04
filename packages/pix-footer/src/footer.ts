@@ -63,6 +63,7 @@ export function renderThinkingLevel(theme: Theme, level: string, text: string): 
 }
 
 const GIT_POLL_MS = 2_000;
+const FOOTER_PAD = 1;
 
 // basename splits on \ too on Windows. A root ("/", "C:\\") has no basename, so show it whole.
 const shortCwd = (cwd: string): string => basename(cwd) || cwd;
@@ -553,7 +554,7 @@ export default function (pi: ExtensionAPI) {
 				tui.requestRender();
 			});
 
-			return {
+			const footer = {
 				dispose() {
 					unsub();
 					unsubConfig();
@@ -561,6 +562,11 @@ export default function (pi: ExtensionAPI) {
 				},
 				invalidate() {},
 				render(width: number): string[] {
+					// One column of breathing room against the terminal edge on both sides.
+					const pad = " ".repeat(FOOTER_PAD);
+					return footer.row(Math.max(0, width - 2 * FOOTER_PAD)).map((line) => pad + line + pad);
+				},
+				row(width: number): string[] {
 					const sep = theme.fg("muted", " | ");
 
 					// A version-skewed pix-runtime copy can own the globalThis singleton and
@@ -622,6 +628,7 @@ export default function (pi: ExtensionAPI) {
 					];
 				},
 			};
+			return footer;
 		});
 	});
 

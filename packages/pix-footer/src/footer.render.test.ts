@@ -131,12 +131,13 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/PLAN.*capture.*2[/]3.*2 !1/);
 		// Model block left, extension statuses flush right with a padded gap between.
 		expect(visibleWidth(wide[0] ?? "")).toBe(240);
-		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/\S {3,}\S.*2[/]3.*\S$/);
+		// One pad column against each terminal edge.
+		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/^ \S.*\S {3,}\S.*2[/]3.*\S $/);
 		expect(defaults.wrap).toBe(false);
 		expect(footer.render(40)).toHaveLength(1);
 		const clipped = footer.render(40)[0]!;
 		expect(visibleWidth(clipped)).toBe(40);
-		expect(stripVTControlCharacters(clipped)).toStartWith("PLAN");
+		expect(stripVTControlCharacters(clipped)).toStartWith(" PLAN");
 		expect(fadeColors.length).toBeGreaterThan(1);
 		expect(colorToHex(fadeColors.at(-1)!)).toBe("#141414");
 		const unique = new Set(fadeColors.map(colorToHex));
@@ -155,7 +156,10 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 			if (visibleWidth(joined) > width) expect(rows.length).toBeGreaterThan(1);
 			else expect(rows).toHaveLength(1);
 			expect(rows.every((row) => visibleWidth(row) <= width)).toBe(true);
-			const flat = rows.map(stripVTControlCharacters).join(" ").replace(/ {3,}/, " | ");
+			const flat = rows
+				.map((row) => stripVTControlCharacters(row).trim())
+				.join(" ")
+				.replace(/ {3,}/, " | ");
 			expect(flat.replace(/\s+/g, " ").trim()).toBe(joined.replace(/\s+/g, " ").trim());
 		}
 		await fixture.runtime.update(prettySection, { footer: { statuses: false } });
