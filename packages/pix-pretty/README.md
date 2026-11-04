@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-pretty
 
 Rendering and formatting library for Pi Coding Agent with syntax highlighting, file icons, tree views, FFF search integration, and gate-dialog overlay.
@@ -8,7 +12,7 @@ This package is a **library + a small extension** that other pix packages
 consume. It does not register user-facing tools itself — the tool renderers
 (`pix-read`, `pix-bash`, `pix-ls`, `pix-find`, `pix-grep`, `pix-edit`,
 `pix-write`) import from it. The extension entry point (`src/index.ts`) only
-initializes the syntax-highlight theme from Pi settings, clears the highlight
+keeps above-editor widgets in a stable order (TUI sessions), clears the highlight
 cache, seeds the icon mode from `pix.json`, and registers two FFF slash
 commands (`/fff-health`, `/fff-rescan`) once `pix-grep` has brought the FFF
 finder online. The `/pix` settings command lives in `pix-runtime`.
@@ -21,6 +25,10 @@ finder online. The `/pix` settings command lives in `pix-runtime`.
 - **Tree views** — hierarchical directory display for ls
 - **Diff rendering** — side-by-side split diff for edit/write
 - **Bash exit summary** — colored status, line count, truncation notice
+- **Truncated previews** — a cut preview fades out bottom-up (`./text`:
+  `fadeRowsOf`) and ends with one muted footer, `… N more lines (ctrl+o to expand)`
+  (`./utils`: `moreLines`, `expandHint`). The hint shows the user's own expand
+  key through Pi's `keyHint`. Expanded views show every row.
 
 ### Icon catalog (l10n-style)
 
@@ -61,7 +69,7 @@ The one source of truth for inline chip tags. Producers build tags with `chipTag
 The model receives each tag verbatim. `registerChips(pi)` shows them as chips in the prompt
 editor and in sent user messages. `pix-display` calls it. Add a new chip kind here, not in a feature package.
 
-UI features that moved to [`pix-display`](packages/pix-display): reasoning-tag (`<think>`/`<thinking>`) → native
+UI features that moved to [`pix-display`](https://www.npmjs.com/package/@xynogen/pix-display): reasoning-tag (`<think>`/`<thinking>`) → native
 `thinking` content blocks.
 
 ## Configuration
@@ -76,6 +84,7 @@ Configuration is read from **`~/.pi/agent/pix.json`** (the unified config file o
 {
   "pretty": {
     "icons": "nerd",          // nerd | unicode | ascii
+    "lsStyle": "grid",        // grid | tree (pix-ls layout)
     "maxPreviewLines": 80,
     "maxRenderLines": 150,
     "maxRenderWidth": "65%",  // modal frame width; percentage or columns
@@ -95,6 +104,7 @@ Syntax highlighting, diffs, and tool surfaces use the active Pi theme. Color ove
 ### Environment Variables (override `pix.json`)
 
 - `PRETTY_MAX_HL_CHARS` — max characters to highlight (default: 80000)
+- `PRETTY_MAX_HL_LINE_CHARS` — max characters per line to highlight (default: 2000; env only)
 - `PRETTY_MAX_PREVIEW_LINES` — max lines in preview output
 - `PRETTY_CACHE_LIMIT` — FFF cache size limit
 - `PRETTY_ICONS` — default icon mode when none is persisted: `nerd` (default),
@@ -111,6 +121,7 @@ The package exposes its sub-modules via `exports`:
 ```
 @xynogen/pix-pretty            (default — extension entry)
 @xynogen/pix-pretty/ansi
+@xynogen/pix-pretty/batch        (multi-target `paths` helpers and section caps)
 @xynogen/pix-pretty/confirm
 @xynogen/pix-pretty/progress
 @xynogen/pix-pretty/config
@@ -125,12 +136,19 @@ The package exposes its sub-modules via `exports`:
 @xynogen/pix-pretty/fff
 @xynogen/pix-pretty/types
 @xynogen/pix-pretty/utils
+@xynogen/pix-pretty/text         (text fade helpers for previews and widgets)
+@xynogen/pix-pretty/widget-format
 @xynogen/pix-pretty/resize
 @xynogen/pix-pretty/context
 @xynogen/pix-pretty/gate-overlay
 @xynogen/pix-pretty/modal-frame
 @xynogen/pix-pretty/provider-picker
 @xynogen/pix-pretty/shell-tool   (shared bash/powershell tool registrar + renderer)
+@xynogen/pix-pretty/command-preview
+@xynogen/pix-pretty/tool-status  (binary download status + missing-binary warnings)
+@xynogen/pix-pretty/test-utils   (renderer test helpers)
+@xynogen/pix-pretty/transient-error
+@xynogen/pix-pretty/grammar-consent
 @xynogen/pix-pretty/chips        (inline chip tags + editor/history chip renderer)
 ```
 

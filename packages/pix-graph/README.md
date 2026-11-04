@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-graph
 
 Native-TS code knowledge graph — extract, cluster, analyze, and query a codebase
@@ -21,11 +25,13 @@ One tool, four actions:
 | Call | Effect |
 |---|---|
 | `graph(action:"build", path?)` | (Re)build/update the graph from source into `.pi/graph/`. Run again after edits to refresh. |
-| `graph(action:"query", question, dfs?)` | Lexical search: match keywords against symbol/file names, then traverse. BFS (default) for broad context, `dfs:true` to trace a path. |
+| `graph(action:"query", question, dfs?)` | Lexical search: match keywords against symbol/file names, then traverse. Ties between seeds break by PageRank. BFS (default) for broad context, `dfs:true` to trace a path. |
 | `graph(action:"query", question, scope:"global")` | Rank whole modules (workspace packages) for architecture questions. Returns each module's summary and evidence card. |
-| `graph(action:"impact", question, path?)` | Reverse dependencies: who calls, uses (types, constants) or imports a symbol or file, transitively (3 hops, 60 nodes). Ends with affected files and tests. `path` narrows an ambiguous name. `query` and `impact` add a stale note when sources changed after the build. |
+| `graph(action:"impact", question, path?)` | Reverse dependencies: who calls, uses (types, constants) or imports a symbol or file, transitively (3 hops, 60 nodes). Class methods and properties are their own `Class.member` nodes, so impact can target one method. Ends with affected files and tests. Above 25 direct dependents, the result folds them per package with counts and still lists every test file. `path` narrows an ambiguous name. |
 | `graph(action:"summarize")` | List up to 5 modules whose summary is missing or stale, with their evidence cards and a token estimate. |
 | `graph(action:"summarize", module, summary)` | Store a summary written by the agent. It must cite the module's card. |
+
+When sources changed after the last build, `query` and `impact` rebuild the graph first (cached, about 2 s) and say so. If that rebuild fails, they answer from the old graph and add a stale note.
 
 Summaries live in `.pi/graph/summaries.json`, keyed by module, evidence hash, model,
 and prompt version. The tool never calls a model itself: the session model writes each
@@ -69,7 +75,8 @@ const result = buildCodeGraph("src", process.cwd(), ".pi/graph");
 | `godNodes`, `surprisingConnections` | Graph analysis |
 | `query`, `impact`, `shortestPath` | Traversal over a built graph |
 | `renderGraphReport`, `boundaries` | Human-readable report and package boundary cards |
-| `analyzeGraph`, `renderPatternReport` | Validate/clean an existing graph + extract repeated patterns |
+| `analyzeGraph`, `renderPatternReport` | Validate/clean an existing graph + extract repeated patterns (also at `@xynogen/pix-graph/analyzer`) |
+| `renderGraphHtml` | Interactive HTML view of a graph |
 | `buildCodeGraph` | Full pipeline orchestrator |
 
 The graph JSON schema (nodes/links/hyperedges, `EXTRACTED`/`INFERRED` confidence)
@@ -80,7 +87,7 @@ a graph built by either tool works with the other's `query`.
 
 - **Other languages are coarser than TS/JS.** TS/JS use the TypeScript compiler
   (import bindings, re-exports). Python, Go, Rust, Java, C/C++, Ruby and the rest of the
-  ast-grep languages go through `@xynogen/pix-astgrep` (optional dependency): definitions
+  ast-grep languages go through the shared engine in `@xynogen/pix-runtime/ast`: definitions
   plus `calls` edges (`INFERRED`) only when exactly one file defines the called name. No
   import edges yet. A missing grammar is installed once after the user agrees; until then
   the build reports that language as skipped.

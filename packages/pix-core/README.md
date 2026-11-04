@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-core
 
 Pi coding agent extension — core UI/UX meta-package.
@@ -18,8 +22,8 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 | `pix-footer` | Status bar: mode / git branch / model / cost / live TPS |
 | `pix-models` | `/model` — enhanced model picker with coding score/rank, context, cost |
 | `pix-update` | `/update` — self-update Pi + refresh extensions |
-| `pix-commands` | Slash commands — `/clear` and concurrent, context-isolated `/btw` side questions |
-| `pix-diagnostics` | Compact LSP diagnostic widget |
+| `pix-commands` | Slash commands — `/clear`, concurrent `/btw` side questions, and `/afk` / `/yolo` unattended modes |
+| `pix-diagnostics` | Compact LSP diagnostic widget; shows the age of the last check, and `stale · Nm ago` after 5 minutes |
 | `pix-display` | Paste chip rendering + thinking block display |
 | `pix-prompts` | System-prompt injection (AGENTS.md + repo directive files) |
 | `pix-skills` | Agent skill loader (`read_skills` tool + bundled on-demand skills, including TOON) |
@@ -45,12 +49,17 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 | Package | Description |
 |---|---|
 | `pix-data` | Shared model data layer (modelgrep + BenchLM) cached at `~/.cache/pi` |
-| `pix-runtime` | Unified `~/.pi/agent/pix.json` config runtime, `/pix` settings command, once guard, and auto-collapse policy |
+| `pix-pretty` | Shared rendering: syntax highlight, icons, diffs, tree views, result frames, FFF search |
+| `pix-runtime` | Unified `~/.pi/agent/pix.json` config runtime, `/pix` settings command (including the Notify tab), once guard, and auto-collapse policy |
 | `pix-optimizer` | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/optimizer`) |
 | `pix-gate` | Permission gate for dangerous bash commands |
-| `pix-notify` | Sound (herdr popup inside herdr) when the agent waits on you |
+| `pix-notify` | Sound (herdr popup inside herdr) when the agent waits on you; `notify` config section (`enabled`, `sound`) |
 | `pix-subagent` | `agent` / `agent_control` — planner-driven sub-agents with live widget |
 | `compaction` | Built into pix-core: replaces pi's built-in context compaction with two levers. **Summary prompt is always pix's** — every compaction (manual `/compact`, threshold, overflow) generates the summary with the current conversation model (no silent routing) from an editable source prompt. **Trigger is pix's when `compaction.triggerPercent > 0`** — after each settled turn pix reads live context usage and compacts at `max(contextWindow × triggerPercent, compaction.minimumTokens)`. The default 100K floor prevents low percentages from compacting too early (for example, 10% of a 300K model waits for 100K rather than 30K); `0` disables pix's trigger and lets pi decide, while pix's summary prompt still applies. After a pix-triggered compaction pix sends a short, visible "resume" user message so the agent continues on its own. Every trigger, resume, and summary run emits a notify line (reason, model, token counts). |
+
+## Tool exposure
+
+Only `read`, `bash`, `edit`, `write`, `tool_search`, and `codemode` are declared up front (plus `powershell` on Windows). Pix-core marks every other direct tool from a bundled member as deferred, so the model loads it on demand through `tool_search`. Standalone installs keep their own exposure. Pix-core also re-ranks `tool_search` hits so native tools beat MCP tools that only share a word with the query.
 
 ## Plan mode
 

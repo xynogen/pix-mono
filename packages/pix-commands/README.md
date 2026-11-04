@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-commands
 
 Pi extension providing focused slash commands:
@@ -55,10 +59,10 @@ AFK mode off — approval prompts restored.
 ```
 
 The point is to let the agent keep working on safe, medium-risk actions while you
-are away, without silently permitting destructive ones. It pairs with the herdr
-notification bridge in `pix-runtime`: you still get pinged when something truly
-needs you (a red gate or root), and auto-deny turns that into a stop rather than
-an approval.
+are away, without silently permitting destructive ones. It pairs with
+[`pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify): you still get
+a sound when something truly needs you (a red gate or root), and auto-deny turns
+that into a stop rather than an approval.
 
 ## `/yolo`
 

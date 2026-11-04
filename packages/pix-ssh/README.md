@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-ssh
 
 Pi tool — `ssh_run`: run a command through a remote host's configured SSH shell, optionally through POSIX `sudo`.
@@ -12,7 +16,7 @@ Registers the `ssh_run` tool — run a command through the configured SSH shell 
 - **Every call** → Allow / Allow for this session / Deny approval, 60-second auto-deny timeout. Plain Allow covers that one call only.
 - **Non-privileged calls** → auto-approve only after "Allow for this session" on that host (until `/new`), or in YOLO mode when no password is missing; each auto-approval emits a notification. Privileged calls always ask.
 
-Output is truncated to 50 KB / 2000 lines. Non-interactive (RPC/JSON) mode blocks the tool immediately.
+Output is truncated to 50 KB / 2000 lines. A cut preview fades its last rows and ends with `… N more lines (ctrl+o to expand)`. Non-interactive (RPC/JSON) mode blocks the tool immediately.
 
 **Parameters:** `action` (`"command"` default · `"file"` · `"info"`), `host` as `[user@]host[:port]` (e.g. `deploy@10.0.0.5:2222`), `command`, optional `sudo` (run through POSIX `sudo` as root), optional `reason`.
 
@@ -34,7 +38,7 @@ Both passwords are cached **in-memory per host** for the session (keyed by `user
 
 OpenSSH **ControlMaster multiplexing** keeps one authenticated connection per host alive for a short `ControlPersist` window, so repeat `ssh_run` calls to the same host skip re-auth. Host-key policy is `accept-new` and `ConnectTimeout` is 10s.
 
-While the approval dialog is open, `ssh_run` holds the shared **agent-state** coordinator in `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so an away user in a herdr pane is pinged when a command is waiting on approval. `/afk` (pix-commands) denies `ssh_run` immediately; `/yolo` auto-approves it only when no password is missing (a password prompt can't be auto-typed).
+While the approval dialog is open, `ssh_run` holds the shared **agent-state** coordinator in `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so [`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify), when installed, alerts an away user that a command is waiting on approval. `/afk` (pix-commands) denies `ssh_run` immediately; `/yolo` auto-approves it only when no password is missing (a password prompt can't be auto-typed).
 
 Completed calls collapse after the configured Pix delay into a status row such as `✓ ssh deploy@10.0.0.5  apt update · exit 0 · 12 lines`. Configure the delay with `collapse.delaySec` and the per-tool toggle with `collapse.tools.ssh` in `~/.pi/agent/pix.json`. Overlays are never collapsed, and passwords are never included in result metadata or render state.
 

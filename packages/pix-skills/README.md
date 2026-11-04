@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-skills
 
 Pi coding agent extension — skill loader tool + skills bundle.
@@ -7,7 +11,7 @@ Pi coding agent extension — skill loader tool + skills bundle.
 | Resource | Type | Description |
 |---|---|---|
 | `read_skills` | tool | Browse local skills, search Skills.sh, explicitly fetch/cache a selected public GitHub skill, read references, and copy bundled resources. |
-| `skills/` | skills | 33 bundled skills (off-context by default — discovered on demand via `read_skills`) |
+| `skills/` | skills | 36 bundled skills (off-context by default — discovered on demand via `read_skills`) |
 
 ## New: Skills.sh search and remote skill cache
 
@@ -213,13 +217,14 @@ Directive commands are gated by the **same rule engine** as the `bash` tool
   throw — they inline a marker so skill loading always completes.
 - **Escape.** `` \!`cmd` `` is left literal, so docs can show the syntax without
   running it.
-- **Single source of truth.** Expanding pix-gate's rule table or a user's
-  `~/.pi/agent/pix-gate.json` automatically tightens the skill path too.
+- **Single source of truth.** Expanding pix-gate's rule table or the user's
+  `gate` section in `~/.pi/agent/pix.json` automatically tightens the skill path too.
 
 Interpolation only happens on the `full=true` path; name listing and description
 lookups never run commands. Calls and results identify the operation as `list`,
-`description`, `instructions`, `reference`, or `copy`; instruction results preview
-at most the first 100 characters, while the full content still reaches the agent.
+`description`, `instructions`, `reference`, or `copy`. A long result shows its first
+rows, fades the last of them, and ends with `… N more lines (ctrl+o to expand)`;
+the full content still reaches the agent.
 Copied-resource results show
 the destination and byte size. Tool results follow Pix's configured auto-collapse
 delay, including `read_skills`; expanding an elapsed result restores its normal

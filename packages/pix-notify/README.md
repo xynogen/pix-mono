@@ -1,4 +1,8 @@
-# @xynogen/pix-notify
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
+# pix-notify
 
 Sound (and popup in herdr) when the agent waits on you: `ask_user`, a pix-gate
 approval, `sudo_run`/`ssh_run`/Python/env approval.

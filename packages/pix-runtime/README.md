@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-runtime
 
 Pix's small shared runtime layer. It owns the process-wide config contract:
@@ -19,7 +23,9 @@ See `DESIGN.md` for the full contract.
 - Typed, path-filtered change events.
 - One-time migration of legacy unversioned config and the `optimizer.json`
   sidecar.
-- The `/pix` shared-settings command, with **Settings** and **Binaries** tabs.
+- The `/pix` shared-settings command, with **Settings** and **Binaries** tabs plus
+  tabs that packages register (for example **Notify** from pix-notify).
+  `/pix <tab>` opens a tab directly.
 - One catalog, resolver and downloader for every external command pix runs
   (`binaries`), plus shared `paths` and `platform` helpers.
 - **User shell** — user `!` commands run through PowerShell on Windows (pwsh 7,
@@ -300,8 +306,9 @@ done();
 ### Notifications
 
 The runtime only emits `pix:agent-state`. The sound/popup on `blocked` lives in
-[`@xynogen/pix-notify`](../pix-notify): herdr notification inside a herdr pane,
-the configured system sound everywhere else.
+[`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify): herdr
+notification inside a herdr pane, the configured system sound everywhere else.
+It reads the `notify` section (`enabled`, `sound`), edited in the `/pix` **Notify** tab.
 
 ## Testing
 

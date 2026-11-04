@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-astgrep
 
 AST-aware structural code search, symbol reads, and rewrites for Pi, built on
@@ -14,7 +18,7 @@ dependency, installed with the package).
 | Tool | Purpose |
 |---|---|
 | `ast_search` | Structural search by pattern, e.g. `foo($A)` or `useState($$$)`. |
-| `ast_replace` | AST-aware rewrite (`pattern` → `rewrite`). Preview by default; `apply:true` writes. |
+| `ast_replace` | AST-aware rewrite (`pattern` → `rewrite`). Preview (line diff) by default; `apply:true` writes atomically. |
 | `ast_outline` | Syntax-only outline of a file or dir — declarations, imports, exports with line numbers. |
 | `ast_read_symbol` | Exact source of one named symbol (function, class, type, enum, const). |
 | `ast_read_enclosing` | Smallest named declaration that encloses a line — the reverse of `ast_read_symbol`. |
@@ -25,11 +29,11 @@ dependency, installed with the package).
 Six grammars are bundled and always work: `typescript`, `tsx`, `javascript`,
 `jsx`, `css`, `html`.
 
-`ast_search` and `ast_replace` also accept a `lang` for other
-languages (python, go, rust, java, c, cpp, and more). The matching
-`@ast-grep/lang-*` grammar installs on demand into the pix cache prefix after
-your consent — it never touches a global path or this package's `node_modules`.
-The outline and symbol tools support ts, tsx, js, jsx, css, and html.
+Other languages (python, go, rust, java, c, cpp, and more) work in every tool.
+`ast_search` and `ast_replace` take them through `lang`; the file tools detect
+them from the file extension. The matching `@ast-grep/lang-*` grammar installs
+on demand into the pix cache prefix after your consent — it never touches a
+global path or this package's `node_modules`.
 
 ## Install
 

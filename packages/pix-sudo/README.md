@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-sudo
 
 Pi tool — `sudo_run` with interactive PAM password prompt.
@@ -15,14 +19,14 @@ The password goes to `sudo -S -v` via stdin — never written to disk, pix-sudo 
 
 Output is truncated to 50 KB / 2000 lines. In non-interactive (RPC/JSON) mode the tool is blocked immediately.
 
-**Away notifications** — while the dialog is open, `sudo_run` holds the shared **agent-state** coordinator `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so a herdr pane pings an away user when a root command waits on approval.
+**Away notifications** — while the dialog is open, `sudo_run` holds the shared **agent-state** coordinator `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)). If [`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify) is installed, it plays a sound (or a herdr notification inside a herdr pane) when a root command waits on approval.
 
 **Unattended modes** (pix-commands):
 
 - `/afk` — denies `sudo_run` immediately.
 - `/yolo` — auto-approves **only when a valid PAM ticket is already cached** (a password can't be auto-typed, so a first uncached root command still prompts). Only the Allow/Deny is skipped; nothing else changes.
 
-**Collapse** — completed calls collapse after the Pix delay into a row like `✓ sudo apt install ripgrep · exit 0 · 18 lines` (`⚡` denied/timed-out, `✗` nonzero exit). Expanding restores full stdout/stderr without restarting the timer. Configure via `collapse.delaySec` and `collapse.tools.sudo` in `~/.pi/agent/pix.json`. Approval and password overlays never collapse; passwords never appear in result metadata or render state.
+**Collapse** — completed calls collapse after the Pix delay into a row like `✓ sudo apt install ripgrep · exit 0 · 18 lines` (`⚡` denied/timed-out, `✗` nonzero exit). Before that, long output shows a preview whose last rows fade out, followed by `… N more lines (ctrl+o to expand)`. Expanding restores full stdout/stderr without restarting the timer. Configure via `collapse.delaySec` and `collapse.tools.sudo` in `~/.pi/agent/pix.json`. Approval and password overlays never collapse; passwords never appear in result metadata or render state.
 
 ## Install
 

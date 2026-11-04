@@ -1,10 +1,18 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-ls
 
 Pi tool — enhanced directory listing.
 
 ## What it does
 
-Replaces Pi's default `ls` tool with an enhanced version backed by `pix-pretty`. Output is rendered with file/directory icons and a total entry-count header. Call labels show the target path inline. Depends on `@xynogen/pix-pretty`, installed automatically as a dependency.
+Replaces Pi's default `ls` tool with an enhanced version backed by `pix-pretty`. Output is rendered with file/directory icons in one status-colored framed block. The entry count shows in the collapsed row. Call labels show the target path inline. Depends on `@xynogen/pix-pretty`, installed automatically as a dependency.
+
+- **Defaults** — 200 sorted entries, dotfiles included. Pass `limit` for more. Pi's 50KB hard limit still applies.
+- **Batch** — pass `paths` to list up to 20 directories in one call. Each directory is capped, and the combined result stays under 50KB.
+- **Previews** — a long listing shows the first 80 entries (`pretty.maxPreviewLines`), fades out bottom-up and ends with a footer such as `… 12 more entries (ctrl+o to expand)`. The footer shows your own expand key. The expanded view shows every entry.
 
 ## Display style
 

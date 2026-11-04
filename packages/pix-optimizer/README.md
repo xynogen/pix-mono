@@ -1,7 +1,11 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-optimizer
 
 Token-optimization suite for Pi Coding Agent. Three tools wired into one
-extension via `src/index.ts`, fronted by a single `/optimizer` command and one
+extension via `src/index.ts`, fronted by one **Optimizer** tab in `/pix` and one
 shared status-bar cell:
 
 - **Caveman** (`Cv`) — terse-output system prompt
@@ -11,15 +15,15 @@ shared status-bar cell:
 TOON guidance lives exclusively in the on-demand `toon-json` skill bundled by
 `@xynogen/pix-skills`; it is no longer optimizer state or prompt injection.
 
-## Command
+## Settings tab
 
-One command opens an interactive overlay that fronts every tool:
+The **Optimizer** tab of `/pix` opens an interactive overlay that fronts every tool:
 
 ```text
-/optimizer                 → open the overlay (←→ cycle value, ↑↓ move, esc close)
+/pix optimizer             → open the overlay (←→ cycle value, ↑↓ move, esc close)
 ```
 
-There is no text-arg form: the overlay is the only UI. Selecting a value calls
+There is no separate `/optimizer` command and no text-arg form: the overlay is the only UI. Selecting a value calls
 the tool's `run()` handler, which persists the new value and repaints the
 shared status cell. Headless/test fallbacks print a plain status summary.
 
@@ -28,7 +32,7 @@ State (caveman/rtk/ponytail) persists in the `optimizer` section of `~/.pi/agent
 ## Status bar
 
 A single cell always shows all three tool icons in a fixed order, color-coded by
-state: **accent** when the tool is enabled, **dim** when disabled.
+state: **accent** when the tool is enabled, **muted** when disabled.
 
 ### Icon style (Nerd Font, Unicode, or ASCII)
 
@@ -62,7 +66,7 @@ article-dropping caveman prompt.
 | ultra | Strict STE + full reply shape     |
 | micro | Experimental prompt-minimized     |
 
-The `/optimizer` overlay opens a settings dialog when needed. Default level
+The Optimizer tab opens a settings dialog when needed. Default level
 for new sessions is restored from `pix.json` → `optimizer`.
 
 ### RTK Tool Rewriting (`Rk`)
@@ -74,9 +78,11 @@ Two layers, both active automatically:
 2. **Execute layer** — rewrites `bash` tool calls, prefixing known commands
    (`git`, `gh`, `cargo`, `npm`, `pnpm`, `docker`, `kubectl`, `ls`, `grep`, …)
    with `rtk` when the model forgets. **Command chains are split on `&&`,
-   `||`, `;` and `|`, and every known segment is prefixed** — e.g.
+   `||` and `;`, and every known segment is prefixed** — e.g.
    `git add . && git push` becomes `rtk git add . && rtk git push`.
-   Operators inside quotes are ignored, and unparseable commands are left
+   A segment whose output is piped (`a | b`) is left as is, and a command
+   with any redirect (`<`, `>`) is not rewritten, so piped and redirected
+   output stays intact. Operators inside quotes are ignored, and unparseable commands are left
    untouched. Commands are never rewritten while `rtk` is missing.
 
 **Binary:** pix finds `rtk` in this order: `binary.json` → `~/.pi/agent/bin` →
@@ -92,7 +98,7 @@ the version and source. It never blocks startup or a tool call.
 The download is skipped when:
 
 - `PI_OFFLINE` is set;
-- RTK is off in `/optimizer`;
+- RTK is off in the Optimizer tab;
 - `binary.json` names a path that doesn't exist.
 
 If you pin a path in `binary.json`, rewritten commands use that quoted path
@@ -117,13 +123,13 @@ PATH dependency.
 
 ## Configuration via `pix.json`
 
-Optimizer state lives in `~/.pi/agent/pix.json`. You can edit it by hand, or use `/optimizer`, which writes to the same section.
+Optimizer state lives in `~/.pi/agent/pix.json`. You can edit it by hand, or use the Optimizer tab of `/pix`, which writes to the same section.
 
 ```jsonc
 {
   "optimizer": {
-    "caveman": "lite",   // off | lite | full | ultra | micro
-    "rtk":     true,
+    "caveman": "off",    // off | lite | full | ultra | micro
+    "rtk":     "on",     // off | on
     "ponytail": "off"   // off | lite | full | ultra
   }
 }
@@ -133,8 +139,9 @@ Optimizer state lives in `~/.pi/agent/pix.json`. You can edit it by hand, or use
 
 | File              | Role                                                      |
 |-------------------|-----------------------------------------------------------|
-| `src/index.ts`    | Wires the three tools + shared status, registers `/optimizer` |
-| `src/opt.ts`      | The `/optimizer` overlay UI (keyboard nav + cycling)     |
+| `src/index.ts`    | Wires the three tools + shared status and the Optimizer tab |
+| `src/opt.ts`      | The Optimizer tab overlay in `/pix` (keyboard nav + cycling) |
+| `src/mode.ts`     | Shared level/prompt/persistence plumbing for caveman and ponytail |
 | `src/status.ts`   | Shared status-bar cell (`toolIcon()` → shared `pix-pretty` catalog) |
 | `src/caveman.ts`  | Caveman logic, levels, prompt                            |
 | `src/rtk.ts`      | RTK prompt + bash command rewriting                       |
@@ -143,12 +150,12 @@ Optimizer state lives in `~/.pi/agent/pix.json`. You can edit it by hand, or use
 | `src/tool-result-filter.ts` | Strips model-guidance warnings from tool_result |
 
 Each tool registers its own lifecycle hooks and exposes an `OptimizerHandle`
-that `/optimizer` dispatches to. All three share one `OptimizerStatus`.
+that the Optimizer tab dispatches to. All three share one `OptimizerStatus`.
 
 ## Development
 
 ```bash
-bun test
+bun run test
 ```
 
 ## Origin
@@ -156,21 +163,21 @@ bun test
 This package was built by merging two upstream Pi community packages:
 
 - **Caveman mode** — merged from `npm:pi-caveman`. Reimplemented here with
-  multiple compression levels and integration with the shared `/optimizer`
-  command.
+  multiple compression levels and integration with the shared Optimizer
+  settings tab.
 
 - **RTK rewriting** — merged from `npm:pi-rtk-optimizer`. Reimplemented here
   with a two-layer approach: prompt injection + live bash command rewriting
   that handles chained commands (`&&`, `||`, `;`, `|`).
 
 - **Ponytail mode** — ruleset adapted from [`git:github.com/DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail),
-  the "lazy senior dev" skill. Reimplemented here as a native `/optimizer`
+  the "lazy senior dev" skill. Reimplemented here as a native optimizer
   tool with three intensity levels — no external hooks or files. The
   ruleset (the YAGNI ladder + safety carve-outs) is rewritten as a system-prompt fragment.
 
 All upstreams are MIT licensed. No codebase was copied directly — the logic was
-rewritten and combined into a single extension with a unified `/optimizer`
-command and shared status bar. This package does not sync back to any upstream.
+rewritten and combined into a single extension with a unified Optimizer
+settings tab and shared status bar. This package does not sync back to any upstream.
 
 ## Install
 

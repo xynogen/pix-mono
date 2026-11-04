@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-mcp
 
 Token-efficient MCP gateway for the [Pix](https://github.com/xynogen/pix-mono)
@@ -35,7 +39,8 @@ Pix MCP also reads, in increasing precedence:
 4. `.pi/mcp.json`
 
 Run `/mcp setup` for guided discovery, or `pix-mcp init` to detect supported
-Cursor, Claude, Codex, Windsurf, and VS Code configs.
+Cursor, Claude, Codex, Windsurf, and VS Code configs. The `/mcp` panel also
+opens from the **MCP** tab of `/pix`.
 
 ### Pi mcp.json fields
 
@@ -68,6 +73,9 @@ Project files (`.mcp.json`, `.pi/mcp.json`) can start local commands through `co
   `includeSchemas: true` on search.
 - Large MCP results are truncated in context and written to a temporary file
   for targeted inspection.
+- A collapsed result preview fades out bottom-up and ends with a footer such as
+  `… +12 more (ctrl+o to expand)`, with your own expand key. Expanding shows
+  every line.
 - Direct tools remain opt-in because each one adds its schema to the baseline
   prompt.
 

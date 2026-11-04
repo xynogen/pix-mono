@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-python
 
 Pi tool — `python_run`: run a local Python snippet behind an approval prompt.
@@ -18,7 +22,7 @@ Models often push Python through `bash` (`python3 -c "…"`, `python3 - <<EOF`).
 - **Approval** in the shared permission overlay (like `sudo_run`): intent, cwd, and the code. Choices: **Allow**, **Allow for this session** (until `/new` or `/reload`), **Deny**. 60 s idle auto-deny.
 - **Unattended modes:** `/yolo` approves. `/afk` denies unless the session was already allowed. Without a UI the tool is blocked.
 - **Card:** `python_run <intent>` with the highlighted code, then the output in the standard result frame. Completed calls collapse to `✓ python_run · <intent> · 3 lines · 120ms` (`collapse.tools.python_run` in `~/.pi/agent/pix.json`).
-- Output keeps the tail (tracebacks end there), capped at Pi's default line/byte limits.
+- Output keeps the tail (tracebacks end there), capped at Pi's default line/byte limits. A cut card starts with `… N earlier lines (ctrl+o to expand)`.
 
 When `pix-nudge` is active, a standalone `python -c` / `python - <<` in bash gets a one-time hint toward `python_run`. Piped `… | python -c` stays in bash.
 

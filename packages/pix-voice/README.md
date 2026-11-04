@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-voice
 
 Provider-neutral speech for Pi: push-to-talk dictation into the prompt
@@ -12,13 +16,16 @@ transcribe({ file: string, output_file?: string, language?: string });
 speak({ input: string, output_file?: string });
 ```
 
-The user picks the provider, the model, and playback in `/voice`. The model
+The user picks the provider, the model, and playback in the `/pix` Voice tab. The model
 gives only the input. Every result names the provider and model that ran. There
 is no silent fallback to another provider.
 
 For most TTS providers, a model is `model/voice`, for example
 `gpt-4o-mini-tts/nova`. Some providers return `wav` or `mp3` for every request.
 The tool names the saved file by the real format and reports a mismatch.
+
+A long result shows a preview whose last rows fade out, followed by
+`… N more lines (ctrl+o to expand)`. Expand to see the full text.
 
 ## Providers
 
@@ -49,7 +56,7 @@ example `edge-tts`, `google-tts`, and `aws-polly`.
 
 ## Settings
 
-Run `/voice`. The modal stays open until you press esc, and each change saves at
+Run `/pix voice` (or open `/pix` and pick the Voice tab). The modal stays open until you press esc, and each change saves at
 once. Rows with a list open it in the modal: type to filter, then press enter.
 
 | Row | Value |
@@ -157,7 +164,7 @@ The push-to-talk dictation design comes from
 [earendil-works/pi-voice](https://github.com/earendil-works/pi-voice) (MIT): a
 shortcut starts and stops the recording, and the transcript goes into the
 prompt. That package runs a local model. `pix-voice` sends the audio to the
-provider you pick in `/voice`. No code is copied. Thanks to the pi-voice
+provider you pick in `/pix` → Voice. No code is copied. Thanks to the pi-voice
 authors.
 
 ## Install

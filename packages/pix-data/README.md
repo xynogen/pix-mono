@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-data
 
 Pi coding agent extension — shared model data layer. Warms two cached
@@ -120,6 +124,10 @@ place if your priorities differ.
 | `lookupModelsDev` | Sync lookup by id from in-memory cache (joined on slug) |
 | `lookupBenchmark` | Sync lookup a model by id — returns score + rank + pricing |
 | `benchScoreColor` | Map a 0–100 score to a `success`/`warning`/`error`/`muted` token |
+| `fromRegisteredModel` | Map a registered Pi model into the catalog model shape |
+| `mergeModelsDev` | Prefer catalog fields; fill missing cost/context from a registered Pi model |
+| `resolveModelsDev` | Catalog lookup with registered-model fallback for cost/context |
+| `formatCost` | Price per 1M tokens as `$3/$15`, `free` when both are 0 |
 
 ## Unified config + collapse — now in `pix-runtime`
 

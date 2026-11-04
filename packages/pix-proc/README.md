@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-proc
 
 Pi tool to run and manage long-lived processes that must outlive a single agent
@@ -61,7 +65,9 @@ cap. The process keeps running. `logs`, `list`, and the widget report `capped`.
   survive as orphans holding a port.
 - Every running process writes a pidfile with its process-group id and start
   time. On the next session start, pix-proc finds orphaned groups left by a
-  crashed session, lists them, and asks before killing — never silently.
+  crashed session and lists them in a confirm overlay. **Keep all** (the first
+  choice) adopts and tracks them; **Kill all** terminates them. Nothing is
+  killed silently.
 - On a clean session shutdown, pix-proc stops every process it owns.
 
 ## User command

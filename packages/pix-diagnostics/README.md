@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-diagnostics
 
 Pi extension — an LSP client for project-selected language servers.
@@ -7,6 +11,8 @@ Pi extension — an LSP client for project-selected language servers.
 - Reads language-server choices from `<project>/.pi/lsp.json`.
 - Starts a configured server only when a visible tool call needs it.
 - Reports diagnostics through `lsp_diagnostics`.
+- Marks known diagnostics for the session (`false-positive`, `suppress`, `defer`, `flagged`) through `lsp_diagnostic_mark`. Marks never change files.
+- Shows a one-line LSP widget with error, warning, and file-state counts. The far right shows the age of the last check (for example `3m ago`). After 5 minutes it shows `stale · Nm ago` in the warning color.
 - Supports definition, references, hover, symbols, rename preview, and call hierarchy through `lsp_navigation`.
 - Opt-in syntax guard (`edit.rejectNewSyntaxErrors` in `pix.json`): an edit that adds a syntax error is undone and fails with the errors and fresh anchors.
 

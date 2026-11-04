@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-nudge
 
 Pi extension — model-steering nudges (tools + capability).
@@ -8,17 +12,24 @@ Registers three nudge hooks. All are surgical — they name only the relevant to
 
 **Tools nudge** — catches `bash` calls that reimplement a first-class tool (`read`, `ls`, `grep`, `find`, `edit`), including `sed -n '10,40p'` reads, stand-ins with only a trailing `| head`/`| tail`, and commands that pix-optimizer has prefixed with `rtk`:
 
-- Appends one `[pix-nudge]` line to that bash result **once per command category per session** (the model reads tool results, not UI notices), plus a nudge card for the user. The line names the tool options that replace the shell idiom (for example `read` offset/limit). Deferred tools are pointed at `tool_search`.
-- The command still runs — it teaches, doesn't block (early blocking wasted a turn on forced retry). Later calls in that category are silent.
+- Appends one `[pix-nudge]` line to that bash result on the **first use of a command category, then on every 5th use** (the model reads tool results, not UI notices), plus a nudge card for the user. The line names the tool options that replace the shell idiom (for example `read` offset/limit).
+- **Deferred targets are loaded for you.** When the named tool is deferred, the nudge activates it (the way `tool_search` would), says so in the line, and marks the card `(loaded)`. The model can call it next without a discovery round-trip.
+- The command still runs — it teaches, doesn't block (early blocking wasted a turn on forced retry). Calls in that category between reminders are silent.
 - Three whole-command patterns too: a backgrounded process (`&`, `nohup`, `setsid`) points at `proc`; a heredoc or `python - <<` script that writes a real file (not `/tmp`) points at `write`/`edit`, so the change shows as a diff; any other standalone `python -c` / `python - <<` snippet points at `python_run` (piped `… | python -c` stays in bash).
+- On Windows, a bash call that matches no other rule gets a nudge toward the `powershell` tool, on the same first-then-every-5th cadence. Bash stays enabled.
 - **Only installed tools are named.** A nudge is skipped when its tool is not registered this session, or when it is deferred and `tool_search` is missing (it could not be loaded). A hint that names a missing tool (`or \`edit\``) is dropped and the nudge stays. If the host cannot list its tools, no tool nudge fires.
 - Bash stays available for everything else (pipes, compound commands, real shell work).
+
+The tools nudge also watches two native tools, once per session each:
+
+- A `read` without `offset` of a source file with 300+ lines points at `ast_outline`, then `ast_read_symbol` for one function.
+- A `grep` whose pattern is one code identifier (camelCase, PascalCase, snake_case, or SCREAMING_CASE) points at `graph` `action:"impact"` or `lsp_navigation` references. Plain words and regexes stay ordinary greps.
 
 > **Nudge steers; it does not guard.** Privileged auth stand-ins (bash `sudo`/`ssh`) are *not* nudged here — those are hard-blocked and redirected to `sudo_run`/`ssh_run` by [`pix-gate`](../pix-gate), which handles the auth safely. Guarding (stop) and steering (teach) are separate concerns in separate packages.
 
 **Capability nudge** — steers the model toward tool discovery over guessing:
 
-- One-time orientation message on the **first prompt**: tool counts, the deferred-tool note, and a capability → tool map that lists only the tools registered in this session (`ask_user`, `read_skills()`, context7, `search`/`fetch`, `lsp_*`, `mcp`).
+- One-time orientation message on the **first prompt**: tool counts, the deferred-tool note, deferred non-MCP tool names grouped by prefix family (for example `ast_{outline,search}`), and a capability → tool map that lists only the tools registered in this session (`ask_user`, `read_skills()`, context7, `search`/`fetch`, `lsp_*`, `mcp`).
 - A one-line reminder every 10 turns pointing at `read_skills()`, `tool_search` and MCP, each only when registered. The orientation's deferred-tools line also needs `tool_search`.
 - When `.pi/graph/graph.json` exists and the `graph` tool is registered, both messages also route codebase questions to `graph(action:"query")`.
 - Delivered as visible custom messages, not system-prompt rewrites, so the cached prompt prefix stays intact.

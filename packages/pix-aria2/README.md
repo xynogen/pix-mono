@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-aria2
 
 Pi tool for direct, resumable downloads through a private [aria2](https://aria2.github.io/) RPC daemon. It gives the agent short `dl-*` handles for controlling transfers and shows active progress in the TUI.
@@ -79,6 +83,8 @@ Each loaded extension instance owns one private aria2 daemon. The daemon uses:
 - continuation enabled with `--continue=true`;
 - overwrite and automatic file renaming disabled;
 - one-second polling while downloads are active.
+
+If RPC never comes up, the extension kills the half-started process. If the daemon crashes, the next call starts a new one.
 
 Tool results use compact status rows in collapsed mode and framed details when expanded. Active transfers also appear in a live widget with handle, file name, completion, transferred size, speed, and ETA.
 

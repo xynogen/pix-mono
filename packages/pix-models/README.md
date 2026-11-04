@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-models
 
 Pi extension — enhanced `/model` picker with coding score/rank.
@@ -6,9 +10,10 @@ Pi extension — enhanced `/model` picker with coding score/rank.
 
 Takes over Pi's built-in `/model` command with a richer TUI picker. `/model <term>` opens it pre-filtered.
 
+- **Tabs** — `tab` / `shift+tab` switch between **Chat**, **Classifier**, and **Image** models. Classifier and image models are not chat models: selecting one shows how to call it from codemode (`models.classify()`, `models.generateImages()`).
 - **Each row** — model id, context window, per-M-token cost, and a coding score/rank (star bar) when available.
 - **Sorting** — by coding score (best first), then alphabetically for unscored models. Fuzzy search filters as you type.
-- **Thinking level** — left/right cycles `off` → `minimal` → `low` → `medium` → `high` → `xhigh`, shown live in the header.
+- **Thinking level** — on the Chat tab, left/right steps through the levels the active model supports (`off` → `minimal` → `low` → `medium` → `high` → `xhigh` → `max`), shown live in the header. When a model has no level map, pix fills it from the models.dev catalog and says so in a notice.
 - **Select** — switches the active model for the session.
 - **Per-project prefs** — every model / thinking change is saved with `defaultProvider`, `defaultModel`, `defaultThinkingLevel` in one file: `<project>/.pi/settings.json` for trusted projects (created on first change), otherwise `~/.pi/agent/settings.json`. Pi merges the project file over the user file, so other projects fall back to user defaults. Each save shows a short notice with the target file.
 

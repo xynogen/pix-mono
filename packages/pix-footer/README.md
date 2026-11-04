@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-footer
 
 Pi extension — status bar footer.
@@ -8,11 +12,15 @@ Renders a persistent status bar at the bottom of the Pi TUI, showing:
 
 - Current mode.
 - Working directory with git branch (dirty/ahead/behind markers).
-- Session token counts (in/out), context usage %, session cost, active model.
+- Session token counts (in/out), context usage %, session cost, active model, thinking level, model price, and benchmark score.
 - Live tokens-per-second (TPS) during streaming, held 4s after the turn ends.
 - Extension statuses (e.g. plan mode) as right-side segments.
 
-Model spec (context window, pricing) comes from `~/.cache/pi/models-dev.json` via `pix-data`.
+The session cost shows as `~$` when it includes catalog estimates instead of provider-billed totals.
+
+Model spec (context window, pricing, benchmark score) comes from the cached model catalogs in Pi's cache directory via `pix-data`.
+
+Each segment can be shown or hidden in the `pretty.footer` section of `~/.pi/agent/pix.json`, or in the `/pix` Footer settings: `mode`, `cwd`, `git`, `context`, `model`, `thinking`, `price`, `score`, `statuses`, `tokens`, `cost`, `tps` (all on by default). `wrap` (off by default) wraps a footer that does not fit on one line.
 
 ## Install
 

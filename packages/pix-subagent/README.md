@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-subagent
 
 Pi extension — planner-driven sub-agents with 2 tools, live widget (model always visible), and explicit work-splitting.
@@ -15,13 +19,11 @@ Gives the parent agent (planner) two tools to delegate and control child session
 
 A running background agent also opens an **agent-state** activity lease (`beginAgentActivity` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so the shared state reads `working` while any child is in flight. It does not fire attention notifications — only `blocked` states (an open `ask_user` / gate / sudo prompt) do that.
 
-**Model name is always visible** — in the widget header and completion notification, regardless of whether the child uses the same model as the parent. Looks like:
+**Model name is always visible** — in the widget rows and completion notification, regardless of whether the child uses the same model as the parent. Each row keeps identity and stats fixed; a long activity text fades out instead of an ellipsis. Looks like:
 
 ```
-● Agents
-├─ ⠹ Explore [haiku]  scout auth flow  · ↻2 · 3 tool uses · 12.4k · 1.2s
-│     ⎿  grep "middleware" src/
-└─ ✓ Plan [sonnet]  design refactor  · ↻5 · 2.1s
+⚙   Agent    │ ⠹ Explore [haiku] · scout auth flow          ↻ 2 · ⚒ 3 · 12.4k · 1.2s
+             │ ✓ Plan [sonnet] · design refactor                 ↻ 5 · 2.1s
 ```
 
 ## Tools
@@ -38,6 +40,7 @@ thinking?        string    off|minimal|low|medium|high|xhigh|max (default: mediu
 turns?           number    Omit for unlimited
 resume?          string    Agent ID to continue
 background?      boolean   Default true (non-blocking); false waits for an inline result
+remind?          boolean   Wake the idle parent when a background agent finishes (default false; Esc still stops it)
 ```
 
 **Background is the default.** Omit `background` (or set it to `true`) to return immediately and receive the result automatically on completion. Set `background: false` only when the parent must block until the result is available inline. The initial task prompt is shown in the tool card, then hidden after the shared `collapse.delaySec` threshold; set `collapse.tools.agent` to `false` to keep it visible. Expanding an elapsed card restores the prompt without restarting the timer.
@@ -67,6 +70,7 @@ action      "info" | "result" | "steer" | "stop"
 kind?       "types" | "models" | "active"   For info; defaults to active
 agent_id?   string                            For result/steer/stop
 message?    string                            For steer
+force?      boolean                           For stop: kill now instead of the graceful stop (agent summarizes first)
 query?      string                            For info filtering
 limit?      number                            For info; default 20
 verbose?    boolean                           Full result conversation

@@ -1,5 +1,9 @@
 <!-- markdownlint-disable MD013 MD040 -->
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-env
 
 Broker `.env` secrets to tools without ever putting the values in the model's context.
@@ -39,8 +43,8 @@ call input, cannot be brokered.
 
 ## Unattended modes (AFK / YOLO)
 
-pix-env honours the same `__pixAfk` / `__pixYolo` globals as pix-sudo and
-pix-ssh (set via the unattended toggle in pix-commands):
+pix-env reads the shared unattended mode from `@xynogen/pix-runtime`, like
+pix-sudo and pix-ssh (set with `/afk` and `/yolo` from pix-commands):
 
 - **AFK** (and not YOLO) — injection is **auto-denied**. No secret is resolved
   while you are away.
@@ -52,8 +56,8 @@ pix-ssh (set via the unattended toggle in pix-commands):
 
 ## Usage
 
-On session start it loads `.env` and `.env.local`
-from the current directory. The model is told, once:
+It loads `.env` and `.env.local` from the current directory. The registry is
+loaded per directory on first use and cached. Before each agent turn, the model is told:
 
 > Secret env vars available (VALUES HIDDEN)… reference them as `$KEY` or `${KEY}`.
 
@@ -65,6 +69,18 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com/me
 
 The transcript shows `$API_KEY`; the real token only reaches the child process
 after you approve the popup.
+
+### `read_env` tool
+
+The model can also manage env files directly, with approval:
+
+| Action | Effect |
+|---|---|
+| `info` | Lists key names and value types (`boolean`, `int`, `float`, `string`). No values. |
+| `read` | Reveals only the requested `names` after an approval popup. Approved values enter the model context and transcript. |
+| `add` / `edit` | Writes one `name`/`value` to a `.env` or `.env.<suffix>` file at `path` after an approval popup. Other assignments are kept. |
+
+`path` defaults to the configured files for `info` and `read`. It is required for `add` and `edit`. Every disclosure and write needs an interactive UI.
 
 ## Configuration
 
@@ -90,10 +106,11 @@ Other known limits:
 - **Modifiers are bash-only** — parameter-expansion forms (`${KEY%/}` etc.) work
   in the bash tool via the export prelude, but are blocked in every other tool
   since those have no shell to expand them.
-- **cwd-scoped load** — files are read from the session's working directory at
-  start; secrets defined elsewhere are not seen.
-- **No re-load** — editing `.env` mid-session does not refresh the registry;
-  restart the session.
+- **cwd-scoped load** — files are read from the working directory; secrets
+  defined elsewhere are not seen.
+- **Cached per directory** — editing `.env` outside pix-env mid-session does not
+  refresh the cached registry; restart the session. A `read_env` write clears
+  the cache.
 - **Read gating is separate** — pix-gate blocks the model from *reading* real
   `.env` files (`.env.example` and friends are allowed). pix-env only governs
   *injecting* their values into tool calls.

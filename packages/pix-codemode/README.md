@@ -1,6 +1,10 @@
-# @xynogen/pix-codemode
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
 
-Standalone renderers for Pi’s built-in `codemode` tool. Scripts use JavaScript syntax highlight. Results show formatted JSON, nested calls, clipped previews, and Pix result frames. Expand a card to see the complete script and result.
+# pix-codemode
+
+Standalone renderers for Pi’s built-in `codemode` and `tool_search` tools. Scripts use JavaScript syntax highlight. Results show formatted JSON, nested calls, and Pix result frames. Nested-call rows fill the width and fade long arguments. Long previews fade out at the bottom and end with `… +N lines (ctrl+o to expand)`. Expand a card to see the complete script and result.
 
 ```sh
 pi install npm:@xynogen/pix-codemode

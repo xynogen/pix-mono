@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-9router
 
 Pi extension with a 9Router model provider.
@@ -25,7 +29,15 @@ ROUTER_API_BASE
 ROUTER_API_KEY
 ```
 
-The standard names win when both sets exist.
+The standard names win when both sets exist. There is no default URL: the provider
+stays unconfigured until `NINEROUTER_URL` (or `ROUTER_API_BASE`) is set.
+
+Classifier models (`jev`, `span`, `solar-decide`, `classifier`) register as
+System One classifiers, not chat models. Add more ids with a comma-separated list:
+
+```bash
+export NINEROUTER_CLASSIFIER_MODELS="custom-judge,my-verifier"
+```
 
 ## Install
 

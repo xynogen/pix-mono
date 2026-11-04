@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xynogen/pix-mono/main/.github/assets/pix-logo.svg" alt="Pix" width="152" height="80">
+</p>
+
 # pix-web
 
 Provider-neutral `fetch` tool for Pi. It returns plain text for model input.
@@ -23,12 +27,12 @@ fetch({
 });
 ```
 
-The user picks the provider, not the model. Use `/web` to set the default
+The user picks the provider, not the model. Use `/pix web` (the Web tab in `/pix`) to set the default
 fetch provider and the 9Router fetch model. When no API provider is configured,
 automatic selection uses `curl`. Other packages can register providers through
 `@xynogen/pix-web/providers`.
 
-`/web` sets the fetch and search defaults in one settings view.
+`/pix web` sets the fetch and search defaults in one settings view.
 The settings live in `~/.pi/agent/pix.json` under `fetch`. This example shows the section value:
 
 ```json
@@ -46,6 +50,10 @@ export NINEROUTER_KEY="your-api-key"
 ```
 
 Replace the example URL and key with the values for your 9Router server.
+`ROUTER_API_BASE` and `ROUTER_API_KEY` also work as fallbacks.
+
+A long `fetch` or `search` result shows a preview whose last rows fade out,
+followed by `… N more lines (ctrl+o to expand)`. Expand to see the full page.
 
 ```ts
 import { registerFetchProvider } from "@xynogen/pix-web/providers";
@@ -102,7 +110,7 @@ search({
 });
 ```
 
-The user picks the provider, not the model. Use `/web` to set the default
+The user picks the provider, not the model. Use `/pix web` to set the default
 search provider and the 9Router search model. The 9Router provider handles its
 own fallback. When no API provider is configured, automatic selection uses
 SearXNG.
