@@ -23,11 +23,36 @@ import { type NotifyConfig, notifySection } from "@xynogen/pix-runtime/sections"
 
 const AUDIO = /\.(oga|ogg|wav|aiff?)$/i;
 
-/** Tried in order for `sound: "auto"`. Any other installed sound is one pick away in /pix. */
-const PREFERRED: Partial<Record<HostOs, string[]>> = {
-	linux: ["message-new-instant", "complete", "bell"],
-	darwin: ["Glass", "Ping", "Tink"],
-	win32: ["Windows Notify System Generic", "Windows Notify", "chimes"],
+/**
+ * Sounds that fit "the agent needs you", per OS. Sound themes also ship test
+ * tones and device cues (audio-channel-front-center, power-plug, camera-shutter);
+ * those never show. Order = preference: `auto` takes the first one installed.
+ * Any other file is still one "type a value…" away in /pix.
+ */
+const NOTIFY_SOUNDS: Partial<Record<HostOs, string[]>> = {
+	linux: [
+		"message-new-instant",
+		"complete",
+		"bell",
+		"message",
+		"window-attention",
+		"window-question",
+		"dialog-information",
+		"dialog-warning",
+		"alarm-clock-elapsed",
+	],
+	darwin: ["Glass", "Ping", "Tink", "Pop", "Purr", "Hero", "Funk", "Bottle", "Blow", "Submarine"],
+	win32: [
+		"Windows Notify System Generic",
+		"Windows Notify",
+		"Windows Notify Messaging",
+		"Windows Message Nudge",
+		"Windows Ding",
+		"chimes",
+		"ding",
+		"notify",
+		"tada",
+	],
 };
 
 function soundDirs(host: HostPlatform, env: NodeJS.ProcessEnv): string[] {
@@ -40,23 +65,28 @@ function soundDirs(host: HostPlatform, env: NodeJS.ProcessEnv): string[] {
 		.map((dir) => join(dir, "sounds", "freedesktop", "stereo"));
 }
 
-/** Installed notification sounds by name ("message-new-instant", "Glass", …). */
+/** Installed notification sounds by name, in preference order. */
 export function systemSounds(
 	host: HostPlatform = currentPlatform(),
 	env: NodeJS.ProcessEnv = process.env,
 ): Map<string, string> {
-	const sounds = new Map<string, string>();
+	const found = new Map<string, string>();
 	for (const dir of soundDirs(host, env)) {
 		let files: string[];
 		try {
-			files = readdirSync(dir).sort();
+			files = readdirSync(dir);
 		} catch {
 			continue;
 		}
 		for (const file of files) {
 			const name = file.slice(0, -extname(file).length);
-			if (AUDIO.test(file) && !sounds.has(name)) sounds.set(name, join(dir, file));
+			if (AUDIO.test(file) && !found.has(name)) found.set(name, join(dir, file));
 		}
+	}
+	const sounds = new Map<string, string>();
+	for (const name of NOTIFY_SOUNDS[host.os] ?? []) {
+		const file = found.get(name);
+		if (file) sounds.set(name, file);
 	}
 	return sounds;
 }
@@ -65,12 +95,10 @@ export function systemSounds(
 export function resolveSound(
 	choice: string,
 	sounds: Map<string, string>,
-	host: HostPlatform,
 	env: NodeJS.ProcessEnv = process.env,
 ): string | undefined {
 	if (choice !== "auto") return sounds.get(choice) ?? expandHome(choice, env);
-	const name = (PREFERRED[host.os] ?? []).find((n) => sounds.has(n));
-	return name ? sounds.get(name) : sounds.values().next().value;
+	return sounds.values().next().value;
 }
 
 /** `[program, ...args]` that plays `file` with the OS's own player. */
@@ -157,7 +185,7 @@ function notify(
 				// herdr missing: fall through to the system sound
 			}
 		}
-		const file = resolveSound(sound, systemSounds(host, env), host, env);
+		const file = resolveSound(sound, systemSounds(host, env), env);
 		const [name, ...args] = (file && playArgs(file, host)) || [];
 		if (name) start(name, args);
 	} catch {
@@ -167,17 +195,16 @@ function notify(
 
 // ── /pix → Notify ────────────────────────────────────────────────────────────
 
+/** One short line: who plays the sound here. */
 function soundSource(env: NodeJS.ProcessEnv): string {
-	if (env.HERDR_ENV !== "1") return "plays the selected system sound with the OS player";
-	return herdrIntegration(env)
-		? "herdr pane: herdr plays its own sound — change it in herdr's config.toml [ui.sound]"
-		: "herdr pane: herdr notification with herdr's request sound";
+	if (env.HERDR_ENV !== "1") return "system sound";
+	return herdrIntegration(env) ? "herdr sound · [ui.sound]" : "herdr sound";
 }
 
 function settingsRows(host: HostPlatform): SettingsRow[] {
 	const cfg = config(notifySection);
 	const sounds = systemSounds(host);
-	const active = resolveSound("auto", sounds, host);
+	const active = resolveSound("auto", sounds);
 	const autoName = [...sounds].find(([, file]) => file === active)?.[0] ?? "none found";
 	return [
 		{
@@ -223,7 +250,7 @@ function registerSettings(pi: ExtensionAPI): void {
 			await showSettingsPicker(ctx.ui, {
 				title: `${icon("settings")} Notify Settings`,
 				rows: () => settingsRows(host),
-				status: () => ["", `  ${soundSource(process.env)}`],
+				status: () => ["", `  ${ctx.ui.theme.fg("muted", soundSource(process.env))}`],
 				onAction: async ({ key, value }) => {
 					const cfg = config(notifySection);
 					if (key === "enabled")
@@ -231,7 +258,7 @@ function registerSettings(pi: ExtensionAPI): void {
 					else if (key === "sound" && value)
 						await pixRuntime().update(notifySection, { sound: checkSound(value.trim(), host) });
 					else if (key === "test") {
-						const file = resolveSound(cfg.sound, systemSounds(host), host);
+						const file = resolveSound(cfg.sound, systemSounds(host));
 						const [name, ...args] = (file && playArgs(file, host)) || [];
 						// Throws with the install hint; the modal shows it and stays open.
 						if (!name) throw new Error(`no system sound or player on ${host.os}`);

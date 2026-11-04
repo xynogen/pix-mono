@@ -19,7 +19,12 @@ const linux: HostPlatform = {
 const share = mkdtempSync(join(tempDir(), "pix-notify-"));
 const stereo = join(share, "sounds", "freedesktop", "stereo");
 mkdirSync(stereo, { recursive: true });
-for (const f of ["bell.oga", "message-new-instant.oga", "readme.txt"])
+for (const f of [
+	"bell.oga",
+	"message-new-instant.oga",
+	"audio-channel-front-center.oga",
+	"readme.txt",
+])
 	writeFileSync(join(stereo, f), "");
 const env = { XDG_DATA_DIRS: share };
 
@@ -92,9 +97,10 @@ describe("pix-notify", () => {
 
 	test("sound resolution and per-OS players", () => {
 		const sounds = systemSounds(linux, env);
-		expect([...sounds.keys()]).toEqual(["bell", "message-new-instant"]);
-		expect(resolveSound("bell", sounds, linux)).toBe(join(stereo, "bell.oga"));
-		expect(resolveSound("/x/my.wav", sounds, linux)).toBe("/x/my.wav");
+		// Only notification sounds, in preference order; test tones and non-audio drop out.
+		expect([...sounds.keys()]).toEqual(["message-new-instant", "bell"]);
+		expect(resolveSound("bell", sounds)).toBe(join(stereo, "bell.oga"));
+		expect(resolveSound("/x/my.wav", sounds)).toBe("/x/my.wav");
 		expect(playArgs("/s.aiff", { ...linux, os: "darwin" })).toEqual(["afplay", "/s.aiff"]);
 		expect(playArgs("C:\\it's.wav", { ...linux, os: "win32" })?.at(-1)).toBe(
 			"(New-Object Media.SoundPlayer 'C:\\it''s.wav').PlaySync()",
