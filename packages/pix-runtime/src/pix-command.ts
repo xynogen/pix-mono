@@ -228,6 +228,20 @@ function binariesEnv(runtime: PixRuntime): NodeJS.ProcessEnv {
 	return { ...process.env, PI_CODING_AGENT_DIR: dirname(runtime.path) };
 }
 
+/**
+ * `target` with some properties replaced. Other reads go to `target` itself, so
+ * prototype methods keep working and are bound to the real instance (`this`).
+ */
+function forward<T extends object>(target: T, overrides: Record<string, () => unknown>): T {
+	return new Proxy(target, {
+		get(obj, key) {
+			if (typeof key === "string" && key in overrides) return overrides[key]?.();
+			const value = Reflect.get(obj, key, obj);
+			return typeof value === "function" ? value.bind(obj) : value;
+		},
+	});
+}
+
 const TABS = ["Settings", "Binaries", "Footer"] as const;
 /** Most frequently changed tabs sit leftmost; unknown package tabs go before rare ones. */
 const TAB_ORDER = ["Settings", "Tools", "MCP", "Optimizer", "Web", "Voice"];
@@ -405,18 +419,14 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 									return new Promise<unknown>((resolve) => {
 										leavePanel = () => resolve(null);
 										// The /pix tab row takes one line; render() shrinks the panel's terminal until both fit.
-										const panelTui = {
-											...tui,
-											terminal: {
-												...tui.terminal,
-												get rows() {
-													return Math.max(
-														1,
-														(tui.terminal?.rows ?? process.stdout.rows ?? 24) - panelShrink,
-													);
-												},
-											},
-										};
+										// Proxies, not spreads: the real TUI and terminal are class instances whose
+										// methods (requestRender, columns) live on the prototype and a spread drops them.
+										const terminal = tui.terminal ?? {};
+										const panelTerminal = forward(terminal, {
+											rows: () =>
+												Math.max(1, (terminal.rows ?? process.stdout.rows ?? 24) - panelShrink),
+										});
+										const panelTui = forward(tui, { terminal: () => panelTerminal });
 										embedded = factory(panelTui, theme, kb, (value: unknown) => {
 											if (generation !== panelGeneration) return resolve(null);
 											if (value == null) {

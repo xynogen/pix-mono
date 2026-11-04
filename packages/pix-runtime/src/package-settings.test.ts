@@ -43,6 +43,8 @@ test("standalone settings render directly in /pix without a second overlay and d
 			open: async (ctx) => {
 				opened++;
 				await ctx.ui.custom((tui, _theme, _kb, done) => ({
+					// Regression: the real TUI is a class; its prototype methods must reach the panel.
+					redraw: () => (tui as { requestRender(): void }).requestRender(),
 					// Fill the panel's whole terminal budget, like full-height pickers do.
 					render: () => [
 						"╭────────────────────────╮",
@@ -58,8 +60,9 @@ test("standalone settings render directly in /pix without a second overlay and d
 						),
 						"╰────────────────────────╯",
 					],
-					handleInput: (data: string) => {
+					handleInput(this: { redraw(): void }, data: string) {
 						if (data === "\u001b") done(null);
+						else this.redraw();
 					},
 					invalidate() {},
 				}));
@@ -83,17 +86,23 @@ test("standalone settings render directly in /pix without a second overlay and d
 					) => { render(width: number): string[]; handleInput(data: string): void },
 				) =>
 					new Promise((resolve) => {
-						const component = factory(
-							{ requestRender() {}, terminal: { rows: 40 } },
-							theme,
-							getKeybindings(),
-							resolve,
-						);
+						// A class instance like Pi's TUI: requestRender lives on the prototype.
+						let renders = 0;
+						const tui = new (class {
+							terminal = { rows: 40 };
+							requestRender() {
+								renders++;
+							}
+						})();
+						const component = factory(tui, theme, getKeybindings(), resolve);
 						overlays++;
 						expect(component.render(100)[1]).toMatch(/Settings.*Voice.*Binaries/);
 						component.handleInput("\t");
 						const embedded = component.render(100);
 						expect(embedded.join("\n")).toContain("microphone: default");
+						const before = renders;
+						component.handleInput("x");
+						expect(renders).toBeGreaterThan(before);
 						// 40 rows at the default 80% cap: the tab row plus panel must fit 32 rows.
 						expect(embedded.length).toBeLessThanOrEqual(32);
 						expect(embedded.at(-1)).toMatch(/^╰─+╯$/);
