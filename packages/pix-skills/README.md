@@ -85,8 +85,7 @@ skills/docx/
 └── assets/                  # optional data, templates, images, or themes
 ```
 
-The bundle relies exclusively on this conventional folder structure—there is
-no separate metadata file. `SKILL.md` frontmatter is the single source of truth
+The bundle relies on this folder structure; there is no separate metadata file. `SKILL.md` frontmatter is the single source of truth
 for skill metadata, while the presence and contents of `scripts/`, `references/`,
 and `assets/` define the available resources. Empty resource directories do not
 need to be created.
@@ -125,7 +124,7 @@ Copying does not execute a script. It creates missing destination directories
 and atomically replaces the destination with the bundled file. The agent can
 then use ordinary tools to inspect or run the copied resource.
 
-Resource resolution will be confined to the selected skill bundle:
+Resource resolution is confined to the selected skill bundle:
 
 - only `scripts/`, `references/`, and `assets/` are addressable;
 - absolute paths and `..` traversal are rejected;
@@ -134,8 +133,8 @@ Resource resolution will be confined to the selected skill bundle:
   cannot read neighboring skills or files;
 - callers use bundle-relative names and never need an absolute `${SKILL_DIR}`;
 - `output` is relative to the current project working directory;
-- invalid source or output paths—including paths outside the permitted roots,
-  absolute paths, traversal, and escaping symlinks—are rejected.
+- invalid source or output paths (including paths outside the permitted roots,
+  absolute paths, traversal, and escaping symlinks) are rejected.
 
 `read_skills` is the safe version of "agent prompts itself":
 

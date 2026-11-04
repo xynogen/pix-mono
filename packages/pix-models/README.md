@@ -4,11 +4,11 @@
 
 # pix-models
 
-Pi extension — enhanced `/model` picker with coding score/rank.
+Pi extension — `/model` picker with coding score and rank.
 
 ## What it does
 
-Takes over Pi's built-in `/model` command with a richer TUI picker. `/model <term>` opens it pre-filtered.
+Takes over Pi's built-in `/model` command with a TUI picker. `/model <term>` opens it pre-filtered.
 
 - **Tabs** — `tab` / `shift+tab` switch between **Chat**, **Classifier**, and **Image** models. Classifier and image models are not chat models: selecting one shows how to call it from codemode (`models.classify()`, `models.generateImages()`).
 - **Each row** — model id, context window, per-M-token cost, and a coding score/rank (star bar) when available.

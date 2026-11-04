@@ -11,7 +11,7 @@ Pi tool — `python_run`: run a local Python snippet behind an approval prompt.
 Models often push Python through `bash` (`python3 -c "…"`, `python3 - <<EOF`). That breaks on shell quoting and indentation, and the transcript shows a wall of shell. `python_run` is a cleaner front door for the same thing.
 
 - **Parameters:** `intent` (short why, required), `code`, and optional `python`.
-- **Not a sandbox.** The code runs as you, in the session cwd, with full file and network access.
+- **Not a sandbox:** the code runs as you, in the session cwd, with full file and network access.
 - **Interpreter (`python`, optional):**
   - omitted → `python3` from `binary.json` (key `python3`), else PATH. An activated venv works when Pi was started inside it.
   - a venv or conda folder: `.venv`, `venv`, `~/envs/ml` → its `bin/python3` (`Scripts\python.exe` on Windows).

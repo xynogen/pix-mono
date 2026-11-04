@@ -8,7 +8,7 @@ Rendering and formatting library for Pi Coding Agent with syntax highlighting, f
 
 ## What it does
 
-This package is a **library + a small extension** that other pix packages
+This package is a library and a small extension that other pix packages
 consume. It does not register user-facing tools itself — the tool renderers
 (`pix-read`, `pix-bash`, `pix-ls`, `pix-find`, `pix-grep`, `pix-edit`,
 `pix-write`) import from it. The extension entry point (`src/index.ts`) only
@@ -33,8 +33,8 @@ finder online. The `/pix` settings command lives in `pix-runtime`.
 ### Icon catalog (l10n-style)
 
 Icons are treated like a localization catalog: packages never hardcode glyph
-codepoints — they ask for a **semantic role** and the catalog resolves it
-against one global icon mode. Reskinning, or fixing a missing-glyph (“tofu”)
+codepoints — they ask for a semantic role and the catalog resolves it
+against one global icon mode. Reskinning, or fixing a missing-glyph ("tofu")
 problem on terminals without a Nerd Font, becomes a one-file edit here.
 
 - **`./icon-catalog`** — `icon(key)` resolves a semantic key (`"cwd"`,
@@ -74,7 +74,7 @@ UI features that moved to [`pix-display`](https://www.npmjs.com/package/@xynogen
 
 ## Configuration
 
-Configuration is read from **`~/.pi/agent/pix.json`** (the unified config file owned by `@xynogen/pix-runtime/config`). The `pretty` section of that file sets the defaults for theme, icon mode, and preview lines. Environment variables still override `pix.json` values.
+Configuration is read from `~/.pi/agent/pix.json` (the unified config file owned by `@xynogen/pix-runtime/config`). The `pretty` section of that file sets the defaults for theme, icon mode, and preview lines. Environment variables still override `pix.json` values.
 
 > **Note:** config and collapse helpers previously shipped with `pix-pretty`; they now live in `pix-runtime` (`@xynogen/pix-runtime/config` and `@xynogen/pix-runtime/collapse`). Update any direct imports.
 

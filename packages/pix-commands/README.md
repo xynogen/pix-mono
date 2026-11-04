@@ -61,13 +61,13 @@ AFK mode off — approval prompts restored.
 The point is to let the agent keep working on safe, medium-risk actions while you
 are away, without silently permitting destructive ones. It pairs with
 [`pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify): you still get
-a sound when something truly needs you (a red gate or root), and auto-deny turns
+a sound when something needs you (a red gate or root), and auto-deny turns
 that into a stop rather than an approval.
 
 ## `/yolo`
 
-`/yolo` toggles YOLO mode: **almost** every permission gate auto-approves,
-**including red (critical) commands and root (`sudo_run`)**. For the vast
+`/yolo` toggles YOLO mode: almost every permission gate auto-approves,
+including red (critical) commands and root (`sudo_run`). For the vast
 majority of actions there is no human confirming, so a destructive or
 irreversible action can run before anyone stops it. Use it only when you accept
 that. A few things still stop you — the four guardrails below are the deliberate
@@ -96,8 +96,8 @@ Four guardrails temper the blast radius:
 - **Circuit breaker.** A short list of catastrophic, unrecoverable commands —
   `rm -rf /` or `~`, `dd`/redirect onto a raw disk, `mkfs` on a device, a fork
   bomb — is exempt from *every* mode, including YOLO (see
-  [`pix-gate`](https://www.npmjs.com/package/@xynogen/pix-gate)). This does **not**
-  forbid the command: a genuine `dd`-to-USB or `mkfs` still runs, it just falls
+  [`pix-gate`](https://www.npmjs.com/package/@xynogen/pix-gate)). This does not
+  forbid the command: an intentional `dd`-to-USB or `mkfs` still runs, it just falls
   back to a one-time Allow/Deny prompt instead of a silent auto-approve. One
   extra click, only under YOLO, only on the handful of commands you can't undo.
   Mirrors Claude Code's `bypassPermissions` floor.

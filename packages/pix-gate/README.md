@@ -26,18 +26,18 @@ Intercepts every tool call and classifies it against severity rules before it ru
 | `dangerous` | destructive git, `chmod 777`, `curl … \| sh` | 30s auto-deny confirmation |
 | `risky` | — | 60s allow-first dialog; silently passes non-interactive |
 
-**Privileged auth redirect** — bash `sudo`/`ssh` can't have their password/passphrase auto-typed, so they are hard-blocked and redirected to the dedicated tool (`sudo_run`/`ssh_run`) with no bypass — but *only when that tool is installed* (pix-sudo/pix-ssh are opt-in; without them the bash form is the only path and passes through). This is **guarding** (stop + redirect); the softer **steering** of non-privileged stand-ins (`cat`→`read`, `grep`→`grep`, …) lives in [`pix-nudge`](https://www.npmjs.com/package/@xynogen/pix-nudge).
+**Privileged auth redirect** — bash `sudo`/`ssh` can't have their password/passphrase auto-typed, so they are hard-blocked and redirected to the dedicated tool (`sudo_run`/`ssh_run`) with no bypass, but *only when that tool is installed* (pix-sudo/pix-ssh are opt-in; without them the bash form is the only path and passes through). This is **guarding** (stop + redirect); the softer **steering** of non-privileged stand-ins (`cat`→`read`, `grep`→`grep`, …) lives in [`pix-nudge`](https://www.npmjs.com/package/@xynogen/pix-nudge).
 
 Auto-approve patterns and extra rules go in the `gate` section of `~/.pi/agent/pix.json`; set `guardrails: "off"` to disable built-in rules entirely.
 
 **Away notifications** — while a dialog is open, the gate holds the shared **agent-state** coordinator `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so [`pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify) can alert an away user. Pairs with pix-commands unattended modes:
 
-- `/afk` — yellow gates auto-allow, red/root auto-deny, so only genuine stops surface.
+- `/afk` — yellow gates auto-allow, red/root auto-deny, so only stops requiring attention surface.
 - `/yolo` — every tier including red auto-approves (capable models only).
 
 Bare `sudo` in bash is always redirected to `sudo_run`, regardless of mode.
 
-**Circuit breaker.** A small set of catastrophic, unrecoverable commands — `rm -rf /` or `~`, `dd`/redirect onto a raw disk, `mkfs` on a device, a fork bomb — can never be auto-approved by any mode, including YOLO. They always fall through to the interactive dialog (or a no-UI block). This mirrors Claude Code's `bypassPermissions` floor, which still prompts on root/home wipes.
+**Circuit breaker.** A small set of catastrophic, unrecoverable commands (`rm -rf /` or `~`, `dd`/redirect onto a raw disk, `mkfs` on a device, a fork bomb) can never be auto-approved by any mode, including YOLO. They always fall through to the interactive dialog (or a no-UI block). This mirrors Claude Code's `bypassPermissions` floor, which still prompts on root/home wipes.
 
 **Project trust.** Replaces Pi's five-choice project-trust prompt with two remembered choices: **Trust** and **Do not trust**. Saved decisions, a `defaultProjectTrust` other than `ask`, and no-UI runs fall through to Pi unchanged.
 

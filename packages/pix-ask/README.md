@@ -15,7 +15,7 @@ Registers the `ask_user` tool — up to 4 structured multiple-choice questions i
 - **Multi-select** → also appends a "Confirm" row to commit the checked options.
 - Non-interactive (RPC/JSON) mode falls back to text prompts.
 
-**Away notifications** — while the dialog is open, `ask_user` holds the shared **agent-state** coordinator `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)). [`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify) uses that state to play a sound when a question waits.
+**Away notifications** — while the dialog is open, `ask_user` holds the shared agent-state coordinator `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)). [`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify) uses that state to play a sound when a question waits.
 
 ## Install
 

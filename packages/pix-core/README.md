@@ -6,11 +6,11 @@
 
 Pi coding agent extension — core UI/UX meta-package.
 
-Installing `pix-core` pulls in all of the packages below as npm dependencies **and activates them**. A single `pi install npm:@xynogen/pix-core` boots every core extension — you do not need to install the members individually.
+Installing `pix-core` pulls in all of the packages below as npm dependencies and activates them. A single `pi install npm:@xynogen/pix-core` boots every core extension — you do not need to install the members individually.
 
 ## How it works
 
-Pi activates extensions per installed package via each package's `pi.extensions` manifest; it does not walk npm dependencies. So `pix-core` ships a thin aggregator (`src/extension.ts`) that imports each member's extension factory and invokes it against the same host. Each member also carries a `globalThis` idempotency guard, so installing `pix-core` **and** a member standalone activates that member only once.
+Pi activates extensions per installed package via each package's `pi.extensions` manifest; it does not walk npm dependencies. So `pix-core` ships a thin aggregator (`src/extension.ts`) that imports each member's extension factory and invokes it against the same host. Each member also carries a `globalThis` idempotency guard, so installing `pix-core` and a member standalone activates that member only once.
 
 ## What's included
 

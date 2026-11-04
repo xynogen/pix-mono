@@ -38,7 +38,7 @@ state: **accent** when the tool is enabled, **muted** when disabled.
 
 The default glyphs (Nerd Font PUA codepoints) are **Nerd Font** symbols and require a patched
 font (e.g. MesloLGS NF). Terminals without one render them as missing-glyph
-“tofu” boxes. Two font-independent fallbacks are available:
+"tofu" boxes. Two font-independent fallbacks are available:
 
 | Mode | Glyphs | Needs Nerd Font? |
 |---|---|---|
@@ -46,7 +46,7 @@ font (e.g. MesloLGS NF). Terminals without one render them as missing-glyph
 | `unicode` | `♤ ♡ ♧` (outline card suits) | no |
 | `ascii` | `Cv Rk Pt` | no |
 
-Icons follow the **global** `pix-pretty` mode. Set it via `/pix` or the
+Icons follow the global `pix-pretty` mode. Set it via `/pix` or the
 `PRETTY_ICONS` environment variable; the optimizer has no separate icon toggle.
 
 ## Features
@@ -77,8 +77,8 @@ Two layers, both active automatically:
    prefix commands with `rtk`).
 2. **Execute layer** — rewrites `bash` tool calls, prefixing known commands
    (`git`, `gh`, `cargo`, `npm`, `pnpm`, `docker`, `kubectl`, `ls`, `grep`, …)
-   with `rtk` when the model forgets. **Command chains are split on `&&`,
-   `||` and `;`, and every known segment is prefixed** — e.g.
+   with `rtk` when the model forgets. Command chains are split on `&&`,
+   `||` and `;`, and every known segment is prefixed: for example,
    `git add . && git push` becomes `rtk git add . && rtk git push`.
    A segment whose output is piped (`a | b`) is left as is, and a command
    with any redirect (`<`, `>`) is not rewritten, so piped and redirected
@@ -172,10 +172,10 @@ This package was built by merging two upstream Pi community packages:
 
 - **Ponytail mode** — ruleset adapted from [`git:github.com/DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail),
   the "lazy senior dev" skill. Reimplemented here as a native optimizer
-  tool with three intensity levels — no external hooks or files. The
+  tool with three intensity levels and no external hooks or files. The
   ruleset (the YAGNI ladder + safety carve-outs) is rewritten as a system-prompt fragment.
 
-All upstreams are MIT licensed. No codebase was copied directly — the logic was
+All upstreams are MIT licensed. No codebase was copied directly; the logic was
 rewritten and combined into a single extension with a unified Optimizer
 settings tab and shared status bar. This package does not sync back to any upstream.
 

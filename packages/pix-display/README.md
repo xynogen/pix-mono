@@ -6,7 +6,7 @@
 
 # pix-display
 
-Pi core extension — inline chips, thinking blocks, and polished code snippets.
+Pi core extension — inline chips, thinking blocks, and framed code snippets.
 
 ## What it does
 
@@ -16,7 +16,7 @@ Four features, always on when installed:
 
 **Thinking blocks.** Converts leaked reasoning tags (`<think>`/`<thinking>`) from some providers into native Pi `thinking` content blocks, which render dim + italic via the `thinkingText` theme token. No ANSI injection, no markdown blockquote shim. Applies during streaming (`message_update`) and finalization (`message_end`).
 
-**Code snippets.** Renders every fenced code block in assistant responses inside a themed, language-labeled frame—including Python, TypeScript, JSON, YAML, Rust, Go, SQL, shell, and arbitrary custom language tags. Untagged fences use a `code` label. Pi's native syntax highlighting remains intact for recognized languages, while long lines are safely clipped to the terminal width.
+**Code snippets.** Renders every fenced code block in assistant responses inside a themed, language-labeled frame, including Python, TypeScript, JSON, YAML, Rust, Go, SQL, shell, and arbitrary custom language tags. Untagged fences use a `code` label. Pi's native syntax highlighting remains intact for recognized languages, while long lines clip to the terminal width.
 
 **Working timer.** While the agent runs, the TUI working message shows the elapsed time, for example `Working (12s)`. It clears when the agent stops.
 

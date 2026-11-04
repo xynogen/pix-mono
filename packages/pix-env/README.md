@@ -8,7 +8,7 @@
 
 Broker `.env` secrets to tools without ever putting the values in the model's context.
 
-The AI sees only the **key names**. It writes `$KEY` / `${KEY}` in any tool
+The AI sees only the key names. It writes `$KEY` / `${KEY}` in any tool
 argument. On each `tool_call`, pix-env pops a yolo-style approval dialog and, on
 approval, resolves the reference to the real value in place before the tool runs.
 
@@ -33,10 +33,10 @@ approval, resolves the reference to the real value in place before the tool runs
 
 ## Which tools does it work on?
 
-**Any tool**, not just the `pix-*` suite. Resolution runs on the host `tool_call`
+Any tool, not just the `pix-*` suite. Resolution runs on the host `tool_call`
 event and mutates `event.input` in place, so it applies to every registered
-tool — Pi built-ins, custom tools, and the MCP proxy alike. The only
-requirement is that the `$KEY` / `${KEY}` reference sits in a **string field**
+tool: Pi built-ins, custom tools, and the MCP proxy. The only
+requirement is that the `$KEY` / `${KEY}` reference sits in a string field
 of the tool's input (nested objects and arrays are walked). A tool that takes
 no string input, or that reads its arguments from somewhere other than the
 call input, cannot be brokered.
@@ -46,9 +46,9 @@ call input, cannot be brokered.
 pix-env reads the shared unattended mode from `@xynogen/pix-runtime`, like
 pix-sudo and pix-ssh (set with `/afk` and `/yolo` from pix-commands):
 
-- **AFK** (and not YOLO) — injection is **auto-denied**. No secret is resolved
+- **AFK** (and not YOLO) — injection is auto-denied. No secret is resolved
   while you are away.
-- **YOLO** — injection is **auto-approved** without the popup, with a warning
+- **YOLO** — injection is auto-approved without the popup, with a warning
   notification naming the keys. Use only when you accept unattended secret
   resolution.
 - **Normal** — the approval popup is shown per tool call, including a leak
@@ -94,10 +94,10 @@ an explicit approval popup per tool call.
 
 **Accepted limitation:** once resolved into a tool's input, the value can appear
 in that tool's rendered call or output if the tool echoes it back
-(`echo $TOKEN`, `curl -v`, an error dump). pix-env does **not** scrub tool
+(`echo $TOKEN`, `curl -v`, an error dump). pix-env does not scrub tool
 output. The approval popup warns about this per call. If you need scrubbing, the
 upgrade path is a `tool_result` redactor that masks known registry values back
-to `$KEY` — see the header note in `src/lib.ts`.
+to `$KEY` (see the header note in `src/lib.ts`).
 
 Other known limits:
 

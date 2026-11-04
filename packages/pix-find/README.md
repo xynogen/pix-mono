@@ -8,7 +8,7 @@ Pi tool — glob file search with FFF acceleration.
 
 ## What it does
 
-Replaces Pi's default `find` tool with an enhanced version backed by `pix-pretty`. Uses FFF (frecency-ranked, SIMD-accelerated file finder) when available, falling back to the standard glob search. Returns up to 200 paths by default; `limit` asks for more. Pass `patterns` to search several globs in one call. Results are rendered as a dim preview of the matched relative paths; the call label shows the glob pattern and search directory inline. A cut preview fades out at the bottom and ends with `… N more lines (ctrl+o to expand)`. The finder is shared with `pix-grep` (owned there) — install `pix-grep` alongside to actually populate the index. Depends on `@xynogen/pix-pretty`, installed automatically as a dependency.
+Replaces Pi's default `find` tool with a version backed by `pix-pretty`. Uses FFF (frecency-ranked, SIMD-accelerated file finder) when available, falling back to the standard glob search. Returns up to 200 paths by default; `limit` asks for more. Pass `patterns` to search several globs in one call. Results are rendered as a dim preview of the matched relative paths; the call label shows the glob pattern and search directory inline. A cut preview fades out at the bottom and ends with `… N more lines (ctrl+o to expand)`. The finder is shared with `pix-grep` (owned there) — install `pix-grep` alongside to populate the index. Depends on `@xynogen/pix-pretty`, installed automatically as a dependency.
 
 ## Auto-collapse
 

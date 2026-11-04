@@ -8,7 +8,7 @@ Pi tool — precise text replacement edit with diff rendering.
 
 ## What it does
 
-Replaces Pi's default `edit` tool with an enhanced version that renders a side-by-side split diff after every edit. The diff is syntax-highlighted with gutter markers, line numbers, and a change summary produced by `pix-pretty`'s diff engine. Batched edits (multiple operations in one call) each render their own diff block. Call labels show the target file path and the number of edits being applied. Depends on `@xynogen/pix-pretty`, installed automatically as a dependency.
+Replaces Pi's default `edit` tool with a version that renders a side-by-side split diff after every edit. The diff is syntax-highlighted with gutter markers, line numbers, and a change summary produced by `pix-pretty`'s diff engine. Batched edits (multiple operations in one call) each render their own diff block. Call labels show the target file path and the number of edits being applied. Depends on `@xynogen/pix-pretty`, installed automatically as a dependency.
 
 - **Hash anchors first.** Each operation is `{op, pos, end?, lines}` with `op` as `replace`, `insert_before`, or `insert_after`. `pos`/`end` are `LINE#HASH` anchors from `read` or `grep`. Use exact text `{oldText, newText}` only after a hash-anchor edit fails. One call never mixes the two formats.
 - **Fresh anchors.** A successful edit returns the current `LINE#HASH|text` rows around each changed span, so the next edit needs no new read.

@@ -8,14 +8,14 @@ Pi extension — model-steering nudges (tools + capability).
 
 ## What it does
 
-Registers three nudge hooks. All are surgical — they name only the relevant tool, not a full inventory, and none blocks a call. Every nudge shows in the transcript as the same collapsed one-line card (`⚠ nudge <summary> · <kind>`); the expand toggle shows the full text.
+Registers three nudge hooks. Each names only the relevant tool, not a full inventory, and none blocks a call. Every nudge shows in the transcript as the same collapsed one-line card (`⚠ nudge <summary> · <kind>`); the expand toggle shows the full text.
 
 **Tools nudge** — catches `bash` calls that reimplement a first-class tool (`read`, `ls`, `grep`, `find`, `edit`), including `sed -n '10,40p'` reads, stand-ins with only a trailing `| head`/`| tail`, and commands that pix-optimizer has prefixed with `rtk`:
 
 - Appends one `[pix-nudge]` line to that bash result on the **first use of a command category, then on every 5th use** (the model reads tool results, not UI notices), plus a nudge card for the user. The line names the tool options that replace the shell idiom (for example `read` offset/limit).
-- **Deferred targets are loaded for you.** When the named tool is deferred, the nudge activates it (the way `tool_search` would), says so in the line, and marks the card `(loaded)`. The model can call it next without a discovery round-trip.
+- **Deferred targets load automatically.** When the named tool is deferred, the nudge activates it (the way `tool_search` would), says so in the line, and marks the card `(loaded)`. The model can call it next without a discovery round-trip.
 - The command still runs — it teaches, doesn't block (early blocking wasted a turn on forced retry). Calls in that category between reminders are silent.
-- Three whole-command patterns too: a backgrounded process (`&`, `nohup`, `setsid`) points at `proc`; a heredoc or `python - <<` script that writes a real file (not `/tmp`) points at `write`/`edit`, so the change shows as a diff; any other standalone `python -c` / `python - <<` snippet points at `python_run` (piped `… | python -c` stays in bash).
+- Three whole-command patterns too: a backgrounded process (`&`, `nohup`, `setsid`) points at `proc`; a heredoc or `python - <<` script that writes a file (not `/tmp`) points at `write`/`edit`, so the change shows as a diff; any other standalone `python -c` / `python - <<` snippet points at `python_run` (piped `… | python -c` stays in bash).
 - On Windows, a bash call that matches no other rule gets a nudge toward the `powershell` tool, on the same first-then-every-5th cadence. Bash stays enabled.
 - **Only installed tools are named.** A nudge is skipped when its tool is not registered this session, or when it is deferred and `tool_search` is missing (it could not be loaded). A hint that names a missing tool (`or \`edit\``) is dropped and the nudge stays. If the host cannot list its tools, no tool nudge fires.
 - Bash stays available for everything else (pipes, compound commands, real shell work).

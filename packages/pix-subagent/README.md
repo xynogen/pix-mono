@@ -51,8 +51,7 @@ remind?          boolean   Wake the idle parent when a background agent finishes
   provides clear value.
 - Give every child a compact, self-contained prompt. Do not fork or inherit the
   parent conversation: avoid `inherit_context: true` and `prompt_mode: append`.
-- Use `thinking: "medium"` by default and `thinking: "high"` for genuinely
-  complex work.
+- Use `thinking: "medium"` by default and `thinking: "high"` for complex work.
 - Never use a thinking level above `high` unless the user first approves it after
   receiving a concrete benefit and cost/latency justification.
 

@@ -54,7 +54,7 @@ proc({ action: "rm", handle: "proc-swift-otter-42" });
 
 ## Cap
 
-Each log is capped at 50 MB. At the cap the tool **stops recording** — it does
+Each log is capped at 50 MB. At the cap the tool stops recording — it does
 not rewrite or drop older lines, so the file stays intact and complete up to the
 cap. The process keeps running. `logs`, `list`, and the widget report `capped`.
 

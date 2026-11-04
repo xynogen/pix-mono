@@ -8,7 +8,7 @@ Pi tool — pattern search in files with FFF acceleration.
 
 ## What it does
 
-Replaces Pi's default `grep` tool with an enhanced version backed by `pix-pretty`.
+Replaces Pi's default `grep` tool with a version backed by `pix-pretty`.
 
 - **FFF lifecycle** — owns the frecency-ranked, SIMD-accelerated file index: inits on `session_start`, tears down on `session_shutdown`.
 - **Constrained searches** (`path`/`glob` set) skip FFF and use the SDK's ripgrep directly, avoiding a known FFF 0.5.2 abort on Unicode filenames. `ignoreCase` searches also use the SDK path, because FFF only has smart case. FFF searches are case-sensitive, like ripgrep. Falls back to plain ripgrep if `@ff-labs/fff-node` isn't installed.

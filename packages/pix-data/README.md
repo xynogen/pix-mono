@@ -86,7 +86,7 @@ score     = round(clamp₀₁₀₀(120.6·heuristic − 10.6))   // fitted to t
 
 **Why a heuristic at all, and why these raw evals only:** the AA Intelligence
 Index *is* the ideal number — but only ~16% of the catalog has it. For the rest
-we rebuild a comparable score from the same family of raw evals. Crucially we
+we rebuild a comparable score from the same family of raw evals. We
 use each raw eval **once** and never feed `intelligence` *and* its components
 together, nor any `_pct` field (which is just a percentile-rank of a raw field)
 — doing so would double-count the same measurement and silently inflate weights
