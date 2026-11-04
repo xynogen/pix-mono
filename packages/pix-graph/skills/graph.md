@@ -55,7 +55,6 @@ materially since the last build.
 bun packages/pix-graph/src/cli.ts build [path]                  # → .pi/graph/
 bun packages/pix-graph/src/cli.ts query "<question>" [--dfs] [--depth N]
 bun packages/pix-graph/src/cli.ts path "<from>" "<to>"          # shortest path between two nodes
-# from the repo root you can also use:  bun run graph:build
 ```
 
 `--graph <file>` points query/path at a specific graph (default
