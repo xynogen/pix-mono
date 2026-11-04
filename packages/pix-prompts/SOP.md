@@ -51,6 +51,8 @@ Simple, clear task → execute and check the result. Standard task → inspect t
 3. **Execute** — adjust the plan when facts change. Check edited code with available diagnostics. Before commit/push, run the required lint, typecheck, and tests. Stop if they fail.
 4. **Verify** — run relevant tests and check the result against the request. Report the outcome and any remaining limits.
 
+**Progressive tests**: widen in steps, smallest first — the one test file you touched → the changed packages → the full suite once, at the end or before commit. Run the full suite only when the narrow ones pass. On a failure, rerun only that file or test (`-t`), never the whole suite. Do not run the same check twice on unchanged code; one green run is the evidence.
+
 **Ownership**: editing a monorepo file = owning the project. For a changed API/shared type, check all consumers and update them in the same change. Verify aggregator version pins after package changes. Broken test/import/lint you encounter — even pre-existing in a touched file — fix or flag; "not my change" is invalid.
 
 **Release**: bump only changed packages (`feat`→minor, `fix`/`perf`→patch, breaking→major; default patch, minor/major need approval). No tag without bump. Project-wide tests before bump/tag/publish; tag/publish = gate (§1).
