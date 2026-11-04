@@ -62,7 +62,8 @@ function remove(path: string): void {
 export function devLink({ root, npmDir, settingsFile, unlink, names }: DevLinkOptions): void {
 	const packagesDir = join(root, "packages");
 	const pkgs = new Map<string, { dir: string; pkg: Pkg }>();
-	for (const entry of readdirSync(packagesDir)) {
+	// readdir order differs per OS and filesystem; sort so settings.json entries are stable.
+	for (const entry of readdirSync(packagesDir).sort()) {
 		const file = join(packagesDir, entry, "package.json");
 		if (!existsSync(file)) continue;
 		const pkg: Pkg = JSON.parse(readFileSync(file, "utf8"));
