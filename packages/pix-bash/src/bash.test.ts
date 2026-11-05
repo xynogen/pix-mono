@@ -72,7 +72,7 @@ describe("registerBashTool", () => {
 				command: 'printf "very very very long line"\necho second\necho third',
 				timeout: 30,
 			},
-			makeTheme(),
+			makeTheme({ tag: true }),
 			callCtx,
 		);
 

@@ -67,3 +67,46 @@ test("collapsed command fades at the current viewport width without losing expan
 	}
 	expect(stripTerminalSequences(component.getText())).toEndWith(command);
 });
+
+test("plain previews and unchanged highlighting do not schedule redundant renders", async () => {
+	for (const language of [undefined, "javascript"]) {
+		let invalidations = 0;
+		const preview = commandPreview("codemode", "return 1;", language, theme, {}, () => {
+			invalidations++;
+		});
+		const rows = preview.render(80);
+		await Promise.resolve();
+		expect(preview.render(80)).toEqual(rows);
+		expect(invalidations).toBe(0);
+	}
+});
+
+test.each([
+	"bash",
+	"powershell",
+	"javascript",
+])("%s previews highlight only after streaming arguments finish", async (language) => {
+	const theme = { fg: (key: string, text: string) => `<${key}>${text}</${key}>` };
+	const state = {};
+	let invalidations = 0;
+	const ctx = { executionStarted: false };
+	const invalidate = () => invalidations++;
+	for (const code of ["echo", "echo hello", "echo hello\necho world"]) {
+		const preview = commandPreview("tool", code, language, theme, state, invalidate, false, 3, ctx);
+		const rows = preview.render(24);
+		expect(preview.getText()).toEndWith(code);
+		await Promise.resolve();
+		expect(preview.render(24)).toEqual(rows);
+		expect(invalidations).toBe(0);
+	}
+	ctx.executionStarted = true;
+	const code = language === "javascript" ? "return 1;" : "echo hello";
+	const preview = commandPreview("tool", code, language, theme, state, invalidate, false, 3, ctx);
+	await Promise.resolve();
+	expect(invalidations).toBe(1);
+	expect(state).toMatchObject({ commandPreview: { language, code } });
+	expect(preview.render(80).length).toBeGreaterThan(0);
+	commandPreview("tool", code, language, theme, state, invalidate, false, 3, ctx);
+	await Promise.resolve();
+	expect(invalidations).toBe(1);
+});

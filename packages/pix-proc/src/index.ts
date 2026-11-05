@@ -251,6 +251,8 @@ export default function registerRunner(pi: ExtensionAPI): void {
 				context.state,
 				context.invalidate,
 				context.expanded,
+				3,
+				context,
 			);
 		},
 		renderResult(result, options, theme, context) {

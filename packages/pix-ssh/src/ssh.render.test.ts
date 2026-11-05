@@ -51,6 +51,27 @@ function host() {
 	return tool;
 }
 
+test("defers command highlighting while arguments stream", async () => {
+	const tool = host();
+	let invalidations = 0;
+	const ctx = {
+		...makeRenderCtx({ invalidate: () => invalidations++ }),
+		executionStarted: false,
+	};
+	for (const command of ["echo", "echo hello"]) {
+		const component = tool.renderCall?.({ host: "node.invalid", command }, theme, ctx);
+		const rows = component?.render(80);
+		await Promise.resolve();
+		expect(component?.render(80)).toEqual(rows);
+		expect(invalidations).toBe(0);
+	}
+	ctx.executionStarted = true;
+	const command = "echo hello";
+	tool.renderCall?.({ host: "node.invalid", command }, theme, ctx);
+	await Promise.resolve();
+	expect(invalidations).toBe(1);
+});
+
 test("SSH self-shell command, file, info and result states", async () => {
 	const fixture = await withUiFixture();
 	try {

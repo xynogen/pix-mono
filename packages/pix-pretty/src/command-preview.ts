@@ -14,25 +14,29 @@ export function commandPreview(
 	expanded = false,
 	/** Body column: under the tool name (2-col status glyph + space). */
 	indent = 3,
-	/** Renderer context: the cut-off row shows the user's expand key. */
-	ctx?: ExpandHintCtx,
+	/** Renderer context: expand key and whether streamed arguments are ready to highlight. */
+	ctx?: ExpandHintCtx & { executionStarted?: boolean },
 ) {
+	if (ctx?.executionStarted === false) language = undefined;
 	type Slot = { code: string; language: string | undefined; theme: typeof theme; styled: string };
 	let slot = state.commandPreview as Slot | undefined;
 	if (!slot || slot.code !== code || slot.language !== language || slot.theme !== theme) {
-		slot = { code, language, theme, styled: theme.fg("dim", code) };
+		slot = { code, language, theme, styled: language ? theme.fg("dim", code) : code };
 		state.commandPreview = slot;
 		const pending = slot;
-		void hlBlock(code, language, theme).then(
-			(lines) => {
-				if (state.commandPreview !== pending) return;
-				pending.styled = lines.join("\n");
-				invalidate();
-			},
-			() => {
-				/* Plain text remains available if highlighting fails. */
-			},
-		);
+		if (language)
+			void hlBlock(code, language, theme).then(
+				(lines) => {
+					if (state.commandPreview !== pending) return;
+					const styled = lines.join("\n");
+					if (pending.styled === styled) return;
+					pending.styled = styled;
+					invalidate();
+				},
+				() => {
+					/* Plain text remains available if highlighting fails. */
+				},
+			);
 	}
 	const current = slot;
 	let replacement: string | undefined;

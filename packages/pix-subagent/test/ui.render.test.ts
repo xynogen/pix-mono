@@ -156,13 +156,11 @@ test("captures registered agent, control and utility render states", async () =>
 			model: "test/model-one",
 			prompt: "Read the source.  \nKeep the contracts.",
 		};
-		const highlighted = Promise.withResolvers<void>();
 		const open = agent.renderCall?.(
 			args as never,
 			theme as never,
-			{ state, expanded: false, invalidate: highlighted.resolve } as never,
+			{ state, expanded: false, invalidate() {} } as never,
 		);
-		await highlighted.promise;
 		captures.push(capture("agent call open", open));
 		await fixture.runtime.update(collapseSection, (current) => ({
 			...current,

@@ -36,6 +36,28 @@ function result(ok: boolean, lines: string[], error?: string) {
 }
 
 describe("proc renderer", () => {
+	test("defers command highlighting while arguments stream", async () => {
+		const host = tool();
+		const theme = { ...plainTheme, fg: (key: string, text: string) => `<${key}>${text}</${key}>` };
+		let invalidations = 0;
+		const ctx = {
+			state: {},
+			expanded: false,
+			executionStarted: false,
+			invalidate: () => invalidations++,
+		};
+		for (const command of ["echo", "echo hello"]) {
+			const component = host.renderCall({ action: "start", command }, theme, ctx);
+			const rows = component.render(80);
+			await Promise.resolve();
+			expect(component.render(80)).toEqual(rows);
+			expect(invalidations).toBe(0);
+		}
+		ctx.executionStarted = true;
+		host.renderCall({ action: "start", command: "echo hello" }, theme, ctx);
+		await Promise.resolve();
+		expect(invalidations).toBe(1);
+	});
 	test("wraps long commands with the shared parameter separator", () => {
 		const lines = tool()
 			.renderCall(

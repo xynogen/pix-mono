@@ -44,6 +44,26 @@ describe("collapseProgressFrames", () => {
 });
 
 describe("registerShellTool", () => {
+	it.each(["bash", "powershell"])("defers %s highlighting while arguments stream", async (name) => {
+		const { pi, tool } = capturePi();
+		registerShellTool(pi, okFactory, makeToolContext(), { ...bashOpts, name });
+		let invalidations = 0;
+		const ctx = {
+			...makeRenderCtx({ invalidate: () => invalidations++ }),
+			executionStarted: false,
+		};
+		const theme = makeTheme({ tag: true });
+		for (const command of ["echo", "echo hello"]) {
+			const component = tool.renderCall?.({ command }, theme, ctx);
+			expect(component?.getText()).toEndWith(command);
+			await Promise.resolve();
+			expect(invalidations).toBe(0);
+		}
+		ctx.executionStarted = true;
+		tool.renderCall?.({ command: "echo hello" }, theme, ctx);
+		await Promise.resolve();
+		expect(invalidations).toBe(1);
+	});
 	it.each([
 		"bash",
 		"powershell",

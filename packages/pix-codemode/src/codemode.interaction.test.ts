@@ -4,7 +4,7 @@ import { makeTheme } from "@xynogen/pix-pretty/test-utils";
 import { frameToolResult, unframeToolResult } from "@xynogen/pix-pretty/utils";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { withUiFixture } from "../../../scripts/ui-capture.ts";
-import { renderResult } from "./codemode.ts";
+import { renderCall, renderResult } from "./codemode.ts";
 
 let fixture: Awaited<ReturnType<typeof withUiFixture>>;
 beforeAll(async () => {
@@ -16,6 +16,33 @@ afterAll(async () => {
 
 const result = (text: string) => ({ content: [{ type: "text" as const, text }], details: {} });
 const options = { expanded: false, isPartial: false };
+
+test("streaming arguments stay plain until execution starts, then highlight once", async () => {
+	const theme = makeTheme({ tag: true });
+	let invalidations = 0;
+	const ctx = {
+		state: {},
+		expanded: false,
+		executionStarted: false,
+		invalidate: () => invalidations++,
+	};
+	for (const code of ["return", "return 1", "return 1;"]) {
+		const component = renderCall({ code }, theme, ctx);
+		const rows = component.render?.(80);
+		expect(component.getText?.()).toEndWith(code);
+		await Promise.resolve();
+		expect(component.render?.(80)).toEqual(rows);
+		expect(invalidations).toBe(0);
+	}
+	ctx.executionStarted = true;
+	const component = renderCall({ code: "return 1;" }, theme, ctx);
+	await Promise.resolve();
+	expect(invalidations).toBe(1);
+	expect(component.getText?.()).toEndWith("return 1;");
+	renderCall({ code: "return 1;" }, theme, ctx);
+	await Promise.resolve();
+	expect(invalidations).toBe(1);
+});
 
 test("errors cancel collapse and restore the visible state", () => {
 	const state = { collapsed: true, timer: setTimeout(() => {}, 60_000) };
