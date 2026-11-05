@@ -45,9 +45,12 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 	]);
 	const benchmarks = spyOn(benchlm, "getCached").mockReturnValue([]);
 	// Host load varies, so pin it; the 10s clock renders as 00:00 under the pinned TZ.
-	const stats = spyOn(sysstat, "readSystemStats").mockReturnValue({
-		stats: { cpu: 12, gpu: 95, ram: 58, temp: 56 },
-		times: { busy: 0, total: 0 },
+	const stats = spyOn(sysstat, "readSystemStats").mockResolvedValue({
+		cpu: 12,
+		cpuTemp: 56,
+		gpu: 95,
+		gpuTemp: 68,
+		ram: 58,
 	});
 	const tz = process.env.TZ;
 	process.env.TZ = "UTC";
@@ -116,6 +119,14 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		} as never);
 		await hooks.get("session_start")?.({}, ctx);
 		await hooks.get("tool_execution_end")?.({}, ctx);
+		const systemTick = [...timers.values()].find((timer) => timer.delay === 2000);
+		expect(stats).toHaveBeenCalledTimes(1);
+		systemTick?.callback();
+		expect(stats).toHaveBeenCalledTimes(1);
+		now += 6000;
+		systemTick?.callback();
+		await Promise.resolve();
+		expect(stats).toHaveBeenCalledTimes(2);
 		if (!component) throw new Error("Footer factory did not create a component");
 		const footer = component;
 		const take = (name: string, width = 80) => {
@@ -128,11 +139,26 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		take("idle / 120", 120);
 		const wide = footer.render(240);
 		expect(wide).toHaveLength(1);
-		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/PLAN.*capture.*2[/]3.*2 !1/);
-		// Model block left, extension statuses flush right with a padded gap between.
+		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(
+			/PLAN.*capture.*\[85\.0K[/]100\.0K · 85%\].*2[/]3.*2 !1/,
+		);
+		// Keep the original left/right split and evenly spaced thin section bars.
 		expect(visibleWidth(wide[0] ?? "")).toBe(240);
-		// One pad column against each terminal edge.
-		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/^ \S.*\S {3,}\S.*2[/]3.*\S $/);
+		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(
+			/^ PLAN │ .*capture.* {3,}.*2[/]3.*00:00 $/,
+		);
+		expect(visibleWidth(footer.render(400)[0] ?? "")).toBe(400);
+		const stable = stripVTControlCharacters(footer.render(400)[0] ?? "");
+		expect(stable).toMatch(/00:00 $/);
+		statuses.set("mcp", "12/12 servers");
+		statuses.set("fixture", "background task running");
+		const busy = stripVTControlCharacters(footer.render(400)[0] ?? "");
+		for (const marker of ["capture", "12%", "00:00"]) {
+			expect(busy.indexOf(marker)).toBe(stable.indexOf(marker));
+		}
+		expect(busy).toMatch(/capture.* {3,}.*12[/]12.* · .*background task running.*12%.*00:00 $/);
+		statuses.set("mcp", "2/3 servers");
+		statuses.delete("fixture");
 		expect(defaults.wrap).toBe(false);
 		expect(footer.render(40)).toHaveLength(1);
 		const clipped = footer.render(40)[0]!;
@@ -149,17 +175,13 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		}
 		await fixture.runtime.update(prettySection, { footer: { wrap: true } });
 		expect(footer.render(240)).toHaveLength(1);
-		// The flush-right gap collapses back to one separator when the row is too narrow.
-		const joined = stripVTControlCharacters(wide[0] ?? "").replace(/ {3,}/, " | ");
+		const joined = stripVTControlCharacters(wide[0] ?? "").replace(/ {3,}/, " │ ");
 		for (const width of [16, 40, 80, 120]) {
 			const rows = footer.render(width);
 			if (visibleWidth(joined) > width) expect(rows.length).toBeGreaterThan(1);
 			else expect(rows).toHaveLength(1);
 			expect(rows.every((row) => visibleWidth(row) <= width)).toBe(true);
-			const flat = rows
-				.map((row) => stripVTControlCharacters(row).trim())
-				.join(" ")
-				.replace(/ {3,}/, " | ");
+			const flat = rows.map((row) => stripVTControlCharacters(row).trim()).join(" ");
 			expect(flat.replace(/\s+/g, " ").trim()).toBe(joined.replace(/\s+/g, " ").trim());
 		}
 		await fixture.runtime.update(prettySection, { footer: { statuses: false } });
@@ -176,6 +198,11 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		expect(tick?.interval).toBe(true);
 		tick?.callback();
 		take("stream / 120", 120);
+		const streaming = stripVTControlCharacters(footer.render(400)[0] ?? "");
+		for (const marker of ["capture", "12%", "00:00"]) {
+			expect(streaming.indexOf(marker)).toBe(stable.indexOf(marker));
+		}
+		expect(streaming).toMatch(/capture.* {3,}100 t[/]s · .*2[/]3.*12%.*00:00 $/);
 		const activityFlags = Object.fromEntries(
 			flags.map((key) => [key, ["tokens", "cost", "tps"].includes(key)]),
 		) as typeof defaults;

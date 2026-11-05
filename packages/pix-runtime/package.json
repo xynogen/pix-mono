@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-runtime",
-	"version": "0.17.0",
+	"version": "0.17.1",
 	"description": "Pix shared runtime — versioned pix.json config, atomic persistence, typed change events",
 	"type": "module",
 	"main": "src/index.ts",
@@ -69,6 +69,7 @@
 		"@ast-grep/napi": "^0.45.0"
 	},
 	"dependencies": {
+		"systeminformation": "5.33.19",
 		"xxhash-wasm": "1.1.0"
 	},
 	"peerDependenciesMeta": {

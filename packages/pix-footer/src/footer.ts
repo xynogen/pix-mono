@@ -2,14 +2,14 @@
  * Footer extension — pure-prompt style.
  *
  * Layout:
- *   [MODE] | ~/cwd (branch *±⇡n⇣n) | context        model · thinking · price · score | statuses | tokens | TPS | cpu gpu ram temp | clock
+ *   [MODE] │ ~/cwd (branch *±⇡n⇣n) │ model · thinking [used/total · pct%]        statuses · tokens · TPS │ cpu ⋮ gpu ⋮ ram │ clock
  *   (right block is flush right when it fits; otherwise one joined line)
  *
  * - Branch shown with zsh-style dirty/ahead/behind markers.
  * - TPS: live during stream, holds 5s after turn ends, then clears.
  * - Model spec (ctx · cost) sourced from ~/.cache/pi/models-dev.json.
  * - Extension statuses surfaced via footerData.getExtensionStatuses();
- *   "plan" is rendered as the leftmost segment, others inline after model.
+ *   "plan" is rendered as the leftmost segment, others in the right-side activity group.
  */
 
 import { basename } from "node:path";
@@ -31,7 +31,7 @@ import { fmtTokenCount } from "@xynogen/pix-pretty/widget-format";
 import { config, onConfigChange } from "@xynogen/pix-runtime/config";
 import { runGit } from "@xynogen/pix-runtime/os";
 import { prettySection } from "@xynogen/pix-runtime/sections";
-import { type CpuTimes, readSystemStats, type SystemStats } from "@xynogen/pix-runtime/sysstat";
+import { readSystemStats, type SystemStats } from "@xynogen/pix-runtime/sysstat";
 
 // ─── Pure formatting helpers ─────────────────────────────────────────
 
@@ -193,7 +193,7 @@ export function renderTokens(
 	return s ? theme.fg(faded ? "muted" : "dim", s) : "";
 }
 
-/** Context usage block: "used/total (pct%)". Always shown when available. */
+/** Bracketed model context: "[used/total · pct%]". */
 function renderCtxUsage(
 	usage: { percent?: number | null; contextWindow?: number } | undefined,
 	theme: Theme,
@@ -203,30 +203,31 @@ function renderCtxUsage(
 	const used = Math.round((usage.percent / 100) * usage.contextWindow);
 	const pctColor = pct >= 80 ? "error" : pct >= 50 ? "warning" : "success";
 	return (
-		theme.fg("muted", `${icon("tokens")}  `) +
+		theme.fg("muted", "[") +
 		theme.fg("success", fmtTokenCount(used)) +
-		theme.fg("muted", `/${fmtTokenCount(usage.contextWindow)} `) +
-		theme.fg(pctColor, `(${pct}%)`)
+		theme.fg("muted", `/${fmtTokenCount(usage.contextWindow)} · `) +
+		theme.fg(pctColor, `${pct}%`) +
+		theme.fg("muted", "]")
 	);
 }
 
-type SysIcon = "sys.cpu" | "sys.gpu" | "sys.ram" | "sys.temp";
+type SysIcon = "sys.cpu" | "sys.gpu" | "sys.ram";
 
-/** "cpu 12% gpu 3% ram 58% 56°": icon muted, value dim, warning/error past load limits. */
+/** CPU usage + temperature ⋮ GPU usage + temperature ⋮ RAM usage. */
 export function renderSystem(stats: SystemStats, theme: Theme): string {
-	const seg = (key: SysIcon, n: number | undefined, unit: string, warn: number, err: number) =>
+	const value = (n: number | undefined, unit: string, warn: number, err: number) =>
 		n === undefined
-			? ""
-			: theme.fg("muted", `${icon(key)} `) +
-				theme.fg(n >= err ? "error" : n >= warn ? "warning" : "dim", `${n}${unit}`);
+			? theme.fg("muted", "—")
+			: theme.fg(n >= err ? "error" : n >= warn ? "warning" : "dim", `${n}${unit}`);
+	const group = (key: SysIcon, usage: number | undefined, temp?: number) =>
+		theme.fg("muted", `${icon(key)} `) +
+		value(usage, "%", key === "sys.ram" ? 80 : 70, key === "sys.ram" ? 92 : 90) +
+		(key === "sys.ram" ? "" : ` ${value(temp, "°C", 75, 90)}`);
 	return [
-		seg("sys.cpu", stats.cpu, "%", 70, 90),
-		seg("sys.gpu", stats.gpu, "%", 70, 90),
-		seg("sys.ram", stats.ram, "%", 80, 92),
-		seg("sys.temp", stats.temp, "°", 75, 90),
-	]
-		.filter(Boolean)
-		.join(" ");
+		group("sys.cpu", stats.cpu, stats.cpuTemp),
+		group("sys.gpu", stats.gpu, stats.gpuTemp),
+		group("sys.ram", stats.ram),
+	].join(theme.fg("muted", " ⋮ "));
 }
 
 /** Local wall clock, "HH:MM". */
@@ -270,6 +271,7 @@ function renderModel(
 	thinking: string,
 	theme: Theme,
 	parts: typeof prettySection.defaults.footer,
+	context = "",
 ): string {
 	const rawId = model?.id ?? "?";
 	const id = rawId.replace(/^[a-z]+\//i, "");
@@ -288,6 +290,7 @@ function renderModel(
 		const abbr = THINK_ABBR[thinking] ?? thinking.slice(0, 3);
 		out += separator() + renderThinkingLevel(theme, thinking, abbr);
 	}
+	if (context) out += (out ? " " : "") + context;
 	if (parts.price && provider && id !== "?") {
 		// modelgrep first; registered model cost/ctx fills private / gateway gaps
 		const dev = resolveModelsDev(provider, id, model);
@@ -386,11 +389,23 @@ export default function (pi: ExtensionAPI) {
 	let gitTimer: ReturnType<typeof setInterval> | null = null;
 	let currentCwd = "";
 	let sysStats: SystemStats = {};
-	let cpuPrev: CpuTimes | undefined;
+	let systemPending = false;
+	let nextSystemPoll = 0;
 	const sampleSystem = () => {
-		const next = readSystemStats(cpuPrev);
-		cpuPrev = next.times;
-		sysStats = next.stats;
+		if (systemPending || Date.now() < nextSystemPoll) return;
+		systemPending = true;
+		nextSystemPoll = Date.now() + 5_000;
+		void readSystemStats()
+			.then((stats) => {
+				sysStats = stats;
+				requestRender?.();
+			})
+			.catch(() => {
+				sysStats = {};
+			})
+			.finally(() => {
+				systemPending = false;
+			});
 	};
 
 	// ── TPS tracking ──────────────────────────────────────────────
@@ -567,7 +582,7 @@ export default function (pi: ExtensionAPI) {
 					return footer.row(Math.max(0, width - 2 * FOOTER_PAD)).map((line) => pad + line + pad);
 				},
 				row(width: number): string[] {
-					const sep = theme.fg("muted", " | ");
+					const sep = theme.fg("muted", " │ ");
 
 					// A version-skewed pix-runtime copy can own the globalThis singleton and
 					// parse "pretty" without the footer key. Merge defaults so render never sees undefined.
@@ -575,8 +590,13 @@ export default function (pi: ExtensionAPI) {
 					const totals = computeSessionTotals(ctx.sessionManager.getBranch());
 					const tokens =
 						tokensState === "off" ? "" : renderTokens(totals, theme, tokensState === "dim", parts);
-					const ctxUsage = renderCtxUsage(ctx.getContextUsage?.(), theme);
-					const model = renderModel(ctx.model, pi.getThinkingLevel?.() ?? "", theme, parts);
+					const model = renderModel(
+						ctx.model,
+						pi.getThinkingLevel?.() ?? "",
+						theme,
+						parts,
+						parts.context ? renderCtxUsage(ctx.getContextUsage?.(), theme) : "",
+					);
 					const { branchSeg, markersSeg } = renderBranch(
 						footerData.getGitBranch(),
 						gitStatus,
@@ -584,7 +604,7 @@ export default function (pi: ExtensionAPI) {
 					);
 					const { modePart, otherPart } = renderStatuses(
 						footerData.getExtensionStatuses(),
-						sep,
+						theme.fg("muted", " · "),
 						theme,
 					);
 
@@ -595,16 +615,18 @@ export default function (pi: ExtensionAPI) {
 						parts.mode ? modePart : "",
 						loc + (parts.git ? branchSeg : ""),
 						parts.git ? markersSeg : "",
-						parts.context ? ctxUsage : "",
+						model,
 					]
 						.filter(Boolean)
 						.join(sep);
-					// Model group (id · thinking · price · score) and live data sit flush right when they fit.
 					const right = [
-						model,
-						parts.statuses ? otherPart : "",
-						tokens,
-						parts.tps && liveTps ? theme.fg("accent", liveTps) : "",
+						[
+							parts.tps && liveTps ? theme.fg("accent", liveTps) : "",
+							parts.statuses ? otherPart : "",
+							tokens,
+						]
+							.filter(Boolean)
+							.join(theme.fg("muted", " · ")),
 						parts.system ? renderSystem(sysStats, theme) : "",
 						parts.clock ? renderClock(new Date(Date.now()), theme) : "",
 					]

@@ -5,6 +5,7 @@ import {
 	compactStatus,
 	computeSessionTotals,
 	computeTps,
+	renderSystem,
 	renderThinkingLevel,
 	renderTokens,
 } from "./footer.ts";
@@ -86,4 +87,22 @@ describe("cost marker", () => {
 		expect(cost(msg(0.1, true), msg(0, false))).toMatch(/^ \$\d+\.\d{3}$/);
 		expect(cost(msg(0.1, true), msg(0.2))).toMatch(/^ ~\$\d+\.\d{3}$/);
 	});
+});
+
+test("system readings use three dotted-separated groups with distinct temperatures", () => {
+	const tagged = {
+		...theme,
+		fg: (role: string, text: string) => `<${role}>${text}</${role}>`,
+	};
+	expect(renderSystem({ cpu: 12, cpuTemp: 56, gpu: 95, gpuTemp: 80, ram: 93 }, tagged)).toBe(
+		`<muted>${icon("sys.cpu")} </muted><dim>12%</dim> <dim>56°C</dim>` +
+			`<muted> ⋮ </muted><muted>${icon("sys.gpu")} </muted><error>95%</error> <warning>80°C</warning>` +
+			`<muted> ⋮ </muted><muted>${icon("sys.ram")} </muted><error>93%</error>`,
+	);
+	expect(renderSystem({}, theme)).toBe(
+		`${icon("sys.cpu")} — — ⋮ ${icon("sys.gpu")} — — ⋮ ${icon("sys.ram")} —`,
+	);
+	expect(renderSystem({ cpu: 11, gpuTemp: 49, ram: 24 }, theme)).toBe(
+		`${icon("sys.cpu")} 11% — ⋮ ${icon("sys.gpu")} — 49°C ⋮ ${icon("sys.ram")} 24%`,
+	);
 });
