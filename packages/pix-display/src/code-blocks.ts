@@ -19,6 +19,7 @@ type RenderMode = "tui" | "rpc" | "json" | "print";
 type PatchablePrototype = {
 	[PATCHED]?: boolean;
 	render(width: number): string[];
+	invalidate(): void;
 };
 
 let activeTheme: CodeFrameTheme | undefined;
@@ -136,9 +137,36 @@ function patchAssistantRenderer(): void {
 	if (prototype[PATCHED]) return;
 
 	const nativeRender = prototype.render;
+	const nativeInvalidate = prototype.invalidate;
+	const cache = new WeakMap<
+		PatchablePrototype,
+		{
+			width: number;
+			theme: CodeFrameTheme;
+			input: string[];
+			output: string[];
+		}
+	>();
+	prototype.invalidate = function invalidateCodeFrames(): void {
+		cache.delete(this);
+		nativeInvalidate.call(this);
+	};
 	prototype.render = function renderWithCodeFrames(width: number): string[] {
 		const lines = nativeRender.call(this, width);
-		return activeTheme ? renderCodeFences(lines, width, activeTheme) : lines;
+		if (!activeTheme) return lines;
+		const previous = cache.get(this);
+		if (
+			previous &&
+			previous.width === width &&
+			previous.theme === activeTheme &&
+			previous.input.length === lines.length &&
+			lines.every((line, i) => line === previous.input[i])
+		) {
+			return previous.output;
+		}
+		const output = renderCodeFences(lines, width, activeTheme);
+		cache.set(this, { width, theme: activeTheme, input: [...lines], output });
+		return output;
 	};
 	prototype[PATCHED] = true;
 }

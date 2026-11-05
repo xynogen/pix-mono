@@ -75,6 +75,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		["mcp", "2/3 servers"],
 		["pi-lens-lsp", "LSP Active: ts, json · LSP Failed: eslint"],
 	]);
+	let historyReads = 0;
 	const ctx = {
 		cwd: "/fixture/project",
 		model: {
@@ -85,15 +86,18 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		},
 		getContextUsage: () => ({ percent: 85, contextWindow: 100_000 }),
 		sessionManager: {
-			getBranch: () => [
-				{
-					type: "message",
-					message: {
-						role: "assistant",
-						usage: { input: 1200, output: 200, cacheRead: 300, cost: { total: 0.123 } },
+			getBranch: () => {
+				historyReads++;
+				return [
+					{
+						type: "message",
+						message: {
+							role: "assistant",
+							usage: { input: 1200, output: 200, cacheRead: 300, cost: { total: 0.123 } },
+						},
 					},
-				},
-			],
+				];
+			},
 		},
 		ui: {
 			setFooter: (factory: (tui: unknown, theme: unknown, data: unknown) => typeof component) => {
@@ -129,6 +133,9 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		expect(stats).toHaveBeenCalledTimes(2);
 		if (!component) throw new Error("Footer factory did not create a component");
 		const footer = component;
+		const initialHistoryReads = historyReads;
+		for (let i = 0; i < 100; i++) footer.render(400);
+		expect(historyReads).toBe(initialHistoryReads);
 		const take = (name: string, width = 80) => {
 			states[name] = captureRows(footer, { width, surface: "component" });
 		};
@@ -142,6 +149,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(
 			/PLAN.*capture.*\[85\.0K[/]100\.0K · 85%\].*2[/]3.*2 !1/,
 		);
+		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(/⚡74 {3,}/);
 		// Keep the original left/right split and evenly spaced thin section bars.
 		expect(visibleWidth(wide[0] ?? "")).toBe(240);
 		expect(stripVTControlCharacters(wide[0] ?? "")).toMatch(
@@ -156,7 +164,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		for (const marker of ["capture", "12%", "00:00"]) {
 			expect(busy.indexOf(marker)).toBe(stable.indexOf(marker));
 		}
-		expect(busy).toMatch(/capture.* {3,}.*12[/]12.* · .*background task running.*12%.*00:00 $/);
+		expect(busy).toMatch(/capture.* {3,}.*12[/]12.* │ .*background task running.*12%.*00:00 $/);
 		statuses.set("mcp", "2/3 servers");
 		statuses.delete("fixture");
 		expect(defaults.wrap).toBe(false);
@@ -189,6 +197,9 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		expect(stripVTControlCharacters(footer.render(240)[0] ?? "")).not.toContain("2/3");
 		await fixture.runtime.update(prettySection, { footer: defaults });
 		await hooks.get("message_start")?.({ message: { role: "assistant", id: "stream" } });
+		const started = footer.render(400)[0] ?? "";
+		expect(started).toContain(theme.fg("dim", "— t/s"));
+		expect(stripVTControlCharacters(started)).toMatch(/— t[/]s · .*1\.2K.*200/);
 		now += 2000;
 		await hooks.get("message_update")?.({
 			message: { role: "assistant", id: "stream", usage: { output: 200 } },
@@ -202,7 +213,35 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		for (const marker of ["capture", "12%", "00:00"]) {
 			expect(streaming.indexOf(marker)).toBe(stable.indexOf(marker));
 		}
-		expect(streaming).toMatch(/capture.* {3,}100 t[/]s · .*2[/]3.*12%.*00:00 $/);
+		expect(streaming).toMatch(
+			/capture.* {3,}100 t[/]s · .*1\.2K.*200.* │ .*2[/]3.* │ .*12%.*00:00 $/,
+		);
+		expect(footer.render(400)[0]).toContain(theme.fg("dim", "100 t/s"));
+		expect(streaming.match(/1\.2K/g)).toHaveLength(1);
+		if (process.env.PIX_PROFILE_FOOTER === "1") {
+			for (const width of [80, 120, 240, 400]) {
+				for (let i = 0; i < 200; i++) footer.render(width);
+				const samples: number[] = [];
+				const readsBefore = historyReads;
+				for (let i = 0; i < 2000; i++) {
+					const start = performance.now();
+					footer.render(width);
+					samples.push(performance.now() - start);
+				}
+				samples.sort((a, b) => a - b);
+				console.log(
+					JSON.stringify({
+						width,
+						iterations: samples.length,
+						meanMs: samples.reduce((sum, n) => sum + n, 0) / samples.length,
+						p50Ms: samples[1000],
+						p95Ms: samples[1900],
+						p99Ms: samples[1980],
+						historyReads: historyReads - readsBefore,
+					}),
+				);
+			}
+		}
 		const activityFlags = Object.fromEntries(
 			flags.map((key) => [key, ["tokens", "cost", "tps"].includes(key)]),
 		) as typeof defaults;
@@ -226,19 +265,24 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		const pending = [...timers.entries()].filter(
 			([, timer]) => !timer.interval && timer.delay === 4000,
 		);
-		expect(pending).toHaveLength(2);
+		expect(pending).toHaveLength(1);
 		for (const [id, timer] of pending) {
 			timers.delete(id);
 			timer.callback();
 		}
 		take("faded activity / 80");
+		const faded = footer.render(80)[0] ?? "";
+		expect(faded).toContain(theme.fg("muted", "100 t/s"));
+		expect(stripVTControlCharacters(faded)).toMatch(/100 t[/]s · .*1\.2K.*200/);
+		expect(faded).toContain(theme.fg("dim", "$~0.123"));
 		for (const [id, timer] of [...timers])
 			if (!timer.interval) {
 				timers.delete(id);
 				timer.callback();
 			}
 		take("expired activity / 80");
-		expect(states["expired activity / 80"]).toEqual([]);
+		expect(stripVTControlCharacters(footer.render(80)[0] ?? "").trim()).toBe("$~0.123");
+		expect(footer.render(80)[0]).toContain(theme.fg("dim", "$~0.123"));
 		await fixture.runtime.update(prettySection, { footer: defaults });
 		branch = "feature";
 		branchChanged?.();
@@ -250,6 +294,16 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		take("all disabled / 80");
 		expect(states["all disabled / 80"]).toEqual([]);
 		expect(paints).toBeGreaterThan(12);
+		await fixture.runtime.update(prettySection, { footer: activityFlags });
+		await hooks.get("message_end")?.({
+			message: {
+				role: "assistant",
+				id: "next",
+				usage: { input: 100, output: 20, cacheRead: 0, cost: { total: 0.1 } },
+			},
+		});
+		expect(stripVTControlCharacters(footer.render(400)[0] ?? "")).toContain("$~0.223");
+		expect(historyReads).toBe(initialHistoryReads);
 		footer.dispose();
 		component = undefined;
 		const disposedPaints = paints;

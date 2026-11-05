@@ -3,18 +3,20 @@
 exports[`actual footer factory flags, stream decay and subscriptions without Git 1`] = `
 {
   "activity / 80": [
-    " <accent>100 t/s</accent><muted> · </muted><dim>⇡ 1.2K ⇣ 200 ~$0.123</dim> ",
+    " <dim>100 t/s</dim><muted> · </muted><dim>⇡ 1.2K ⇣ 200</dim><muted> · </muted><dim>$~0.123</dim> ",
   ],
   "all disabled / 80": [],
   "branch repaint / 80": [
     " PLAN<muted> │ ⌂︎  </muted><accent>project</accent> <dim>feature</dim><error>*</error><muted> │ </muted><success>+1</success> <error>✗1</error> <warning>?1</warning> <accent>⇡2</accent> <accent>⇣1</accent><muted> │ ◈︎  </muted><accent>capture</accent><muted> · </muted><accent>high</accent> <muted>[</muted><success>85.0K</success><muted>/100.0K </muted> ",
   ],
-  "expired activity / 80": [],
+  "expired activity / 80": [
+    " <dim>$~0.123</dim> ",
+  ],
   "faded activity / 80": [
-    " <muted>⇡ 1.2K ⇣ 200 ~$0.123</muted> ",
+    " <muted>100 t/s · ⇡ 1.2K ⇣ 200 · </muted><dim>$~0.123</dim> ",
   ],
   "idle / 120": [
-    " PLAN<muted> │ ⌂︎  </muted><accent>project</accent> <dim>main</dim><error>*</error><muted> │ </muted><success>+1</success> <error>✗1</error> <warning>?1</warning> <accent>⇡2</accent> <accent>⇣1</accent><muted> │ ◈︎  </muted><accent>capture</accent><muted> · </muted><accent>high</accent> <muted>[</muted><success>85.0K</success><muted>/100.0K · </muted><error>85%</error><muted>] · </muted><success>$3/$15</success><muted> · </muted><warning>⚡74</warning><muted> │ </muted><dim>◐︎ 2/3</dim><muted> · </muted><success>◉︎ </success><muted> 2 !1 │ </muted> ",
+    " PLAN<muted> │ ⌂︎  </muted><accent>project</accent> <dim>main</dim><error>*</error><muted> │ </muted><success>+1</success> <error>✗1</error> <warning>?1</warning> <accent>⇡2</accent> <accent>⇣1</accent><muted> │ ◈︎  </muted><accent>capture</accent><muted> · </muted><accent>high</accent> <muted>[</muted><success>85.0K</success><muted>/100.0K · </muted><error>85%</error><muted>] · </muted><warning>⚡74</warning><muted> │ </muted><dim>$~0.123</dim><muted> │ </muted><dim>◐︎ 2/3</dim><muted> │ </muted><success>◉︎</success><muted>  2 !1 │</muted> ",
   ],
   "idle / 80": [
     " PLAN<muted> │ ⌂︎  </muted><accent>project</accent> <dim>main</dim><error>*</error><muted> │ </muted><success>+1</success> <error>✗1</error> <warning>?1</warning> <accent>⇡2</accent> <accent>⇣1</accent><muted> │ ◈︎  </muted><accent>capture</accent><muted> · </muted><accent>high</accent> <muted>[</muted><success>85.0K</success><muted>/100.0K · 8</muted> ",
@@ -26,7 +28,7 @@ exports[`actual footer factory flags, stream decay and subscriptions without Git
     " <muted>[</muted><success>85.0K</success><muted>/100.0K · </muted><error>85%</error><muted>]</muted> ",
   ],
   "only cost / 80": [
-    " <dim> ~$0.123</dim> ",
+    " <dim>$~0.123</dim> ",
   ],
   "only cwd / 80": [
     " <muted>⌂︎  </muted><accent>project</accent> ",
@@ -40,14 +42,12 @@ exports[`actual footer factory flags, stream decay and subscriptions without Git
   "only model / 80": [
     " <muted>◈︎  </muted><accent>capture</accent> ",
   ],
-  "only price / 80": [
-    " <success>$3/$15</success> ",
-  ],
+  "only price / 80": [],
   "only score / 80": [
     " <warning>⚡74</warning> ",
   ],
   "only statuses / 80": [
-    " <dim>◐︎ 2/3</dim><muted> · </muted><success>◉︎  2 !1</success> ",
+    " <dim>◐︎ 2/3</dim><muted> │ </muted><success>◉︎  2 !1</success> ",
   ],
   "only system / 80": [
     " <muted>⚙︎ </muted><dim>12%</dim> <dim>56°C</dim><muted> ⋮ ▦︎ </muted><error>95%</error> <dim>68°C</dim><muted> ⋮ ☰︎ </muted><dim>58%</dim> ",
@@ -59,11 +59,11 @@ exports[`actual footer factory flags, stream decay and subscriptions without Git
     " <dim>⇡ 1.2K ⇣ 200</dim> ",
   ],
   "only tps / 80": [
-    " <accent>100 t/s</accent> ",
+    " <dim>100 t/s</dim> ",
   ],
   "only wrap / 80": [],
   "stream / 120": [
-    " PLAN<muted> │ ⌂︎  </muted><accent>project</accent> <dim>main</dim><error>*</error><muted> │ </muted><success>+1</success> <error>✗1</error> <warning>?1</warning> <accent>⇡2</accent> <accent>⇣1</accent><muted> │ ◈︎  </muted><accent>capture</accent><muted> · </muted><accent>high</accent> <muted>[</muted><success>85.0K</success><muted>/100.0K · </muted><error>85%</error><muted>] · </muted><success>$3/$15</success><muted> · </muted><warning>⚡74</warning><muted> │ </muted><accent>100 t/s</accent><muted> · ◐︎ 2/3 · </muted> ",
+    " PLAN<muted> │ ⌂︎  </muted><accent>project</accent> <dim>main</dim><error>*</error><muted> │ </muted><success>+1</success> <error>✗1</error> <warning>?1</warning> <accent>⇡2</accent> <accent>⇣1</accent><muted> │ ◈︎  </muted><accent>capture</accent><muted> · </muted><accent>high</accent> <muted>[</muted><success>85.0K</success><muted>/100.0K · </muted><error>85%</error><muted>] · </muted><warning>⚡74</warning><muted> │ </muted><dim>100 t/s</dim><muted> · </muted><dim>⇡ 1.2K ⇣ </dim><muted>200 · $~</muted> ",
   ],
 }
 `;

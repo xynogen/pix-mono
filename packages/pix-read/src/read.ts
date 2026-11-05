@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { access, readdir, readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
@@ -504,7 +505,34 @@ export function registerReadTool(
 			}
 
 			if (d?._type === "readFile" && d.content) {
-				const key = `read:${d.filePath}:${d.offset}:${d.lineCount}:${process.stdout.columns ?? 80}:${renderCtx.expanded ? "full" : "preview"}:${isPartial ? "partial" : "complete"}`;
+				const themeKey = [
+					"muted",
+					"success",
+					"syntaxComment",
+					"syntaxKeyword",
+					"syntaxFunction",
+					"syntaxVariable",
+					"syntaxString",
+					"syntaxNumber",
+					"syntaxType",
+					"syntaxOperator",
+					"syntaxPunctuation",
+				]
+					.map((role) => theme.fg(role, "sample"))
+					.join("|");
+				const contentKey = createHash("sha256")
+					.update(d.content as string)
+					.digest("hex");
+				const key = JSON.stringify([
+					d.filePath,
+					d.offset,
+					d.lineCount,
+					process.stdout.columns ?? 80,
+					renderCtx.expanded,
+					isPartial,
+					themeKey,
+					contentKey,
+				]);
 				// One framed shape; rules follow status color. The line count lives in the
 				// collapsed row — no floating "N lines" header above the frame.
 				const paint = fadeRulePaint(theme, "success");

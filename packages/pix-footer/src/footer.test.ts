@@ -83,9 +83,40 @@ describe("cost marker", () => {
 	const cost = (...entries: unknown[]) =>
 		renderTokens(computeSessionTotals(entries), theme, false, parts);
 
-	test("billed totals show $; any catalog estimate shows ~$", () => {
-		expect(cost(msg(0.1, true), msg(0, false))).toMatch(/^ \$\d+\.\d{3}$/);
-		expect(cost(msg(0.1, true), msg(0.2))).toMatch(/^ ~\$\d+\.\d{3}$/);
+	test("sums per-response USD costs with $ for billed totals and $~ for estimates", () => {
+		expect(cost(msg(0.1, true), msg(0, false))).toBe("$0.100");
+		expect(cost(msg(0.1, true), msg(0.2))).toBe("$~0.300");
+	});
+	test("estimates zero-cost responses using each model rate and cache rates", () => {
+		const entries = ["a", "b"].map((model) => ({
+			type: "message",
+			message: {
+				role: "assistant",
+				provider: "fixture",
+				model,
+				usage: {
+					input: 1_000_000,
+					output: 100_000,
+					cacheRead: 500_000,
+					cacheWrite: 100_000,
+					cost: { total: 0 },
+				},
+			},
+		}));
+		const resolve = (_provider: string, id: string) => ({
+			id,
+			cost: {
+				input: id === "a" ? 2 : 4,
+				output: 10,
+				cache_read: 0.2,
+				cache_write: 3,
+			},
+		});
+		const totals = computeSessionTotals(entries, resolve);
+		expect(totals.cost).toBeCloseTo(8.8);
+		expect(renderTokens(totals, theme, false, parts)).toBe("$~8.800");
+		entries[0]!.message.usage.cost.total = 0.5;
+		expect(computeSessionTotals(entries, resolve).cost).toBeCloseTo(5.9);
 	});
 });
 
@@ -94,6 +125,14 @@ test("system readings use three dotted-separated groups with distinct temperatur
 		...theme,
 		fg: (role: string, text: string) => `<${role}>${text}</${role}>`,
 	};
+	for (const [ram, role] of [
+		[79, "dim"],
+		[80, "warning"],
+		[89, "warning"],
+		[90, "error"],
+	] as const) {
+		expect(renderSystem({ ram }, tagged)).toEndWith(`<${role}>${ram}%</${role}>`);
+	}
 	expect(renderSystem({ cpu: 12, cpuTemp: 56, gpu: 95, gpuTemp: 80, ram: 93 }, tagged)).toBe(
 		`<muted>${icon("sys.cpu")} </muted><dim>12%</dim> <dim>56°C</dim>` +
 			`<muted> ⋮ </muted><muted>${icon("sys.gpu")} </muted><error>95%</error> <warning>80°C</warning>` +

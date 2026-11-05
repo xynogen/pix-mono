@@ -40,32 +40,53 @@ export function commandPreview(
 	}
 	const current = slot;
 	let replacement: string | undefined;
+	const text = new Text("", 0, 0);
+	let memo:
+		| { width: number; styled: string; replacement: string | undefined; lines: string[] }
+		| undefined;
+	const layout = (width: number): string[] => {
+		if (replacement !== undefined) {
+			text.setText(replacement);
+			return replacement ? text.render(width) : [];
+		}
+		const separator = theme.fg("muted", " · ");
+		if (!code.includes("\n") && visibleWidth(header) + 3 + visibleWidth(code) <= width) {
+			text.setText(`${header}${separator}${current.styled}`);
+			return text.render(width);
+		}
+		// ponytail: preserve shell syntax with native wrapping; use a parser only for semantic formatting.
+		const padding = " ".repeat(indent);
+		const lines = wrapTextWithAnsi(current.styled, Math.max(1, width - indent));
+		const shown = expanded ? lines : fadeRowsOf(lines.slice(0, 17), theme, 16);
+		return [
+			truncateToWidth(`${header}${separator}`, width, "…"),
+			...shown.map((line) => `${padding}${line}`),
+			...(shown.length < lines.length
+				? [
+						`${theme.fg("muted", `${padding}… +${lines.length - shown.length} lines `)}${expandHint(theme, ctx)}`,
+					]
+				: []),
+		];
+	};
 	return {
 		setText(value: string) {
 			replacement = value;
 		},
 		getText: () => replacement ?? `${header}${theme.fg("muted", " · ")}${current.styled}`,
-		invalidate() {},
+		invalidate() {
+			memo = undefined;
+			text.invalidate();
+		},
 		render(width: number): string[] {
-			if (replacement !== undefined)
-				return replacement ? new Text(replacement, 0, 0).render(width) : [];
-			const separator = theme.fg("muted", " · ");
-			if (!code.includes("\n") && visibleWidth(header) + 3 + visibleWidth(code) <= width) {
-				return new Text(`${header}${separator}${current.styled}`, 0, 0).render(width);
-			}
-			// ponytail: wrap without rewriting shell syntax or quoted strings. Add a shell parser only for semantic formatting.
-			const padding = " ".repeat(indent);
-			const lines = wrapTextWithAnsi(current.styled, Math.max(1, width - indent));
-			const shown = expanded ? lines : fadeRowsOf(lines.slice(0, 17), theme, 16);
-			return [
-				truncateToWidth(`${header}${separator}`, width, "…"),
-				...shown.map((line) => `${padding}${line}`),
-				...(shown.length < lines.length
-					? [
-							`${theme.fg("muted", `${padding}… +${lines.length - shown.length} lines `)}${expandHint(theme, ctx)}`,
-						]
-					: []),
-			];
+			if (
+				memo?.width === width &&
+				memo.styled === current.styled &&
+				memo.replacement === replacement
+			)
+				return memo.lines;
+			const lines = layout(width);
+			memo = { width, styled: current.styled, replacement, lines };
+			return lines;
 		},
 	};
 }
@@ -80,21 +101,35 @@ export function collapsedCommandRow(
 	const prefix = `${header}${theme.fg("muted", " · ")}`;
 	let text = `${prefix}${theme.fg("dim", plain)}`;
 	let replaced = false;
+	const replacementText = new Text("", 0, 0);
+	let memo: { width: number; text: string; replaced: boolean; lines: string[] } | undefined;
 	return {
 		setText(value: string) {
 			text = value;
 			replaced = true;
 		},
 		getText: () => text,
-		invalidate() {},
+		invalidate() {
+			memo = undefined;
+			replacementText.invalidate();
+		},
 		render(width: number): string[] {
-			if (replaced) return text ? new Text(text, 0, 0).render(width) : [];
+			if (memo?.width === width && memo.text === text && memo.replaced === replaced)
+				return memo.lines;
+			if (replaced) {
+				replacementText.setText(text);
+				const lines = text ? replacementText.render(width) : [];
+				memo = { width, text, replaced, lines };
+				return lines;
+			}
 			const room = width - visibleWidth(prefix);
-			return [
+			const lines = [
 				room > 0
 					? `${prefix}${fadeText(plain, room, fadePaint(theme))}`
 					: truncateToWidth(prefix, width, "…"),
 			];
+			memo = { width, text, replaced, lines };
+			return lines;
 		},
 	};
 }

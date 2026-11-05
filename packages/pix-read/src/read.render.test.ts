@@ -54,7 +54,12 @@ it("captures registered read pending, completed, expanded and non-text states", 
 		const longLine = `const text = "${"x".repeat(90)}END";`;
 		const result = file(`const count = 3;\n\t// tab and trailing spaces  \n\n${longLine}`);
 		const state: Record<string, unknown> = {};
-		const preview = async (expanded: boolean) => {
+		const preview = async (
+			expanded: boolean,
+			value = result,
+			activeTheme = theme,
+			capture = true,
+		) => {
 			let invalidate!: () => void;
 			const completed = new Promise<void>((resolve, reject) => {
 				invalidate = resolve;
@@ -64,12 +69,12 @@ it("captures registered read pending, completed, expanded and non-text states", 
 			});
 			pending.push(completed);
 			const context = makeRenderCtx({ state, expanded, invalidate });
-			const component = tool.renderResult?.(result, { isPartial: false }, theme, context);
+			const component = tool.renderResult?.(value, { isPartial: false }, activeTheme, context);
 			if (!component) throw new Error("Missing read renderer");
-			captures[expanded ? "expandedPending" : "pending"] = rows(component);
+			if (capture) captures[expanded ? "expandedPending" : "pending"] = rows(component);
 			await completed;
 			return rows(
-				tool.renderResult?.(result, { isPartial: false }, theme, {
+				tool.renderResult?.(value, { isPartial: false }, activeTheme, {
 					...context,
 					lastComponent: component,
 				}),
@@ -81,6 +86,17 @@ it("captures registered read pending, completed, expanded and non-text states", 
 		expect(state._rk).not.toBe(key);
 		expect(captures.completed.join("\n")).toContain("<syntaxKeyword>const</syntaxKeyword>");
 		expect(captures.expanded.join("\n")).toContain("END");
+		const changedResult = file(`const other = 7;\n\t// tab and trailing spaces  \n\n${longLine}`);
+		const refreshed = await preview(true, changedResult, theme, false);
+		expect(refreshed.join("\n")).toContain("other");
+		const contentKey = state._rk;
+		const alternate = {
+			...theme,
+			fg: (role: string, text: string) =>
+				theme.fg(role === "muted" ? "dim" : (role as Parameters<typeof theme.fg>[0]), text),
+		};
+		await preview(true, changedResult, alternate, false);
+		expect(state._rk).not.toBe(contentKey);
 		const render = async (
 			value: ToolResultLike,
 			{ collapsed = false, expanded = false, isError = false, isPartial = false } = {},

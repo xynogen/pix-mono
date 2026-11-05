@@ -110,3 +110,26 @@ test.each([
 	await Promise.resolve();
 	expect(invalidations).toBe(1);
 });
+
+test("command layouts reuse idle output and refresh width, replacement and invalidation", () => {
+	for (const component of [
+		commandPreview("bash", "echo one\necho two", undefined, theme, {}, () => {}),
+		collapsedCommandRow("bash", "echo one", theme),
+	]) {
+		const initial = component.render(40);
+		expect(component.render(40)).toBe(initial);
+		const narrow = component.render(24);
+		expect(narrow.every((row) => visibleWidth(row) <= 24)).toBe(true);
+		expect(component.render(24)).toBe(narrow);
+		component.setText("replacement");
+		const replacement = component.render(24);
+		expect(replacement.map((row) => row.trimEnd())).toEqual(["replacement"]);
+		expect(component.render(24)).toBe(replacement);
+		component.invalidate();
+		const refreshed = component.render(24);
+		expect(refreshed).toEqual(replacement);
+		expect(refreshed).not.toBe(replacement);
+		component.setText("");
+		expect(component.render(24)).toEqual([]);
+	}
+});

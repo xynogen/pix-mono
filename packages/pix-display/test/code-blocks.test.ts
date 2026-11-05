@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test";
+import { AssistantMessageComponent, initTheme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { renderCodeFences, themeAfterSessionStart } from "../src/code-blocks.js";
+import codeBlocksExtension, {
+	renderCodeFences,
+	themeAfterSessionStart,
+} from "../src/code-blocks.js";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 
@@ -163,4 +167,43 @@ describe("renderCodeFences", () => {
 		expect(plain(rendered[1] ?? "")).toContain("…");
 		expect(rendered.every((line) => visibleWidth(line) <= 24)).toBe(true);
 	});
+});
+
+it("memoizes assistant frames and refreshes content, width, theme and invalidation", () => {
+	initTheme("dark");
+	let start: ((event: unknown, ctx: unknown) => void) | undefined;
+	codeBlocksExtension({
+		on: (name: string, handler: typeof start) => {
+			if (name === "session_start") start = handler;
+		},
+	} as never);
+	start?.({}, { mode: "tui", ui: { theme } });
+	const component = new AssistantMessageComponent();
+	const update = (text: string) =>
+		component.updateContent({
+			role: "assistant",
+			content: [{ type: "text", text }],
+			stopReason: "stop",
+		} as never);
+	update("```ts\nconst value = 1;\n```");
+	const first = component.render(80);
+	expect(first.map(plain).join("\n")).toContain("const value = 1;");
+	expect(component.render(80)).toBe(first);
+	update("```ts\nconst value = 2;\n```");
+	const changed = component.render(80);
+	expect(changed.map(plain).join("\n")).toContain("const value = 2;");
+	expect(component.render(80)).toBe(changed);
+	const narrow = component.render(40);
+	expect(narrow.every((line) => visibleWidth(line) <= 40)).toBe(true);
+	expect(component.render(40)).toBe(narrow);
+	const alternate = { ...theme, bold: (text: string) => `\x1b[4m${text}\x1b[24m` };
+	start?.({}, { mode: "tui", ui: { theme: alternate } });
+	const themed = component.render(40);
+	expect(themed.join("\n")).toContain("\x1b[4m");
+	expect(component.render(40)).toBe(themed);
+	component.invalidate();
+	const invalidated = component.render(40);
+	expect(invalidated).toEqual(themed);
+	expect(invalidated).not.toBe(themed);
+	expect(component.render(40)).toBe(invalidated);
 });

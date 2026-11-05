@@ -55,6 +55,7 @@ for (const ext of extensions) {
 }
 
 const ui = { requestRender() {}, terminal: { rows: 50, columns: WIDTH } };
+const cards: { render(width: number): string[]; invalidate(): void }[] = [];
 // Async renderers (highlight, diff) repaint by calling renderCtx.invalidate(), which
 // Pi routes to component.invalidate(). Count those calls to know when output settles.
 const settle = async (c: { invalidate(): void }): Promise<number> => {
@@ -180,6 +181,7 @@ for (const [label, s] of Object.entries(scenarios)) {
 		asyncs.sort((a, b) => a - b);
 		const c = make();
 		await settle(c);
+		if (!expanded) cards.push(c);
 		const build = time(() => c.invalidate(), Math.max(20, ITER / 5));
 		const frame = time(() => c.render(WIDTH));
 		let w = 80;
@@ -247,6 +249,54 @@ const other: [string, number][] = [
 		),
 	],
 ];
+
+// Whole-screen CPU path, including Pi's line diff; writes go to a counting sink.
+const { Container, TuiMainScreen } = await import(
+	pathToFileURL(join(piPkg, "../pi-tui/dist/index.js")).href
+);
+const screen = new Container();
+for (const card of cards) screen.addChild(card);
+screen.addChild(chipped);
+let written = 0;
+const terminal = {
+	columns: WIDTH,
+	rows: 50,
+	kittyProtocolActive: false,
+	write(data: string) {
+		written += data.length;
+	},
+	hideCursor() {},
+	showCursor() {},
+	moveBy() {},
+	clearLine() {},
+	clearFromCursor() {},
+	clearScreen() {},
+};
+const fullUi = new TuiMainScreen(terminal);
+fullUi.addChild(screen);
+fullUi.renderNow();
+written = 0;
+const frameMs = time(() => fullUi.renderNow());
+console.log(
+	`Combined ${cards.length} tool cards + editor, warm frame + diff: ${frameMs.toFixed(3)} ms; emitted ${written} chars`,
+);
+let changingWidth = 100;
+console.log(
+	`Combined first-time resize: ${time(() => {
+		terminal.columns = changingWidth++;
+		fullUi.renderNow();
+	}, 20).toFixed(3)} ms`,
+);
+const { renderCodeFences } = await import(
+	pathToFileURL(join(root, "packages/pix-display/src/code-blocks.ts")).href
+);
+const { theme: renderTheme } = await import(
+	pathToFileURL(join(piPkg, "dist/modes/interactive/theme/theme.js")).href
+);
+const fenceLines = ["```ts", ...code.split("\n"), "```"];
+console.log(
+	`pix-display code-frame pass, ${fenceLines.length} lines: ${time(() => renderCodeFences(fenceLines, WIDTH, renderTheme)).toFixed(3)} ms`,
+);
 
 // Report.
 console.log(`Tool cards (ms per call, ${ITER} iterations, width ${WIDTH})`);

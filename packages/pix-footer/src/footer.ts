@@ -6,7 +6,7 @@
  *   (right block is flush right when it fits; otherwise one joined line)
  *
  * - Branch shown with zsh-style dirty/ahead/behind markers.
- * - TPS: live during stream, holds 5s after turn ends, then clears.
+ * - TPS and tokens: live during stream, dim together after 4s, clear together after 8s.
  * - Model spec (ctx · cost) sourced from ~/.cache/pi/models-dev.json.
  * - Extension statuses surfaced via footerData.getExtensionStatuses();
  *   "plan" is rendered as the leftmost segment, others in the right-side activity group.
@@ -22,8 +22,7 @@ import {
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import type { ModelsDevModel } from "@xynogen/pix-data";
-import { benchScoreColor, formatCost, lookupBenchmark, resolveModelsDev } from "@xynogen/pix-data";
+import { benchScoreColor, lookupBenchmark, resolveModelsDev } from "@xynogen/pix-data";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { fadePaint, fadeText } from "@xynogen/pix-pretty/text";
 import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
@@ -67,10 +66,6 @@ const FOOTER_PAD = 1;
 
 // basename splits on \ too on Windows. A root ("/", "C:\\") has no basename, so show it whole.
 const shortCwd = (cwd: string): string => basename(cwd) || cwd;
-
-// Unknown price shows "free" here, as before (registered-only models carry no cost).
-const fmtCost = (entry: ModelsDevModel | undefined): string =>
-	formatCost(entry?.cost?.input, entry?.cost?.output) ?? "free";
 
 // ────────────────────────────────────────────────────────────────────
 
@@ -144,7 +139,10 @@ interface SessionTotals {
 	billed: boolean;
 }
 
-export function computeSessionTotals(entries: Iterable<unknown>): SessionTotals {
+export function computeSessionTotals(
+	entries: Iterable<unknown>,
+	resolvePrice = (provider: string, id: string) => resolveModelsDev(provider, id),
+): SessionTotals {
 	let input = 0,
 		output = 0,
 		cacheRead = 0,
@@ -152,16 +150,33 @@ export function computeSessionTotals(entries: Iterable<unknown>): SessionTotals 
 		billed = true;
 	for (const e of entries as Iterable<{
 		type: string;
-		message?: { role: string; usage?: AssistantMessage["usage"] };
+		message?: Pick<AssistantMessage, "role" | "usage" | "provider" | "model">;
 	}>) {
 		if (e.type === "message" && e.message?.role === "assistant" && e.message.usage) {
 			const u = e.message.usage;
 			input += u.input;
 			output += u.output;
 			cacheRead += u.cacheRead;
-			cost += u.cost.total;
+			let messageCost = u.cost.total;
+			if (
+				!u.cost.totalFromProvider &&
+				!(messageCost > 0) &&
+				e.message.provider &&
+				e.message.model
+			) {
+				const price = resolvePrice(e.message.provider, e.message.model)?.cost;
+				if (price) {
+					messageCost =
+						(u.input * (price.input ?? 0) +
+							u.output * (price.output ?? 0) +
+							u.cacheRead * (price.cache_read ?? price.input ?? 0) +
+							(u.cacheWrite ?? 0) * (price.cache_write ?? price.input ?? 0)) /
+						1_000_000;
+				}
+			}
+			cost += messageCost;
 			// A zero-cost message is exact either way; only a priced estimate makes the total approximate.
-			if (u.cost.total > 0 && !u.cost.totalFromProvider) billed = false;
+			if (messageCost > 0 && !u.cost.totalFromProvider) billed = false;
 		}
 	}
 	return { input, output, cacheRead, cost, billed };
@@ -179,7 +194,7 @@ export function computeTps(totalOutput: number, elapsedSec: number): number | nu
 	return Math.round(totalOutput / elapsedSec);
 }
 
-/** Tokens block (in/out + cache/cost). `~$` marks a total with catalog estimates. */
+/** Session tokens and spend in USD; `~` marks catalog estimates rather than provider billing. */
 export function renderTokens(
 	totals: SessionTotals,
 	theme: Theme,
@@ -189,7 +204,8 @@ export function renderTokens(
 	let s = parts.tokens
 		? `${icon("net.in")} ${fmtTokenCount(totals.input)} ${icon("net.out")} ${fmtTokenCount(totals.output)}`
 		: "";
-	if (parts.cost && totals.cost > 0) s += ` ${totals.billed ? "" : "~"}$${totals.cost.toFixed(3)}`;
+	if (parts.cost && totals.cost > 0)
+		s += `${s ? " · " : ""}$${totals.billed ? "" : "~"}${totals.cost.toFixed(3)}`;
 	return s ? theme.fg(faded ? "muted" : "dim", s) : "";
 }
 
@@ -221,7 +237,7 @@ export function renderSystem(stats: SystemStats, theme: Theme): string {
 			: theme.fg(n >= err ? "error" : n >= warn ? "warning" : "dim", `${n}${unit}`);
 	const group = (key: SysIcon, usage: number | undefined, temp?: number) =>
 		theme.fg("muted", `${icon(key)} `) +
-		value(usage, "%", key === "sys.ram" ? 80 : 70, key === "sys.ram" ? 92 : 90) +
+		value(usage, "%", key === "sys.ram" ? 80 : 70, 90) +
 		(key === "sys.ram" ? "" : ` ${value(temp, "°C", 75, 90)}`);
 	return [
 		group("sys.cpu", stats.cpu, stats.cpuTemp),
@@ -275,7 +291,6 @@ function renderModel(
 ): string {
 	const rawId = model?.id ?? "?";
 	const id = rawId.replace(/^[a-z]+\//i, "");
-	const provider = model?.provider ?? "";
 	let out = parts.model ? theme.fg("muted", `${icon("model")}  `) + theme.fg("accent", id) : "";
 	const separator = () => (out ? theme.fg("muted", " · ") : "");
 	const THINK_ABBR: Record<string, string> = {
@@ -291,13 +306,6 @@ function renderModel(
 		out += separator() + renderThinkingLevel(theme, thinking, abbr);
 	}
 	if (context) out += (out ? " " : "") + context;
-	if (parts.price && provider && id !== "?") {
-		// modelgrep first; registered model cost/ctx fills private / gateway gaps
-		const dev = resolveModelsDev(provider, id, model);
-		const costStr = fmtCost(dev);
-		// color the $ and numbers green, separator muted
-		out += separator() + theme.fg("success", costStr);
-	}
 	const bench = lookupBenchmark(id);
 	if (parts.score && bench) {
 		const score = bench.overallScore ?? "?";
@@ -374,12 +382,14 @@ function renderStatuses(
 
 export default function (pi: ExtensionAPI) {
 	let liveTps: string | null = null;
-	let tpsTimer: ReturnType<typeof setTimeout> | null = null;
-	// Token visibility state machine: "on" → (4s) → "dim" → (4s) → "off".
+	// TPS and tokens share visibility: "on" → (4s) → "dim" → (4s) → "off".
 	type TokensState = "on" | "dim" | "off";
 	let tokensState: TokensState = "off";
 	let tokensTimer: ReturnType<typeof setTimeout> | null = null;
 	let requestRender: (() => void) | null = null;
+	let totals = computeSessionTotals([]);
+	let resolvePrice: Parameters<typeof computeSessionTotals>[1];
+	const prices = new Map<string, ReturnType<typeof resolveModelsDev>>();
 
 	const clearTimer = (t: ReturnType<typeof setTimeout> | null) => {
 		if (t) clearTimeout(t);
@@ -454,6 +464,7 @@ export default function (pi: ExtensionAPI) {
 		};
 		// SAFETY: Assistant messages expose stable runtime id/usage fields missing from published types.
 		const msg = event.message as unknown as RuntimeMsg;
+		if (activeStreams.size === 0) liveTps = null;
 		activeStreams.set(msg.id, {
 			start: Date.now(),
 			output: 0,
@@ -500,16 +511,19 @@ export default function (pi: ExtensionAPI) {
 		recomputeTps();
 		activeStreams.delete(id);
 		if (activeStreams.size === 0) stopTpsTicker();
-	});
-
-	const scheduleTpsClear = () => {
-		if (tpsTimer) clearTimeout(tpsTimer);
-		tpsTimer = setTimeout(() => {
-			liveTps = null;
-			tpsTimer = null;
+		if (typeof event.message.usage?.input === "number") {
+			const delta = computeSessionTotals(
+				[{ type: "message", message: event.message }],
+				resolvePrice,
+			);
+			totals.input += delta.input;
+			totals.output += delta.output;
+			totals.cacheRead += delta.cacheRead;
+			totals.cost += delta.cost;
+			totals.billed &&= delta.billed;
 			requestRender?.();
-		}, 4_000);
-	};
+		}
+	});
 
 	const scheduleTokensDecay = () => {
 		clearTimer(tokensTimer);
@@ -518,6 +532,7 @@ export default function (pi: ExtensionAPI) {
 			requestRender?.();
 			tokensTimer = setTimeout(() => {
 				tokensState = "off";
+				liveTps = null;
 				tokensTimer = null;
 				requestRender?.();
 			}, 4_000);
@@ -527,7 +542,6 @@ export default function (pi: ExtensionAPI) {
 	pi.on("agent_end", () => {
 		stopTpsTicker();
 		activeStreams.clear();
-		scheduleTpsClear();
 		scheduleTokensDecay();
 	});
 
@@ -547,9 +561,22 @@ export default function (pi: ExtensionAPI) {
 
 	// ── Footer registration ──────────────────────────────────────
 
+	pi.on("session_tree", (_event, ctx) => {
+		totals = computeSessionTotals(ctx.sessionManager.getBranch(), resolvePrice);
+		requestRender?.();
+	});
+
 	pi.on("session_start", (_event, ctx) => {
 		currentCwd = ctx.cwd;
 		warnUi = ctx.ui;
+		prices.clear();
+		resolvePrice = (provider, id) => {
+			const key = `${provider}/${id}`;
+			if (!prices.has(key))
+				prices.set(key, resolveModelsDev(provider, id, ctx.modelRegistry?.find(provider, id)));
+			return prices.get(key);
+		};
+		totals = computeSessionTotals(ctx.sessionManager.getBranch(), resolvePrice);
 		void refreshGit(currentCwd);
 		if (gitTimer) clearInterval(gitTimer);
 		sampleSystem();
@@ -587,9 +614,11 @@ export default function (pi: ExtensionAPI) {
 					// A version-skewed pix-runtime copy can own the globalThis singleton and
 					// parse "pretty" without the footer key. Merge defaults so render never sees undefined.
 					const parts = { ...prettySection.defaults.footer, ...config(prettySection).footer };
-					const totals = computeSessionTotals(ctx.sessionManager.getBranch());
 					const tokens =
-						tokensState === "off" ? "" : renderTokens(totals, theme, tokensState === "dim", parts);
+						tokensState === "off"
+							? ""
+							: renderTokens(totals, theme, tokensState === "dim", { ...parts, cost: false });
+					const spend = renderTokens(totals, theme, false, { ...parts, tokens: false });
 					const model = renderModel(
 						ctx.model,
 						pi.getThinkingLevel?.() ?? "",
@@ -604,7 +633,7 @@ export default function (pi: ExtensionAPI) {
 					);
 					const { modePart, otherPart } = renderStatuses(
 						footerData.getExtensionStatuses(),
-						theme.fg("muted", " · "),
+						sep,
 						theme,
 					);
 
@@ -621,12 +650,15 @@ export default function (pi: ExtensionAPI) {
 						.join(sep);
 					const right = [
 						[
-							parts.tps && liveTps ? theme.fg("accent", liveTps) : "",
-							parts.statuses ? otherPart : "",
+							parts.tps && tokensState !== "off"
+								? theme.fg(tokensState === "dim" ? "muted" : "dim", liveTps ?? "— t/s")
+								: "",
 							tokens,
+							spend,
 						]
 							.filter(Boolean)
 							.join(theme.fg("muted", " · ")),
+						parts.statuses ? otherPart : "",
 						parts.system ? renderSystem(sysStats, theme) : "",
 						parts.clock ? renderClock(new Date(Date.now()), theme) : "",
 					]
@@ -658,10 +690,6 @@ export default function (pi: ExtensionAPI) {
 		if (gitTimer) {
 			clearInterval(gitTimer);
 			gitTimer = null;
-		}
-		if (tpsTimer) {
-			clearTimeout(tpsTimer);
-			tpsTimer = null;
 		}
 		clearTimer(tokensTimer);
 		tokensTimer = null;

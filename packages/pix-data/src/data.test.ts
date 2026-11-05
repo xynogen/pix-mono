@@ -139,6 +139,14 @@ describe("DataSource", () => {
 // ── buildModelsDevIndex ──────────────────────────────────────────────────────
 
 describe("buildModelsDevIndex", () => {
+	it("preserves catalog cache rates, including free cache reads", () => {
+		for (const cache_read of [0, 0.1]) {
+			const pricing = { input: 2, output: 10, cache_read, cache_write: 2.5 };
+			const model = buildModelsDevIndex([{ id: "openai/gpt-6.1-sol", pricing }]).get("gpt-6.1-sol");
+			expect(model?.cost).toEqual(pricing);
+		}
+	});
+
 	const catalog: ModelGrepModel[] = [
 		mg("anthropic/claude-sonnet-4-5", { name: "Claude Sonnet 4.5" }),
 		mg("anthropic/claude-opus-4", { name: "Claude Opus 4", reasoning: true }),

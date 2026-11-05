@@ -59,7 +59,7 @@ export interface ModelGrepModel {
 	id: string;
 	name?: string;
 	context_length?: number;
-	pricing?: { input?: number; output?: number };
+	pricing?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
 	modality?: { input?: string[]; output?: string[] };
 	capabilities?: { reasoning?: boolean };
 	benchmarks?: {
@@ -359,7 +359,12 @@ function toModelsDevModel(g: ModelGrepModel): ModelsDevModel {
 		reasoning: g.capabilities?.reasoning,
 		modalities: g.modality,
 		limit: { context: g.context_length },
-		cost: { input: g.pricing?.input, output: g.pricing?.output },
+		cost: {
+			input: g.pricing?.input,
+			output: g.pricing?.output,
+			cache_read: g.pricing?.cache_read,
+			cache_write: g.pricing?.cache_write,
+		},
 	};
 }
 
