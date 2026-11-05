@@ -74,7 +74,10 @@ describe("welcome lifecycle", () => {
 		);
 		expect(headerCalls).toBe(1);
 		expect(renderHeader?.(120)?.[1]).toMatch(/^ {3}.+ {2}Welcome, .+!$/);
-		expect(renderHeader?.(120)?.[2]).toBe(`   ${LOGO_ROWS[1]?.[0]}  PIx`);
+		const { version } = JSON.parse(
+			readFileSync(new URL("../../pix-core/package.json", import.meta.url), "utf8"),
+		);
+		expect(renderHeader?.(120)?.[2]).toBe(`   ${LOGO_ROWS[1]?.[0]}  PIx ${version}`);
 		onTurn?.({ reason: "new" }, {});
 		expect(renderHeader?.(80)).toEqual([]);
 	});
@@ -89,6 +92,38 @@ describe("renderWelcome", () => {
 	it("passes empty lines through untouched", () => {
 		const lines = renderWelcome(theme, "m", "/p", checks, 40);
 		expect(lines.some((l) => l === "")).toBe(true);
+	});
+	it("shows the supplied pix-core version beside PIx and preserves the PI check", () => {
+		const lines = renderWelcome(theme, "m", "/p", checks, 120, "", "0.7.22");
+		expect(lines[2]).toBe(`   ${LOGO_ROWS[1]?.[0]}  PIx 0.7.22`);
+		expect(lines[7]).toMatch(/PI\s+1\.0\.0$/);
+		for (const line of renderWelcome(theme, "m", "/p", checks, 32, "", "0.7.22")) {
+			expect(visibleWidth(line)).toBeLessThanOrEqual(32);
+		}
+	});
+	it("uses the accent for username, PIx version, model and path", () => {
+		const calls: Array<[string, string]> = [];
+		const recordingTheme: Theme = {
+			fg: (color, text) => {
+				calls.push([color, text]);
+				return text;
+			},
+			bold: (text) => text,
+		};
+		renderWelcome(recordingTheme, "model", "~/project", [], 120, "alice", "0.7.23");
+		expect(calls).toEqual([
+			["dim", "Welcome,"],
+			["accent", "alice"],
+			["dim", "!"],
+			["dim", "PIx"],
+			["accent", "0.7.23"],
+			["muted", expect.any(String)],
+			["accent", "model"],
+			["muted", expect.any(String)],
+			["accent", "~/project"],
+			["success", expect.any(String)],
+			["success", "ready"],
+		]);
 	});
 });
 
@@ -226,8 +261,22 @@ describe("renderCheck", () => {
 		expect(calls).toEqual([
 			{ color: "success", text: "✓" },
 			{ color: "dim", text: "Auth  " },
-			{ color: "text", text: "connected" },
+			{ color: "accent", text: "connected" },
 		]);
+	});
+	it("colors warning and error details with their status role", () => {
+		const taggedTheme: Theme = {
+			fg: (color, text) => `<${color}>${text}</${color}>`,
+			bold: (text) => text,
+		};
+		for (const [status, role] of [
+			["warn", "warning"],
+			["error", "error"],
+		] as const) {
+			expect(renderCheck(taggedTheme, { label: "Auth", status, detail: "unavailable" })).toBe(
+				`<${role}>${status === "warn" ? "⚠" : "✗"}</${role}> <${role}>Auth  </${role}>  <${role}>unavailable</${role}>`,
+			);
+		}
 	});
 });
 

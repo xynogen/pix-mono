@@ -15,7 +15,8 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parseColor, type TextStyle, truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -74,6 +75,17 @@ export const shortCwd = (cwd: string, home?: string): string => {
 	const h = home ?? homeDir();
 	return h && cwd.startsWith(h) ? `~${cwd.slice(h.length)}` : cwd;
 };
+
+function coreVersion(): string {
+	try {
+		const entry = createRequire(import.meta.url).resolve("@xynogen/pix-core");
+		const { version } = JSON.parse(readFileSync(join(dirname(entry), "../package.json"), "utf8"));
+		return typeof version === "string" ? version : "";
+	} catch {
+		// Standalone pix-welcome need not have pix-core installed.
+		return "";
+	}
+}
 
 export const PI_IGNORE_RULES = [".pi/"];
 const PI_IGNORE_SECTION_HEADER = "# Pix Agent";
@@ -372,12 +384,19 @@ export function renderCheck(theme: Theme, c: CheckResult): string {
 	const icon = statusIcon(theme, c.status);
 	const labelColor = c.status === "error" ? "error" : c.status === "warn" ? "warning" : "dim";
 	const label = theme.fg(labelColor, c.label.padEnd(LABEL_WIDTH));
-	const detail = c.detail ? theme.fg("text", c.detail) : "";
+	const detailColor = c.status === "error" ? "error" : c.status === "warn" ? "warning" : "accent";
+	const detail = c.detail ? theme.fg(detailColor, c.detail) : "";
 	// padIcon normalizes 1-cell (✓/✗/○) vs 2-cell (⚠) markers to one column.
 	return `${padIcon(icon)} ${label}  ${detail}`;
 }
 
-function buildLogoLines(theme: Theme, model: string, cwd: string, user: string): string[] {
+function buildLogoLines(
+	theme: Theme,
+	model: string,
+	cwd: string,
+	user: string,
+	pixVersion: string,
+): string[] {
 	const pad = "   ";
 	return LOGO_GRID.map(([row, tag]) => {
 		const l = [...row]
@@ -389,13 +408,13 @@ function buildLogoLines(theme: Theme, model: string, cwd: string, user: string):
 			.join("");
 		switch (tag) {
 			case "welcome":
-				return `${pad}${l}${user ? `  ${theme.fg("dim", `Welcome, ${user}!`)}` : ""}`;
+				return `${pad}${l}${user ? `  ${theme.fg("dim", "Welcome,")} ${theme.bold(theme.fg("accent", user))}${theme.fg("dim", "!")}` : ""}`;
 			case "heading":
-				return `${pad}${l}  ${theme.fg("dim", "PIx")}`;
+				return `${pad}${l}  ${theme.bold(theme.fg("dim", "PIx"))}${pixVersion ? ` ${theme.fg("accent", pixVersion)}` : ""}`;
 			case "model":
-				return `${pad}${l}  ${theme.fg("muted", icon("model"))}  ${theme.fg("text", model)}`;
+				return `${pad}${l}  ${theme.fg("muted", icon("model"))}  ${theme.fg("accent", model)}`;
 			case "cwd":
-				return `${pad}${l}  ${theme.fg("muted", icon("folder"))}  ${theme.fg("text", cwd)}`;
+				return `${pad}${l}  ${theme.fg("muted", icon("folder"))}  ${theme.fg("accent", cwd)}`;
 			case "ready": {
 				const mark = theme.fg("success", icon("ready"));
 				const label = theme.bold(theme.fg("success", "ready"));
@@ -435,10 +454,11 @@ export function renderWelcome(
 	checks: CheckResult[],
 	width: number,
 	user = "",
+	pixVersion = "",
 ): string[] {
 	const lines = [
 		"",
-		...buildLogoLines(theme, model, cwd, user),
+		...buildLogoLines(theme, model, cwd, user, pixVersion),
 		...buildCheckLines(theme, checks),
 		"",
 	];
@@ -468,6 +488,7 @@ export default function (pi: ExtensionAPI) {
 		const modelId = ctx.model?.id ?? "—";
 		const cwd = shortCwd(ctx.cwd);
 		const user = username() ?? "";
+		const pixVersion = coreVersion();
 
 		// Pending placeholders — one per check
 		const CHECKS: CheckResult[] = [
@@ -495,7 +516,7 @@ export default function (pi: ExtensionAPI) {
 					const t = theme as unknown as Theme;
 					// Re-read modelId each render so /model changes show live.
 					// Clamp to width so an over-wide logo line never crashes Pi's TUI.
-					return dismissed ? [] : renderWelcome(t, modelId, cwd, CHECKS, width, user);
+					return dismissed ? [] : renderWelcome(t, modelId, cwd, CHECKS, width, user, pixVersion);
 				},
 				dispose() {
 					requestRender = null;
