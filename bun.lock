@@ -151,7 +151,7 @@
     },
     "packages/pix-data": {
       "name": "@xynogen/pix-data",
-      "version": "0.5.9",
+      "version": "0.5.10",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.17.0",
       },
@@ -177,7 +177,7 @@
     },
     "packages/pix-display": {
       "name": "@xynogen/pix-display",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.37.0",
         "@xynogen/pix-runtime": "^0.17.0",
@@ -402,7 +402,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "1.37.1",
+      "version": "1.37.2",
       "dependencies": {
         "@ff-labs/fff-node": "^0.10.6",
         "@xynogen/pix-runtime": "^0.17.0",
@@ -453,7 +453,7 @@
     },
     "packages/pix-read": {
       "name": "@xynogen/pix-read",
-      "version": "0.4.8",
+      "version": "0.4.9",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.37.0",
         "@xynogen/pix-runtime": "^0.17.0",
