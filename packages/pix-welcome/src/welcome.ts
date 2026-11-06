@@ -18,6 +18,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parseColor, type TextStyle, truncateToWidth } from "@earendil-works/pi-tui";
+import { confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { padIcon } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
@@ -527,7 +528,7 @@ export default function (pi: ExtensionAPI) {
 
 		void checkPiVersion().then((r) => update(0, r));
 		const confirm: ConfirmFn | undefined = ctx.hasUI
-			? (title, message) => ctx.ui.confirm(title, message)
+			? (title, message) => confirmOverlay(ctx.ui, { title, body: message.split("\n") })
 			: undefined;
 		void checkPiIgnore(ctx.cwd, confirm).then((r) => update(5, r));
 		// auth already filled synchronously above; no async needed

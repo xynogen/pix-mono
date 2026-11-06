@@ -7,11 +7,10 @@
 
 import type {
 	AddClientAuthentication,
-	OAuthClientInformation,
-	OAuthClientInformationFull,
 	OAuthClientMetadata,
 	OAuthClientProvider,
-	OAuthTokens,
+	StoredOAuthClientInformation,
+	StoredOAuthTokens,
 } from "@modelcontextprotocol/client";
 import {
 	clearAllCredentials,
@@ -148,10 +147,16 @@ export class McpOAuthProvider implements OAuthClientProvider {
 	 * Get client information (for pre-registered or dynamically registered clients).
 	 * Returns undefined if no client info exists or if the server URL has changed.
 	 */
-	async clientInformation(): Promise<OAuthClientInformation | undefined> {
+	async clientInformation(): Promise<StoredOAuthClientInformation | undefined> {
+		const entry = await getAuthForUrl(this.serverName, this.serverUrl);
 		// Check config first (pre-registered client)
 		if (this.config.clientId) {
 			return {
+				issuer:
+					entry?.clientInfo?.clientId === this.config.clientId &&
+					entry.clientInfo.clientSecret === this.config.clientSecret
+						? entry.clientInfo.issuer
+						: undefined,
 				client_id: this.config.clientId,
 				client_secret: this.config.clientSecret,
 			};
@@ -159,7 +164,6 @@ export class McpOAuthProvider implements OAuthClientProvider {
 
 		// Check stored client info (from dynamic registration)
 		// Use getAuthForUrl to validate credentials are for the current server URL
-		const entry = await getAuthForUrl(this.serverName, this.serverUrl);
 		if (entry?.clientInfo) {
 			// Check if client secret has expired
 			if (
@@ -169,6 +173,7 @@ export class McpOAuthProvider implements OAuthClientProvider {
 				return undefined;
 			}
 			return {
+				issuer: entry.clientInfo.issuer,
 				client_id: entry.clientInfo.clientId,
 				client_secret: entry.clientInfo.clientSecret,
 			};
@@ -181,9 +186,12 @@ export class McpOAuthProvider implements OAuthClientProvider {
 	/**
 	 * Save client information from dynamic registration.
 	 */
-	async saveClientInformation(info: OAuthClientInformationFull): Promise<void> {
-		const redirectUris = info.redirect_uris ?? (this.redirectUrl ? [this.redirectUrl] : undefined);
+	async saveClientInformation(info: StoredOAuthClientInformation): Promise<void> {
+		const redirectUris =
+			("redirect_uris" in info ? info.redirect_uris : undefined) ??
+			(this.redirectUrl ? [this.redirectUrl] : undefined);
 		const clientInfo: StoredClientInfo = {
+			issuer: info.issuer,
 			clientId: info.client_id,
 			clientSecret: info.client_secret,
 			clientIdIssuedAt: info.client_id_issued_at,
@@ -197,12 +205,13 @@ export class McpOAuthProvider implements OAuthClientProvider {
 	 * Get stored OAuth tokens.
 	 * Returns undefined if no tokens exist or if the server URL has changed.
 	 */
-	async tokens(): Promise<OAuthTokens | undefined> {
+	async tokens(): Promise<StoredOAuthTokens | undefined> {
 		// Use getAuthForUrl to validate tokens are for the current server URL
 		const entry = await getAuthForUrl(this.serverName, this.serverUrl);
 		if (!entry?.tokens) return undefined;
 
 		return {
+			issuer: entry.tokens.issuer,
 			access_token: entry.tokens.accessToken,
 			token_type: "Bearer",
 			refresh_token: entry.tokens.refreshToken,
@@ -216,8 +225,9 @@ export class McpOAuthProvider implements OAuthClientProvider {
 	/**
 	 * Save OAuth tokens.
 	 */
-	async saveTokens(tokens: OAuthTokens): Promise<void> {
+	async saveTokens(tokens: StoredOAuthTokens): Promise<void> {
 		const storedTokens: StoredTokens = {
+			issuer: tokens.issuer,
 			accessToken: tokens.access_token,
 			refreshToken: tokens.refresh_token,
 			expiresAt: tokens.expires_in ? Date.now() / 1000 + tokens.expires_in : undefined,

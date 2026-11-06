@@ -18,6 +18,7 @@ import { logger } from "./logger.ts";
 
 /** OAuth token storage format */
 export interface StoredTokens {
+	issuer?: string;
 	accessToken: string;
 	refreshToken?: string;
 	expiresAt?: number; // Unix timestamp in seconds
@@ -26,6 +27,7 @@ export interface StoredTokens {
 
 /** OAuth client information from dynamic or static registration */
 export interface StoredClientInfo {
+	issuer?: string;
 	clientId: string;
 	clientSecret?: string;
 	clientIdIssuedAt?: number;

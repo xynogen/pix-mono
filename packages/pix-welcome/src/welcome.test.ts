@@ -8,6 +8,7 @@ import {
 	styleText,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
+import type { ConfirmUI } from "@xynogen/pix-pretty/confirm";
 import { runGit } from "@xynogen/pix-runtime/os";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerWelcome, {
@@ -428,6 +429,76 @@ describe("checkPiIgnore", () => {
 		writeFileSync(join(dir, ".gitignore"), gitignore);
 		return dir;
 	}
+
+	it.each([true, false])("uses a startup overlay with decision %j", async (confirmed) => {
+		const dir = await repo("dist/\n");
+		try {
+			let onStart: ((event: { reason: "new" }, ctx: unknown) => void) | undefined;
+			let renderHeader: ((width: number) => string[]) | undefined;
+			let finish!: () => void;
+			const finished = new Promise<void>((resolve) => {
+				finish = resolve;
+			});
+			const overlays: string[] = [];
+			const custom: ConfirmUI["custom"] = async (factory, options) => {
+				expect(options).toMatchObject({ overlay: true });
+				const component = factory(
+					{ requestRender() {}, terminal: { rows: 50 } },
+					{ ...theme, bg: (_color, text) => text },
+					{} as never,
+					() => {},
+				);
+				overlays.push(component.render(120).join("\n"));
+				return confirmed as never;
+			};
+			registerWelcome({
+				on(event: string, handler: typeof onStart) {
+					if (event === "session_start") onStart = handler;
+				},
+			} as never);
+			onStart?.(
+				{ reason: "new" },
+				{
+					cwd: dir,
+					hasUI: true,
+					modelRegistry: { getAvailable: () => [] },
+					ui: {
+						custom,
+						setHeader(
+							factory: (
+								tui: { requestRender(): void },
+								theme: Theme,
+							) => { render(width: number): string[] },
+						) {
+							renderHeader = factory(
+								{
+									requestRender() {
+										if (
+											/Ignore\s+(1 added|skipped \(declined\))/.test(
+												renderHeader?.(120).join("\n") ?? "",
+											)
+										)
+											finish();
+									},
+								},
+								theme,
+							).render;
+						},
+					},
+				},
+			);
+			await finished;
+			expect(overlays).toHaveLength(1);
+			expect(overlays[0]).toContain("Add .pi/ to .gitignore?");
+			expect(overlays[0]).toContain(`${dir}/.gitignore`);
+			expect(overlays[0]).toMatch(/# Pix Agent[\s\S]*\.pi\/[\s\S]*Asked once per repo\./);
+			expect(readFileSync(join(dir, ".gitignore"), "utf8")).toBe(
+				confirmed ? "dist/\n\n# Pix Agent\n.pi/\n" : "dist/\n",
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 
 	it("edits only after the user confirms, and keeps user rules", async () => {
 		const dir = await repo("# Pix Agent\nsecret.env\n");
