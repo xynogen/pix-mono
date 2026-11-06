@@ -64,6 +64,20 @@ const rustTriple = (h: HostPlatform): string | undefined => {
 };
 
 export const CATALOG = {
+	"nvidia-smi": {
+		usedBy: ["pix-runtime"],
+		os: ["win32", "linux"],
+		optional: true,
+		versionArgs: ["--version"],
+		knownPaths: (env, host) =>
+			host.os === "win32"
+				? [
+						`${envVar(env, "SystemRoot") ?? "C:\\Windows"}\\System32\\nvidia-smi.exe`,
+						`${envVar(env, "ProgramFiles") ?? "C:\\Program Files"}\\NVIDIA Corporation\\NVSMI\\nvidia-smi.exe`,
+					]
+				: [],
+		hint: { default: "install the NVIDIA graphics driver (includes nvidia-smi)" },
+	},
 	rtk: {
 		usedBy: ["pix-optimizer"],
 		os: ALL,

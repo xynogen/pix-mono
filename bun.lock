@@ -113,7 +113,7 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.7.25",
+      "version": "0.7.26",
       "dependencies": {
         "@xynogen/pix-ask": "^0.3.8",
         "@xynogen/pix-bash": "^0.2.15",
@@ -465,7 +465,7 @@
     },
     "packages/pix-runtime": {
       "name": "@xynogen/pix-runtime",
-      "version": "0.17.2",
+      "version": "0.17.3",
       "dependencies": {
         "systeminformation": "5.33.19",
         "xxhash-wasm": "1.1.0",

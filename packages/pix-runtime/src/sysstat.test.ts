@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { promises as fs } from "node:fs";
 import si from "systeminformation";
+import * as exec from "./exec.ts";
 import { readSystemStats } from "./sysstat.ts";
 
 test("systeminformation keeps five readings separate and rejects unavailable values", async () => {
@@ -16,6 +17,12 @@ test("systeminformation keeps five readings separate and rejects unavailable val
 	const memory = spyOn(si, "mem").mockResolvedValue({ total: 1000, available: 420 } as never);
 	const directories = spyOn(fs, "readdir").mockResolvedValue([] as never);
 	const files = spyOn(fs, "readFile").mockResolvedValue("");
+	const nvidia = spyOn(exec, "runTool").mockResolvedValue({
+		code: 0,
+		stdout: "0\n",
+		timedOut: false,
+		truncated: false,
+	} as never);
 	try {
 		expect(await readSystemStats()).toEqual({
 			cpu: 12,
@@ -35,6 +42,34 @@ test("systeminformation keeps five readings separate and rejects unavailable val
 			gpuTemp: 50,
 			ram: 58,
 		});
+		expect(nvidia).toHaveBeenCalledTimes(0);
+		if (process.platform === "win32" || process.platform === "linux") {
+			graphics.mockResolvedValue({
+				controllers: [{ vendor: "NVIDIA", temperatureGpu: 40 }],
+			} as never);
+			expect(await readSystemStats()).toMatchObject({ gpu: 0, gpuTemp: 40 });
+			expect(nvidia).toHaveBeenCalledWith(
+				"nvidia-smi",
+				["--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+				{ timeoutMs: 2_000, maxBuffer: 4096 },
+			);
+			for (const stdout of ["0\n35\n", "N/A\n0\n"]) {
+				nvidia.mockResolvedValue({ code: 0, stdout } as never);
+				expect(await readSystemStats()).toMatchObject({ gpu: stdout.includes("35") ? 35 : 0 });
+			}
+			for (const result of [
+				{ code: 0, stdout: "" },
+				{ code: 0, stdout: "N/A\n-1\n101\n" },
+				{ code: 1, stdout: "0" },
+				{ code: 0, stdout: "0", timedOut: true },
+				{ code: 0, stdout: "0", truncated: true },
+			]) {
+				nvidia.mockResolvedValue(result as never);
+				expect(await readSystemStats()).toMatchObject({ gpu: undefined, gpuTemp: 40 });
+			}
+			nvidia.mockRejectedValue(new Error("nvidia-smi unavailable"));
+			expect(await readSystemStats()).toMatchObject({ gpu: undefined, gpuTemp: 40 });
+		}
 		cpu.mockResolvedValue({ currentLoad: NaN } as never);
 		temperature.mockResolvedValue({ main: Infinity } as never);
 		graphics.mockResolvedValue({
@@ -101,5 +136,6 @@ test("systeminformation keeps five readings separate and rejects unavailable val
 		memory.mockRestore();
 		directories.mockRestore();
 		files.mockRestore();
+		nvidia.mockRestore();
 	}
 });

@@ -490,7 +490,7 @@ describe("checkPiIgnore", () => {
 			await finished;
 			expect(overlays).toHaveLength(1);
 			expect(overlays[0]).toContain("Add .pi/ to .gitignore?");
-			expect(overlays[0]).toContain(`${dir}/.gitignore`);
+			expect(overlays[0]).toContain(`${dir.replace(/\\/g, "/")}/.gitignore`);
 			expect(overlays[0]).toMatch(/# Pix Agent[\s\S]*\.pi\/[\s\S]*Asked once per repo\./);
 			expect(readFileSync(join(dir, ".gitignore"), "utf8")).toBe(
 				confirmed ? "dist/\n\n# Pix Agent\n.pi/\n" : "dist/\n",

@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import si from "systeminformation";
+import { runTool } from "./exec.ts";
 
 export interface SystemStats {
 	cpu?: number;
@@ -50,7 +51,27 @@ export async function readSystemStats(): Promise<SystemStats> {
 			.filter((value): value is number => value !== undefined);
 		return values.length ? Math.max(...values) : undefined;
 	};
-	const gpu = highest("utilizationGpu", 100);
+	let gpu = highest("utilizationGpu", 100);
+	// systeminformation drops NVIDIA's valid 0% during its controller merge.
+	if (
+		gpu === undefined &&
+		(process.platform === "win32" || process.platform === "linux") &&
+		controllers.some((controller) => /nvidia/i.test(controller.vendor))
+	) {
+		const result = await runTool(
+			"nvidia-smi",
+			["--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+			{ timeoutMs: 2_000, maxBuffer: 4096 },
+		).catch(() => undefined);
+		if (result?.code === 0 && !result.timedOut && !result.truncated) {
+			const values = result.stdout
+				.trim()
+				.split(/\r?\n/)
+				.map((value) => (value.trim() ? reading(Number(value), 100) : undefined))
+				.filter((value): value is number => value !== undefined);
+			if (values.length) gpu = Math.max(...values);
+		}
+	}
 	const gpuTemp = highest("temperatureGpu", 150);
 	const amd =
 		process.platform === "linux" && (gpu === undefined || gpuTemp === undefined)
