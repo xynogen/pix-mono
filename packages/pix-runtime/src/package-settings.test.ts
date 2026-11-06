@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { getKeybindings } from "@earendil-works/pi-tui";
+import { getKeybindings, visibleWidth } from "@earendil-works/pi-tui";
 import { registerPackageSettings, registerPixCommand } from "./pix-command.ts";
 import { createIsolatedRuntime } from "./testing.ts";
 
@@ -145,6 +145,61 @@ test("standalone settings render directly in /pix without a second overlay and d
 			open: async () => {},
 		});
 		expect([...standalone.keys()]).toEqual(["pix"]);
+	} finally {
+		iso.cleanup();
+	}
+});
+
+test("all package tabs keep their active name visible in a narrow overlay", async () => {
+	const iso = createIsolatedRuntime();
+	try {
+		await iso.runtime.init();
+		const bus = new EventEmitter();
+		const commands = new Map();
+		registerPixCommand(host(bus, commands), iso.runtime);
+		const labels = ["Tools", "MCP", "Optimizer", "Web", "Voice", "Notify"];
+		for (const label of labels) {
+			registerPackageSettings(host(bus, commands), {
+				id: label,
+				label,
+				open: async (ctx) => {
+					await ctx.ui.custom(() => ({
+						render: () => [
+							"╭────────────────────────╮",
+							"│ fixture                │",
+							"╰────────────────────────╯",
+						],
+						handleInput() {},
+						invalidate() {},
+					}));
+				},
+			});
+		}
+		const theme = {
+			fg: (_c: string, s: string) => s,
+			bg: (_c: string, s: string) => s,
+			bold: (s: string) => s,
+		};
+		for (const label of labels) {
+			await commands.get("pix").handler(label.toLowerCase(), {
+				ui: {
+					custom: async (
+						factory: (...args: unknown[]) => { render(w: number): string[]; dispose(): void },
+					) => {
+						const component = factory(
+							{ requestRender() {}, terminal: { rows: 40 } },
+							theme,
+							getKeybindings(),
+							() => {},
+						);
+						const lines = component.render(26);
+						expect(lines[1]).toMatch(new RegExp(`${label}\\s+\\d+/8`));
+						expect(lines.every((line) => visibleWidth(line) <= 26)).toBe(true);
+						component.dispose();
+					},
+				},
+			} as unknown as ExtensionCommandContext);
+		}
 	} finally {
 		iso.cleanup();
 	}

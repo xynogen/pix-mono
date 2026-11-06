@@ -18,12 +18,13 @@ test("footer visibility defaults to shown and persists valid boolean choices", a
 		expect(footer.git).toBe(true);
 		expect(footer.wrap).toBe(true);
 		const parsed = prettySection.__section.parse(
-			{ footer: { cwd: "false", git: false, wrap: "true" } },
+			{ footer: { cwd: "false", git: false, wrap: "true", price: false } },
 			{ diagnostic() {} },
 		);
 		expect(parsed.footer.cwd).toBe(true);
 		expect(parsed.footer.git).toBe(false);
 		expect(parsed.footer.wrap).toBe(false);
+		expect(parsed.footer).not.toHaveProperty("price");
 	} finally {
 		isolated.cleanup();
 	}

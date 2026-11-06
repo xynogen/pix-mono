@@ -141,7 +141,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		};
 		const defaults = prettySection.defaults.footer;
 		const flags = Object.keys(defaults) as (keyof typeof defaults)[];
-		expect(flags).toHaveLength(15);
+		expect(flags).toHaveLength(14);
 		take("idle / 80");
 		take("idle / 120", 120);
 		const wide = footer.render(240);

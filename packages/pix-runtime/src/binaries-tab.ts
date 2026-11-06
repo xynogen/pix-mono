@@ -245,9 +245,10 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 
 		view(width: number): TabView {
 			const nameW = Math.max(6, ...rows.map((r) => r.name.length));
+			const iconW = Math.max(2, ...Object.values(STATE_ICON).map((key) => visibleWidth(icon(key))));
 			// Frame border + padding take 4 columns; every row must fit on one line.
 			const inner = Math.max(20, width - 4);
-			const lead = 2 + 2 + nameW + 2; // cursor, glyph, name, gap
+			const lead = 2 + iconW + 1 + nameW + 2; // cursor, glyph, name, gap
 			const body: string[] = [];
 			let selectedBodyLine: number | undefined;
 			let otherHeader = false;
@@ -294,7 +295,7 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 					detail = theme.fg("muted", `not used on this OS · ${row.hint}`);
 				}
 				if (sel) selectedBodyLine = body.length;
-				const line = `${cursor} ${glyph} ${name}  ${detail}`;
+				const line = `${cursor} ${glyph}${" ".repeat(iconW - visibleWidth(glyph))} ${name}  ${detail}`;
 				body.push(visibleWidth(line) > inner ? truncateToWidth(line, inner, "…") : line);
 			}
 

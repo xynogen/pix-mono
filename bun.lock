@@ -113,7 +113,7 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.7.23",
+      "version": "0.7.24",
       "dependencies": {
         "@xynogen/pix-ask": "^0.3.8",
         "@xynogen/pix-bash": "^0.2.15",
@@ -135,7 +135,7 @@
         "@xynogen/pix-pretty": "^1.37.1",
         "@xynogen/pix-prompts": "^0.5.13",
         "@xynogen/pix-read": "^0.4.8",
-        "@xynogen/pix-runtime": "^0.17.1",
+        "@xynogen/pix-runtime": "^0.17.2",
         "@xynogen/pix-skills": "^0.10.8",
         "@xynogen/pix-subagent": "^0.10.16",
         "@xynogen/pix-todo": "^0.4.13",
@@ -465,7 +465,7 @@
     },
     "packages/pix-runtime": {
       "name": "@xynogen/pix-runtime",
-      "version": "0.17.1",
+      "version": "0.17.2",
       "dependencies": {
         "systeminformation": "5.33.19",
         "xxhash-wasm": "1.1.0",

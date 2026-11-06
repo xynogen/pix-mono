@@ -1,10 +1,11 @@
 import { expect, spyOn, test } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { getKeybindings, Text } from "@earendil-works/pi-tui";
+import { getKeybindings, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import * as resolve from "./binaries/resolve.ts";
 import * as store from "./binaries/store.ts";
 import { createBinariesTab } from "./binaries-tab.ts";
+import { getIconMode, ICON_MODES, icon, setIconMode } from "./icon-catalog.ts";
 import { once } from "./once.ts";
 import { registerPixCommand } from "./pix-command.ts";
 import { prettySection } from "./sections/pretty.ts";
@@ -62,6 +63,51 @@ test("Settings and Footer actual overlay captures", async () => {
 		expect(captureRows(component, { width: 80, surface: "component" })).toMatchSnapshot(
 			"footer changed",
 		);
+		const originalMode = getIconMode();
+		try {
+			rows = 80;
+			for (const mode of ICON_MODES) {
+				setIconMode(mode);
+				const footer = captureRows(component, { width: 100, surface: "component" }).join("\n");
+				for (const [key, label] of [
+					["model", "model"],
+					["tokens", "tokens"],
+					["sys.cpu", "system"],
+					["turns", "wrap line"],
+				] as const) {
+					const iconW = mode === "ascii" ? 5 : 2;
+					expect(footer).toContain(
+						`${icon(key)}${" ".repeat(iconW - visibleWidth(icon(key)))} ${label}`,
+					);
+				}
+				const columns = Object.keys(prettySection.defaults.footer).map((key) => {
+					const label = key === "wrap" ? "wrap line" : key;
+					const line = footer.split("\n").find((line) => line.includes(` ${label}`));
+					if (!line) throw new Error(`Missing footer setting: ${key}`);
+					const plain = line.replace(/<[^>]+>/g, "");
+					return [
+						visibleWidth(plain.slice(0, plain.indexOf(label))),
+						visibleWidth(plain.slice(0, plain.search(/\b(show|hide|on|off)\b/))),
+					];
+				});
+				expect(new Set(columns.map(([label]) => label)).size).toBe(1);
+				expect(new Set(columns.map(([, value]) => value)).size).toBe(1);
+			}
+		} finally {
+			setIconMode(originalMode);
+			rows = 24;
+		}
+		rows = 40;
+		for (let i = 0; i < Object.keys(prettySection.defaults.footer).length - 1; i++) {
+			component.handleInput("\x1b[B");
+			const narrow = component.render(23);
+			expect(narrow.some((line) => line.includes("→"))).toBe(true);
+			expect(narrow.every((line) => visibleWidth(line) <= 23)).toBe(true);
+		}
+		for (let i = 0; i < Object.keys(prettySection.defaults.footer).length - 1; i++) {
+			component.handleInput("\x1b[A");
+		}
+		rows = 24;
 		// `wrap` is the last footer flag: move past every other one.
 		const footerFlags = Object.keys(prettySection.defaults.footer).length;
 		for (let i = 0; i < footerFlags - 1; i++) component.handleInput("\x1b[B");
@@ -112,6 +158,21 @@ test("binary tab captures isolate lookup and version probes", async () => {
 			});
 		};
 		expect(capture()).toMatchSnapshot("states");
+		const originalMode = getIconMode();
+		try {
+			for (const mode of ICON_MODES) {
+				setIconMode(mode);
+				const body = tab.view(80).body.map((line) => line.replace(/<[^>]+>/g, ""));
+				const columns = lookups.map((row) => {
+					const line = body.find((line) => line.includes(row.name));
+					if (!line) throw new Error(`Missing binary: ${row.name}`);
+					return visibleWidth(line.slice(0, line.indexOf(row.name)));
+				});
+				expect(new Set(columns).size).toBe(1);
+			}
+		} finally {
+			setIconMode(originalMode);
+		}
 		expect(version).toHaveBeenCalledWith("good", "/fixture/bin/good");
 		const keys = { up: false, down: false, enter: false };
 		tab.handleInput("e", keys);

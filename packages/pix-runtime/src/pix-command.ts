@@ -213,7 +213,27 @@ const SETTINGS: SettingRow<unknown>[] = [
 		const part = key as keyof typeof prettySection.defaults.footer;
 		return row({
 			section: "Footer",
-			label: part === "wrap" ? "wrap line" : part,
+			get label() {
+				const key = {
+					mode: "status.active",
+					cwd: "cwd",
+					git: "git.unstaged",
+					context: "tokens",
+					model: "model",
+					thinking: "agent",
+					score: "score",
+					statuses: "status.running",
+					tokens: "tokens",
+					cost: "data.float",
+					tps: "score",
+					system: "sys.cpu",
+					clock: "clock",
+					wrap: "turns",
+				} as const;
+				const glyph = icon(key[part]);
+				const iconW = Math.max(2, ...Object.values(key).map((key) => visibleWidth(icon(key))));
+				return `${glyph}${" ".repeat(iconW - visibleWidth(glyph))} ${part === "wrap" ? "wrap line" : part}`;
+			},
 			handle: prettySection,
 			values: part === "wrap" ? ["on", "off"] : ["show", "hide"],
 			read: (v) =>
@@ -457,14 +477,20 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						});
 						return binaries;
 					};
-					const tabBar = () =>
-						tabs
+					const tabBar = (width: number) => {
+						const full = tabs
 							.map((name) =>
 								name === tab
 									? theme.fg("accent", theme.bold(`  ${name}  `))
 									: theme.fg("muted", `  ${name}  `),
 							)
 							.join(theme.fg("muted", "│"));
+						if (visibleWidth(full) <= width) return full;
+						return (
+							theme.fg("accent", theme.bold(`  ${tab}  `)) +
+							theme.fg("muted", `${tabs.indexOf(tab) + 1}/${tabs.length}`)
+						);
+					};
 					const switchTab = (direction: -1 | 1) => {
 						const next = (tabs.indexOf(tab) + direction + tabs.length) % tabs.length;
 						tab = tabs[next] ?? "Settings";
@@ -548,7 +574,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								const hints = view.footer.map(([key, action]) => guide(key, action)).join(guideSep);
 								const result = frameModal({
 									...frame,
-									header: [tabBar(), "", ...view.header],
+									header: [tabBar(Math.max(1, width - 4)), "", ...view.header],
 									body: view.body,
 									footer: [
 										"",
@@ -573,19 +599,26 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 										lines = embedded.render(width);
 									}
 									const panelWidth = visibleWidth(lines[0] ?? "");
-									lines.splice(1, 0, ...frameRows(panelWidth, [tabBar()], frame).slice(1, -1));
+									lines.splice(
+										1,
+										0,
+										...frameRows(panelWidth, [tabBar(Math.max(1, panelWidth - 4))], frame).slice(
+											1,
+											-1,
+										),
+									);
 									return lines;
 								}
 								return frameModal({
 									...frame,
-									header: [tabBar(), ""],
+									header: [tabBar(Math.max(1, width - 4)), ""],
 									body: [theme.fg("dim", `  Loading ${tab} settings…`)],
 									footer: ["", tabGuide + guideSep + guide("esc", "close")],
 									bodyOffset: 0,
 								}).lines;
 							}
 							const settings = rows();
-							const labelW = Math.max(...settings.map((r) => r.label.length));
+							const labelW = Math.max(...settings.map((r) => visibleWidth(r.label)));
 							const body: string[] = [];
 							const settingBodyLines: number[] = [];
 							let lastSection = "";
@@ -599,7 +632,10 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 								}
 								const sel = i === selected;
 								const cursor = sel ? theme.fg("accent", "→") : " ";
-								const label = theme.fg(sel ? "accent" : "text", row.label.padEnd(labelW));
+								const label = theme.fg(
+									sel ? "accent" : "text",
+									row.label + " ".repeat(labelW - visibleWidth(row.label)),
+								);
 								const value = isThemeRow(row) ? row.current() : row.read(runtime.get(row.handle));
 								const isDefault = isThemeRow(row) || value === row.read(row.handle.defaults);
 								settingBodyLines[i] = body.length;
@@ -607,7 +643,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 							}
 							const result = frameModal({
 								...frame,
-								header: [tabBar(), ""],
+								header: [tabBar(Math.max(1, width - 4)), ""],
 								body,
 								footer: [
 									"",
@@ -782,7 +818,10 @@ function frameModal(opts: RuntimeModalOptions): RuntimeModalResult {
 	const maxBodyOffset = Math.max(0, body.length - visibleBodyLines);
 	let offset = Math.min(maxBodyOffset, Math.max(0, opts.bodyOffset));
 	if (opts.selectedBodyLine !== undefined) {
-		const selected = Math.min(body.length - 1, Math.max(0, opts.selectedBodyLine));
+		const selected = Math.min(
+			body.length - 1,
+			fitLines(opts.body.slice(0, Math.max(0, opts.selectedBodyLine)), inner).length,
+		);
 		if (selected < offset) offset = selected;
 		else if (selected >= offset + visibleBodyLines) offset = selected - visibleBodyLines + 1;
 	}

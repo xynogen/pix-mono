@@ -42,7 +42,6 @@ exports[`actual footer factory flags, stream decay and subscriptions without Git
   "only model / 80": [
     " <muted>◈︎  </muted><accent>capture</accent> ",
   ],
-  "only price / 80": [],
   "only score / 80": [
     " <warning>⚡74</warning> ",
   ],

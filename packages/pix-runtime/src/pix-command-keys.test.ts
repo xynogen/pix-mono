@@ -411,7 +411,7 @@ describe("/pix tabs", () => {
 		const text = d.lines().join("\n");
 		expect(text).toMatch(/binary\.json · unset = automatic/);
 		// Every visible row: cursor slot, glyph, name, then detail text.
-		const row = /│ [→ ] \S+ (rtk|hunk|git|aria2c|bash)\s+\S/;
+		const row = /│ [→ ] \S+\s+(rtk|hunk|git|aria2c|bash)\s+\S/;
 		expect(text).toMatch(row);
 		// Overrides-only file: listing the catalog never creates it.
 		expect(active && existsSync(join(active.agentDir, "binary.json"))).toBe(false);
@@ -442,7 +442,7 @@ describe("/pix tabs", () => {
 		// The last other-platform row differs per host OS, so match its shape, not a name.
 		const lines = d.lines();
 		const cursor = lines.findIndex((l) => /│ → /.test(l));
-		expect(lines[cursor]).toMatch(/│ → ○ [\w-]+\s+not used on this OS/);
+		expect(lines[cursor]).toMatch(/│ → ○\s+[\w-]+\s+not used on this OS/);
 		expect(lines[cursor + 1]).toMatch(/^│\s+│$/);
 	});
 
@@ -452,7 +452,7 @@ describe("/pix tabs", () => {
 		d.feed("/");
 		for (const ch of "ssh") d.feed(ch);
 		// One status glyph, then the name. The "Other platforms" header has no glyph.
-		const rows = () => d.lines().filter((l) => /│ [→ ] \S{1,2} [\w-]+\s{2}/.test(l));
+		const rows = () => d.lines().filter((l) => /│ [→ ] \S{1,2}\s+[\w-]+\s{2}/.test(l));
 		expect(rows().every((l) => /ssh|scp|sshpass/.test(l))).toBe(true);
 		d.feed("\r");
 		d.feed("\u001b");

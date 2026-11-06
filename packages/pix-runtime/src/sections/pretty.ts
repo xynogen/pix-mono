@@ -26,7 +26,6 @@ export interface PrettyConfig {
 		| "context"
 		| "model"
 		| "thinking"
-		| "price"
 		| "score"
 		| "statuses"
 		| "tokens"
@@ -68,7 +67,6 @@ const DEFAULTS: Readonly<PrettyConfig> = {
 		context: true,
 		model: true,
 		thinking: true,
-		price: true,
 		score: true,
 		statuses: true,
 		tokens: true,
