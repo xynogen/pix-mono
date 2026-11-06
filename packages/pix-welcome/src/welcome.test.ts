@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { EventEmitter } from "node:events";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -32,12 +33,21 @@ const theme: Theme = {
 };
 
 describe("welcome lifecycle", () => {
-	it("uses the header above chat, dismisses on the first turn, and skips reload", () => {
+	it.each([
+		"0.7.23",
+		"",
+	])("uses the header with bundle version %j, dismisses on the first turn, and skips reload", (version) => {
 		let onStart: ((event: { reason: "reload" | "new" }, ctx: unknown) => void) | undefined;
 		let onTurn: typeof onStart;
 		let renderHeader: ((width: number) => string[]) | undefined;
 		let headerCalls = 0;
+		const events = new EventEmitter();
+		if (version)
+			events.on("pix:core-version", (query) => {
+				query.version = version;
+			});
 		registerWelcome({
+			events,
 			on(event: string, handler: typeof onStart) {
 				if (event === "session_start") onStart = handler;
 				if (event === "turn_start") onTurn = handler;
@@ -74,10 +84,9 @@ describe("welcome lifecycle", () => {
 		);
 		expect(headerCalls).toBe(1);
 		expect(renderHeader?.(120)?.[1]).toMatch(/^ {3}.+ {2}Welcome, .+!$/);
-		const { version } = JSON.parse(
-			readFileSync(new URL("../../pix-core/package.json", import.meta.url), "utf8"),
+		expect(renderHeader?.(120)?.[2]).toBe(
+			`   ${LOGO_ROWS[1]?.[0]}  PIx${version ? ` ${version}` : ""}`,
 		);
-		expect(renderHeader?.(120)?.[2]).toBe(`   ${LOGO_ROWS[1]?.[0]}  PIx ${version}`);
 		onTurn?.({ reason: "new" }, {});
 		expect(renderHeader?.(80)).toEqual([]);
 	});

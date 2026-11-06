@@ -15,8 +15,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parseColor, type TextStyle, truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -75,17 +74,6 @@ export const shortCwd = (cwd: string, home?: string): string => {
 	const h = home ?? homeDir();
 	return h && cwd.startsWith(h) ? `~${cwd.slice(h.length)}` : cwd;
 };
-
-function coreVersion(): string {
-	try {
-		const entry = createRequire(import.meta.url).resolve("@xynogen/pix-core");
-		const { version } = JSON.parse(readFileSync(join(dirname(entry), "../package.json"), "utf8"));
-		return typeof version === "string" ? version : "";
-	} catch {
-		// Standalone pix-welcome need not have pix-core installed.
-		return "";
-	}
-}
 
 export const PI_IGNORE_RULES = [".pi/"];
 const PI_IGNORE_SECTION_HEADER = "# Pix Agent";
@@ -488,7 +476,9 @@ export default function (pi: ExtensionAPI) {
 		const modelId = ctx.model?.id ?? "—";
 		const cwd = shortCwd(ctx.cwd);
 		const user = username() ?? "";
-		const pixVersion = coreVersion();
+		const query = { version: "" };
+		pi.events?.emit("pix:core-version", query);
+		const pixVersion = typeof query.version === "string" ? query.version : "";
 
 		// Pending placeholders — one per check
 		const CHECKS: CheckResult[] = [

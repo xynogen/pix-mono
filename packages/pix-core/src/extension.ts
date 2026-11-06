@@ -14,6 +14,7 @@
  * reported on session_start instead of stopping Pi from starting.
  */
 
+import { readFileSync } from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { once } from "@xynogen/pix-runtime/once";
@@ -77,7 +78,16 @@ async function resolveMember(member: PixExtension | string): Promise<PixExtensio
 }
 
 export default async function (pi: ExtensionAPI): Promise<void> {
-	once(pi, "pix-core", () => {});
+	once(pi, "pix-core", () => {
+		const { version } = JSON.parse(
+			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+		);
+		pi.events?.on("pix:core-version", (query) => {
+			if (query && typeof query === "object" && "version" in query) {
+				query.version = typeof version === "string" ? version : "";
+			}
+		});
+	});
 	const failed: string[] = [];
 	// ponytail: sequential on purpose. Parallel import() under Pi's jiti loader returns broken modules.
 	for (const [i, member] of MEMBERS.entries()) {

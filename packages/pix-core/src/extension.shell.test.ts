@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { withUiFixture } from "../../../scripts/ui-capture.ts";
@@ -61,6 +62,7 @@ test("core awaits member factories in order and skips a failing member", async (
 		const commands: string[] = [];
 		const registered: Array<{ name: string; exposure?: string }> = [];
 		const pi = {
+			events: new EventEmitter(),
 			on: (event: string) => events.push(event),
 			registerTool: (tool: { name: string; exposure?: string }) => registered.push(tool),
 			registerCommand: (name: string) => commands.push(name),
@@ -68,6 +70,12 @@ test("core awaits member factories in order and skips a failing member", async (
 		};
 		pending = extension(pi as never);
 		await entered.promise;
+		const query = { version: "" };
+		pi.events.emit("pix:core-version", query);
+		const { version } = JSON.parse(
+			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+		);
+		expect(query.version).toBe(version);
 		expect(seen).toEqual([members[0]!]);
 		expect(events).toEqual(["session_start", "tool_call", "tool_result"]); // Deferred-tool wrapper precedes runtime.
 		release.resolve();
