@@ -29,7 +29,7 @@ import {
 } from "./direct-tools.ts";
 import { toolErrorOverride } from "./error-signal.ts";
 import { flushMetadataCache, initializeMcp, updateStatusBar } from "./init.ts";
-import { logger } from "./logger.ts";
+import { logger, routeSdkDiagnostics } from "./logger.ts";
 import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
 import { loadMetadataCache } from "./metadata-cache.ts";
 import { patchOutBuiltinMcp } from "./patch-builtin.ts";
@@ -66,6 +66,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 	let initPromise: Promise<McpExtensionState> | null = null;
 	let lifecycleGeneration = 0;
 	let removeLogHandler: (() => void) | undefined;
+	let restoreSdkDiagnostics: (() => void) | undefined;
 
 	async function shutdownState(
 		currentState: McpExtensionState | null,
@@ -248,6 +249,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		removeLogHandler?.();
+		restoreSdkDiagnostics?.();
 		logger.setConsoleOutput(!ctx.hasUI);
 		removeLogHandler = ctx.hasUI
 			? logger.addHandler((entry) => {
@@ -258,6 +260,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 					showTransientMessage(ctx.ui, message, entry.level === "warn" ? "warning" : "error");
 				})
 			: undefined;
+		restoreSdkDiagnostics = ctx.hasUI ? routeSdkDiagnostics() : undefined;
 		const generation = ++lifecycleGeneration;
 		const previousState = state;
 		if (previousState) previousState.onToolMetadataChanged = undefined;
@@ -337,6 +340,8 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 		} finally {
 			removeLogHandler?.();
 			removeLogHandler = undefined;
+			restoreSdkDiagnostics?.();
+			restoreSdkDiagnostics = undefined;
 			logger.setConsoleOutput(true);
 		}
 	});

@@ -665,18 +665,36 @@ describe("mcpAdapter session lifecycle", () => {
 				/Runtime.*error.*MCP connection failed: connection closed/,
 			);
 			expect(consoleError).not.toHaveBeenCalled();
+			for (const level of ["warn", "error"] as const) {
+				console[level]("[mcp-sdk] %s", "arbitrary SDK diagnostic");
+				const sdkFactory = first.mock.calls.at(-1)?.[1];
+				const sdkWidget = sdkFactory(undefined, { fg: (_role: string, value: string) => value });
+				expect(sdkWidget.render(200).join("\n")).toMatch(
+					/Runtime.*(warning|error).*\[mcp-sdk\] arbitrary SDK diagnostic/,
+				);
+			}
+			expect(consoleWarn).not.toHaveBeenCalled();
+			expect(consoleError).not.toHaveBeenCalled();
+			first.mockClear();
+			console.warn("another extension diagnostic");
+			expect(consoleWarn).toHaveBeenCalledWith("another extension diagnostic");
+			expect(first).toHaveBeenCalledTimes(0);
+			consoleWarn.mockClear();
 			await handlers.get("session_start")?.({}, { hasUI: true, ui: { setWidget: second } });
 			first.mockClear();
-			logger.warn("MCP reconnect failed");
+			console.warn("[mcp-sdk] reconnect diagnostic");
 			expect(second).toHaveBeenCalledTimes(1);
 			expect(first).not.toHaveBeenCalled();
 			expect(consoleWarn).not.toHaveBeenCalled();
 			await handlers.get("session_shutdown")?.({});
+			expect(console.warn).toBe(consoleWarn);
+			expect(console.error).toBe(consoleError);
 			second.mockClear();
 			logger.warn("headless diagnostic");
 			expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining("headless diagnostic"));
 			expect(second).not.toHaveBeenCalled();
 		} finally {
+			await handlers.get("session_shutdown")?.({});
 			consoleWarn.mockRestore();
 			consoleError.mockRestore();
 		}

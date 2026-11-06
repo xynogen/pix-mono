@@ -3,6 +3,8 @@
  * Provides structured, contextual logs with levels.
  */
 
+import { format } from "node:util";
+
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
 export interface LogContext {
@@ -180,6 +182,28 @@ function formatContext(context?: LogContext): string {
 
 // Singleton instance
 export const logger = new Logger();
+
+/** Route SDK diagnostics through the existing logger without capturing other extensions. */
+export function routeSdkDiagnostics(): () => void {
+	const restore = (["warn", "error"] as const).map((level) => {
+		const original = console[level];
+		const routed = (...args: unknown[]) => {
+			// ponytail: only SDK-prefixed diagnostics; unprefixed third-party logs need a host-level logging hook.
+			if (typeof args[0] !== "string" || !args[0].startsWith("[mcp-sdk]")) {
+				original.apply(console, args);
+				return;
+			}
+			logger[level](format(...args));
+		};
+		console[level] = routed;
+		return () => {
+			if (console[level] === routed) console[level] = original;
+		};
+	});
+	return () => {
+		for (const reset of restore) reset();
+	};
+}
 
 // Enable debug mode via environment variable
 if (process.env.MCP_UI_DEBUG === "1" || process.env.MCP_UI_DEBUG === "true") {
