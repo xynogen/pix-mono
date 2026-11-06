@@ -1,4 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
+import { promises as fs } from "node:fs";
 import si from "systeminformation";
 import { readSystemStats } from "./sysstat.ts";
 
@@ -13,6 +14,8 @@ test("systeminformation keeps five readings separate and rejects unavailable val
 		],
 	} as never);
 	const memory = spyOn(si, "mem").mockResolvedValue({ total: 1000, available: 420 } as never);
+	const directories = spyOn(fs, "readdir").mockResolvedValue([] as never);
+	const files = spyOn(fs, "readFile").mockResolvedValue("");
 	try {
 		expect(await readSystemStats()).toEqual({
 			cpu: 12,
@@ -56,10 +59,47 @@ test("systeminformation keeps five readings separate and rejects unavailable val
 			gpuTemp: undefined,
 			ram: 0,
 		});
+		if (process.platform === "linux") {
+			directories.mockImplementation((async (path: unknown) =>
+				String(path) === "/sys/class/drm"
+					? ["card1", "card1-DP-1", "renderD128", "card2"]
+					: ["hwmon5"]) as never);
+			const sensors: Record<string, string> = {
+				"/sys/class/drm/card1/device/vendor": "0x1002\n",
+				"/sys/class/drm/card1/device/gpu_busy_percent": "45\n",
+				"/sys/class/drm/card1/device/hwmon/hwmon5/temp1_input": "51000\n",
+				"/sys/class/drm/card2/device/vendor": "0x10de\n",
+			};
+			files.mockImplementation((async (path: unknown) => {
+				const value = sensors[String(path)];
+				if (value === undefined) throw new Error("sensor unavailable");
+				return value;
+			}) as never);
+			expect(await readSystemStats()).toEqual({
+				cpu: undefined,
+				cpuTemp: undefined,
+				gpu: 45,
+				gpuTemp: 51,
+				ram: 0,
+			});
+			graphics.mockResolvedValue({ controllers: [{ utilizationGpu: 0 }] } as never);
+			expect(await readSystemStats()).toMatchObject({ gpu: 0, gpuTemp: 51 });
+			sensors["/sys/class/drm/card1/device/gpu_busy_percent"] = "";
+			sensors["/sys/class/drm/card1/device/hwmon/hwmon5/temp1_input"] = "-1000";
+			graphics.mockResolvedValue({ controllers: [] } as never);
+			expect(await readSystemStats()).toMatchObject({ gpu: undefined, gpuTemp: undefined });
+			sensors["/sys/class/drm/card1/device/gpu_busy_percent"] = "101";
+			sensors["/sys/class/drm/card1/device/hwmon/hwmon5/temp1_input"] = "garbage";
+			expect(await readSystemStats()).toMatchObject({ gpu: undefined, gpuTemp: undefined });
+			directories.mockRejectedValue(new Error("sysfs unavailable"));
+			expect(await readSystemStats()).toMatchObject({ gpu: undefined, gpuTemp: undefined });
+		}
 	} finally {
 		cpu.mockRestore();
 		temperature.mockRestore();
 		graphics.mockRestore();
 		memory.mockRestore();
+		directories.mockRestore();
+		files.mockRestore();
 	}
 });

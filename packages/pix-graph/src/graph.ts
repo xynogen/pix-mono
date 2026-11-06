@@ -349,6 +349,11 @@ export default function registerGraph(pi: ExtensionAPI): void {
 	once(pi, "pix-graph", () => {
 		const cwd = process.cwd();
 		const parseCache = createGraphParseCache();
+		let cacheTimer: ReturnType<typeof setTimeout> | undefined;
+		let activeCalls = 0;
+		const releaseIdleCache = () => {
+			if (activeCalls === 0) parseCache.entries.clear();
+		};
 
 		pi.registerCommand("graph", {
 			description: "Open the code graph (graph.html) in the browser",
@@ -514,180 +519,189 @@ export default function registerGraph(pi: ExtensionAPI): void {
 			},
 
 			async execute(_id, params, signal, onUpdate, ctx) {
-				const action = params.action as "build" | "query" | "impact" | "summarize";
-				const details = (outcome: "success" | "error"): GraphResultDetails => ({
-					_type: "graphResult",
-					action,
-					outcome,
-				});
-				const ok = (text: string) => ({
-					content: [{ type: "text" as const, text }],
-					details: details("success"),
-				});
-				const fail = (text: string) => ({
-					content: [{ type: "text" as const, text }],
-					details: details("error"),
-					isError: true,
-				});
-
-				if (action === "build") {
-					// ponytail: pipeline pulls in typescript (9.1 MB, about 224 ms). Load it only when a build runs.
-					const { buildCodeGraphProgress } = await import("./pipeline.ts");
-					const consent = grammarConsent(ctx);
-					const input = (params.path as string | undefined)?.trim() || ".";
-					const startedAt = Date.now();
-					let frame = 0;
-					let last: BuildProgress | undefined;
-					const emit = (): void => {
-						if (!last) return;
-						onUpdate?.({
-							content: [{ type: "text" as const, text: last.label }],
-							details: {
-								_type: "graphResult",
-								action,
-								outcome: "running",
-								progress: last,
-								spinnerFrame: frame++,
-								elapsedMs: Date.now() - startedAt,
-							},
-						});
-					};
-					// Animate the spinner + elapsed clock even between phase updates.
-					const ticker = setInterval(emit, 120);
-					try {
-						const r = await buildCodeGraphProgress(
-							input,
-							cwd,
-							resolve(cwd, OUT_DIR),
-							(progress) => {
-								last = progress;
-								emit();
-							},
-							signal,
-							parseCache,
-							consent,
-						);
-						const took = formatDuration(Date.now() - startedAt, "btw");
-						const langs = Object.entries(r.languages ?? {})
-							.map(([lang, n]) => `${lang} ${n}`)
-							.join(", ");
-						return ok(
-							`Graph ${r.cached ? "unchanged (cache hit)" : `built in ${took}`}: ` +
-								`${r.files} files → ${r.nodes} nodes, ${r.links} links, ` +
-								`${r.communities} communities → ${OUT_DIR}/ (view: /graph)` +
-								(r.cached ? "" : ` · parsed ${r.parsedFiles} · reused ${r.reusedFiles}`) +
-								(langs ? `\nOther languages (ast-grep): ${langs}` : "") +
-								(r.skipped?.length ? `\nSkipped: ${r.skipped.join("; ")}` : ""),
-						);
-					} catch (error) {
-						const msg = getErrorMessage(error);
-						return fail(msg === "Operation aborted" ? "Build aborted." : `Build failed: ${msg}`);
-					} finally {
-						clearInterval(ticker);
-					}
-				}
-
-				const { graph, refreshed } = await loadFresh(
-					cwd,
-					action === "summarize",
-					parseCache,
-					signal,
-				);
-				if (!graph) {
-					return fail(
-						`No graph found. Run graph(action:"build") first to create ${OUT_DIR}/graph.json.`,
-					);
-				}
-				const summariesPath = join(cwd, OUT_DIR, "summaries.json");
-
-				if (action === "summarize") {
-					const cards = moduleCards(graph);
-					const stored = loadSummaries(summariesPath);
-					const name = (params.module as string | undefined)?.trim();
-					const text = params.summary as string | undefined;
-					if (name || text !== undefined) {
-						if (!name || text === undefined)
-							return fail("summarize needs both module and summary.");
-						const card = cards.find((c) => c.module === name);
-						if (!card) return fail(`Unknown module: ${name}.`);
-						// The summary was written by the session model; stamp it so provenance stays visible.
-						const model = ctx?.model ? `${ctx.model.provider}/${ctx.model.id}` : "unknown";
-						const saved = storeSummary(summariesPath, card, text, model);
-						if (typeof saved === "string") return fail(`Summary rejected: ${saved}`);
-						const left = staleCards(cards, loadSummaries(summariesPath)).length;
-						return ok(
-							`Stored summary for ${card.module} (model ${model}, evidence ${card.hash}) → ${OUT_DIR}/summaries.json. ${left} module(s) still missing or stale.`,
-						);
-					}
-					const stale = staleCards(cards, stored);
-					if (stale.length === 0) {
-						return ok(`All ${cards.length} module summaries are current. Nothing to write.`);
-					}
-					// Bounded work list: the agent summarizes a few modules per call and comes back.
-					const batch = stale.slice(0, 5);
-					const tokens = batch.reduce((n, c) => n + estimateTokens(c.text), 0);
-					return ok(
-						[
-							`${stale.length} of ${cards.length} module summaries missing or stale. Showing ${batch.length} evidence card(s), ~${tokens} tokens.`,
-							`For each, call graph(action:"summarize", module, summary) with 2-5 sentences grounded only in its card.`,
-							...batch.map((c) => `\n${c.text}`),
-						].join("\n"),
-					);
-				}
-
-				if (action === "impact") {
-					const out = runImpact(
-						graph,
-						params.question as string | undefined,
-						params.path as string | undefined,
-					);
-					if (typeof out === "string") return fail(out);
-					if (refreshed)
-						out.content[0] = { type: "text", text: `${out.content[0]?.text}${refreshed}` };
-					return out;
-				}
-
-				// action === "query"
-				const question = (params.question as string | undefined)?.trim();
-				if (!question) return fail('query requires a "question".');
-				if (params.scope === "global") {
-					const cards = moduleCards(graph);
-					const hits = globalQuery(cards, loadSummaries(summariesPath), question);
-					if (hits.length === 0) {
-						return ok(
-							`No module matches: ${tokenize(question).join(", ") || "(no keywords)"}. ${cards.length} modules in the graph.`,
-						);
-					}
-					const missing = hits.filter((h) => h.stale).length;
-					const blocks = hits.map((h) => {
-						const said = h.summary
-							? `summary${h.stale ? " (stale)" : ""} [${h.summary.model}]: ${h.summary.summary}`
-							: "summary: none";
-						return `${said}\n${h.card.text}`;
-					});
-					const hint =
-						missing > 0
-							? `\n\n${missing} module(s) above lack a current summary. graph(action:"summarize") lists them.`
-							: "";
-					return ok(`${blocks.join("\n\n")}${hint}`);
-				}
-				const traversal = params.dfs ? "dfs" : "bfs";
-				const hits = queryGraph(graph, question, { mode: traversal });
-				const rows = toRows(hits);
-				const plainRows = plain(rows);
-				const text =
-					rows.length === 0
-						? `No graph node name matches: ${tokenize(question).join(", ") || "(no keywords)"}. Query is lexical over TS/JS symbol/file names; retry with identifiers or use grep.`
-						: plainRows + refreshed;
-				return {
-					content: [{ type: "text" as const, text }],
-					details: {
-						_type: "graphResult" as const,
+				clearTimeout(cacheTimer);
+				activeCalls++;
+				try {
+					const action = params.action as "build" | "query" | "impact" | "summarize";
+					const details = (outcome: "success" | "error"): GraphResultDetails => ({
+						_type: "graphResult",
 						action,
-						outcome: "success" as const,
-						query: { question, traversal, hits: rows },
-					},
-				};
+						outcome,
+					});
+					const ok = (text: string) => ({
+						content: [{ type: "text" as const, text }],
+						details: details("success"),
+					});
+					const fail = (text: string) => ({
+						content: [{ type: "text" as const, text }],
+						details: details("error"),
+						isError: true,
+					});
+
+					if (action === "build") {
+						// ponytail: pipeline pulls in typescript (9.1 MB, about 224 ms). Load it only when a build runs.
+						const { buildCodeGraphProgress } = await import("./pipeline.ts");
+						const consent = grammarConsent(ctx);
+						const input = (params.path as string | undefined)?.trim() || ".";
+						const startedAt = Date.now();
+						let frame = 0;
+						let last: BuildProgress | undefined;
+						const emit = (): void => {
+							if (!last) return;
+							onUpdate?.({
+								content: [{ type: "text" as const, text: last.label }],
+								details: {
+									_type: "graphResult",
+									action,
+									outcome: "running",
+									progress: last,
+									spinnerFrame: frame++,
+									elapsedMs: Date.now() - startedAt,
+								},
+							});
+						};
+						// Animate the spinner + elapsed clock even between phase updates.
+						const ticker = setInterval(emit, 120);
+						try {
+							const r = await buildCodeGraphProgress(
+								input,
+								cwd,
+								resolve(cwd, OUT_DIR),
+								(progress) => {
+									last = progress;
+									emit();
+								},
+								signal,
+								parseCache,
+								consent,
+							);
+							const took = formatDuration(Date.now() - startedAt, "btw");
+							const langs = Object.entries(r.languages ?? {})
+								.map(([lang, n]) => `${lang} ${n}`)
+								.join(", ");
+							return ok(
+								`Graph ${r.cached ? "unchanged (cache hit)" : `built in ${took}`}: ` +
+									`${r.files} files → ${r.nodes} nodes, ${r.links} links, ` +
+									`${r.communities} communities → ${OUT_DIR}/ (view: /graph)` +
+									(r.cached ? "" : ` · parsed ${r.parsedFiles} · reused ${r.reusedFiles}`) +
+									(langs ? `\nOther languages (ast-grep): ${langs}` : "") +
+									(r.skipped?.length ? `\nSkipped: ${r.skipped.join("; ")}` : ""),
+							);
+						} catch (error) {
+							const msg = getErrorMessage(error);
+							return fail(msg === "Operation aborted" ? "Build aborted." : `Build failed: ${msg}`);
+						} finally {
+							clearInterval(ticker);
+						}
+					}
+
+					const { graph, refreshed } = await loadFresh(
+						cwd,
+						action === "summarize",
+						parseCache,
+						signal,
+					);
+					if (!graph) {
+						return fail(
+							`No graph found. Run graph(action:"build") first to create ${OUT_DIR}/graph.json.`,
+						);
+					}
+					const summariesPath = join(cwd, OUT_DIR, "summaries.json");
+
+					if (action === "summarize") {
+						const cards = moduleCards(graph);
+						const stored = loadSummaries(summariesPath);
+						const name = (params.module as string | undefined)?.trim();
+						const text = params.summary as string | undefined;
+						if (name || text !== undefined) {
+							if (!name || text === undefined)
+								return fail("summarize needs both module and summary.");
+							const card = cards.find((c) => c.module === name);
+							if (!card) return fail(`Unknown module: ${name}.`);
+							// The summary was written by the session model; stamp it so provenance stays visible.
+							const model = ctx?.model ? `${ctx.model.provider}/${ctx.model.id}` : "unknown";
+							const saved = storeSummary(summariesPath, card, text, model);
+							if (typeof saved === "string") return fail(`Summary rejected: ${saved}`);
+							const left = staleCards(cards, loadSummaries(summariesPath)).length;
+							return ok(
+								`Stored summary for ${card.module} (model ${model}, evidence ${card.hash}) → ${OUT_DIR}/summaries.json. ${left} module(s) still missing or stale.`,
+							);
+						}
+						const stale = staleCards(cards, stored);
+						if (stale.length === 0) {
+							return ok(`All ${cards.length} module summaries are current. Nothing to write.`);
+						}
+						// Bounded work list: the agent summarizes a few modules per call and comes back.
+						const batch = stale.slice(0, 5);
+						const tokens = batch.reduce((n, c) => n + estimateTokens(c.text), 0);
+						return ok(
+							[
+								`${stale.length} of ${cards.length} module summaries missing or stale. Showing ${batch.length} evidence card(s), ~${tokens} tokens.`,
+								`For each, call graph(action:"summarize", module, summary) with 2-5 sentences grounded only in its card.`,
+								...batch.map((c) => `\n${c.text}`),
+							].join("\n"),
+						);
+					}
+
+					if (action === "impact") {
+						const out = runImpact(
+							graph,
+							params.question as string | undefined,
+							params.path as string | undefined,
+						);
+						if (typeof out === "string") return fail(out);
+						out.content[0] = { type: "text", text: `${out.content[0]?.text}${refreshed}` };
+						return out;
+					}
+
+					// action === "query"
+					const question = (params.question as string | undefined)?.trim();
+					if (!question) return fail('query requires a "question".');
+					if (params.scope === "global") {
+						const cards = moduleCards(graph);
+						const hits = globalQuery(cards, loadSummaries(summariesPath), question);
+						if (hits.length === 0) {
+							return ok(
+								`No module matches: ${tokenize(question).join(", ") || "(no keywords)"}. ${cards.length} modules in the graph.`,
+							);
+						}
+						const missing = hits.filter((h) => h.stale).length;
+						const blocks = hits.map((h) => {
+							const said = h.summary
+								? `summary${h.stale ? " (stale)" : ""} [${h.summary.model}]: ${h.summary.summary}`
+								: "summary: none";
+							return `${said}\n${h.card.text}`;
+						});
+						const hint =
+							missing > 0
+								? `\n\n${missing} module(s) above lack a current summary. graph(action:"summarize") lists them.`
+								: "";
+						return ok(`${blocks.join("\n\n")}${hint}`);
+					}
+					const traversal = params.dfs ? "dfs" : "bfs";
+					const hits = queryGraph(graph, question, { mode: traversal });
+					const rows = toRows(hits);
+					const plainRows = plain(rows);
+					const text =
+						rows.length === 0
+							? `No graph node name matches: ${tokenize(question).join(", ") || "(no keywords)"}. Query is lexical over TS/JS symbol/file names; retry with identifiers or use grep.`
+							: plainRows + refreshed;
+					return {
+						content: [{ type: "text" as const, text }],
+						details: {
+							_type: "graphResult" as const,
+							action,
+							outcome: "success" as const,
+							query: { question, traversal, hits: rows },
+						},
+					};
+				} finally {
+					activeCalls--;
+					clearTimeout(cacheTimer);
+					// ponytail: retain ASTs for 30s between calls; cold builds reparse, disk results stay cached.
+					cacheTimer = setTimeout(releaseIdleCache, 30_000);
+					cacheTimer.unref();
+				}
 			},
 		});
 	});

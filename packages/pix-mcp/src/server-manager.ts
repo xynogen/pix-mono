@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import type {
 	Client,
 	ReadResourceResult,
@@ -197,13 +198,18 @@ export class McpServerManager {
 			}
 
 			const { StdioClientTransport } = await loadStdio();
-			transport = new StdioClientTransport({
+			const stdio = new StdioClientTransport({
 				command,
 				args,
 				env: await resolveEnv(definition.env, name),
 				cwd: resolveConfigPath(definition.cwd) ?? this.defaultCwd,
-				stderr: definition.debug ? "inherit" : "ignore",
+				stderr: definition.debug ? "pipe" : "ignore",
 			});
+			if (stdio.stderr instanceof Readable) stdio.stderr.setEncoding("utf8");
+			stdio.stderr?.on("data", (message: string) => {
+				logger.warn(`MCP ${name} stderr: ${message}`);
+			});
+			transport = stdio;
 		} else if (definition.url) {
 			// HTTP transport with fallback
 			transport = await this.createHttpTransport(definition, name, signal);

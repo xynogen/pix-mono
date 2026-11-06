@@ -4,8 +4,10 @@
  * High-level OAuth flow management using the MCP SDK's built-in auth functions.
  */
 import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import open from "open";
 import { resolveOAuthSecret } from "./config-value.ts";
+import { logger } from "./logger.ts";
 import {
 	clearAllCredentials,
 	clearClientInfo,
@@ -467,9 +469,8 @@ export async function authenticate(
 			try {
 				await open(authorizationUrl);
 			} catch (error) {
-				console.warn(
-					`MCP Auth: Failed to open browser for ${serverName}; waiting for manual callback`,
-					{ error },
+				logger.warn(
+					`MCP Auth: Failed to open browser for ${serverName}; waiting for manual callback: ${getErrorMessage(error)}`,
 				);
 			}
 
@@ -529,7 +530,7 @@ export async function getValidToken(
 
 	if (expired === true && entry.tokens.refreshToken) {
 		// Token is expired, try to refresh
-		console.log(`MCP Auth: Token expired for ${serverName}, attempting refresh`);
+		logger.debug(`MCP Auth: Token expired for ${serverName}, attempting refresh`);
 
 		try {
 			// Create auth provider for token refresh
@@ -544,7 +545,7 @@ export async function getValidToken(
 
 			const clientInfo = await authProvider.clientInformation();
 			if (!clientInfo) {
-				console.log(`MCP Auth: No client info for refresh for ${serverName}`);
+				logger.debug(`MCP Auth: No client info for refresh for ${serverName}`);
 				return null;
 			}
 
@@ -556,7 +557,7 @@ export async function getValidToken(
 			const refreshed = await getAuthForUrl(serverName, serverUrl);
 			return refreshed?.tokens ?? null;
 		} catch (error) {
-			console.error(`MCP Auth: Token refresh failed for ${serverName}`, { error });
+			logger.warn(`MCP Auth: Token refresh failed for ${serverName}: ${getErrorMessage(error)}`);
 			return null;
 		}
 	}
@@ -592,7 +593,7 @@ export async function removeAuth(serverName: string): Promise<void> {
 	await clearPendingAuth(serverName, oauthState);
 	clearAllCredentials(serverName);
 	await clearOAuthState(serverName);
-	console.log(`MCP Auth: Removed credentials for ${serverName}`);
+	logger.info(`MCP Auth: Removed credentials for ${serverName}`);
 }
 
 /**

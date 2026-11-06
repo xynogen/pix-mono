@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { logger } from "./logger.ts";
 import type { McpServerManager } from "./server-manager.ts";
 import type { ServerDefinition } from "./types.ts";
@@ -67,7 +68,7 @@ export class McpLifecycleManager {
 					// Notify extension to update metadata
 					this.onReconnect?.(name);
 				} catch (error) {
-					console.error(`MCP: Failed to reconnect to ${name}:`, error);
+					logger.warn(`MCP: Failed to reconnect to ${name}: ${getErrorMessage(error)}`);
 				}
 			}
 		}

@@ -11,6 +11,7 @@
 			"packages/**/*.ts",
 			"packages/**/*.json",
 			"scripts/check-versions*.ts",
+			"scripts/coverage-ratchet*.ts",
 			"scripts/ui-capture*.ts",
 			"scripts/deps.test.ts",
 			"scripts/eval/*.ts",

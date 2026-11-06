@@ -29,6 +29,7 @@ import {
 } from "./direct-tools.ts";
 import { toolErrorOverride } from "./error-signal.ts";
 import { flushMetadataCache, initializeMcp, updateStatusBar } from "./init.ts";
+import { logger } from "./logger.ts";
 import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
 import { loadMetadataCache } from "./metadata-cache.ts";
 import { patchOutBuiltinMcp } from "./patch-builtin.ts";
@@ -64,6 +65,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 	let state: McpExtensionState | null = null;
 	let initPromise: Promise<McpExtensionState> | null = null;
 	let lifecycleGeneration = 0;
+	let removeLogHandler: (() => void) | undefined;
 
 	async function shutdownState(
 		currentState: McpExtensionState | null,
@@ -87,7 +89,9 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 			await currentState.lifecycle.gracefulShutdown();
 		} catch (error) {
 			if (flushError) {
-				console.error("MCP: graceful shutdown failed after metadata flush error", error);
+				logger.warn(
+					`MCP: graceful shutdown failed after metadata flush error: ${getErrorMessage(error)}`,
+				);
 			} else {
 				throw error;
 			}
@@ -243,6 +247,17 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 	});
 
 	pi.on("session_start", async (_event, ctx) => {
+		removeLogHandler?.();
+		logger.setConsoleOutput(!ctx.hasUI);
+		removeLogHandler = ctx.hasUI
+			? logger.addHandler((entry) => {
+					if (entry.level !== "warn" && entry.level !== "error") return;
+					const message = entry.error
+						? `${entry.message}: ${getErrorMessage(entry.error)}`
+						: entry.message;
+					showTransientMessage(ctx.ui, message, entry.level === "warn" ? "warning" : "error");
+				})
+			: undefined;
 		const generation = ++lifecycleGeneration;
 		const previousState = state;
 		if (previousState) previousState.onToolMetadataChanged = undefined;
@@ -256,7 +271,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 		try {
 			await Promise.all([shutdownState(previousState, "session_restart"), shutdownOAuth()]);
 		} catch (error) {
-			console.error("MCP: failed to shut down previous session state", error);
+			logger.warn(`MCP: failed to shut down previous session state: ${getErrorMessage(error)}`);
 		}
 
 		if (generation !== lifecycleGeneration) {
@@ -279,7 +294,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 					try {
 						await shutdownState(nextState, "stale_session_start");
 					} catch (error) {
-						console.error("MCP: failed to clean stale session state", error);
+						logger.warn(`MCP: failed to clean stale session state: ${getErrorMessage(error)}`);
 					}
 					return;
 				}
@@ -318,7 +333,11 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 		try {
 			await Promise.all([shutdownState(currentState, "session_shutdown"), shutdownOAuth()]);
 		} catch (error) {
-			console.error("MCP: session shutdown cleanup failed", error);
+			logger.warn(`MCP: session shutdown cleanup failed: ${getErrorMessage(error)}`);
+		} finally {
+			removeLogHandler?.();
+			removeLogHandler = undefined;
+			logger.setConsoleOutput(true);
 		}
 	});
 

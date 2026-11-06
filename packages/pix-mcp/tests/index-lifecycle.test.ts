@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import { logger } from "../src/logger.ts";
 
 const mocks = {
 	initializeMcp: mock(),
@@ -156,6 +157,8 @@ describe("mcpAdapter session lifecycle", () => {
 	const originalDirectTools = process.env.MCP_DIRECT_TOOLS;
 
 	beforeEach(() => {
+		logger.clearHandlers();
+		logger.setConsoleOutput(true);
 		delete process.env.MCP_DIRECT_TOOLS;
 		for (const value of Object.values(mocks)) {
 			if (typeof value === "function" && "mockReset" in value) {
@@ -187,6 +190,8 @@ describe("mcpAdapter session lifecycle", () => {
 	});
 
 	afterEach(() => {
+		logger.clearHandlers();
+		logger.setConsoleOutput(true);
 		if (originalDirectTools === undefined) {
 			delete process.env.MCP_DIRECT_TOOLS;
 		} else {
@@ -638,6 +643,43 @@ describe("mcpAdapter session lifecycle", () => {
 		const commandNames = api.registerCommand.mock.calls.map((call: any[]) => call[0]);
 		expect(commandNames).toContain("mcp");
 		expect(commandNames).not.toContain("mcp-auth");
+	});
+
+	it("routes MCP diagnostics to Runtime, replaces the sink on restart, and restores headless logs", async () => {
+		const { default: mcpAdapter } = await import("../src/index.ts");
+		const { api, handlers } = createPi();
+		mcpAdapter(api);
+		const first = mock();
+		const second = mock();
+		const consoleWarn = spyOn(console, "warn").mockImplementation(() => {});
+		const consoleError = spyOn(console, "error").mockImplementation(() => {});
+		try {
+			await handlers.get("session_start")?.({}, { hasUI: true, ui: { setWidget: first } });
+			logger.error("MCP connection failed", new Error("connection closed"));
+			expect(first).toHaveBeenCalledWith("pix-transient-error", expect.any(Function), {
+				placement: "aboveEditor",
+			});
+			const factory = first.mock.calls.at(-1)?.[1];
+			const widget = factory(undefined, { fg: (_role: string, value: string) => value });
+			expect(widget.render(200).join("\n")).toMatch(
+				/Runtime.*error.*MCP connection failed: connection closed/,
+			);
+			expect(consoleError).not.toHaveBeenCalled();
+			await handlers.get("session_start")?.({}, { hasUI: true, ui: { setWidget: second } });
+			first.mockClear();
+			logger.warn("MCP reconnect failed");
+			expect(second).toHaveBeenCalledTimes(1);
+			expect(first).not.toHaveBeenCalled();
+			expect(consoleWarn).not.toHaveBeenCalled();
+			await handlers.get("session_shutdown")?.({});
+			second.mockClear();
+			logger.warn("headless diagnostic");
+			expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining("headless diagnostic"));
+			expect(second).not.toHaveBeenCalled();
+		} finally {
+			consoleWarn.mockRestore();
+			consoleError.mockRestore();
+		}
 	});
 
 	it("renders OAuth initialization warnings through the session UI", async () => {

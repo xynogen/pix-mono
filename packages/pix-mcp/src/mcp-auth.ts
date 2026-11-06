@@ -11,8 +11,10 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { getAgentPath } from "./agent-dir.ts";
+import { logger } from "./logger.ts";
 
 /** OAuth token storage format */
 export interface StoredTokens {
@@ -87,7 +89,7 @@ function readAuthEntry(serverName: string): AuthEntry | undefined {
 		const data = readFileSync(filePath, "utf-8");
 		return JSON.parse(data) as AuthEntry;
 	} catch (error) {
-		console.error(`Failed to read auth entry for ${serverName}:`, error);
+		logger.warn(`Failed to read auth entry for ${serverName}: ${getErrorMessage(error)}`);
 		return undefined;
 	}
 }
@@ -157,7 +159,7 @@ export function removeAuthEntry(serverName: string): void {
 			}
 		}
 	} catch (error) {
-		console.error(`Failed to remove auth entry for ${serverName}:`, error);
+		logger.warn(`Failed to remove auth entry for ${serverName}: ${getErrorMessage(error)}`);
 	}
 }
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-export {};
+import { writeSync } from "node:fs";
+
 // coverage-ratchet.ts — CI's only test run: runs the suite with coverage, fails on any test
 // failure, then fails if coverage drops below thresholds.
 // Current baseline ~72% funcs / 70% lines. Threshold set slightly below to ratchet.
@@ -14,8 +15,8 @@ const [out, err, code] = await Promise.all([
 	new Response(proc.stderr).text(),
 	proc.exited,
 ]);
-process.stdout.write(out);
-process.stderr.write(err);
+writeSync(1, out);
+writeSync(2, err);
 if (code !== 0) {
 	console.error(`Tests failed (exit ${code}); coverage not checked.`);
 	process.exit(code);
@@ -37,9 +38,13 @@ if (Number.isNaN(funcs) || Number.isNaN(lines)) {
 	console.error(`Coverage: could not parse thresholds from: ${line}`);
 	process.exit(1);
 }
-console.log(`Coverage: ${funcs}% funcs / ${lines}% lines (threshold ${THRESHOLDS.funcs}/${THRESHOLDS.lines})`);
+console.log(
+	`Coverage: ${funcs}% funcs / ${lines}% lines (threshold ${THRESHOLDS.funcs}/${THRESHOLDS.lines})`,
+);
 if (funcs < THRESHOLDS.funcs || lines < THRESHOLDS.lines) {
-	console.error(`Coverage below threshold: funcs ${funcs}% < ${THRESHOLDS.funcs}% or lines ${lines}% < ${THRESHOLDS.lines}%`);
+	console.error(
+		`Coverage below threshold: funcs ${funcs}% < ${THRESHOLDS.funcs}% or lines ${lines}% < ${THRESHOLDS.lines}%`,
+	);
 	process.exit(1);
 }
 console.log("Coverage ratchet passed.");

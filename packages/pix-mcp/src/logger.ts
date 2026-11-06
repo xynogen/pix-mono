@@ -45,7 +45,7 @@ class Logger {
 	private minLevel: LogLevel = "info";
 	private handlers: LogHandler[] = [];
 	private defaultContext: LogContext = {};
-	// Raw console output bleeds into the active TUI. init.ts turns it off in TUI
+	// Raw console output bleeds into the active TUI. index.ts turns it off in UI
 	// mode and routes warn/error to the transient slot instead.
 	private consoleOutput = true;
 

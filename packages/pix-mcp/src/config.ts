@@ -2,9 +2,11 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { homeDir, projectDir } from "@xynogen/pix-runtime/paths";
 import { getAgentPath } from "./agent-dir.ts";
+import { logger } from "./logger.ts";
 import type {
 	ImportKind,
 	McpConfig,
@@ -420,7 +422,7 @@ function expandImports(config: McpConfig, cwd = process.cwd()): McpConfig {
 				}
 			}
 		} catch (error) {
-			console.warn(`Failed to import MCP config from ${importKind}:`, error);
+			logger.warn(`Failed to import MCP config from ${importKind}: ${getErrorMessage(error)}`);
 		}
 	}
 
@@ -457,7 +459,7 @@ function readValidatedConfig(path: string, label: string): McpConfig | null {
 	try {
 		return validateConfig(JSON.parse(readFileSync(path, "utf-8")));
 	} catch (error) {
-		console.warn(`Failed to load ${label}:`, error);
+		logger.warn(`Failed to load ${label}: ${getErrorMessage(error)}`);
 		return null;
 	}
 }

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
+import { type LogEntry, logger } from "../src/logger.ts";
 
 const mocks = {
 	clients: [] as any[],
@@ -43,6 +45,7 @@ mock.module("@modelcontextprotocol/client/stdio", () => ({
 	StdioClientTransport: mock((options: unknown) => {
 		const transport = {
 			options,
+			stderr: new PassThrough(),
 			close: mock(async () => undefined),
 		};
 		mocks.transports.push(transport);
@@ -69,6 +72,27 @@ describe("McpServerManager sampling", () => {
 		} else {
 			if (originalMcpTestCwd === undefined) delete process.env.MCP_TEST_CWD;
 			else process.env.MCP_TEST_CWD = originalMcpTestCwd;
+		}
+	});
+
+	it("pipes debug stderr through the MCP logger before connecting", async () => {
+		const { McpServerManager } = await import("../src/server-manager.ts");
+		const manager = new McpServerManager();
+		const entries: LogEntry[] = [];
+		const remove = logger.addHandler((entry) => entries.push(entry));
+		logger.setConsoleOutput(false);
+		try {
+			await manager.connect("demo", { command: "node", debug: true });
+			const transport = mocks.transports[0];
+			expect(transport.options.stderr).toBe("pipe");
+			transport.stderr.write(Buffer.from("connection failed\n"));
+			expect(entries).toEqual([
+				expect.objectContaining({ level: "warn", message: "MCP demo stderr: connection failed\n" }),
+			]);
+			await manager.closeAll();
+		} finally {
+			remove();
+			logger.setConsoleOutput(true);
 		}
 	});
 

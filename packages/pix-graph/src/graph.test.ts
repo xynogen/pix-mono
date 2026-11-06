@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerGraph, { impactRows } from "./graph.ts";
+import * as parseCache from "./parse-cache.ts";
 
 type ExecuteFn = (
 	id: string,
@@ -184,6 +185,49 @@ describe("graph tool", () => {
 		await run({ action: "build" }, root);
 		const result = await run({ action: "build" }, root);
 		expect(result.content[0]?.text).toMatch(/Graph unchanged \(cache hit\).*files.*nodes/);
+	});
+
+	test("releases idle ASTs, resets the timer on use and keeps disk results intact", async () => {
+		const root = fixture();
+		const previous = process.cwd();
+		const cache = parseCache.createGraphParseCache();
+		const create = spyOn(parseCache, "createGraphParseCache").mockReturnValue(cache);
+		const originalTimeout = globalThis.setTimeout;
+		const idle: Array<{ callback: () => void; timer: ReturnType<typeof setTimeout> }> = [];
+		const timeout = spyOn(globalThis, "setTimeout").mockImplementation(((
+			callback: () => void,
+			delay: number,
+		) => {
+			const timer = originalTimeout(delay === 30_000 ? () => {} : callback, delay);
+			if (delay === 30_000) idle.push({ callback, timer });
+			return timer;
+		}) as never);
+		const clear = spyOn(globalThis, "clearTimeout");
+		try {
+			process.chdir(root);
+			const execute = capture();
+			expect((await execute("build", { action: "build" })).isError).toBeFalsy();
+			expect(cache.entries.size).toBe(2);
+			expect(idle).toHaveLength(1);
+			const query = await execute("query", { action: "query", question: "greet" });
+			expect(query.content[0]?.text).toContain("greet");
+			expect(clear).toHaveBeenCalledWith(idle[0]?.timer);
+			expect(idle).toHaveLength(2);
+			idle[1]?.callback();
+			expect(cache.entries.size).toBe(0);
+			expect((await execute("query", { action: "query", question: "greet" })).content).toEqual(
+				query.content,
+			);
+			expect((await execute("build", { action: "build" })).content[0]?.text).toMatch(
+				/Graph unchanged \(cache hit\)/,
+			);
+		} finally {
+			for (const entry of idle) clearTimeout(entry.timer);
+			timeout.mockRestore();
+			clear.mockRestore();
+			create.mockRestore();
+			process.chdir(previous);
+		}
 	});
 
 	test("query mode traverses a built graph", async () => {
