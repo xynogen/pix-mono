@@ -7,10 +7,11 @@ describe("toolErrorOverride", () => {
 		expect(toolErrorOverride({ mode: "call", error: "call_failed", message: "boom" })).toEqual({
 			isError: true,
 		});
+		expect(toolErrorOverride({ mode: "call", error: "tool_not_found" })).toEqual({ isError: true });
 	});
 
 	it("leaves the adapter's other details.error codes as successes (auth, connection, validation, routing)", () => {
-		for (const code of ["auth_required", "not_connected", "empty_query", "tool_not_found"]) {
+		for (const code of ["auth_required", "not_connected", "empty_query"]) {
 			expect(toolErrorOverride({ error: code }), code).toBeUndefined();
 		}
 		expect(toolErrorOverride({ ok: true })).toBeUndefined(); // no error breadcrumb at all

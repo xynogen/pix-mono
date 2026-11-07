@@ -1,17 +1,72 @@
 import { expect, test } from "bun:test";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
-import { withUiFixture } from "../../../scripts/ui-capture.ts";
+import { roleTheme, semanticRow, withUiFixture } from "../../../scripts/ui-capture.ts";
 import {
 	colorizeToon,
+	createMcpDirectToolCallRenderer,
+	createMcpDirectToolResultRenderer,
 	detectHighlightLang,
 	formatMcpToolResultLines,
+	renderMcpProxyToolCall,
 	renderMcpToolResult,
 } from "./tool-result-renderer.ts";
 
 // A theme that wraps each colored span in «key»… so assertions can see which
 // semantic color each token got without matching raw ANSI.
 const tagTheme = { fg: (k: string, t: string) => `«${k}»${t}` };
+
+test("MCP call and collapsed labels separate the tool title from the gray target", async () => {
+	const fixture = await withUiFixture();
+	await fixture.runtime.update(collapseSection, (current) => ({
+		...current,
+		enabled: true,
+		tools: {},
+	}));
+	try {
+		const theme = roleTheme();
+		const label = "mcp browser_evaluate @ obscura";
+		const target = "<toolTitle+bold>mcp</toolTitle+bold> <dim>browser_evaluate @ obscura</dim>";
+		const result = {
+			content: [{ type: "text" as const, text: "done" }],
+			details: { tool: "browser_evaluate", server: "obscura" },
+		};
+		const context = { state: { collapsed: true }, invalidate() {}, expanded: false };
+		const options = { expanded: false, isPartial: false };
+		const calls = [
+			renderMcpProxyToolCall({ tool: "browser_evaluate", server: "obscura" }, theme),
+			createMcpDirectToolCallRenderer(label)({}, theme),
+		];
+		for (const call of calls)
+			expect(call.render(200).map(semanticRow).join("\n")).toContain(target);
+		const results = [
+			renderMcpToolResult(result, options, theme, context),
+			createMcpDirectToolResultRenderer(label)(result, options, theme, context),
+		];
+		for (const output of results) {
+			const row = output.render(200).map(semanticRow).join("\n");
+			expect(row).toContain(`<success>${icon("status.ok")}`);
+			expect(row).toContain(`${target} <muted>·</muted> <muted>1 line</muted>`);
+		}
+		const failed = createMcpDirectToolResultRenderer(label)(
+			{
+				...result,
+				content: [{ type: "text", text: "upstream failed" }],
+				details: { error: "failed" },
+			},
+			options,
+			theme,
+			{ ...context, isError: true },
+		)
+			.render(200)
+			.map(semanticRow)
+			.join("\n");
+		expect(failed).toContain(`<error>${icon("status.error")}`);
+		expect(failed).toContain("<dim>browser_evaluate @ obscura · upstream failed</dim>");
+	} finally {
+		await fixture.restore();
+	}
+});
 
 test("default terminal MCP results use a status-colored solid close", () => {
 	const result = { content: [{ type: "text" as const, text: "done" }], details: {} };

@@ -277,11 +277,9 @@ export function formatMcpProxyToolCallLines(
 	args: McpProxyToolCallInput,
 	maxInputChars = DEFAULT_MAX_CALL_INPUT_CHARS,
 ): string[] {
-	if (args.action === "ui-messages") return [`mcp ${args.action}`];
-
 	if (args.tool) {
 		const target = args.server ? `${args.tool} @ ${args.server}` : args.tool;
-		const lines = [`mcp call ${target}`];
+		const lines = [`mcp ${target}`];
 		if (args.args) lines.push(formatJsonish(args.args, maxInputChars));
 		return lines;
 	}
@@ -319,7 +317,7 @@ function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRende
 	if (ctx?.state?.collapsed && !ctx.expanded) return new Text("", 0, 0);
 
 	const [title = "mcp", ...rest] = lines;
-	const styledTitle = formatToolCallTitle(theme, title, ctx);
+	const styledTitle = `${formatToolCallTitle(theme, "mcp", ctx)}${title.startsWith("mcp ") ? ` ${theme.fg("dim", title.slice(4))}` : ""}`;
 
 	// The trailing lines are a pretty-printed args block (JSON); highlight it.
 	if (ctx?.state && ctx.invalidate) {
@@ -345,8 +343,7 @@ export function createMcpDirectToolCallRenderer(displayName: string) {
 	};
 }
 
-/** Result renderer for a direct MCP tool: keeps the registered tool name in the
- * collapsed row so call and result share one identity (not the generic "mcp"). */
+/** Direct tools share the readable MCP label in call and collapsed result rows. */
 export function createMcpDirectToolResultRenderer(displayName: string) {
 	return (
 		result: AgentToolResult<McpToolResultDetails>,
@@ -412,8 +409,6 @@ export function formatMcpToolResultLines(
 function collapsedRow(
 	result: AgentToolResult<McpToolResultDetails>,
 	theme: RenderTheme & { bold: (text: string) => string },
-	// Direct tools pass their registered name so the collapsed row keeps the same
-	// identity the call row showed; the proxy tool omits it and stays "mcp".
 	displayName?: string,
 	isError = false,
 ): string {
@@ -424,11 +419,14 @@ function collapsedRow(
 	const meta = lineCount > 0 ? `${lineCount} ${lineCount === 1 ? "line" : "lines"}` : "";
 	const status = isError ? "error" : "success";
 	const diagnostic = isError ? (result.content.flatMap(blockToLines)[0] ?? "failed") : "";
-	if (displayName) return renderCollapsedToolRow(theme, displayName, diagnostic, meta, status);
-	let target = tool;
-	if (tool && server) target = `${tool} @ ${server}`;
-	else if (!tool) target = server;
-	return renderCollapsedToolRow(theme, "mcp", diagnostic || target, meta, status);
+	const target = displayName?.slice(4) || (tool && server ? `${tool} @ ${server}` : tool || server);
+	return renderCollapsedToolRow(
+		theme,
+		"mcp",
+		[target, diagnostic].filter(Boolean).join(" · "),
+		meta,
+		status,
+	);
 }
 
 export function renderMcpToolResult(

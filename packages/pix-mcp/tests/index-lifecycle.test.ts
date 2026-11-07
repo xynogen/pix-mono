@@ -98,7 +98,9 @@ mock.module("../src/proxy-modes.ts", () => ({
 	executeUiMessages: mocks.executeUiMessages,
 }));
 
+const actualUtils = await import("../src/utils.ts");
 mock.module("../src/utils.ts", () => ({
+	...actualUtils,
 	getConfigPathFromArgv: mocks.getConfigPathFromArgv,
 	normalizeDirectToolInputSchema: mocks.normalizeDirectToolInputSchema,
 	truncateAtWord: mocks.truncateAtWord,

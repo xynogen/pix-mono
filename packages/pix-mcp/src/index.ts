@@ -45,6 +45,7 @@ import {
 	executeUiMessages,
 } from "./proxy-modes.ts";
 import type { McpExtensionState } from "./state.ts";
+import { findToolByName } from "./tool-metadata.ts";
 import {
 	createMcpDirectToolCallRenderer,
 	createMcpDirectToolResultRenderer,
@@ -188,8 +189,12 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 					return execute(...args);
 				},
 				renderShell: "self",
-				renderCall: createMcpDirectToolCallRenderer(name),
-				renderResult: createMcpDirectToolResultRenderer(name),
+				renderCall: createMcpDirectToolCallRenderer(
+					`mcp ${spec.originalName} @ ${spec.serverName}`,
+				),
+				renderResult: createMcpDirectToolResultRenderer(
+					`mcp ${spec.originalName} @ ${spec.serverName}`,
+				),
 			});
 			if (!registeredDirectNames.has(name) && !codemodeNames.has(name)) active.add(name);
 			registeredDirectNames.add(name);
@@ -428,7 +433,20 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 			description: buildProxyDescription(earlyConfig, earlyCache, directSpecs),
 			promptSnippet: "Discover and call configured MCP tools on demand",
 			renderShell: "self",
-			renderCall: renderMcpProxyToolCall,
+			renderCall: (...[args, theme, context]: Parameters<typeof renderMcpProxyToolCall>) => {
+				for (const [server, metadata] of state?.toolMetadata ?? []) {
+					if (args.server && args.server !== server) continue;
+					const tool = args.tool ? findToolByName(metadata, args.tool) : undefined;
+					if (tool) {
+						return renderMcpProxyToolCall(
+							{ ...args, tool: tool.originalName, server },
+							theme,
+							context,
+						);
+					}
+				}
+				return renderMcpProxyToolCall(args, theme, context);
+			},
 			parameters: Type.Object({
 				tool: Type.Optional(
 					Type.String({ description: "Optional. Tool to call. Omit unless calling a tool." }),

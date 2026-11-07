@@ -4,7 +4,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
 {
   "describe": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp describe demo_search</toolTitle+bold>                                                     ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>describe demo_search</dim>                                                     ",
     "demo_search                                                                     ",
     "<syntaxVariable>Server</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> demo                                                                    ",
     "                                                                                ",
@@ -16,11 +16,11 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "direct-collapsed": [
     "",
-    "<success>✓︎ </success> <toolTitle+bold>demo_search</toolTitle+bold> <muted>·</muted> <muted>2 lines</muted>                                                        ",
+    "<success>✓︎ </success> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim> <muted>·</muted> <muted>2 lines</muted>                                                  ",
   ],
   "direct-error": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "<syntaxVariable>Error</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> upstream failed                                                          ",
     "retry later                                                                     ",
     "                                                                                ",
@@ -30,20 +30,20 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "direct-reexpanded": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "<toolOutput>one</toolOutput>                                                                             ",
     "<toolOutput>two</toolOutput>                                                                             ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "direct-success": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "<toolOutput>done</toolOutput>                                                                            ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "empty": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                   ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>status</dim>                                                                   ",
     "<toolOutput>(empty result)</toolOutput>                                                                  ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
@@ -55,20 +55,20 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "image": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                   ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>status</dim>                                                                   ",
     "[image: image/png]                                                              ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "list": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp list demo</toolTitle+bold>                                                                ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>list demo</dim>                                                                ",
     "<syntaxVariable>demo</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> 1 tools                                                                   ",
     "- demo_search - Find records                                                    ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "long-expanded": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "{                                                                               ",
     "  <syntaxVariable>"value"</syntaxVariable>:                                                                      ",
     "<syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString>",
@@ -78,7 +78,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "long-preview": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "{                                                                               ",
     "  <syntaxVariable>"value"</syntaxVariable>: <syntaxString>"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</syntaxString>›",
     "}                                                                               ",
@@ -86,7 +86,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "partial": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp call demo_search</toolTitle+bold>                                                         ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "<warning>Running MCP tool...</warning>                                                             ",
   ],
   "proxy-collapsed": [
@@ -95,7 +95,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "proxy-error-expanded": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                   ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>status</dim>                                                                   ",
     "<syntaxVariable>Error</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> upstream failed                                                          ",
     "retry later                                                                     ",
     "                                                                                ",
@@ -105,7 +105,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "proxy-success": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp call demo_search</toolTitle+bold>                                                         ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "{                                                                               ",
     "  <syntaxVariable>"query"</syntaxVariable>: <syntaxString>"records"</syntaxString>                                                            ",
     "}                                                                               ",
@@ -114,7 +114,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "search": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp search records</toolTitle+bold>                                                           ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search records</dim>                                                           ",
     "<toolOutput>1 match for "records":</toolOutput>                                                          ",
     "<toolOutput>- demo_search - Find records</toolOutput>                                                    ",
     "                                                                                ",
@@ -123,7 +123,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "status": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                   ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>status</dim>                                                                   ",
     "<syntaxVariable>MCP</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> 1/1 servers, 1 tools                                                       ",
     "                                                                                ",
     "✓︎  demo (1 tools)                                                               ",
@@ -133,7 +133,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "toon-json": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "{                                                                               ",
     "  <syntaxVariable>"ok"</syntaxVariable>: <syntaxKeyword>true</syntaxKeyword>,                                                                   ",
     "  <syntaxVariable>"rows"</syntaxVariable>: [                                                                     ",
@@ -147,7 +147,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "truncated-preview-with-hint": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>mcp status</toolTitle+bold>                                                                   ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>status</dim>                                                                   ",
     "<toolOutput>row 1</toolOutput>                                                                           ",
     "<toolOutput>row 2</toolOutput>                                                                           ",
     "<toolOutput>row 3</toolOutput>                                                                           ",
@@ -233,7 +233,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   ],
   "unsupported-toon": [
     "",
-    "<muted>○︎ </muted> <toolTitle+bold>demo_search</toolTitle+bold>                                                                  ",
+    "<muted>○︎ </muted> <toolTitle+bold>mcp</toolTitle+bold> <dim>search @ demo</dim>                                                            ",
     "<syntaxVariable>nested</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation>                                                                         ",
     "  <syntaxVariable>child</syntaxVariable><syntaxPunctuation>:</syntaxPunctuation> <syntaxKeyword>true</syntaxKeyword>                                                                   ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",

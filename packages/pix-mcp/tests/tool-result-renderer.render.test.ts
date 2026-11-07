@@ -133,6 +133,22 @@ test("registered MCP gateway and direct tools render their own shell", async () 
 		expect(gateway.renderShell).toBe("self");
 		expect(direct.renderShell).toBe("self");
 		const theme = roleTheme();
+		const proxyCall = gateway.renderCall!({ tool: "demo_search" }, theme as never, {} as never);
+		const directCall = direct.renderCall!({}, theme as never, {} as never);
+		expect(captureRows(proxyCall, { width: 80, surface: "host-self" })).toEqual(
+			captureRows(directCall, { width: 80, surface: "host-self" }),
+		);
+		const missing = { mode: "call", error: "tool_not_found" };
+		const errorOverride = handlers.get("tool_result")?.({ details: missing });
+		expect(errorOverride).toEqual({ isError: true });
+		const failedCall = gateway.renderCall!(
+			{ tool: "missing", server: "demo" },
+			theme as never,
+			{ ...errorOverride, isPartial: false } as never,
+		);
+		expect(captureRows(failedCall, { width: 80, surface: "host-self" }).join("\n")).toMatch(
+			/<error>.*<toolTitle\+bold>mcp<\/toolTitle\+bold> <dim>missing @ demo<\/dim>/,
+		);
 		const captures: Record<string, string[]> = {};
 		async function card(
 			name: string,

@@ -29,7 +29,7 @@ describe("MCP tool call renderer", () => {
 		});
 
 		expect(display).toEqual([
-			"mcp call cf-portal_list_worker_tail_events @ cf-portal",
+			"mcp cf-portal_list_worker_tail_events @ cf-portal",
 			'{\n  "accountId": "abc",\n  "scriptName": "worker"\n}',
 		]);
 	});
@@ -45,10 +45,22 @@ describe("MCP tool call renderer", () => {
 		expect(formatMcpProxyToolCallLines({})).toEqual(["mcp status"]);
 	});
 
-	it("renders ui-messages with execution precedence", () => {
-		expect(formatMcpProxyToolCallLines({ action: "ui-messages", server: "cf-portal" })).toEqual([
-			"mcp ui-messages",
+	it("labels the executed mode instead of a stray ui-messages action", () => {
+		expect(
+			formatMcpProxyToolCallLines({
+				tool: "browser_navigate",
+				server: "obscura",
+				action: "ui-messages",
+				args: '{"url":"https://example.com"}',
+			}),
+		).toEqual(["mcp browser_navigate @ obscura", '{\n  "url": "https://example.com"\n}']);
+		expect(formatMcpProxyToolCallLines({ action: "ui-messages", search: "browser" })).toEqual([
+			"mcp search browser",
 		]);
+		expect(formatMcpProxyToolCallLines({ action: "ui-messages", server: "cf-portal" })).toEqual([
+			"mcp list cf-portal",
+		]);
+		expect(formatMcpProxyToolCallLines({ action: "ui-messages" })).toEqual(["mcp ui-messages"]);
 	});
 
 	it("blanks the call row once collapsed so only the result summary shows", () => {
@@ -60,7 +72,7 @@ describe("MCP tool call renderer", () => {
 		})
 			.render(80)
 			.join("\n");
-		expect(full).toContain("mcp call q @ s");
+		expect(full).toContain("mcp q @ s");
 		expect(full).toContain("use_case");
 
 		// Collapsed: call row is blank (the result renderer owns the one-line summary).
@@ -79,7 +91,7 @@ describe("MCP tool call renderer", () => {
 		})
 			.render(80)
 			.join("\n");
-		expect(reExpanded).toContain("mcp call q @ s");
+		expect(reExpanded).toContain("mcp q @ s");
 	});
 
 	it("shows direct tool calls with JSON arguments", () => {
@@ -99,7 +111,9 @@ describe("MCP tool call renderer", () => {
 	});
 
 	it("keeps direct tool identity in the collapsed result", () => {
-		const renderResult = createMcpDirectToolResultRenderer("cf-portal_list_worker_tail_events");
+		const renderResult = createMcpDirectToolResultRenderer(
+			"mcp list_worker_tail_events @ cf-portal",
+		);
 		const rendered = renderResult(
 			result([{ type: "text", text: "one\ntwo" }], {
 				server: "cf-portal",
@@ -114,7 +128,7 @@ describe("MCP tool call renderer", () => {
 			.join("\n")
 			.trimEnd();
 
-		expect(rendered).toBe("✓  cf-portal_list_worker_tail_events · 2 lines");
+		expect(rendered).toBe("✓  mcp list_worker_tail_events @ cf-portal · 2 lines");
 	});
 
 	it("line-caps a tall pretty-printed args block with a +N note", () => {
