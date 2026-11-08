@@ -185,11 +185,23 @@ describe("buildPrompt", () => {
 		}
 	});
 
+	it("preserves user control at every active level", () => {
+		for (const level of LEVELS.filter((level) => level !== "off")) {
+			const prompt = buildPrompt(level);
+			expect(prompt).toContain("ask one short question before acting");
+			expect(prompt).toContain("do not choose the scope for the user");
+			expect(prompt).toContain("match the user's requested format and level of detail");
+			expect(prompt).not.toMatch(
+				/Never stop for an answer|at most three short lines|name the lazier alternative|challenge the rest/,
+			);
+		}
+	});
+
 	it("each level has distinct intensity instructions", () => {
 		const lite = buildPrompt("lite");
 		const ultra = buildPrompt("ultra");
-		expect(lite).toContain("name the lazier alternative");
-		expect(ultra).toContain("YAGNI extremist");
-		expect(lite).not.toContain("YAGNI extremist");
+		expect(lite).toContain("Mention a simpler alternative only when");
+		expect(ultra).toContain("Apply YAGNI strictly to unrequested extras");
+		expect(lite).not.toContain("Apply YAGNI strictly");
 	});
 });

@@ -62,8 +62,8 @@ Rules:
 no config for a value that never changes.
 - No boilerplate. No scaffolding for later. Prefer deletion to addition. Prefer boring code to clever code. \
 Use the fewest files.
-- For a complex request, ship the lazy version and question it in the same reply. \
-Never stop for an answer you can default.
+- Implement the requested scope with the simplest approach that meets its requirements. \
+If intent is unclear, ask one short question before acting; do not choose the scope for the user.
 - For two stdlib options of the same size, take the one that is correct on the edge cases. \
 Lazy means less code, not the weaker algorithm.
 - Add a \`ponytail:\` comment only for a shortcut with a real ceiling: one line, the ceiling and the upgrade path. \
@@ -71,21 +71,16 @@ Obvious code needs no comment.`;
 
 const INTENSITY: Record<Exclude<Level, "off">, string> = {
 	lite: `\
-Build what the user asks, but name the lazier alternative in one line. The user picks.
-Example: "Done. I added a cache. The \`functools.lru_cache\` decorator covers this in one line \
-if you do not want to own a cache class."`,
+Build what the user asks using the ladder where it helps. \
+Mention a simpler alternative only when it materially helps the current task.`,
 
 	full: `\
-Enforce the ladder. Prefer the standard library and native features first. \
-Write the shortest diff and the shortest explanation.
-Example: "I put \`@lru_cache(maxsize=1000)\` on the fetch function. I skipped a custom cache class. \
-Add one when lru_cache falls short in a measurement."`,
+Enforce the ladder within the requested scope. Prefer the standard library and native features first. \
+Keep the diff small without sacrificing correctness, readability, or requested behavior.`,
 
 	ultra: `\
-YAGNI extremist. Prefer deletion to addition. Ship the one-liner and challenge the rest of the \
-requirement in the same reply.
-Example: "No cache until a profiler asks for one. When it does, use \`@lru_cache\`. \
-A hand-rolled TTL cache class is a bug farm with a hit rate."`,
+Apply YAGNI strictly to unrequested extras. Prefer deletion to addition where it preserves \
+the requested behavior. Do not drop or challenge explicit requirements merely to reduce code.`,
 };
 
 const SAFETY = `\
@@ -94,7 +89,7 @@ error handling that prevents data loss, security, accessibility, or anything the
 The hardware is never the spec ideal. Leave the calibration knob.
 Lazy code without its check is unfinished. Non-trivial logic leaves ONE runnable check behind \
 (an assert-based self-check or one small test file, no frameworks). A trivial one-liner needs no test.
-Output: write the code first, then at most three short lines — what you skipped, and when to add it.
+Output: match the user's requested format and level of detail. No mandatory code-first order or line limit.
 Boundaries: ponytail governs what you build, not how you talk. "stop ponytail" or "normal mode" reverts.`;
 
 /**
@@ -125,7 +120,7 @@ export function buildHelp(current: Level): string {
 		`Ponytail mode: ${statusLine}`,
 		"",
 		"Usage: /optimizer ponytail <level>",
-		"  1  lite   - name the lazier alternative, you pick",
+		"  1  lite   - prefer simple solutions",
 		"  2  full   - the ladder enforced (default)",
 		"  3  ultra  - YAGNI extremist",
 		"  0  off    - disable (aliases: off, stop, quit)",

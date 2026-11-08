@@ -113,7 +113,7 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.7.26",
+      "version": "0.7.27",
       "dependencies": {
         "@xynogen/pix-ask": "^0.3.8",
         "@xynogen/pix-bash": "^0.2.15",
@@ -311,7 +311,7 @@
     },
     "packages/pix-mcp": {
       "name": "@xynogen/pix-mcp",
-      "version": "0.8.13",
+      "version": "0.8.14",
       "bin": {
         "pix-mcp": "cli.ts",
       },
@@ -378,7 +378,7 @@
     },
     "packages/pix-optimizer": {
       "name": "@xynogen/pix-optimizer",
-      "version": "1.3.9",
+      "version": "1.3.10",
       "dependencies": {
         "@xynogen/pix-pretty": "^1.37.0",
         "@xynogen/pix-runtime": "^0.17.0",
@@ -430,7 +430,7 @@
     },
     "packages/pix-prompts": {
       "name": "@xynogen/pix-prompts",
-      "version": "0.5.13",
+      "version": "0.5.14",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.17.0",
       },

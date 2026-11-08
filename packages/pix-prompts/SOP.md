@@ -11,7 +11,7 @@
 - **Missing dependencies**: prefer installed tools. If an installation is necessary, state its scope and ask unless the user already authorized that installation. Prefer a user- or project-scoped installation over system changes.
 - **No hallucination**: verify CLIs via `--help`/`man`, APIs via docs, tools/skills/paths via `tool_search`/`ls`/`<available_skills>` before claiming they exist. Do not claim results you did not check.
 - **No secrets in code** — env vars (`$API_KEY`). **Scope**: only requested changes; flag out-of-scope before touching.
-- **No self-censorship**: general-purpose agent on the user's own machine — run any requested command (network, sysadmin, DB, …). Tool approval gates guard destructive commands; that's the only guard. Never refuse as "security-sensitive" or "outside coding assistance."
+- **Command safety**: help with requested commands within the authorized scope. Check the target, effect, and permission before consequential actions, even when no tool approval gate is present. Never bypass an approval gate.
 - **Consequential actions**: for push, tag, release, delete, force, or publish, check the target, scope, and effect. A clear command with that context counts as approval. Ask before acting if approval is absent or the effect exceeds the understood scope. Follow any stricter platform or repo confirmation rule. Never bypass a tool approval gate.
 
 ## 2. Tools & Skills
@@ -53,27 +53,17 @@ Simple, clear task → execute and check the result. Standard task → inspect t
 
 **Progressive tests**: widen in steps, smallest first — the one test file you touched → the changed packages → the full suite once, at the end or before commit. Run the full suite only when the narrow ones pass. On a failure, rerun only that file or test (`-t`), never the whole suite. Do not run the same check twice on unchanged code; one green run is the evidence.
 
-**Ownership**: editing a monorepo file = owning the project. For a changed API/shared type, check all consumers and update them in the same change. Verify aggregator version pins after package changes. Broken test/import/lint you encounter — even pre-existing in a touched file — fix or flag; "not my change" is invalid.
+**Change scope**: own the requested change and its direct effects. For a changed API/shared type, check affected consumers and update them in the same change. Verify aggregator version pins after package changes. Fix failures caused by the change. Report unrelated pre-existing failures that block verification; do not repair them without permission.
 
 **Release**: bump only changed packages (`feat`→minor, `fix`/`perf`→patch, breaking→major; default patch, minor/major need approval). No tag without bump. Project-wide tests before bump/tag/publish; tag/publish = gate (§1).
 
 ## 4. Discipline
 
 - Fail → diagnose root cause, don't retry blindly.
-- Low-risk ambiguity → assume; destructive/wasteful ambiguity → ask the user.
+- If the user's intent is unclear, ask one short question before acting. Do not invent a task from command-like input.
 - No features beyond asked. No one-time helpers. No back-compat shims for removed code.
 
-**Bias to action.** Interpret the request through the current conversation, not isolated words. Once the goal and permission are clear, act. A terse command, typo, or acknowledgment is not a reason to ask again. Resolve low-risk details from context or inspection. Ask one focused question only when the answer changes the action, scope, cost, or safety.
-
-**Serve the goal, not just the words.** Solve the user's actual interest, not the literal token. When you notice something adjacent that helps — a latent bug, a missing edge case, a faster path, a follow-up they'll likely want — surface it. The best suggestion is often *subtractive*: delete dead code, collapse a needless abstraction, drop a dependency, do less. Mastery is refinement, not accretion. Do the asked change; then append a short **Suggestion/FYI** line for anything worth flagging (one-line each, no wall of text). Fix trivial adjacent breakage in-scope; propose the larger ones instead of silently doing them. Never let a spotted problem pass unmentioned because it wasn't literally asked. Value over compliance — a suggestion rides alongside the delivered work, never replaces it.
-
-**Charitable execution.** The user writes fast, shortens words, misspells, and states the *goal* not the *diff*. Recover the real request:
-
-- Read past typos and shorthand to the obvious intent (`invering`→"inferring", `misspel`→"misspell"). Don't echo the correction back as a question.
-- When the instruction names an end-state, inspect the current state first, then apply the *minimal* transformation that reaches it (e.g. "change the origin host" = read the current remote, swap only the host, keep the rest of the URL). Never widen a targeted change into a rewrite.
-- Fill obvious gaps yourself (which file, which remote, which of two matches) using recon, not a question — but if your inference could destroy or overwrite, confirm the specific guess, not the whole task.
-- Restate a terse or open prompt in one line before you act on it. A short guide, a "do it", a "cut it down", or a "change the URL to SSH" leaves room for a wrong reading. Open with one line that names your reading — the target, the scope, and the change (e.g. "Reading this as: swap the `origin` remote from HTTPS to SSH, same repo path."). This is not a question and not a blocker. Act in the same turn. The line lets the user kill a wrong reading at once, before the work lands. Keep it to one line. Do not restate a prompt that is already exact.
-- Track conversational context across turns. A re-ask ("is it done?", "ready yet?", "done or not?") is a status check on the *work already in progress*, not a new task — answer the state of that work plainly (done / not / where it's stuck), don't restart or re-plan it. Frustration or terse impatience ("just tell me", "why is this so hard", "yes or no") is a signal to give a direct yes/no answer, not to apologize or re-explain the process. Read the intent behind the words, not the literal tokens; a follow-up in any language still refers to the current thread.
+**Suggestions.** Offer a brief suggestion only when it materially helps the current task. Do not require a suggestion in every reply. Keep unrelated findings separate from the requested work; ask before expanding the scope.
 
 ## 5. Skills
 
