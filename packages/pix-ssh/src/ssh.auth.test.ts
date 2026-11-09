@@ -17,6 +17,10 @@ mock.module("@xynogen/pix-runtime/binaries", () => ({
 	requireTool: () => "/fixture/ssh",
 }));
 let keyWorks = false;
+let hostKeyError = "";
+const resets = mock(async () => {
+	hostKeyError = "";
+});
 const probes: string[] = [];
 const closed = mock(async () => {});
 const runs: RunOptions[] = [];
@@ -26,11 +30,13 @@ mock.module("./lib.ts", () => ({
 	resolveSshHost: async (spec: HostSpec) => spec,
 	probeKeyAuth: async (_spec: HostSpec, controlPath: string) => {
 		probes.push(controlPath);
+		if (hostKeyError) throw new actual.HostKeyError(hostKeyError);
 		return keyWorks ? "ok" : "auth";
 	},
 	probePasswordAuth: async () => true,
 	probeSudoNoPassword: async () => false,
 	closeMaster: closed,
+	resetKnownHost: resets,
 	runTransfer: async () => ({ stdout: "copied", stderr: "", code: 0 }),
 	runSsh: async (_spec: HostSpec, _command: string, opts: RunOptions) => {
 		runs.push(opts);
@@ -176,4 +182,67 @@ test("unattended transfers stay unblocked; a missing login password still prompt
 	expect(result.details).toMatchObject({ outcome: "success", auth: "password" });
 	expect(states).toEqual(["blocked", "idle"]);
 	expect(overlay).toHaveBeenCalledTimes(1);
+});
+
+test("host key mismatch: red menu defaults to Cancel even in YOLO; reset reconnects only after explicit approval", async () => {
+	const { pi, tool } = capturePi();
+	const events = createEventBus();
+	register({ ...pi, events } as unknown as ExtensionAPI);
+	setUnattendedMode(events, "yolo");
+	const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+	const fingerprint = "SHA256:Im8VhrtZRdV5Pbljb3+EtjaQsAPIBbktRrRk5wYKmVk";
+	hostKeyError = `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\nThe fingerprint for the ED25519 key sent by the remote host is\n${fingerprint}.\n  remove with:\n  ssh-keygen -f '/fixture/known_hosts' -R '10.10.36.202'\nHost key verification failed.`;
+	let acceptReset = false;
+	const screens: string[] = [];
+	const overlay: OverlayUI["custom"] = async (factory) => {
+		let finish!: (value: unknown) => void;
+		const done = new Promise<unknown>((resolve) => {
+			finish = resolve;
+		});
+		const component = factory(
+			{ requestRender() {}, terminal: { rows: 80 } },
+			roleTheme(),
+			undefined,
+			finish,
+		);
+		const rows = component.render(140).join("\n");
+		screens.push(rows);
+		expect(rows).toContain(
+			roleTheme().fg("error", roleTheme().bold("⚠ SSH HOST KEY CHANGED — verify before resetting")),
+		);
+		expect(rows).toContain(fingerprint);
+		expect(rows).not.toContain("SSH login password:");
+		if (acceptReset) component.handleInput("\x1b[B");
+		component.handleInput("\r");
+		return (await done) as never;
+	};
+	const ctx = { hasUI: true, ui: { custom: overlay, notify() {} } };
+	const call = () =>
+		execute(
+			"host-key",
+			{ action: "command", host: "xynogen@10.10.36.202", command: "id", reason: "check" },
+			undefined,
+			undefined,
+			ctx,
+		);
+	const before = runs.length;
+	try {
+		const cancelled = await call();
+		expect(cancelled.details).toMatchObject({ outcome: "error", errorKind: "host-key" });
+		expect((cancelled.content[0] as { text: string }).text).toContain(hostKeyError);
+		expect(resets).not.toHaveBeenCalled();
+		expect(runs).toHaveLength(before);
+		acceptReset = true;
+		keyWorks = true;
+		expect((await call()).details).toMatchObject({
+			outcome: "success",
+			auth: "key",
+			connection: "new",
+		});
+		expect(resets).toHaveBeenCalledTimes(1);
+		expect(runs).toHaveLength(before + 1);
+		expect(screens).toHaveLength(2);
+	} finally {
+		hostKeyError = "";
+	}
 });

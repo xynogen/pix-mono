@@ -14,13 +14,14 @@
  */
 
 import { createHash } from "node:crypto";
-import { globSync, readFileSync } from "node:fs";
+import { globSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve as resolvePath } from "node:path";
 import {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
 	truncateHead,
 } from "@earendil-works/pi-coding-agent";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import { expandHome, homeDir, tempDir } from "@xynogen/pix-runtime/paths";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
@@ -402,6 +403,104 @@ export function truncate(
 
 // ── Runners ──────────────────────────────────────────────────────────────────
 
+/** A host identity failure must never be treated as a bad login password. */
+export class HostKeyError extends Error {
+	constructor(readonly stderr: string) {
+		super(`SSH host key verification failed — this is not a password error.\n${stderr}`);
+		this.name = "HostKeyError";
+	}
+}
+
+export function detectHostKeyFailure(stderr: string): boolean {
+	return /REMOTE HOST IDENTIFICATION HAS CHANGED|host key verification failed|host key for .* has changed|REVOKED HOST KEY DETECTED/i.test(
+		stderr,
+	);
+}
+
+/** OpenSSH supplies this exact cleanup command; never evaluate it as shell text. */
+export function hostKeyReset(stderr: string) {
+	if (!/REMOTE HOST IDENTIFICATION HAS CHANGED/i.test(stderr) || /REVOKED HOST KEY/i.test(stderr))
+		return undefined;
+	const command = stderr.match(/^\s*ssh-keygen -f (["'])([^\r\n]+?)\1 -R (["'])([^\r\n]+?)\3\s*$/m);
+	const fingerprint = stderr.match(/SHA256:[A-Za-z0-9+/]{43}(?![A-Za-z0-9+/=])/)?.[0];
+	if (!command || !fingerprint || !isAbsolute(command[2]!) || command[4]!.startsWith("-")) {
+		return undefined;
+	}
+	return { file: command[2]!, host: command[4]!, fingerprint };
+}
+
+/** Capture without login credentials, pin the approved key, then replace only that host. */
+export async function resetKnownHost(
+	spec: HostSpec,
+	reset: NonNullable<ReturnType<typeof hostKeyReset>>,
+	signal?: AbortSignal,
+): Promise<void> {
+	const dir = mkdtempSync(join(tempDir(), "pix-ssh-host-key-"));
+	try {
+		const captured = join(dir, "captured");
+		const options = [
+			`UserKnownHostsFile=${captured}`,
+			"GlobalKnownHostsFile=none",
+			"KnownHostsCommand=none",
+			"StrictHostKeyChecking=accept-new",
+			"VerifyHostKeyDNS=no",
+			"UpdateHostKeys=no",
+			"BatchMode=yes",
+			"ControlMaster=no",
+			"ControlPath=none",
+			`ConnectTimeout=${CONNECT_TIMEOUT_SECONDS}`,
+			"FingerprintHash=sha256",
+			"PreferredAuthentications=none",
+			"PubkeyAuthentication=no",
+			"PasswordAuthentication=no",
+			"KbdInteractiveAuthentication=no",
+			"GSSAPIAuthentication=no",
+			"HostbasedAuthentication=no",
+		];
+		if (spec.port !== undefined) options.push(`Port=${spec.port}`);
+		// An auth rejection is expected: only the unauthenticated host key is needed.
+		await runTool("ssh", [...options.flatMap((o) => ["-o", o]), hostTarget(spec), "true"], {
+			signal,
+		});
+		const keys = await runTool("ssh-keygen", ["-l", "-E", "sha256", "-f", captured], { signal });
+		const fingerprints = keys.stdout
+			.trim()
+			.split("\n")
+			.map((line) => line.split(/\s+/)[1]);
+		if (keys.code !== 0 || fingerprints.length !== 1 || fingerprints[0] !== reset.fingerprint) {
+			throw new Error(
+				"Host key changed again or could not be verified. known_hosts was not changed.",
+			);
+		}
+		const found = await runTool("ssh-keygen", ["-F", reset.host, "-f", captured], { signal });
+		if (found.code !== 0)
+			throw new Error(
+				"Captured host does not match the reset target. known_hosts was not changed.",
+			);
+		const original = readFileSync(reset.file, "utf8");
+		const mode = statSync(reset.file).mode & 0o777;
+		const snapshot = join(dir, "known_hosts");
+		writeFileAtomicSync(snapshot, original);
+		const removed = await runTool("ssh-keygen", ["-R", reset.host, "-f", snapshot], { signal });
+		if (removed.code !== 0) throw new Error(`Could not reset host key: ${removed.stderr}`);
+		const cleaned = readFileSync(snapshot, "utf8");
+		if (cleaned === original)
+			throw new Error("No matching old host key found. known_hosts was not changed.");
+		signal?.throwIfAborted();
+		if (readFileSync(reset.file, "utf8") !== original) {
+			throw new Error("known_hosts changed during confirmation. Retry; no keys were replaced.");
+		}
+		writeFileAtomicSync(`${reset.file}.old`, original, mode);
+		writeFileAtomicSync(
+			reset.file,
+			`${cleaned.trimEnd()}\n${readFileSync(captured, "utf8")}`,
+			mode,
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+}
+
 /** Outcome of the key-auth probe. `ok` = connected without a password;
  * `auth` = reachable but needs a password; `unreachable` = host down / timeout
  * / DNS — a password won't help, so don't prompt. */
@@ -424,9 +523,12 @@ export async function probeKeyAuth(
 	const args = [...baseSshArgs(spec, controlPath), "-o", "BatchMode=yes", hostTarget(spec), "true"];
 	try {
 		const result = await runTool("ssh", args, { signal });
+		if (result.code !== 0 && detectHostKeyFailure(result.stderr))
+			throw new HostKeyError(result.stderr);
 		return result.code === 0 ? "ok" : isUnreachable(result.stderr) ? "unreachable" : "auth";
-	} catch {
+	} catch (error) {
 		signal?.throwIfAborted();
+		if (error instanceof HostKeyError) throw error;
 		return "unreachable";
 	}
 }
@@ -488,7 +590,8 @@ export async function probePasswordAuth(
 			signal,
 			env: { ...process.env, SSHPASS: password },
 		});
-		return result.code === 0 || isUnreachable(result.stderr);
+		// Defer a key change during password entry to the real run, not a wrong-password retry.
+		return result.code === 0 || detectHostKeyFailure(result.stderr) || isUnreachable(result.stderr);
 	} catch {
 		signal?.throwIfAborted();
 		return true;

@@ -71,11 +71,14 @@ import {
 	closeMaster,
 	commandEscalatesPrivilege,
 	controlPathFor,
+	detectHostKeyFailure,
 	detectSshFailure,
 	detectSudoFailure,
 	type HostAlias,
 	type HostInfo,
+	HostKeyError,
 	type HostSpec,
+	hostKeyReset,
 	hostTarget,
 	MAX_OUTPUT_BYTES,
 	MAX_OUTPUT_LINES,
@@ -84,6 +87,7 @@ import {
 	probePasswordAuth,
 	probeSudoNoPassword,
 	readSshConfigAliases,
+	resetKnownHost,
 	resolveHostInfo,
 	resolveSshHost,
 	runSsh,
@@ -190,7 +194,14 @@ type SshOutcome =
 	| "error";
 
 type SshCancellationKind = "denied" | "timeout" | "missing-password" | "aborted";
-type SshErrorKind = "no-ui" | "auth-ssh" | "auth-sudo" | "execution" | "no-result" | "exit-code";
+type SshErrorKind =
+	| "no-ui"
+	| "auth-ssh"
+	| "auth-sudo"
+	| "host-key"
+	| "execution"
+	| "no-result"
+	| "exit-code";
 
 export interface SshResultDetails {
 	_type: "sshResult";
@@ -344,6 +355,7 @@ function terminalMeta(details: SshResultDetails): string {
 	if (details.outcome === "cancelled") return "cancelled";
 	if (details.errorKind === "no-ui") return "interactive session required";
 	if (details.errorKind === "auth-ssh") return "ssh auth failed";
+	if (details.errorKind === "host-key") return "host key verification failed";
 	if (details.errorKind === "auth-sudo") return "sudo auth failed";
 	if (details.errorKind === "execution" || details.errorKind === "no-result") return "failed";
 
@@ -664,15 +676,106 @@ export default function (pi: ExtensionAPI): void {
 
 			updatePresentation(onUpdate, command, host, sudo, reason, "awaiting-approval");
 
-			const prep = await prepareConnection(spec, controlPath, key, creds, params.fresh, sig);
-			creds = prep.creds;
+			const handleHostKeyError = async (error: HostKeyError) => {
+				const reset = hostKeyReset(error.stderr);
+				const diagnostic = `${error.message}\n\nVerify the new fingerprint with the host owner or physical console. A reinstall can change it, but this can also indicate an attack. Do not enter a password until verified.`;
+				const decision = await withAgentBlock(
+					pi.events,
+					"ssh_run",
+					"SSH host key verification required",
+					() =>
+						showOverlay(ctx.ui, {
+							signal: sig,
+							mode: "confirm",
+							icon: icon("warn"),
+							accent: "error",
+							title: "SSH HOST KEY CHANGED — verify before resetting",
+							body: [
+								`Host: ${host}`,
+								...diagnostic.split("\n"),
+								...(reset
+									? [
+											`Reset target: ${reset.host}`,
+											`File: ${reset.file} (backup: ${reset.file}.old)`,
+											"Only reset if you independently verified the fingerprint above.",
+										]
+									: ["Automatic reset is unavailable. Resolve the host key error manually."]),
+							],
+							timeoutMs: PROMPT_TIMEOUT_MS,
+							approveValue: "reset",
+							choices: [
+								{ value: "cancel", label: "Cancel", description: "Keep known_hosts unchanged" },
+								...(reset
+									? [
+											{
+												value: "reset",
+												label: "Reset known host and reconnect",
+												description: "I verified the new fingerprint through a trusted source",
+											},
+										]
+									: []),
+							],
+						}),
+				);
+				sig?.throwIfAborted();
+				let message = `${diagnostic}\n\nReset cancelled. known_hosts was not changed by pix-ssh.`;
+				if (decision.action === "approved" && decision.choice === "reset" && reset) {
+					try {
+						await resetKnownHost(spec, reset, sig);
+						await closeMaster(spec, controlPath, sig);
+						credCache.delete(key);
+						keyRecheckAt.delete(key);
+						sessionHosts.delete(key);
+						creds = {};
+						ctx.ui.notify(`ssh_run: verified host key reset for ${host}`, "info");
+						return undefined;
+					} catch (resetError) {
+						sig?.throwIfAborted();
+						message = `${diagnostic}\n\nHost key reset failed: ${getErrorMessage(resetError)}`;
+					}
+				}
+				return {
+					content: [{ type: "text" as const, text: message }],
+					details: makeDetails(command, host, sudo, reason, {
+						outcome: "error",
+						errorKind: "host-key",
+					}),
+					isError: true,
+				};
+			};
+
+			let prep: Awaited<ReturnType<typeof prepareConnection>>;
+			let probe: Awaited<ReturnType<typeof probeKeyAuth>>;
+			try {
+				prep = await prepareConnection(spec, controlPath, key, creds, params.fresh, sig);
+				creds = prep.creds;
+				// Cached passwords still need an identity check when their master has expired.
+				probe = await probeKeyAuth(spec, controlPath, sig);
+			} catch (error) {
+				if (!(error instanceof HostKeyError)) throw error;
+				const failure = await handleHostKeyError(error);
+				if (failure) return failure;
+				prep = { creds, connection: "new" as const };
+				try {
+					probe = await probeKeyAuth(spec, controlPath, sig);
+				} catch (retryError) {
+					if (!(retryError instanceof HostKeyError)) throw retryError;
+					return {
+						content: [{ type: "text" as const, text: retryError.message }],
+						details: makeDetails(command, host, sudo, reason, {
+							outcome: "error",
+							errorKind: "host-key",
+						}),
+						isError: true,
+					};
+				}
+			}
 			const connection = prep.connection;
 
 			// Probe key/agent/existing-master auth (no password needed on success).
 			// Only prompt for a login password when the host is reachable but rejects
 			// key auth ("auth"). If it's unreachable (timeout/DNS/refused) a password
 			// can't help — skip the prompt and let runSsh surface the real error.
-			const probe = creds.loginPassword ? "ok" : await probeKeyAuth(spec, controlPath, sig);
 			const keyOk = probe === "ok";
 			// Which passwords must the overlay collect this call?
 			const needLogin = probe === "auth" && !creds.loginPassword;
@@ -908,6 +1011,21 @@ export default function (pi: ExtensionAPI): void {
 									...(sudo ? { sudoPassword: sudoPassword ?? "" } : {}),
 									...(sig ? { signal: sig } : {}),
 								});
+
+					if (result.code !== 0 && detectHostKeyFailure(result.stderr)) {
+						const failure = await handleHostKeyError(new HostKeyError(result.stderr));
+						return (
+							failure ?? {
+								content: [
+									{
+										type: "text",
+										text: "Host key reset. Retry the SSH operation; the command or transfer was not rerun.",
+									},
+								],
+								details: makeDetails(command, host, sudo, reason, { outcome: "cancelled" }),
+							}
+						);
+					}
 
 					// SSH auth failure → drop the bad login password from the cache so the
 					// next call re-prompts.
