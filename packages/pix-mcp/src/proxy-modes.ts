@@ -2,7 +2,8 @@ import { createRequire } from "node:module";
 import type { AgentToolResult, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { getErrorMessage, padIcon } from "@xynogen/pix-pretty/utils";
-import { abortable, throwIfAborted } from "./abort.ts";
+import { abortable } from "@xynogen/pix-runtime/abort";
+import { throwIfAborted } from "./abort.ts";
 import {
 	getFailureAgeSeconds,
 	lazyConnect,

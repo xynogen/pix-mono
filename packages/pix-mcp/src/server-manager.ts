@@ -6,7 +6,8 @@ import type {
 	UrlElicitationRequiredError,
 } from "@modelcontextprotocol/client";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { abortable, throwIfAborted } from "./abort.ts";
+import { abortable } from "@xynogen/pix-runtime/abort";
+import { throwIfAborted } from "./abort.ts";
 import { resolveConfigRecord, resolveOAuthSecret } from "./config-value.ts";
 import {
 	handleUrlElicitation,

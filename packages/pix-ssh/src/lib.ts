@@ -13,7 +13,6 @@
  *     entered once per session per host.
  */
 
-import type { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { globSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve as resolvePath } from "node:path";
@@ -22,7 +21,7 @@ import {
 	DEFAULT_MAX_LINES,
 	truncateHead,
 } from "@earendil-works/pi-coding-agent";
-import { spawnTool } from "@xynogen/pix-runtime/exec";
+import { runTool } from "@xynogen/pix-runtime/exec";
 import { expandHome, homeDir, tempDir } from "@xynogen/pix-runtime/paths";
 
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.
@@ -133,21 +132,18 @@ export function parseSshConfig(output: string): HostSpec | undefined {
 }
 
 /** Resolve aliases through OpenSSH config, including Include and Match rules. */
-export function resolveSshHost(spec: HostSpec, signal?: AbortSignal): Promise<HostSpec> {
+export async function resolveSshHost(spec: HostSpec, signal?: AbortSignal): Promise<HostSpec> {
 	const args = ["-G"];
 	if (spec.port !== undefined) args.push("-p", String(spec.port));
 	args.push(hostTarget(spec));
 
-	return new Promise((resolve) => {
-		let stdout = "";
-		const proc = spawnTool("ssh", args, { stdio: ["ignore", "pipe", "ignore"] });
-		proc.stdout.on("data", (chunk: Buffer) => {
-			stdout += chunk.toString();
-		});
-		proc.on("error", () => resolve(spec));
-		proc.on("close", (code) => resolve(code === 0 ? (parseSshConfig(stdout) ?? spec) : spec));
-		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
-	});
+	try {
+		const result = await runTool("ssh", args, { signal });
+		return result.code === 0 ? (parseSshConfig(result.stdout) ?? spec) : spec;
+	} catch {
+		signal?.throwIfAborted();
+		return spec;
+	}
 }
 
 // ── Host inventory (info action) ─────────────────────────────────────────────
@@ -268,20 +264,17 @@ export function parseHostInfo(output: string): HostInfo {
 }
 
 /** Run `ssh -G <host>` and return its effective config. Never connects. */
-export function resolveHostInfo(spec: HostSpec, signal?: AbortSignal): Promise<HostInfo> {
+export async function resolveHostInfo(spec: HostSpec, signal?: AbortSignal): Promise<HostInfo> {
 	const args = ["-G"];
 	if (spec.port !== undefined) args.push("-p", String(spec.port));
 	args.push(hostTarget(spec));
-	return new Promise((resolve) => {
-		let stdout = "";
-		const proc = spawnTool("ssh", args, { stdio: ["ignore", "pipe", "ignore"] });
-		proc.stdout.on("data", (c: Buffer) => {
-			stdout += c.toString();
-		});
-		proc.on("error", () => resolve({}));
-		proc.on("close", (code) => resolve(code === 0 ? parseHostInfo(stdout) : {}));
-		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
-	});
+	try {
+		const result = await runTool("ssh", args, { signal });
+		return result.code === 0 ? parseHostInfo(result.stdout) : {};
+	} catch {
+		signal?.throwIfAborted();
+		return {};
+	}
 }
 
 /** Canonical `[user@]host` target string for ssh argv. */
@@ -423,26 +416,19 @@ export type ProbeResult = "ok" | "auth" | "unreachable";
  * Pass `controlPath = "none"` to bypass a live master: a password-authed master
  * answers `ok` for any probe, which hides whether the key itself works.
  */
-export function probeKeyAuth(
+export async function probeKeyAuth(
 	spec: HostSpec,
 	controlPath: string,
 	signal?: AbortSignal,
 ): Promise<ProbeResult> {
 	const args = [...baseSshArgs(spec, controlPath), "-o", "BatchMode=yes", hostTarget(spec), "true"];
-	return new Promise((resolve) => {
-		let stderr = "";
-		const proc = spawnTool("ssh", args, { stdio: ["ignore", "ignore", "pipe"] });
-		proc.stderr.on("data", (c: Buffer) => {
-			stderr += c.toString();
-		});
-		proc.on("error", () => resolve("unreachable"));
-		proc.on("close", (code) => {
-			if (code === 0) return resolve("ok");
-			if (isUnreachable(stderr)) return resolve("unreachable");
-			resolve("auth");
-		});
-		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
-	});
+	try {
+		const result = await runTool("ssh", args, { signal });
+		return result.code === 0 ? "ok" : isUnreachable(result.stderr) ? "unreachable" : "auth";
+	} catch {
+		signal?.throwIfAborted();
+		return "unreachable";
+	}
 }
 
 /** argv that asks the live master on `controlPath` to stop accepting new
@@ -453,17 +439,16 @@ export function closeMasterArgs(spec: HostSpec, controlPath: string): string[] {
 
 /** Stop the multiplexed master so the next call opens (and authenticates) a
  * fresh connection. No master = no-op; errors are ignored for the same reason. */
-export function closeMaster(
+export async function closeMaster(
 	spec: HostSpec,
 	controlPath: string,
 	signal?: AbortSignal,
 ): Promise<void> {
-	return new Promise((resolve) => {
-		const proc = spawnTool("ssh", closeMasterArgs(spec, controlPath), { stdio: "ignore" });
-		proc.on("error", () => resolve());
-		proc.on("close", () => resolve());
-		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
-	});
+	try {
+		await runTool("ssh", closeMasterArgs(spec, controlPath), { signal });
+	} catch {
+		signal?.throwIfAborted();
+	}
 }
 
 /**
@@ -477,7 +462,7 @@ export function closeMaster(
  * toward a per-connection lockout; a host with fail2ban-style IP banning is the
  * ceiling — then drop back to a single prompt.
  */
-export function probePasswordAuth(
+export async function probePasswordAuth(
 	spec: HostSpec,
 	controlPath: string,
 	password: string,
@@ -498,23 +483,16 @@ export function probePasswordAuth(
 		hostTarget(spec),
 		"true",
 	];
-	return new Promise((resolve) => {
-		let stderr = "";
-		const proc = spawnTool("sshpass", args, {
-			stdio: ["ignore", "ignore", "pipe"],
+	try {
+		const result = await runTool("sshpass", args, {
+			signal,
 			env: { ...process.env, SSHPASS: password },
 		});
-		proc.stderr.on("data", (c: Buffer) => {
-			stderr += c.toString();
-		});
-		proc.on("error", () => resolve(true));
-		proc.on("close", (code) => {
-			if (code === 0) return resolve(true);
-			if (isUnreachable(stderr)) return resolve(true);
-			resolve(false);
-		});
-		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
-	});
+		return result.code === 0 || isUnreachable(result.stderr);
+	} catch {
+		signal?.throwIfAborted();
+		return true;
+	}
 }
 
 /**
@@ -524,7 +502,7 @@ export function probePasswordAuth(
  * password) — the probe opens its own channel with `BatchMode=yes`, so callers
  * must only probe when SSH login auth already succeeds without prompting.
  */
-export function probeSudoNoPassword(
+export async function probeSudoNoPassword(
 	spec: HostSpec,
 	controlPath: string,
 	signal?: AbortSignal,
@@ -536,12 +514,12 @@ export function probeSudoNoPassword(
 		hostTarget(spec),
 		"sudo -n true",
 	];
-	return new Promise((resolve) => {
-		const proc = spawnTool("ssh", args, { stdio: ["ignore", "ignore", "ignore"] });
-		proc.on("error", () => resolve(false));
-		proc.on("close", (code) => resolve(code === 0));
-		signal?.addEventListener("abort", () => proc.kill("SIGTERM"), { once: true });
-	});
+	try {
+		return (await runTool("ssh", args, { signal })).code === 0;
+	} catch {
+		signal?.throwIfAborted();
+		return false;
+	}
 }
 
 /** Connection/DNS-level failure (not an auth rejection) — a password can't fix it. */
@@ -624,7 +602,7 @@ export function runSsh(spec: HostSpec, command: string, opts: RunOptions): Promi
 	return spawnResult(bin, args, env, opts.signal, opts.sudo ? filterSudoPrompt : undefined, stdin);
 }
 
-function spawnResult(
+async function spawnResult(
 	bin: string,
 	args: string[],
 	env: NodeJS.ProcessEnv,
@@ -632,36 +610,10 @@ function spawnResult(
 	filterStderr?: (value: string) => string,
 	stdin?: string,
 ): Promise<SshResult> {
-	return new Promise((resolve, reject) => {
-		const proc = spawnTool(bin, args, { stdio: ["pipe", "pipe", "pipe"], env });
-		let stdout = "";
-		let stderr = "";
-		proc.stdout.on("data", (c: Buffer) => {
-			stdout += c.toString();
-		});
-		proc.stderr.on("data", (c: Buffer) => {
-			const value = filterStderr ? filterStderr(c.toString()) : c.toString();
-			if (value) stderr += value;
-		});
-		proc.on("error", reject);
-		proc.on("close", (code) => resolve({ stdout, stderr, code: code ?? 1 }));
-		if (stdin) proc.stdin.write(stdin);
-		proc.stdin.end();
-		signal(sig, proc, reject);
-	});
-}
-
-function signal(
-	sig: AbortSignal | undefined,
-	proc: ReturnType<typeof spawn>,
-	reject: (e: Error) => void,
-): void {
-	sig?.addEventListener(
-		"abort",
-		() => {
-			proc.kill("SIGTERM");
-			reject(new Error("Cancelled"));
-		},
-		{ once: true },
-	);
+	const result = await runTool(bin, args, { env, signal: sig, input: stdin });
+	return {
+		stdout: result.stdout,
+		stderr: filterStderr ? filterStderr(result.stderr) : result.stderr,
+		code: result.code ?? 1,
+	};
 }

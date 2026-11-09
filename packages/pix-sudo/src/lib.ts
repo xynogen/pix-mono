@@ -8,7 +8,7 @@ import {
 	DEFAULT_MAX_LINES,
 	truncateHead,
 } from "@earendil-works/pi-coding-agent";
-import { spawnTool } from "@xynogen/pix-runtime/exec";
+import { runTool } from "@xynogen/pix-runtime/exec";
 
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.
 export const MAX_OUTPUT_BYTES = DEFAULT_MAX_BYTES;
@@ -74,17 +74,14 @@ export function validateSudoPassword(password: string, signal?: AbortSignal): Pr
  * without prompting. Lets the caller skip the password stage on repeat calls
  * within the system sudoers timeout (default ~15 min).
  */
-export function hasValidTicket(): Promise<boolean> {
-	return new Promise((resolve) => {
-		let proc: ReturnType<typeof spawnTool>;
-		try {
-			proc = spawnTool("sudo", ["-n", "true"], { stdio: ["ignore", "ignore", "ignore"] });
-		} catch {
-			return resolve(false); // sudo missing: no ticket; runWithSudo reports the hint
-		}
-		proc.on("error", () => resolve(false));
-		proc.on("close", (code) => resolve(code === 0));
-	});
+export async function hasValidTicket(signal?: AbortSignal): Promise<boolean> {
+	try {
+		const result = await runTool("sudo", ["-n", "true"], { signal });
+		return result.code === 0;
+	} catch {
+		signal?.throwIfAborted();
+		return false;
+	}
 }
 
 /**
@@ -101,39 +98,11 @@ export function runWithSudo(
 	return spawnSudo(["-S", "--", "sh", "-c", command], password, signal);
 }
 
-function spawnSudo(args: string[], password: string, signal?: AbortSignal): Promise<SudoResult> {
-	return new Promise((resolve, reject) => {
-		const proc = spawnTool("sudo", args, { stdio: ["pipe", "pipe", "pipe"] });
-
-		let stdout = "";
-		let stderr = "";
-
-		proc.stdout.on("data", (chunk: Buffer) => {
-			stdout += chunk.toString();
-		});
-
-		proc.stderr.on("data", (chunk: Buffer) => {
-			const filtered = filterSudoPrompt(chunk.toString());
-			if (filtered) stderr += filtered;
-		});
-
-		proc.on("error", reject);
-		proc.on("close", (code) => {
-			resolve({ stdout, stderr, code: code ?? 1 });
-		});
-
-		proc.stdin.write(`${password}\n`);
-		proc.stdin.end();
-
-		if (signal) {
-			signal.addEventListener(
-				"abort",
-				() => {
-					proc.kill("SIGTERM");
-					reject(new Error("Cancelled"));
-				},
-				{ once: true },
-			);
-		}
-	});
+async function spawnSudo(
+	args: string[],
+	password: string,
+	signal?: AbortSignal,
+): Promise<SudoResult> {
+	const result = await runTool("sudo", args, { signal, input: `${password}\n` });
+	return { stdout: result.stdout, stderr: filterSudoPrompt(result.stderr), code: result.code ?? 1 };
 }

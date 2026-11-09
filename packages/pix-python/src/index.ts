@@ -56,7 +56,7 @@ const LABEL = "python";
 const PREVIEW_CODE_LINES = 16;
 const PROMPT_TIMEOUT_MS = 60_000;
 
-type Outcome = "awaiting-approval" | "running" | "success" | "error" | "denied";
+type Outcome = "awaiting-approval" | "running" | "success" | "error" | "denied" | "cancelled";
 
 export interface PythonResultDetails {
 	_type: "pythonResult";
@@ -178,6 +178,7 @@ function register(pi: ExtensionAPI): void {
 		}),
 
 		async execute(_id, params, signal, onUpdate, ctx) {
+			signal?.throwIfAborted();
 			const intent = oneLine(params.intent) || "(no intent)";
 			const code = normalizeCode(params.code);
 			const python = params.python?.trim() || undefined;
@@ -217,6 +218,7 @@ function register(pi: ExtensionAPI): void {
 				update("awaiting-approval", "Awaiting approval…");
 				const choice = await withAgentBlock(pi.events, TOOL, "Python approval required", () =>
 					showOverlay(ctx.ui, {
+						signal,
 						mode: "confirm",
 						icon: icon("process"),
 						title: intent,
@@ -239,6 +241,7 @@ function register(pi: ExtensionAPI): void {
 						],
 					}),
 				);
+				signal?.throwIfAborted();
 				if (choice.action === "timeout") return deny("approval timed out.");
 				if (choice.action !== "approved") return deny("denied by user.");
 				if (choice.choice === "session") sessionAllowed = true;
@@ -252,8 +255,8 @@ function register(pi: ExtensionAPI): void {
 			} catch (err) {
 				return {
 					content: [{ type: "text", text: `python_run failed: ${getErrorMessage(err)}` }],
-					details: details("error"),
-					isError: true,
+					details: details(signal?.aborted ? "cancelled" : "error"),
+					isError: !signal?.aborted,
 				};
 			}
 			const durationMs = Date.now() - startedAt;
@@ -346,12 +349,17 @@ function register(pi: ExtensionAPI): void {
 				const ms = Number(rc.durationMs ?? d.durationMs ?? 0);
 				const meta = dotJoin([
 					d.outcome === "denied" && "not run",
+					d.outcome === "cancelled" && "cancelled",
 					typeof d.exitCode === "number" && d.exitCode !== 0 && `exit ${d.exitCode}`,
 					d.exitCode === null && "killed",
 					!!d.lineCount && `${d.lineCount} ${d.lineCount === 1 ? "line" : "lines"}`,
 					ms > 0 && formatDuration(ms, "bash"),
 				]);
-				const status = ok ? "success" : d.outcome === "denied" ? "warning" : "error";
+				const status = ok
+					? "success"
+					: d.outcome === "denied" || d.outcome === "cancelled"
+						? "warning"
+						: "error";
 				return collapsedCommandRow(
 					formatCollapsedToolRow(theme, LABEL, "", meta, status).trimEnd(),
 					d.intent,
@@ -362,11 +370,11 @@ function register(pi: ExtensionAPI): void {
 			if (d.stdout === undefined) {
 				const msg = getTextContent(result) || "Error";
 				text.setText(
-					d.outcome === "denied"
+					d.outcome === "denied" || d.outcome === "cancelled"
 						? fillToolBackground(`${BODY_PAD}${theme.fg("warning", msg)}`)
 						: renderToolError(msg, theme),
 				);
-				return done(true);
+				return done(rc.isError);
 			}
 
 			// stdout plain, stderr in the status color (warnings on success, red on failure).

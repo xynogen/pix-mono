@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-9router",
-	"version": "0.8.8",
+	"version": "0.8.9",
 	"description": "Pi extension — 9Router model provider",
 	"type": "module",
 	"main": "src/index.ts",
@@ -45,6 +45,6 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-data": "^0.5.1",
-		"@xynogen/pix-runtime": "^0.17.0"
+		"@xynogen/pix-runtime": "^0.18.0"
 	}
 }

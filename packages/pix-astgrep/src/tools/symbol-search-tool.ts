@@ -10,8 +10,8 @@
  * locate a file. Upgrade to a real index only if ranking quality is too weak.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { readFileSync, statSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -21,43 +21,18 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
-import { languageForFile } from "@xynogen/pix-runtime/ast";
+import { cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
+import { collectCodeFiles } from "../files.ts";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const MAX_FILES = 5000;
 const MAX_FILE_BYTES = 512 * 1024;
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
 
 export interface SymbolSearchToolDeps {
 	cwd: string;
-}
-
-/** Walk into a bounded list of code files under one root. */
-function collectFiles(root: string, out: string[]): void {
-	if (out.length >= MAX_FILES) return;
-	let stat: ReturnType<typeof statSync>;
-	try {
-		stat = statSync(root);
-	} catch {
-		return;
-	}
-	if (stat.isFile()) {
-		if (languageForFile(root)) out.push(root);
-		return;
-	}
-	if (!stat.isDirectory()) return;
-	for (const entry of readdirSync(root, { withFileTypes: true })) {
-		if (out.length >= MAX_FILES) return;
-		if (entry.isDirectory()) {
-			if (SKIP_DIRS.has(entry.name)) continue;
-			collectFiles(join(root, entry.name), out);
-		} else if (entry.isFile() && languageForFile(entry.name)) {
-			out.push(join(root, entry.name));
-		}
-	}
 }
 
 /** Count whole-word occurrences of each term. A file must match every term. */
@@ -138,7 +113,8 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 			return frameToolResult(body, theme, isError);
 		},
 
-		async execute(_id, params) {
+		async execute(_id, params, signal) {
+			signal?.throwIfAborted();
 			const query = params.query as string;
 			const limit = Math.min(MAX_LIMIT, (params.limit as number | undefined) ?? DEFAULT_LIMIT);
 			const rawPaths = (params.paths as string[] | undefined) ?? ["."];
@@ -151,10 +127,11 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 			}
 
 			const files: string[] = [];
-			for (const p of rawPaths) collectFiles(resolve(cwd, p), files);
+			for (const p of rawPaths) await collectCodeFiles(resolve(cwd, p), files, MAX_FILES, signal);
 
 			const scored: Array<{ file: string; score: number }> = [];
 			for (const file of files) {
+				await cancellationCheckpoint(signal);
 				let source: string;
 				try {
 					const stat = statSync(file);

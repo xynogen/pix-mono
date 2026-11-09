@@ -284,7 +284,8 @@ export default function registerRunner(pi: ExtensionAPI): void {
 				);
 			return frameToolResult(text, theme, failed);
 		},
-		async execute(_id, params, _signal, _onUpdate, ctx) {
+		async execute(_id, params, signal, _onUpdate, ctx) {
+			signal?.throwIfAborted();
 			const p = params as {
 				action: string;
 				command?: string;

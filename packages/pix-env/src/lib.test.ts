@@ -249,6 +249,35 @@ describe("read_env tool", () => {
 		if (process.platform !== "win32") expect(statSync(join(cwd, ".env")).mode & 0o777).toBe(0o600);
 	});
 
+	test.each([
+		"read",
+		"add",
+		"edit",
+	] as const)("%s cancellation after approval prevents disclosure or writes", async (action) => {
+		const controller = new AbortController();
+		const before = readFileSync(join(cwd, ".env"), "utf8");
+		const base = approvalUi();
+		const ui = {
+			custom: async <T>(build: (...args: any[]) => unknown) => {
+				const answer = await base.custom<T>(build);
+				controller.abort(new Error("stop after approval"));
+				return answer;
+			},
+		};
+		const pending = captureEnvRead().execute(
+			"cancel-approved",
+			action === "read"
+				? { action, names: ["TOKEN"] }
+				: { action, path: ".env", name: action === "add" ? "NEW" : "PORT", value: "changed" },
+			controller.signal,
+			undefined,
+			{ cwd, hasUI: true, ui },
+		);
+		if (action === "read") await expect(pending).rejects.toThrow("stop after approval");
+		else expect((await pending).isError).toBe(true);
+		expect(readFileSync(join(cwd, ".env"), "utf8")).toBe(before);
+	});
+
 	test("denial does not create a file", async () => {
 		const result = await captureEnvRead().execute(
 			"1",
@@ -708,4 +737,26 @@ describe("resolveInput", () => {
 		resolveInput(input, reg, false);
 		expect(input).toEqual({ a: "x t-2", b: { c: ["t-2"] }, n: 1 });
 	});
+});
+
+test("cancelled environment actions neither prompt nor write nor reveal", async () => {
+	const tool = captureEnvRead();
+	for (const action of ["read", "add", "edit"] as const) {
+		await expect(
+			tool.execute(
+				"cancel",
+				{ action, path: ".env", name: "SECRET", value: "hidden", names: ["SECRET"] },
+				AbortSignal.abort(),
+				undefined,
+				{
+					hasUI: true,
+					ui: {
+						custom() {
+							throw new Error("must not prompt");
+						},
+					},
+				},
+			),
+		).rejects.toThrow();
+	}
 });

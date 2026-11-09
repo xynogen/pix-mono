@@ -164,7 +164,8 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				const text = new Text(body, 0, 0);
 				return _options.isPartial ? text : frameToolResult(text, theme, renderCtx.isError);
 			},
-			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				signal?.throwIfAborted();
 				if (params.action === "add" || params.action === "edit") {
 					try {
 						if (!params.name || params.value === undefined)
@@ -185,6 +186,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 						if (!ctx.hasUI) throw new Error("env writes require interactive user approval");
 						const result = await withAgentBlock(pi.events, "read_env", "env write approval", () =>
 							showOverlay(ctx.ui, {
+								signal,
 								mode: "confirm",
 								icon: icon("secret"),
 								title: `${params.action === "add" ? "Add" : "Edit"} Environment Variable`,
@@ -202,6 +204,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 								approveValue: "yes",
 							}),
 						);
+						signal?.throwIfAborted();
 						if (result.action !== "approved")
 							return {
 								content: [{ type: "text", text: `read_env ${result.action}: ${params.name}` }],
@@ -212,6 +215,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 						if ((existsSync(path) ? readFileSync(path, "utf-8") : null) !== before)
 							throw new Error("env file changed during approval; retry with the current file");
 						// ponytail: single-writer atomic save; add cross-process locking for concurrent writers.
+						signal?.throwIfAborted();
 						writeFileAtomicSync(path, next);
 						cache.clear();
 						return {
@@ -290,6 +294,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 					"secret disclosure approval",
 					() =>
 						showOverlay(ctx.ui, {
+							signal,
 							mode: "confirm",
 							icon: icon("secret"),
 							title: `Reveal Environment Value${names.length > 1 ? "s" : ""}`,
@@ -306,6 +311,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 							approveValue: "yes",
 						}),
 				);
+				signal?.throwIfAborted();
 				if (result.action !== "approved") {
 					return {
 						content: [{ type: "text", text: `read_env ${result.action}: ${list}` }],

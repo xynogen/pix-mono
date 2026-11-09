@@ -37,3 +37,13 @@ describe("runArgv", () => {
 		expect(await runArgv([], { cwd: process.cwd() })).toBe("(empty command)");
 	});
 });
+
+it("cancels a directive process instead of waiting for its timeout", async () => {
+	const controller = new AbortController();
+	const pending = runArgv(js("setInterval(() => {}, 1000)"), {
+		cwd: process.cwd(),
+		signal: controller.signal,
+	});
+	controller.abort(new Error("user stopped skill"));
+	await expect(pending).rejects.toThrow("user stopped skill");
+});

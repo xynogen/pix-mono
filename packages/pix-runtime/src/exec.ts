@@ -26,6 +26,7 @@ import {
 } from "node:child_process";
 import { join } from "node:path";
 import type { Readable, Writable } from "node:stream";
+import { onAbort } from "./abort.ts";
 import { type EnsureOptions, ensureTool, type ToolStatus } from "./binaries/ensure.ts";
 import { type LookupOptions, type ResolvedTool, requireTool } from "./binaries/resolve.ts";
 import { currentPlatform, type HostPlatform } from "./platform.ts";
@@ -256,11 +257,11 @@ function collect(
 						stop();
 					}, opts.timeoutMs)
 				: undefined;
-		opts.signal?.addEventListener("abort", stop, { once: true });
+		const detachAbort = onAbort(opts.signal, stop);
 		const done = () => {
 			if (timer) clearTimeout(timer);
 			for (const t of escalation) clearTimeout(t);
-			opts.signal?.removeEventListener("abort", stop);
+			detachAbort();
 		};
 		child.on("error", (e) => {
 			done();
@@ -299,6 +300,7 @@ export async function runTool(
 	args: readonly string[],
 	opts: ToolExecOptions = {},
 ): Promise<ToolRunResult> {
+	opts.signal?.throwIfAborted();
 	const host = opts.host ?? currentPlatform();
 	const ensure: EnsureOptions = {
 		env: opts.env,
@@ -325,7 +327,9 @@ export async function runTool(
 		windowsHide: true,
 		windowsVerbatimArguments: line.windowsVerbatimArguments,
 	});
-	return collect(child, tool, opts, host);
+	const result = await collect(child, tool, opts, host);
+	opts.signal?.throwIfAborted();
+	return result;
 }
 
 /**

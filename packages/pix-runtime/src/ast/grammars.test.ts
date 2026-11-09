@@ -12,6 +12,25 @@ import { describe, expect, test } from "bun:test";
 import { ALL_LANGUAGES, isBundled, languageForFile } from "./engine.ts";
 import { packageForLanguage, parseWithGrammar } from "./grammars.ts";
 
+test("pre-cancelled parsing rejects before loading a grammar or asking consent", async () => {
+	const reason = new Error("stop parsing");
+	let prompts = 0;
+	for (const lang of ["typescript", "python"]) {
+		await expect(
+			parseWithGrammar(
+				lang,
+				"",
+				async () => {
+					prompts++;
+					return true;
+				},
+				AbortSignal.abort(reason),
+			),
+		).rejects.toBe(reason);
+	}
+	expect(prompts).toBe(0);
+});
+
 describe("language coverage", () => {
 	test("advertises far more than the six bundled grammars", () => {
 		expect(ALL_LANGUAGES.length).toBeGreaterThanOrEqual(20);

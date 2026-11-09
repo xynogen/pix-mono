@@ -42,9 +42,11 @@ export async function runFetch(
 
 	const errors: ProviderAttemptError[] = [];
 	for (const provider of available) {
+		request.signal?.throwIfAborted();
 		try {
 			return { provider: provider.id, data: await provider.fetch(request), errors };
 		} catch (error) {
+			request.signal?.throwIfAborted();
 			if (error instanceof DOMException && error.name === "AbortError") throw error;
 			errors.push({
 				provider: provider.id,

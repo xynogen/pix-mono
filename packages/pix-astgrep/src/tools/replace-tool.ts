@@ -12,8 +12,8 @@
  * It does not evaluate ast-grep transforms. Upgrade if a transform is needed.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { readFileSync, statSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -26,6 +26,7 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
+import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import {
 	ALL_LANGUAGES,
 	type AnyLanguage,
@@ -37,38 +38,13 @@ import {
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
+import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
 
 const MAX_LIMIT = 500;
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
 
 export interface ReplaceToolDeps {
 	cwd: string;
-}
-
-/** Walk a path into a bounded list of parseable code files. */
-function collectFiles(root: string, out: string[]): void {
-	if (out.length >= 5000) return;
-	let stat: ReturnType<typeof statSync>;
-	try {
-		stat = statSync(root);
-	} catch {
-		return;
-	}
-	if (stat.isFile()) {
-		if (languageForFile(root)) out.push(root);
-		return;
-	}
-	if (!stat.isDirectory()) return;
-	for (const entry of readdirSync(root, { withFileTypes: true })) {
-		if (out.length >= 5000) return;
-		if (entry.isDirectory()) {
-			if (SKIP_DIRS.has(entry.name)) continue;
-			collectFiles(join(root, entry.name), out);
-		} else if (entry.isFile() && languageForFile(entry.name)) {
-			out.push(join(root, entry.name));
-		}
-	}
 }
 
 /**
@@ -179,16 +155,17 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 			return frameToolResult(body, theme, isError);
 		},
 
-		async execute(_id, params, _signal, _onUpdate, ctx) {
+		async execute(_id, params, signal, _onUpdate, ctx) {
+			signal?.throwIfAborted();
 			const pattern = params.pattern as string | { context: string; selector: string };
 			const rewrite = params.rewrite as string;
 			const apply = (params.apply as boolean | undefined) ?? false;
 			const forcedLang = params.lang as AnyLanguage | undefined;
 			const rawPaths = (params.paths as string[] | undefined) ?? ["."];
-			const consent = grammarConsent(ctx as ExecuteCtx);
+			const consent = grammarConsent(ctx as ExecuteCtx, signal);
 
 			const files: string[] = [];
-			for (const p of rawPaths) collectFiles(resolve(cwd, p), files);
+			for (const p of rawPaths) await collectCodeFiles(resolve(cwd, p), files, 5000, signal);
 
 			const diffs: string[] = [];
 			const changes: Array<{ file: string; after: string }> = [];
@@ -196,6 +173,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 			let changedFiles = 0;
 			let totalEdits = 0;
 			for (const file of files) {
+				await cancellationCheckpoint(signal);
 				if (totalEdits >= MAX_LIMIT) break;
 				const lang = forcedLang ?? languageForFile(file);
 				if (!lang) continue;
@@ -205,7 +183,8 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				} catch {
 					continue;
 				}
-				const parsed = await parseWithGrammar(lang, source, consent);
+				const parsed = await abortable(parseWithGrammar(lang, source, consent, signal), signal);
+				signal?.throwIfAborted();
 				if (parsed.kind !== "ok") {
 					return grammarErrorResult(parsed, lang, "pixReplace");
 				}
@@ -224,8 +203,10 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 
 			// Validate all grammars before writing, so an unavailable language cannot leave partial edits.
 			// Atomic per file and keep the file's permissions (the helper defaults to 0o600).
+			await cancellationCheckpoint(signal);
 			if (apply) {
 				for (const { file, after } of changes) {
+					signal?.throwIfAborted();
 					writeFileAtomicSync(file, after, statSync(file).mode & 0o777);
 				}
 			}

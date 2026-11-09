@@ -198,3 +198,24 @@ describe("openCommand", () => {
 		expect(w.args[3]).toMatch(/^"start "" \^"https:\/\/x\.dev\/\^\?a=1\^&b=2\^""$/);
 	});
 });
+
+test("pre-cancelled execution never resolves or starts a binary", async () => {
+	await expect(
+		runTool("missing-cancelled-tool", [], { signal: AbortSignal.abort(new Error("stopped")) }),
+	).rejects.toThrow("stopped");
+});
+
+test.skipIf(isWin)("abort stops a SIGTERM-resistant process tree before rejecting", async () => {
+	const s = sandbox();
+	const name = "pixcancel";
+	writeFileSync(join(s.pathDir, name), "#!/bin/sh\ntrap '' TERM\nsleep 30 &\nwait\n");
+	chmodSync(join(s.pathDir, name), 0o755);
+	const controller = new AbortController();
+	const pending = runTool(name, [], { env: s.env, signal: controller.signal });
+	const timer = setTimeout(() => controller.abort(new Error("user cancelled")), 100);
+	try {
+		await expect(pending).rejects.toThrow("user cancelled");
+	} finally {
+		clearTimeout(timer);
+	}
+});

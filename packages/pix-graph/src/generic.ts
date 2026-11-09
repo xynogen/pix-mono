@@ -10,7 +10,12 @@ import {
 import type { GraphLink, GraphNode } from "./analyzer.ts";
 
 /** Parser seam; tests swap in a fake grammar. */
-export type ParseFn = (lang: string, source: string, consent?: ConsentFn) => Promise<ParseOutcome>;
+export type ParseFn = (
+	lang: string,
+	source: string,
+	consent?: ConsentFn,
+	signal?: AbortSignal,
+) => Promise<ParseOutcome>;
 
 // TS/JS keep the compiler extractor (import bindings, re-exports). Data/markup files have no symbols.
 const NOT_GENERIC = new Set([
@@ -122,7 +127,7 @@ export async function extractGeneric(
 			prior.files++;
 			continue;
 		}
-		const outcome = await parse(lang, readFileSync(file, "utf8"), consent);
+		const outcome = await parse(lang, readFileSync(file, "utf8"), consent, signal);
 		if (outcome.kind !== "ok") {
 			const reason =
 				"pkg" in outcome

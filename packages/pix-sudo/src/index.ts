@@ -227,7 +227,8 @@ export default function (pi: ExtensionAPI): void {
 			updatePresentation(onUpdate, command, reason, "awaiting-approval");
 
 			// A valid PAM ticket lets us skip the password stage (confirm only).
-			const cached = await hasValidTicket();
+			signal?.throwIfAborted();
+			const cached = await hasValidTicket(signal);
 
 			const intent = reason?.trim();
 			const title = intent || "Root Command Request";
@@ -251,6 +252,7 @@ export default function (pi: ExtensionAPI): void {
 					: await withAgentBlock(pi.events, "sudo_run", "Root approval required", () => {
 							if (cached) {
 								return showOverlay(ctx.ui, {
+									signal,
 									mode: "confirm",
 									icon: icon("lock"),
 									title,
@@ -264,6 +266,7 @@ export default function (pi: ExtensionAPI): void {
 								});
 							}
 							return showOverlay(ctx.ui, {
+								signal,
 								mode: "sudo",
 								icon: icon("lock"),
 								title,
@@ -271,9 +274,9 @@ export default function (pi: ExtensionAPI): void {
 								accent: "error",
 								timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
 								maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-								validatePassword: async (password) => {
+								validatePassword: async (password, validationSignal) => {
 									try {
-										const validation = await validateSudoPassword(password, signal);
+										const validation = await validateSudoPassword(password, validationSignal);
 										if (detectAuthFailure(validation.code, validation.stderr)) return false;
 										if (validation.code !== 0) {
 											executionError = new Error(
@@ -301,6 +304,7 @@ export default function (pi: ExtensionAPI): void {
 							});
 						});
 
+			signal?.throwIfAborted();
 			// Checked before anything runs: a wrong password must never reach sudo.
 			if (overlayResult.passwordAttemptsExhausted) {
 				const text = `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;

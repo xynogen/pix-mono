@@ -257,3 +257,40 @@ describe("pix-astgrep tools", () => {
 		expect((res.details as { count: number }).count).toBe(0);
 	});
 });
+
+test("all AST tools reject cancelled calls before parsing or writing", async () => {
+	const dir = fixture();
+	const before = readFileSync(join(dir, "a.ts"), "utf8");
+	for (const tool of capture(dir).values()) {
+		await expect(
+			tool.execute(
+				"cancel",
+				{
+					path: "a.ts",
+					paths: ["."],
+					query: "greet",
+					pattern: "greet($A)",
+					rewrite: "changed($A)",
+					apply: true,
+				},
+				AbortSignal.abort(),
+			),
+		).rejects.toThrow();
+	}
+	expect(readFileSync(join(dir, "a.ts"), "utf8")).toBe(before);
+});
+
+test("AST replacement yields to Esc before the write phase", async () => {
+	const dir = fixture();
+	const before = readFileSync(join(dir, "a.ts"), "utf8");
+	const controller = new AbortController();
+	const tool = capture(dir).get("ast_replace")!;
+	const pending = tool.execute(
+		"cancel",
+		{ paths: ["."], pattern: "greet($A)", rewrite: "changed($A)", apply: true },
+		controller.signal,
+	);
+	setImmediate(() => controller.abort());
+	await expect(pending).rejects.toThrow();
+	expect(readFileSync(join(dir, "a.ts"), "utf8")).toBe(before);
+});

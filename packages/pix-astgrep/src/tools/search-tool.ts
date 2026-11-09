@@ -7,8 +7,8 @@
  * matched text. Unsupported languages are skipped with a clear note.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -20,6 +20,7 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
+import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import {
 	ALL_LANGUAGES,
 	type AnyLanguage,
@@ -28,11 +29,11 @@ import {
 } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
+import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 200;
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
 
 export interface SearchToolDeps {
 	cwd: string;
@@ -43,31 +44,6 @@ interface Match {
 	line: number;
 	column: number;
 	text: string;
-}
-
-/** Walk a path into a bounded list of parseable code files. */
-function collectFiles(root: string, out: string[], cap: number): void {
-	if (out.length >= cap) return;
-	let stat: ReturnType<typeof statSync>;
-	try {
-		stat = statSync(root);
-	} catch {
-		return;
-	}
-	if (stat.isFile()) {
-		if (languageForFile(root)) out.push(root);
-		return;
-	}
-	if (!stat.isDirectory()) return;
-	for (const entry of readdirSync(root, { withFileTypes: true })) {
-		if (out.length >= cap) return;
-		if (entry.isDirectory()) {
-			if (SKIP_DIRS.has(entry.name)) continue;
-			collectFiles(join(root, entry.name), out, cap);
-		} else if (entry.isFile() && languageForFile(entry.name)) {
-			out.push(join(root, entry.name));
-		}
-	}
 }
 
 export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void {
@@ -145,20 +121,22 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 			return frameToolResult(body, theme, isError);
 		},
 
-		async execute(_id, params, _signal, _onUpdate, ctx) {
+		async execute(_id, params, signal, _onUpdate, ctx) {
+			signal?.throwIfAborted();
 			const pattern = params.pattern as string | { context: string; selector: string };
 			const forcedLang = params.lang as AnyLanguage | undefined;
 			const limit = Math.min(MAX_LIMIT, (params.limit as number | undefined) ?? DEFAULT_LIMIT);
 			const rawPaths = (params.paths as string[] | undefined) ?? ["."];
-			const consent = grammarConsent(ctx as ExecuteCtx);
+			const consent = grammarConsent(ctx as ExecuteCtx, signal);
 
 			const files: string[] = [];
-			for (const p of rawPaths) collectFiles(resolve(cwd, p), files, 5000);
+			for (const p of rawPaths) await collectCodeFiles(resolve(cwd, p), files, 5000, signal);
 
 			const matches: Match[] = [];
 
 			let scanned = 0;
 			for (const file of files) {
+				await cancellationCheckpoint(signal);
 				if (matches.length >= limit) break;
 				const lang = forcedLang ?? languageForFile(file);
 				if (!lang) continue;
@@ -169,7 +147,8 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 					continue;
 				}
 				scanned++;
-				const parsed = await parseWithGrammar(lang, source, consent);
+				const parsed = await abortable(parseWithGrammar(lang, source, consent, signal), signal);
+				signal?.throwIfAborted();
 				if (parsed.kind !== "ok") {
 					return grammarErrorResult(parsed, lang, "pixAstGrep");
 				}

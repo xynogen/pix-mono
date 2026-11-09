@@ -11,6 +11,7 @@ import { isAbsolute } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { AgentSession, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { onAbort } from "@xynogen/pix-runtime/abort";
 import { uniqueLfid } from "@xynogen/pix-runtime/lfid";
 import {
 	resumeAgent as _resumeAgentReal,
@@ -198,6 +199,7 @@ export class AgentManager {
 		// Validate before the queue branch — a queued spawn should fail at the
 		// call, not minutes later at drain. Throw (not warn): programmatic callers
 		// can fix and retry; the RPC layer converts throws into error envelopes.
+		options.signal?.throwIfAborted();
 		assertValidSpawnCwd(options.cwd);
 
 		// LFID (agent-happy-walrus-42): the parent model must type this ID back
@@ -284,8 +286,7 @@ export class AgentManager {
 		let detachParentSignal: (() => void) | undefined;
 		if (options.signal) {
 			const onParentAbort = () => this.abort(id);
-			options.signal.addEventListener("abort", onParentAbort, { once: true });
-			detachParentSignal = () => options.signal?.removeEventListener("abort", onParentAbort);
+			detachParentSignal = onAbort(options.signal, onParentAbort);
 		}
 		const detach = () => {
 			detachParentSignal?.();

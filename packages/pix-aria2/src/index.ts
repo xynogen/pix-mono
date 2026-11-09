@@ -21,6 +21,7 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
+import { abortable } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
 import { aria2 } from "maria2/dist/index.js";
@@ -301,10 +302,12 @@ export default function registerDownload(pi: ExtensionAPI): void {
 				);
 			return frameToolResult(text, theme, failed);
 		},
-		async execute(_id, params, _signal, _onUpdate, ctx) {
+		async execute(_id, params, signal, _onUpdate, ctx) {
+			signal?.throwIfAborted();
 			const p = params as { action: string; url?: string; handle?: string; dir?: string };
 			try {
-				const daemon = await mgr.connect(ctx);
+				const daemon = await abortable(mgr.connect(ctx), signal);
+				signal?.throwIfAborted();
 				if (p.action === "add") return textResult(await handleAdd(mgr, daemon, p));
 				if (p.action === "list") return textResult(await handleList(mgr, daemon));
 				if (p.action === "pause" || p.action === "resume" || p.action === "rm") {

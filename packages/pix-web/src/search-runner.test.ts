@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { registerFetchProvider } from "./providers.ts";
+import { runFetch } from "./runner.ts";
 import { registerSearchProvider } from "./search-providers.ts";
 import { runSearch } from "./search-runner.ts";
 
@@ -48,4 +50,55 @@ describe("search runner", () => {
 			errors: [{ provider: "test-search-fail", message: "unavailable" }],
 		});
 	});
+});
+
+test("custom cancellation errors never trigger another search provider", async () => {
+	const controller = new AbortController();
+	const calls: string[] = [];
+	registerSearchProvider({
+		id: "cancel-search",
+		search: async () => {
+			calls.push("first");
+			controller.abort(new Error("stop search"));
+			throw new Error("transport closed");
+		},
+	});
+	registerSearchProvider({
+		id: "after-cancel-search",
+		search: async () => {
+			calls.push("second");
+			return [];
+		},
+	});
+	await expect(
+		runSearch({ ...request, signal: controller.signal }, ["cancel-search", "after-cancel-search"]),
+	).rejects.toThrow("stop search");
+	expect(calls).toEqual(["first"]);
+});
+
+test("custom cancellation errors never trigger another fetch provider", async () => {
+	const controller = new AbortController();
+	const calls: string[] = [];
+	registerFetchProvider({
+		id: "cancel-fetch",
+		fetch: async () => {
+			calls.push("first");
+			controller.abort(new Error("stop fetch"));
+			throw new Error("transport closed");
+		},
+	});
+	registerFetchProvider({
+		id: "after-cancel-fetch",
+		fetch: async () => {
+			calls.push("second");
+			return { url: "https://example.com", content: "unused" };
+		},
+	});
+	await expect(
+		runFetch(
+			{ url: "https://example.com", format: "text", maxCharacters: 100, signal: controller.signal },
+			["cancel-fetch", "after-cancel-fetch"],
+		),
+	).rejects.toThrow("stop fetch");
+	expect(calls).toEqual(["first"]);
 });

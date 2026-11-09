@@ -541,7 +541,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					if (action === "build") {
 						// ponytail: pipeline pulls in typescript (9.1 MB, about 224 ms). Load it only when a build runs.
 						const { buildCodeGraphProgress } = await import("./pipeline.ts");
-						const consent = grammarConsent(ctx);
+						const consent = grammarConsent(ctx, signal);
 						const input = (params.path as string | undefined)?.trim() || ".";
 						const startedAt = Date.now();
 						let frame = 0;

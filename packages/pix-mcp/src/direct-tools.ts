@@ -5,7 +5,8 @@ import type {
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { abortable, throwIfAborted } from "./abort.ts";
+import { abortable } from "@xynogen/pix-runtime/abort";
+import { throwIfAborted } from "./abort.ts";
 import { getFailureAgeSeconds, lazyConnect } from "./init.ts";
 import { authenticate, supportsOAuth } from "./mcp-auth-flow.ts";
 import {

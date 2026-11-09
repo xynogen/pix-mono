@@ -14,6 +14,7 @@ import {
 	SessionManager,
 	SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import { onAbort } from "@xynogen/pix-runtime/abort";
 import { agentDir as agentDirPath, expandHome } from "@xynogen/pix-runtime/paths";
 import {
 	BUILTIN_TOOL_NAMES,
@@ -385,10 +386,9 @@ function getLastAssistantText(session: AgentSession): string {
  * Returns a cleanup function to remove the listener.
  */
 function forwardAbortSignal(session: AgentSession, signal?: AbortSignal): () => void {
-	if (!signal) return () => {};
-	const onAbort = () => session.abort();
-	signal.addEventListener("abort", onAbort, { once: true });
-	return () => signal.removeEventListener("abort", onAbort);
+	return onAbort(signal, () => {
+		void session.abort();
+	});
 }
 
 export async function runAgent(
@@ -406,7 +406,9 @@ export async function runAgent(
 	// They differ only for SpawnOptions.cwd spawns (config stays with the parent).
 	const configCwd = options.configCwd ?? effectiveCwd;
 
+	options.signal?.throwIfAborted();
 	const env = await detectEnv(options.pi, effectiveCwd);
+	options.signal?.throwIfAborted();
 
 	// Get parent system prompt for append-mode agents
 	const parentSystemPrompt = ctx.getSystemPrompt();
@@ -523,6 +525,7 @@ export async function runAgent(
 		appendSystemPromptOverride: () => [],
 	});
 	await loader.reload();
+	options.signal?.throwIfAborted();
 
 	// Plain entries in `tools:` are expected to be built-in names (extension tools
 	// go through `ext:`), so an unknown name there is unambiguously a typo. Previously
@@ -664,6 +667,7 @@ export async function runAgent(
 		sessionOpts.thinkingLevel = thinkingLevel;
 	}
 
+	options.signal?.throwIfAborted();
 	const { session } = await createAgentSession(sessionOpts);
 
 	const baseSessionName = agentConfig?.name ?? type;
@@ -675,11 +679,18 @@ export async function runAgent(
 	// (e.g. loading credentials, setting up state). Tool gating already happened
 	// at session construction via the `tools:` allowlist above — no separate
 	// post-bind filter is needed. All ExtensionBindings fields are optional.
-	await session.bindExtensions({
-		onError: (err) => {
-			options.onWarning?.(`extension error: ${err.extensionPath}`);
-		},
-	});
+	const cleanupStartupAbort = forwardAbortSignal(session, options.signal);
+	try {
+		options.signal?.throwIfAborted();
+		await session.bindExtensions({
+			onError: (err) => {
+				options.onWarning?.(`extension error: ${err.extensionPath}`);
+			},
+		});
+		options.signal?.throwIfAborted();
+	} finally {
+		cleanupStartupAbort();
+	}
 
 	options.onSessionCreated?.(session);
 
@@ -707,6 +718,7 @@ export async function runAgent(
 	}
 
 	try {
+		options.signal?.throwIfAborted();
 		await session.prompt(effectivePrompt);
 	} finally {
 		turnLimit.unsubscribe();
@@ -772,6 +784,7 @@ export async function resumeAgent(
 	});
 
 	try {
+		options.signal?.throwIfAborted();
 		await session.prompt(prompt);
 	} finally {
 		turnLimit.unsubscribe();

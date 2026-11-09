@@ -16,9 +16,34 @@ import {
 	normalizeMaxTurns,
 	parseExtensionsSpec,
 	parseExtSelectors,
+	resumeAgent,
 	setDefaultMaxTurns,
 	setGraceTurns,
 } from "../src/agent-runner.ts";
+
+test("pre-cancelled resume aborts the session without prompting and cleans subscriptions", async () => {
+	let prompts = 0;
+	let aborts = 0;
+	let subscriptions = 0;
+	const session = {
+		subscribe: () => {
+			subscriptions++;
+			return () => {
+				subscriptions--;
+			};
+		},
+		abort: async () => {
+			aborts++;
+		},
+		prompt: async () => {
+			prompts++;
+		},
+	} as unknown as AgentSession;
+	await expect(
+		resumeAgent(session, "do not run", { signal: AbortSignal.abort(new Error("stop resume")) }),
+	).rejects.toThrow("stop resume");
+	expect({ prompts, aborts, subscriptions }).toEqual({ prompts: 0, aborts: 1, subscriptions: 0 });
+});
 
 // ── normalizeMaxTurns ────────────────────────────────────────────────────────
 

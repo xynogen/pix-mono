@@ -171,10 +171,12 @@ export function validatorFor(
 	spec: HostSpec,
 	controlPath: string,
 	sig?: AbortSignal,
-): (pw: string) => Promise<boolean> {
+): (pw: string, validationSignal?: AbortSignal) => Promise<boolean> {
 	if (stage !== "login") return (pw) => Promise.resolve(pw.trim().length > 0);
-	return (pw) =>
-		pw.trim().length === 0 ? Promise.resolve(false) : probePasswordAuth(spec, controlPath, pw, sig);
+	return (pw, validationSignal) =>
+		pw.trim().length === 0
+			? Promise.resolve(false)
+			: probePasswordAuth(spec, controlPath, pw, validationSignal ?? sig);
 }
 
 type SshOutcome =
@@ -551,6 +553,7 @@ export default function (pi: ExtensionAPI): void {
 		}),
 
 		async execute(_toolCallId, params, sig, onUpdate, ctx) {
+			sig?.throwIfAborted();
 			// info: read-only SSH config report (no connection, no approval).
 			if (params.action === "info") {
 				return infoResult(params.host, sig);
@@ -739,6 +742,7 @@ export default function (pi: ExtensionAPI): void {
 					// Confirm-only when no password is missing.
 					if (promptFor.length === 0) {
 						return showOverlay(ctx.ui, {
+							signal: sig,
 							mode: "confirm",
 							icon: action === "file" ? icon("warn") : icon("lock"),
 							title,
@@ -767,6 +771,7 @@ export default function (pi: ExtensionAPI): void {
 					for (const stage of promptFor) {
 						const label = stage === "login" ? "SSH login password" : "Remote sudo password";
 						last = await showOverlay(ctx.ui, {
+							signal: sig,
 							mode: "sudo",
 							icon: action === "file" ? icon("warn") : icon("lock"),
 							title,
@@ -800,6 +805,7 @@ export default function (pi: ExtensionAPI): void {
 			};
 
 			const overlayResult = await runOverlay();
+			sig?.throwIfAborted();
 			if (overlayResult.passwordAttemptsExhausted) {
 				const text = `SSH authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
 				return {

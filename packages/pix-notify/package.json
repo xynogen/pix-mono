@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-notify",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Pi extension — sound + popup when the agent waits on you (herdr-aware, OS-agnostic)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -39,8 +39,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.17.0",
-		"@xynogen/pix-pretty": "^1.37.0"
+		"@xynogen/pix-runtime": "^0.18.0",
+		"@xynogen/pix-pretty": "^1.38.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

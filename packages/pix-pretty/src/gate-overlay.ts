@@ -16,7 +16,8 @@
  *   - Single source of truth for the overlay look across pix-gate, pix-sudo, and pix-ssh.
  */
 
-import { Input, type SelectItem, SelectList } from "@earendil-works/pi-tui";
+import { Input, matchesKey, type SelectItem, SelectList } from "@earendil-works/pi-tui";
+import { onAbort } from "@xynogen/pix-runtime/abort";
 import {
 	frameModal,
 	MIN_PERMISSION_MODAL_HEIGHT,
@@ -49,6 +50,7 @@ export interface OverlayChoice {
 }
 
 interface BaseConfig {
+	signal?: AbortSignal;
 	/** Accent colour token (e.g. "error", "warning", "accent"). Default "accent". */
 	accent?: string;
 	/**
@@ -87,7 +89,7 @@ export interface SudoConfig extends BaseConfig {
 	/** Label for the password input hint. Default "Sudo password:" */
 	passwordLabel?: string;
 	/** Validate an entered password without closing the overlay. */
-	validatePassword?: (password: string) => Promise<boolean>;
+	validatePassword?: (password: string, signal?: AbortSignal) => Promise<boolean>;
 	/** Number of validation attempts before closing as exhausted. Default 3. */
 	maxPasswordAttempts?: number;
 }
@@ -266,16 +268,21 @@ function buildSections(opts: {
  * ```
  */
 export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<OverlayResult> {
+	if (config.signal?.aborted) return Promise.resolve({ action: "denied" });
 	const accent = config.accent ?? "accent";
 	const choices = config.choices ?? DEFAULT_CHOICES;
 	const approveVals = [config.approveValue ?? "yes"].flat();
 
-	return new Promise((resolve) => {
-		ui.custom<OverlayResult>(
+	let release = () => {};
+	return ui
+		.custom<OverlayResult>(
 			(tui, theme, kb, done) => {
 				const pageKeybindings = asPageKeybindings(kb);
 				type Stage = "select" | "password";
 				let stage: Stage = "select";
+				const validation = new AbortController();
+				let settled = false;
+				let detachAbort = () => {};
 				let countdownLine: string | undefined;
 				let passwordStatus: string | undefined;
 				let passwordAttempts = 0;
@@ -309,13 +316,22 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 				const maskedInput = new MaskedInput();
 
 				// ── finish ───────────────────────────────────────────────────────
-				const finish = (result: OverlayResult) => {
+				release = () => {
+					settled = true;
 					cancelTimer();
+					detachAbort();
+					validation.abort();
+				};
+				const finish = (result: OverlayResult) => {
+					if (settled) return;
+					release();
 					done(result);
 				};
 
+				detachAbort = onAbort(config.signal, () => finish({ action: "denied" }));
+
 				// Arm the dead-man's switch (only when a timeout was requested).
-				if (timeoutMs > 0) {
+				if (!settled && timeoutMs > 0) {
 					const urgencyColor = (s: number): string =>
 						s <= 5 ? "error" : s <= 15 ? "warning" : "muted";
 					const countdownText = (s: number): string => {
@@ -358,7 +374,14 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 					validatingPassword = true;
 					passwordStatus = "Checking password…";
 					tui.requestRender();
-					const valid = await config.validatePassword(pw);
+					let valid: boolean;
+					try {
+						valid = await config.validatePassword(pw, validation.signal);
+					} catch {
+						finish({ action: "denied" });
+						return;
+					}
+					if (settled) return;
 					validatingPassword = false;
 					if (valid) {
 						finish({ action: "approved", password: pw });
@@ -377,7 +400,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 					tui.requestRender();
 				};
 				maskedInput.onEscape = () => {
-					if (!validatingPassword) finish({ action: "denied" });
+					finish({ action: "denied" });
 				};
 
 				// ── component interface ──────────────────────────────────────────
@@ -412,6 +435,11 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 					},
 					invalidate: () => {},
 					handleInput: (data) => {
+						if (settled) return;
+						if (matchesKey(data, "escape")) {
+							finish({ action: "denied" });
+							return;
+						}
 						cancelTimer(); // user is present — stop the auto-deny countdown
 						if (validatingPassword) return;
 						if (pager.handleInput(data, pageKeybindings, true)) {
@@ -425,8 +453,7 @@ export function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise<Overl
 				};
 			},
 			{ overlay: true, overlayOptions: modalOverlayOptions() },
-		).then((result) => {
-			resolve(result ?? { action: "denied" });
-		});
-	});
+		)
+		.then((result) => result ?? { action: "denied" as const })
+		.finally(() => release());
 }

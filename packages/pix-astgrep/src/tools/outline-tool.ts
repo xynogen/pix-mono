@@ -6,8 +6,8 @@
  * parses it, and lists the named declaration nodes with their line numbers.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
@@ -18,13 +18,14 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
+import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
+import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
 
 const MAX_FILES = 500;
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
 // Declaration node kinds worth listing, including Python's definition nodes.
 const OUTLINE_KINDS = new Set([
 	"function_declaration",
@@ -45,31 +46,6 @@ const OUTLINE_KINDS = new Set([
 
 export interface OutlineToolDeps {
 	cwd: string;
-}
-
-/** Collect parseable code files under one path, bounded. */
-function collectFiles(root: string, out: string[]): void {
-	if (out.length >= MAX_FILES) return;
-	let stat: ReturnType<typeof statSync>;
-	try {
-		stat = statSync(root);
-	} catch {
-		return;
-	}
-	if (stat.isFile()) {
-		if (languageForFile(root)) out.push(root);
-		return;
-	}
-	if (!stat.isDirectory()) return;
-	for (const entry of readdirSync(root, { withFileTypes: true })) {
-		if (out.length >= MAX_FILES) return;
-		if (entry.isDirectory()) {
-			if (SKIP_DIRS.has(entry.name)) continue;
-			collectFiles(join(root, entry.name), out);
-		} else if (entry.isFile() && languageForFile(entry.name)) {
-			out.push(join(root, entry.name));
-		}
-	}
 }
 
 /** First identifier found in a bounded descent, used as the declaration name. */
@@ -156,16 +132,18 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 			return frameToolResult(body, theme, isError);
 		},
 
-		async execute(_id, params, _signal, _onUpdate, ctx) {
+		async execute(_id, params, signal, _onUpdate, ctx) {
+			signal?.throwIfAborted();
 			const path = params.path as string;
-			const consent = grammarConsent(ctx as ExecuteCtx);
+			const consent = grammarConsent(ctx as ExecuteCtx, signal);
 
 			const files: string[] = [];
-			collectFiles(resolve(cwd, path), files);
+			await collectCodeFiles(resolve(cwd, path), files, MAX_FILES, signal);
 
 			const blocks: string[] = [];
 			let symbols = 0;
 			for (const file of files) {
+				await cancellationCheckpoint(signal);
 				const lang = languageForFile(file);
 				if (!lang) continue;
 				let source: string;
@@ -174,7 +152,8 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 				} catch {
 					continue;
 				}
-				const parsed = await parseWithGrammar(lang, source, consent);
+				const parsed = await abortable(parseWithGrammar(lang, source, consent, signal), signal);
+				signal?.throwIfAborted();
 				if (parsed.kind !== "ok") {
 					return grammarErrorResult(parsed, lang, "pixOutline");
 				}

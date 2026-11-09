@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-python",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "Pi tool — python_run: run a local Python snippet behind an approval prompt, with indentation repair and a clean card",
 	"type": "module",
 	"main": "src/index.ts",
@@ -39,8 +39,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.37.0",
-		"@xynogen/pix-runtime": "^0.17.0"
+		"@xynogen/pix-pretty": "^1.38.0",
+		"@xynogen/pix-runtime": "^0.18.0"
 	},
 	"peerDependencies": {
 		"typebox": "*",

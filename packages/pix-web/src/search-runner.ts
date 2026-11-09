@@ -42,9 +42,11 @@ export async function runSearch(
 
 	const errors: SearchAttemptError[] = [];
 	for (const provider of available) {
+		request.signal?.throwIfAborted();
 		try {
 			return { provider: provider.id, data: await provider.search(request), errors };
 		} catch (error) {
+			request.signal?.throwIfAborted();
 			if (error instanceof DOMException && error.name === "AbortError") throw error;
 			errors.push({
 				provider: provider.id,

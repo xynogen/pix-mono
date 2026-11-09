@@ -210,6 +210,19 @@ describe("AgentManager", () => {
 		expect(calls.length).toBe(1);
 	});
 
+	test("pre-cancelled foreground spawn never creates an agent", () => {
+		const calls = installFakeRunAgent();
+		manager = new AgentManager(undefined, 4);
+		expect(() =>
+			manager!.spawn(pi, ctx, "general", "task", {
+				description: "cancel",
+				isBackground: false,
+				signal: AbortSignal.abort(),
+			}),
+		).toThrow();
+		expect(calls).toHaveLength(0);
+	});
+
 	// 3. abort() on running agent
 	test("abort() on running agent → stopped, abortController fired", () => {
 		const calls = installFakeRunAgent();

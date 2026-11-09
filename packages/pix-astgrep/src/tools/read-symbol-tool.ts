@@ -21,6 +21,7 @@ import {
 	frameToolResult,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
+import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
@@ -124,7 +125,8 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 			return frameToolResult(body, theme, isError);
 		},
 
-		async execute(_id, params, _signal, _onUpdate, ctx) {
+		async execute(_id, params, signal, _onUpdate, ctx) {
+			await cancellationCheckpoint(signal);
 			const path = params.path as string;
 			const symbol = params.symbol as string;
 			const abs = resolve(cwd, path);
@@ -150,7 +152,11 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 				};
 			}
 
-			const parsed = await parseWithGrammar(lang, source, grammarConsent(ctx as ExecuteCtx));
+			const parsed = await abortable(
+				parseWithGrammar(lang, source, grammarConsent(ctx as ExecuteCtx, signal), signal),
+				signal,
+			);
+			signal?.throwIfAborted();
 			if (parsed.kind !== "ok") {
 				return grammarErrorResult(parsed, lang, "pixReadSymbol");
 			}

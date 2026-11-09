@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-skills",
-	"version": "0.10.8",
+	"version": "0.10.9",
 	"description": "Pi extension — agent skill loader (skill tool + skills bundle)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -48,7 +48,7 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-gate": "^0.4.0",
-		"@xynogen/pix-pretty": "^1.37.0",
-		"@xynogen/pix-runtime": "^0.17.0"
+		"@xynogen/pix-pretty": "^1.38.0",
+		"@xynogen/pix-runtime": "^0.18.0"
 	}
 }

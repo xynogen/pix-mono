@@ -146,7 +146,11 @@ export async function ensureLanguage(lang: string): Promise<GrammarResult> {
  * network install — the caller must get user consent first. It never touches a
  * global path or this package's own node_modules.
  */
-export async function installGrammar(pkg: string): Promise<{ ok: boolean; message?: string }> {
+export async function installGrammar(
+	pkg: string,
+	signal?: AbortSignal,
+): Promise<{ ok: boolean; message?: string }> {
+	signal?.throwIfAborted();
 	const dir = grammarCacheDir();
 	try {
 		await mkdir(dir, { recursive: true });
@@ -159,6 +163,7 @@ export async function installGrammar(pkg: string): Promise<{ ok: boolean; messag
 		const result = await runTool("npm", ["install", "--save", "--prefix", dir, pkg], {
 			cwd: dir,
 			timeoutMs: 120_000,
+			signal,
 		});
 		if (result.code !== 0) {
 			return {
@@ -170,6 +175,7 @@ export async function installGrammar(pkg: string): Promise<{ ok: boolean; messag
 		}
 		return { ok: true };
 	} catch (err) {
+		signal?.throwIfAborted();
 		return { ok: false, message: errorText(err) };
 	}
 }
@@ -190,8 +196,11 @@ export async function parseWithGrammar(
 	lang: string,
 	source: string,
 	consent?: ConsentFn,
+	signal?: AbortSignal,
 ): Promise<ParseOutcome> {
+	signal?.throwIfAborted();
 	const engine = await loadEngine();
+	signal?.throwIfAborted();
 	if (!engine) return { kind: "error", message: "ast-grep engine unavailable" };
 
 	try {
@@ -201,21 +210,27 @@ export async function parseWithGrammar(
 		}
 
 		let ready = await ensureLanguage(lang);
+		signal?.throwIfAborted();
 		if (ready.kind === "needs-install") {
 			if (!consent) return ready;
-			if (!(await consent(ready.pkg))) {
+			const approved = await consent(ready.pkg);
+			signal?.throwIfAborted();
+			if (!approved) {
 				declined.add(lang);
 				return { kind: "declined", pkg: ready.pkg };
 			}
-			const installed = await installGrammar(ready.pkg);
+			signal?.throwIfAborted();
+			const installed = await installGrammar(ready.pkg, signal);
 			if (!installed.ok) {
 				return { kind: "error", message: installed.message ?? `failed to install ${ready.pkg}` };
 			}
 			ready = await ensureLanguage(lang);
 		}
 		if (ready.kind !== "ready") return ready;
+		signal?.throwIfAborted();
 		return { kind: "ok", root: parseDynamic(engine, lang, source) };
 	} catch (err) {
+		signal?.throwIfAborted();
 		return { kind: "error", message: errorText(err) };
 	}
 }

@@ -487,3 +487,54 @@ describe("showOverlay — auto-deny timer", () => {
 		}
 	});
 });
+
+test("Esc cancels an in-flight validator and ignores its late approval", async () => {
+	let component!: Wired;
+	let approve!: (valid: boolean) => void;
+	let validationSignal: AbortSignal | undefined;
+	let finishes = 0;
+	const ui: OverlayUI = {
+		custom: <T>(cb: Parameters<OverlayUI["custom"]>[0]) =>
+			new Promise<T | undefined>((resolve) => {
+				component = cb({ requestRender() {} }, theme, undefined, (value) => {
+					finishes++;
+					resolve(value as T);
+				});
+			}),
+	};
+	const pending = showOverlay(ui, {
+		mode: "sudo",
+		title: "cancel",
+		validatePassword: (_, signal) => {
+			validationSignal = signal;
+			return new Promise<boolean>((resolve) => {
+				approve = resolve;
+			});
+		},
+	});
+	component.handleInput(ENTER);
+	component.handleInput("secret");
+	component.handleInput(ENTER);
+	component.handleInput("\x1b");
+	expect(await pending).toMatchObject({ action: "denied" });
+	expect(validationSignal?.aborted).toBe(true);
+	approve(true);
+	await Promise.resolve();
+	expect(finishes).toBe(1);
+});
+
+test("parent cancellation closes approval; pre-aborted calls never open it", async () => {
+	for (const preAborted of [true, false]) {
+		const controller = new AbortController();
+		let opened = 0;
+		const ui = makeUI(() => {
+			opened++;
+			controller.abort();
+		});
+		if (preAborted) controller.abort();
+		expect(
+			await showOverlay(ui, { mode: "confirm", title: "cancel", signal: controller.signal }),
+		).toMatchObject({ action: "denied" });
+		expect(opened).toBe(preAborted ? 0 : 1);
+	}
+});

@@ -19,10 +19,11 @@ export interface ExecuteCtx {
 const INSTALL_TIMEOUT_MS = 60_000;
 
 /** Build a consent function that asks once per grammar package. */
-export function grammarConsent(ctx?: ExecuteCtx): ConsentFn | undefined {
+export function grammarConsent(ctx?: ExecuteCtx, signal?: AbortSignal): ConsentFn | undefined {
 	if (!ctx?.hasUI) return undefined;
 	return async (pkg: string): Promise<boolean> => {
 		const result = await showOverlay(ctx.ui, {
+			signal,
 			mode: "confirm",
 			title: "Install ast-grep grammar",
 			body: [
@@ -39,6 +40,7 @@ export function grammarConsent(ctx?: ExecuteCtx): ConsentFn | undefined {
 				{ value: "no", label: "Skip", description: "Do not install; skip this language" },
 			],
 		});
+		signal?.throwIfAborted();
 		return result.action === "approved";
 	};
 }
