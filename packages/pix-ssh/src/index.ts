@@ -731,11 +731,11 @@ export default function (pi: ExtensionAPI): void {
 
 			const sessionChoices = action === "command" && !privileged ? SESSION_CHOICE : [];
 
-			const runOverlay = (): Promise<OverlayResult> =>
-				withAgentBlock(pi.events, "ssh_run", "SSH approval required", async () => {
-					if ((transferDecision === "allow" || yolo || alreadyApproved) && promptFor.length === 0) {
-						return { action: "approved", password: "" } as OverlayResult;
-					}
+			const runOverlay = async (): Promise<OverlayResult> => {
+				if ((transferDecision === "allow" || yolo || alreadyApproved) && promptFor.length === 0) {
+					return { action: "approved", password: "" };
+				}
+				return withAgentBlock(pi.events, "ssh_run", "SSH approval required", async () => {
 					// Confirm-only when no password is missing.
 					if (promptFor.length === 0) {
 						return showOverlay(ctx.ui, {
@@ -797,6 +797,7 @@ export default function (pi: ExtensionAPI): void {
 					}
 					return last;
 				});
+			};
 
 			const overlayResult = await runOverlay();
 			if (overlayResult.passwordAttemptsExhausted) {

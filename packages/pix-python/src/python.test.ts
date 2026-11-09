@@ -135,12 +135,17 @@ describe("python_run", () => {
 	});
 
 	test("Allow for this session stops further prompts", async () => {
-		const { execute } = host();
+		const { execute, events } = host();
+		const states: string[] = [];
+		events.on("pix:agent-state", (raw) => states.push((raw as { state: string }).state));
 		const ui = pickUi(1);
 		const ctx = { hasUI: true, ui: ui.ui, cwd: "/work" };
 		await execute("t", args, undefined, undefined, ctx);
+		expect(states).toEqual(["blocked", "idle"]);
+		states.length = 0;
 		await execute("t", args, undefined, undefined, ctx);
 		expect(ui.prompts()).toBe(1);
+		expect(states).toEqual([]);
 	});
 
 	test("python parameter: resolved before approval, shown in the prompt and details", async () => {

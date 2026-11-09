@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createEventBus } from "@earendil-works/pi-coding-agent";
+import { setUnattendedMode } from "@xynogen/pix-runtime";
 import registerGate from "./index.ts";
 
 afterEach(() => {
@@ -82,6 +83,50 @@ describe("file tool path gate", () => {
 });
 
 describe("gate agent state", () => {
+	test("auto-approved shell and file tools never report blocked", async () => {
+		const events = createEventBus();
+		const states: string[] = [];
+		events.on("pix:agent-state", (raw) => states.push((raw as { state: string }).state));
+		const handlers: Array<(event: any, ctx: any) => Promise<unknown>> = [];
+		registerGate({
+			events,
+			on(event: string, handler: (event: any, ctx: any) => Promise<unknown>) {
+				if (event === "tool_call") handlers.push(handler);
+			},
+		} as never);
+		setUnattendedMode(events, "yolo");
+		let dialogs = 0;
+		const ctx = {
+			hasUI: true,
+			ui: {
+				custom: async () => {
+					dialogs++;
+					return { action: "denied" };
+				},
+				notify() {},
+				theme: { fg: (_color: string, text: string) => text },
+			},
+		};
+		for (const toolName of [
+			"bash",
+			"powershell",
+			"proc",
+			"read",
+			"write",
+			"edit",
+			"grep",
+			"find",
+			"ls",
+		]) {
+			for (const handler of handlers) {
+				expect(
+					await handler({ toolName, input: { command: "git push --force", path: ".env" } }, ctx),
+				).toBeUndefined();
+			}
+		}
+		expect({ states, dialogs }).toEqual({ states: [], dialogs: 0 });
+	});
+
 	test("reports blocked while waiting for command approval", async () => {
 		const events = createEventBus();
 		const states: string[] = [];

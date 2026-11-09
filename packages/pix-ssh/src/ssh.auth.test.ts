@@ -3,6 +3,7 @@ import { createEventBus, type ExtensionAPI } from "@earendil-works/pi-coding-age
 import type { OverlayUI } from "@xynogen/pix-pretty/gate-overlay";
 import { capturePi } from "@xynogen/pix-pretty/test-utils";
 import type { ToolResultLike } from "@xynogen/pix-pretty/types";
+import { setUnattendedMode } from "@xynogen/pix-runtime";
 import { roleTheme } from "../../../scripts/ui-capture.ts";
 
 import type { HostSpec, RunOptions } from "./lib.ts";
@@ -30,6 +31,7 @@ mock.module("./lib.ts", () => ({
 	probePasswordAuth: async () => true,
 	probeSudoNoPassword: async () => false,
 	closeMaster: closed,
+	runTransfer: async () => ({ stdout: "copied", stderr: "", code: 0 }),
 	runSsh: async (_spec: HostSpec, _command: string, opts: RunOptions) => {
 		runs.push(opts);
 		return { stdout: "ok", stderr: "", code: 0 };
@@ -38,6 +40,7 @@ mock.module("./lib.ts", () => ({
 const { default: register } = await import("./index.ts");
 
 // Overlay stand-in: approve, and type a password when the stage asks for one.
+let allowSession = false;
 const custom: OverlayUI["custom"] = async (factory) => {
 	let finish!: (value: unknown) => void;
 	const done = new Promise<unknown>((resolve) => {
@@ -49,6 +52,7 @@ const custom: OverlayUI["custom"] = async (factory) => {
 		undefined,
 		finish,
 	);
+	if (allowSession) component.handleInput("\x1b[B");
 	component.handleInput("\r");
 	component.handleInput("pw");
 	component.handleInput("\r");
@@ -86,4 +90,90 @@ test("cached password: key is re-checked, then the call reports key auth", async
 	expect((second.content[0] as { text: string }).text).toMatch(
 		/^Exit code: 0 \(auth: key, (new|reused) connection\)/,
 	);
+});
+
+test("session approval reuse and YOLO skip blocked state; real prompts still block", async () => {
+	keyWorks = true;
+	const { pi, tool } = capturePi();
+	const events = createEventBus();
+	const states: string[] = [];
+	events.on("pix:agent-state", (raw) => states.push((raw as { state: string }).state));
+	register({ ...pi, events } as unknown as ExtensionAPI);
+	const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+	const overlay = mock(custom);
+	const notify = mock(() => {});
+	const ctx = { hasUI: true, ui: { custom: overlay, notify } };
+	const call = (command = "id") =>
+		execute(
+			"session",
+			{ action: "command", host: "u@session-host", command, reason: "r" },
+			undefined,
+			undefined,
+			ctx,
+		);
+
+	allowSession = true;
+	try {
+		expect((await call()).details).toMatchObject({ outcome: "success" });
+	} finally {
+		allowSession = false;
+	}
+	expect(states).toEqual(["blocked", "idle"]);
+	expect(overlay).toHaveBeenCalledTimes(1);
+
+	states.length = 0;
+	expect((await call()).details).toMatchObject({ outcome: "success" });
+	expect(states).toEqual([]);
+	expect(overlay).toHaveBeenCalledTimes(1);
+	expect(notify).toHaveBeenLastCalledWith(
+		"ssh_run: reused session approval for u@session-host",
+		"info",
+	);
+
+	expect((await call("sudo id")).details).toMatchObject({ outcome: "success" });
+	expect(states).toEqual(["blocked", "idle"]);
+	expect(overlay).toHaveBeenCalledTimes(2);
+
+	states.length = 0;
+	setUnattendedMode(events, "yolo");
+	expect((await call("sudo id")).details).toMatchObject({ outcome: "success" });
+	expect(states).toEqual([]);
+	expect(overlay).toHaveBeenCalledTimes(2);
+});
+
+test("unattended transfers stay unblocked; a missing login password still prompts", async () => {
+	const { pi, tool } = capturePi();
+	const events = createEventBus();
+	const states: string[] = [];
+	events.on("pix:agent-state", (raw) => states.push((raw as { state: string }).state));
+	register({ ...pi, events } as unknown as ExtensionAPI);
+	const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+	const overlay = mock(custom);
+	const ctx = { hasUI: true, ui: { custom: overlay, notify() {} } };
+	keyWorks = true;
+	for (const mode of ["afk", "yolo"] as const) {
+		setUnattendedMode(events, mode);
+		const result = await execute(
+			"transfer",
+			{ action: "file", host: "transfer-host", direction: "upload", source: "a", destination: "b" },
+			undefined,
+			undefined,
+			ctx,
+		);
+		expect(result.details).toMatchObject({ outcome: "success" });
+		expect(states).toEqual([]);
+		expect(overlay).toHaveBeenCalledTimes(0);
+	}
+
+	keyWorks = false;
+	const result = await execute(
+		"password",
+		{ action: "command", host: "missing-password-host", command: "id" },
+		undefined,
+		undefined,
+		ctx,
+	);
+	expect(result.details).toMatchObject({ outcome: "success", auth: "password" });
+	expect(states).toEqual(["blocked", "idle"]);
+	expect(overlay).toHaveBeenCalledTimes(1);
 });

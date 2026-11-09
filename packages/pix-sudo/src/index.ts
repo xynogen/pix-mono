@@ -245,66 +245,61 @@ export default function (pi: ExtensionAPI): void {
 			if (yolo && cached) {
 				ctx.ui.notify("🔐 YOLO — root command auto-approved (cached ticket).", "warning");
 			}
-			const overlayResult = await withAgentBlock(
-				pi.events,
-				"sudo_run",
-				"Root approval required",
-				() => {
-					if (yolo && cached) {
-						return Promise.resolve<OverlayResult>({ action: "approved", password: "" });
-					}
-					if (cached) {
-						return showOverlay(ctx.ui, {
-							mode: "confirm",
-							icon: icon("lock"),
-							title,
-							body: [...body, "(sudo session active — no password needed)"],
-							accent: "error",
-							timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-							choices: [
-								{ value: "yes", label: "Allow", description: "Run the command" },
-								{ value: "no", label: "Deny", description: "Block the command" },
-							],
-						});
-					}
-					return showOverlay(ctx.ui, {
-						mode: "sudo",
-						icon: icon("lock"),
-						title,
-						body,
-						accent: "error",
-						timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-						maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-						validatePassword: async (password) => {
-							try {
-								const validation = await validateSudoPassword(password, signal);
-								if (detectAuthFailure(validation.code, validation.stderr)) return false;
-								if (validation.code !== 0) {
-									executionError = new Error(
-										validation.stderr || "sudo password validation failed",
-									);
-								}
-								return true;
-							} catch (err) {
-								executionError = err;
-								return true;
+			const overlayResult: OverlayResult =
+				yolo && cached
+					? { action: "approved", password: "" }
+					: await withAgentBlock(pi.events, "sudo_run", "Root approval required", () => {
+							if (cached) {
+								return showOverlay(ctx.ui, {
+									mode: "confirm",
+									icon: icon("lock"),
+									title,
+									body: [...body, "(sudo session active — no password needed)"],
+									accent: "error",
+									timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+									choices: [
+										{ value: "yes", label: "Allow", description: "Run the command" },
+										{ value: "no", label: "Deny", description: "Block the command" },
+									],
+								});
 							}
-						},
-						choices: [
-							{
-								value: "yes",
-								label: "Allow — enter password",
-								description: "Proceed to password prompt",
-							},
-							{
-								value: "no",
-								label: "Deny — block command",
-								description: "Prevent this command from running",
-							},
-						],
-					});
-				},
-			);
+							return showOverlay(ctx.ui, {
+								mode: "sudo",
+								icon: icon("lock"),
+								title,
+								body,
+								accent: "error",
+								timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+								maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+								validatePassword: async (password) => {
+									try {
+										const validation = await validateSudoPassword(password, signal);
+										if (detectAuthFailure(validation.code, validation.stderr)) return false;
+										if (validation.code !== 0) {
+											executionError = new Error(
+												validation.stderr || "sudo password validation failed",
+											);
+										}
+										return true;
+									} catch (err) {
+										executionError = err;
+										return true;
+									}
+								},
+								choices: [
+									{
+										value: "yes",
+										label: "Allow — enter password",
+										description: "Proceed to password prompt",
+									},
+									{
+										value: "no",
+										label: "Deny — block command",
+										description: "Prevent this command from running",
+									},
+								],
+							});
+						});
 
 			// Checked before anything runs: a wrong password must never reach sudo.
 			if (overlayResult.passwordAttemptsExhausted) {

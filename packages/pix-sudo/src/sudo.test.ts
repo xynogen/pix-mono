@@ -410,8 +410,7 @@ describe("sudo_run tool execute()", () => {
 			undefined,
 			makeCtx({ overlayResult: { action: "denied" } }),
 		);
-		expect(states).toContain("blocked");
-		expect(states.at(-1)).toBe("idle");
+		expect(states).toEqual(["blocked", "idle"]);
 	});
 
 	test("AFK mode denies immediately without opening UI", async () => {
@@ -450,7 +449,8 @@ describe("sudo_run tool execute()", () => {
 	test("YOLO + cached ticket auto-approves without opening the overlay", async () => {
 		ticketMock = true;
 		sudoMock = async () => ({ stdout: "root", stderr: "", code: 0 });
-		const host = makeHost();
+		const states: string[] = [];
+		const host = makeHost((state) => states.push(state));
 		setUnattendedMode(host.events, "yolo");
 		let opened = false;
 		const result = await host.execute(
@@ -469,13 +469,15 @@ describe("sudo_run tool execute()", () => {
 			throw new Error("runWithSudo not stubbed for this test");
 		};
 		expect(opened).toBe(false);
+		expect(states).toEqual([]);
 		expect(result.details.outcome).toBe("success");
 		expect(text(result)).toContain("root");
 	});
 
 	test("YOLO WITHOUT a cached ticket still prompts for the password", async () => {
 		ticketMock = false;
-		const host = makeHost();
+		const states: string[] = [];
+		const host = makeHost((state) => states.push(state));
 		setUnattendedMode(host.events, "yolo");
 		let opened = false;
 		const result = await host.execute(
@@ -491,6 +493,7 @@ describe("sudo_run tool execute()", () => {
 			}),
 		);
 		expect(opened).toBe(true); // no ticket => cannot auto-type password => overlay shown
+		expect(states).toEqual(["blocked", "idle"]);
 		expect(text(result)).toContain("Denied by user");
 	});
 
