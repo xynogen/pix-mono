@@ -19,6 +19,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { moduleFile } from "@xynogen/pix-runtime/paths";
+import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 
 /**
  * Repo-root filenames scanned for per-project directives.
@@ -53,7 +54,7 @@ function safeRead(p: string, maxBytes?: number): string | null {
 	try {
 		const content = readFileSync(p, "utf-8");
 		if (maxBytes !== undefined && Buffer.byteLength(content, "utf-8") > maxBytes) {
-			return `${content.slice(0, maxBytes)}\n[pix-prompts: truncated at ${maxBytes} bytes]`;
+			return `${truncateStringToBytes(content, maxBytes)}\n[pix-prompts: truncated at ${maxBytes} bytes]`;
 		}
 		return content;
 	} catch {

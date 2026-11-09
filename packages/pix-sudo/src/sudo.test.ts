@@ -10,6 +10,15 @@ import {
 // ── truncate ─────────────────────────────────────────────────────────────────
 
 describe("truncate", () => {
+	test("byte truncation preserves original replacement characters and complete code points", () => {
+		for (const [text, budget, expected] of [
+			["a�z", 4, "a�"],
+			["a😀z", 4, "a"],
+		] as const) {
+			expect(truncate(text, MAX_OUTPUT_LINES, budget)).toEqual({ text: expected, truncated: true });
+		}
+	});
+
 	test("short text passes through unchanged", () => {
 		const result = truncate("hello\nworld");
 		expect(result).toEqual({ text: "hello\nworld", truncated: false });

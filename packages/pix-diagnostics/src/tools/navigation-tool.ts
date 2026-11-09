@@ -24,6 +24,7 @@ import {
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import type {
 	LspManager,
@@ -89,7 +90,7 @@ function capHover(text: string): { text: string; truncated: boolean } {
 		truncated = true;
 	}
 	if (Buffer.byteLength(out, "utf8") > HOVER_MAX_BYTES) {
-		out = out.slice(0, HOVER_MAX_BYTES);
+		out = truncateStringToBytes(out, HOVER_MAX_BYTES);
 		truncated = true;
 	}
 	return { text: out, truncated };

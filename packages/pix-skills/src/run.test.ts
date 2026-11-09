@@ -6,6 +6,10 @@ import { runArgv } from "./run.ts";
 const js = (code: string) => [process.execPath, "-e", code];
 
 describe("runArgv", () => {
+	it("preserves an original replacement character at the end of command output", async () => {
+		expect(await runArgv(js("process.stdout.write('a�')"), { cwd: process.cwd() })).toBe("a�");
+	});
+
 	it("captures stdout", async () => {
 		expect((await runArgv(js("console.log('hello')"), { cwd: process.cwd() })).trim()).toBe(
 			"hello",

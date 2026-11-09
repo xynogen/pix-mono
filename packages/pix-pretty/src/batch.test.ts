@@ -52,6 +52,18 @@ describe("withOptionalStringArray", () => {
 });
 
 describe("capSections", () => {
+	it("keeps complete UTF-8 characters, original replacement characters, BOM and line policy", () => {
+		for (const [body, budget, expected] of [
+			["a�z", 4, "a�"],
+			["a😀z", 4, "a"],
+			["\uFEFFéz", 5, "\uFEFFé"],
+			["é\n😀z", 7, "é"],
+		] as const) {
+			const result = capSections([{ id: "a", body, units: 1, nouns: ["line", "lines"] }], budget);
+			expect(result.sections[0]).toMatchObject({ body: expected, truncated: true });
+		}
+	});
+
 	it("builds an index plus capped bodies", () => {
 		const { index, text, sections } = capSections(
 			[

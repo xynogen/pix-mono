@@ -25,6 +25,15 @@ import {
 	truncate,
 } from "./lib.ts";
 
+it("byte truncation preserves original replacement characters and complete code points", () => {
+	for (const [text, budget, expected] of [
+		["a�z", 4, "a�"],
+		["a😀z", 4, "a"],
+	] as const) {
+		expect(truncate(text, 2000, budget)).toEqual({ text: expected, truncated: true });
+	}
+});
+
 describe("parseHost", () => {
 	it("rejects a host or user that ssh would read as an option", () => {
 		for (const spec of ["-oProxyCommand=touch /tmp/x", "u@-oProxyCommand=x", "-l@host"]) {

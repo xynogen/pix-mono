@@ -9,6 +9,7 @@ import {
 	truncateHead,
 } from "@earendil-works/pi-coding-agent";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.
 export const MAX_OUTPUT_BYTES = DEFAULT_MAX_BYTES;
@@ -25,8 +26,7 @@ export function truncate(
 	if (!r.firstLineExceedsLimit) return { text: r.content, truncated: r.truncated };
 	// One line over the byte cap (minified JSON, a base64 blob): truncateHead keeps
 	// nothing. Keep its first maxBytes instead, cut on a UTF-8 boundary.
-	const head = Buffer.from(text, "utf8").subarray(0, maxBytes).toString("utf8");
-	return { text: head.replace(/\uFFFD$/, ""), truncated: true };
+	return { text: truncateStringToBytes(text, maxBytes), truncated: true };
 }
 
 // ── sudo stderr filter ───────────────────────────────────────────────────────

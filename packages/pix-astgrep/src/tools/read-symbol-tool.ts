@@ -24,6 +24,7 @@ import {
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import { grammarErrorResult } from "../grammar-result.ts";
 
@@ -172,7 +173,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 			let body = node.text();
 			let truncated = false;
 			if (Buffer.byteLength(body, "utf8") > MAX_BYTES) {
-				body = body.slice(0, MAX_BYTES);
+				body = truncateStringToBytes(body, MAX_BYTES);
 				truncated = true;
 			}
 			const line = node.range().start.line + 1;

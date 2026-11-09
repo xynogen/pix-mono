@@ -23,6 +23,7 @@
 		".": "./src/index.ts",
 		"./abort": "./src/abort.ts",
 		"./tool-execution": "./src/tool-execution.ts",
+		"./utf8": "./src/utf8.ts",
 		"./atomic-write": "./src/atomic-write.ts",
 		"./binaries": "./src/binaries/index.ts",
 		"./config": "./src/runtime.ts",

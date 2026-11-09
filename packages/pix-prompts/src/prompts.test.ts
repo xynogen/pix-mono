@@ -39,6 +39,22 @@ describe("pix-prompts host-aware injection", () => {
 		rmSync(dir, { recursive: true, force: true });
 	});
 
+	it("caps multilingual directive content by UTF-8 bytes", async () => {
+		const input = "a😀é中".repeat(4000);
+		writeFileSync(join(dir, "GEMINI.md"), input);
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+		const match = result?.systemPrompt?.match(
+			/<pix-prompts-gemini-md>\n([\s\S]*?)\n\[pix-prompts: truncated at 16384 bytes\]\n<\/pix-prompts-gemini-md>/,
+		);
+		expect(match).toBeTruthy();
+		const body = match?.[1] ?? "";
+		expect(Buffer.byteLength(body)).toBeGreaterThan(16380);
+		expect(Buffer.byteLength(body)).toBeLessThanOrEqual(16384);
+		expect(input.startsWith(body)).toBe(true);
+	});
+
 	it("resolves the bundled SOP.md to a real file and injects it", async () => {
 		// Regression: URL.pathname made "C:\\C:\\..." on Windows and SOP was silently skipped.
 		expect(existsSync(resolveOwnSopMd())).toBe(true);

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { truncateHead } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage, humanSize } from "@xynogen/pix-pretty/utils";
 import { tempDir } from "@xynogen/pix-runtime/paths";
+import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import type { ContentBlock, McpSettings } from "./types.ts";
 
 export const DEFAULT_MCP_OUTPUT_MAX_BYTES = 50 * 1024;
@@ -229,14 +230,6 @@ function reserveBudget(
 		maxBytes: Math.max(0, maxBytes - noticeStats.bytes),
 		maxLines: Math.max(0, maxLines - noticeStats.lines),
 	};
-}
-
-function truncateStringToBytes(value: string, maxBytes: number): string {
-	if (byteLength(value) <= maxBytes) return value;
-	const buffer = Buffer.from(value, "utf8");
-	let end = Math.max(0, maxBytes);
-	while (end > 0 && (buffer[end] & 0xc0) === 0x80) end--;
-	return buffer.subarray(0, end).toString("utf8");
 }
 
 function formatTruncationNotice(

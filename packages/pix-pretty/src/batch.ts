@@ -1,10 +1,11 @@
 /** Shared batching for read/grep/find/ls — N known targets, one tool result. */
 
+import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
+
 export const BATCH_MAX_TARGETS = 20;
 export const BATCH_MAX_BYTES = 50 * 1024;
 
 const encoder = new TextEncoder();
-const decoder = new TextDecoder();
 
 /** Merge a singular target with an optional array, trimming and de-duping. */
 export function resolveBatchStrings(single: string | undefined, many: unknown): string[] {
@@ -97,10 +98,8 @@ function byteLength(text: string): number {
 }
 
 function cutToBytes(text: string, maxBytes: number): string {
-	const bytes = encoder.encode(text);
-	if (bytes.length <= maxBytes) return text;
-	let cut = decoder.decode(bytes.slice(0, maxBytes));
-	if (cut.endsWith("\uFFFD")) cut = cut.slice(0, -1);
+	if (byteLength(text) <= maxBytes) return text;
+	const cut = truncateStringToBytes(text, maxBytes);
 	const lastNl = cut.lastIndexOf("\n");
 	return lastNl > 0 ? cut.slice(0, lastNl) : cut;
 }

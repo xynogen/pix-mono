@@ -123,7 +123,7 @@ describe("lsp_navigation tool", () => {
 	});
 
 	test("caps hover text and marks it truncated", async () => {
-		const bigHover = "x".repeat(5000);
+		const bigHover = "a😀é中".repeat(1000);
 		const manager = fakeManager([{ kind: "hover", text: bigHover }]);
 		const root = mkdtempSync(join(tempDir(), "pix-nav-"));
 		const file = join(root, "a.ts");
@@ -137,7 +137,9 @@ describe("lsp_navigation tool", () => {
 		});
 		const details = result.details as { truncated: boolean };
 		expect(details.truncated).toBe(true);
-		expect(result.content[0]?.text.length).toBeLessThanOrEqual(4096 + 32);
+		const body = result.content[0]?.text ?? "";
+		expect(Buffer.byteLength(body)).toBeLessThanOrEqual(4096 + 32);
+		expect(bigHover.startsWith(body.split("\n")[0] ?? "")).toBe(true);
 	});
 
 	test("rename requires newName and passes it through", async () => {

@@ -58,6 +58,22 @@ function fixture(): string {
 }
 
 describe("pix-astgrep tools", () => {
+	for (const name of ["ast_read_symbol", "ast_read_enclosing"]) {
+		test(`${name} caps multilingual source at a complete UTF-8 boundary`, async () => {
+			const dir = fixture();
+			const source = `function greet() { return "${"a😀é中".repeat(4000)}"; }`;
+			writeFileSync(join(dir, "a.ts"), source);
+			const tool = capture(dir).get(name);
+			if (!tool) throw new Error("tool missing");
+			const result = await tool.execute("t", { path: "a.ts", symbol: "greet", line: 1 });
+			const body = (result.content[0]?.text ?? "").split("\n").slice(1).join("\n");
+			expect(result.details).toMatchObject({ truncated: true });
+			expect(Buffer.byteLength(body)).toBeGreaterThan(16380);
+			expect(Buffer.byteLength(body)).toBeLessThanOrEqual(16384);
+			expect(source.startsWith(body)).toBe(true);
+		});
+	}
+
 	test("registers exactly the six tools", () => {
 		const tools = capture(fixture());
 		expect([...tools.keys()].sort()).toEqual([

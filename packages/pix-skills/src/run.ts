@@ -1,6 +1,7 @@
 /** Bounded, shell-free command execution for directive interpolation. */
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 
 export interface RunOptions {
 	cwd: string;
@@ -22,10 +23,7 @@ export async function runArgv(argv: string[], opts: RunOptions): Promise<string>
 		});
 		const output = `${result.stdout}${result.stderr}`.trimEnd();
 		const truncated = result.truncated || Buffer.byteLength(output) > maxBytes;
-		const text = Buffer.from(output)
-			.subarray(0, maxBytes)
-			.toString("utf8")
-			.replace(/\uFFFD$/, "");
+		const text = truncateStringToBytes(output, maxBytes);
 		return `${text || "(no output)"}${result.timedOut ? "\n[output truncated: timed out]" : truncated ? "\n[output truncated]" : ""}`;
 	} catch (error) {
 		opts.signal?.throwIfAborted();
