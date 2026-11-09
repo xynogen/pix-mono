@@ -200,6 +200,16 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 		const started = footer.render(400)[0] ?? "";
 		expect(started).toContain(theme.fg("dim", "— t/s"));
 		expect(stripVTControlCharacters(started)).toMatch(/— t[/]s · .*1\.2K.*200/);
+		for (const mode of ["AFK", "YOLO", "NUCLEAR"]) {
+			statuses.set("unattended", mode);
+			const row = stripVTControlCharacters(footer.render(400)[0] ?? "");
+			expect(row).toMatch(new RegExp(`\\$~?0\\.123.* │ ${mode} │ .*2[/]3`));
+			expect(row.match(new RegExp(mode, "g"))).toHaveLength(1);
+		}
+		await fixture.runtime.update(prettySection, { footer: { statuses: false } });
+		expect(stripVTControlCharacters(footer.render(400)[0] ?? "")).not.toContain("NUCLEAR");
+		await fixture.runtime.update(prettySection, { footer: defaults });
+		statuses.delete("unattended");
 		now += 2000;
 		await hooks.get("message_update")?.({
 			message: { role: "assistant", id: "stream", usage: { output: 200 } },

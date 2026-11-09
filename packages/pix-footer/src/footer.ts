@@ -357,10 +357,10 @@ function renderStatuses(
 	statuses: ReadonlyMap<string, string>,
 	sep: string,
 	theme: Theme,
-): { modePart: string; otherPart: string } {
+): { modePart: string; unattendedPart: string; otherPart: string } {
 	const mode = statuses.get("plan") ?? statuses.get("phase");
 	const ORDER = ["mcp", "pi-lens-lsp", "caveman"];
-	const seen = new Set<string>(["plan", "phase"]);
+	const seen = new Set<string>(["plan", "phase", "unattended"]);
 	const others: string[] = [];
 	for (const k of ORDER) {
 		const v = statuses.get(k);
@@ -374,6 +374,7 @@ function renderStatuses(
 	}
 	return {
 		modePart: mode ?? "",
+		unattendedPart: statuses.get("unattended") ?? "",
 		otherPart: others.join(sep),
 	};
 }
@@ -631,7 +632,7 @@ export default function (pi: ExtensionAPI) {
 						gitStatus,
 						theme,
 					);
-					const { modePart, otherPart } = renderStatuses(
+					const { modePart, unattendedPart, otherPart } = renderStatuses(
 						footerData.getExtensionStatuses(),
 						sep,
 						theme,
@@ -658,6 +659,7 @@ export default function (pi: ExtensionAPI) {
 						]
 							.filter(Boolean)
 							.join(theme.fg("muted", " · ")),
+						parts.statuses ? unattendedPart : "",
 						parts.statuses ? otherPart : "",
 						parts.system ? renderSystem(sysStats, theme) : "",
 						parts.clock ? renderClock(new Date(Date.now()), theme) : "",
