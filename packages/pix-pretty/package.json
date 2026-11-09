@@ -10,6 +10,7 @@
 		"./batch": "./src/batch.ts",
 		"./confirm": "./src/confirm.ts",
 		"./progress": "./src/progress.ts",
+		"./overlay-lifecycle": "./src/overlay-lifecycle.ts",
 		"./config": "./src/config.ts",
 		"./diff": "./src/diff.ts",
 		"./diff-render": "./src/diff-render.ts",

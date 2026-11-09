@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+import { createOverlayLifecycle } from "@xynogen/pix-pretty/overlay-lifecycle";
 import {
 	dotJoin,
 	formatCollapsedToolRow,
@@ -11,6 +12,7 @@ import {
 	pluralize,
 } from "@xynogen/pix-pretty/utils";
 import { withAgentBlock } from "@xynogen/pix-runtime";
+import { onAbort } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { prepareAskArguments } from "./args.ts";
@@ -74,7 +76,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 				}
 
 				if (!ctx.hasUI) {
-					const result = await rpcFallback(ctx.ui, typed);
+					const result = await rpcFallback(ctx.ui, typed, signal);
 					// Same rule as the TUI path: keep partial answers, decline only when empty.
 					const text =
 						result.cancelled && !result.answers.length
@@ -83,18 +85,28 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					return { content: [{ type: "text", text }], details: result };
 				}
 
-				const result = await withAgentBlock(pi.events, "ask_user", "Waiting for user answer", () =>
-					ctx.ui.custom<QuestionnaireResult | null>(
-						(tui, theme, keybindings, done) => {
-							if (signal) {
-								signal.addEventListener("abort", () => done({ answers: [], cancelled: true }), {
-									once: true,
-								});
-							}
-							return new AskQuestionnaire(typed, tui, theme, keybindings, done);
-						},
-						{ overlay: true, overlayOptions: modalOverlayOptions() },
-					),
+				const result = await withAgentBlock(
+					pi.events,
+					"ask_user",
+					"Waiting for user answer",
+					async () => {
+						const lifecycle = createOverlayLifecycle<QuestionnaireResult | null>();
+						lifecycle.onCleanup(
+							onAbort(signal, () => lifecycle.finish({ answers: [], cancelled: true })),
+						);
+						try {
+							return await ctx.ui.custom<QuestionnaireResult | null>(
+								(tui, theme, keybindings, done) => {
+									lifecycle.bind(done);
+									if (lifecycle.closed) return new Text("", 0, 0);
+									return new AskQuestionnaire(typed, tui, theme, keybindings, lifecycle.finish);
+								},
+								{ overlay: true, overlayOptions: modalOverlayOptions() },
+							);
+						} finally {
+							lifecycle.dispose();
+						}
+					},
 				);
 
 				// Preserve any answers filled before the user closed the modal. cancel()

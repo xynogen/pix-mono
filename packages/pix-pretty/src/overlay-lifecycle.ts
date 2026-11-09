@@ -1,6 +1,6 @@
 import { onAbort } from "@xynogen/pix-runtime/abort";
 
-/** Internal overlay lifetime; UI policy and timers stay with each component. */
+/** Overlay lifetime with exactly-once completion; UI policy and timers stay with each component. */
 export function createOverlayLifecycle<T>() {
 	const controller = new AbortController();
 	let done: ((value: T) => void) | undefined;
