@@ -298,3 +298,23 @@ describe("python_run", () => {
 		}
 	});
 });
+
+test("cancellation during approval never starts Python", async () => {
+	const { execute } = host();
+	const controller = new AbortController();
+	const before = runPython.mock.calls.length;
+	const ui = {
+		custom: async () => {
+			controller.abort(new Error("stop approval"));
+			return { action: "approved", choice: "session" };
+		},
+	};
+	const result = await execute("cancel-approval", args, controller.signal, undefined, {
+		hasUI: true,
+		ui,
+		cwd: "/work",
+	});
+	expect(result.details).toMatchObject({ outcome: "cancelled" });
+	expect(result.isError).toBe(false);
+	expect(runPython.mock.calls.length).toBe(before);
+});

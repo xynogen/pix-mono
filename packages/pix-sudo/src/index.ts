@@ -52,6 +52,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import {
 	detectAuthFailure,
@@ -194,256 +195,257 @@ export default function (pi: ExtensionAPI): void {
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
 			const { command, reason } = params;
-
-			const mode = getUnattendedMode(pi.events);
-			const yolo = mode === "yolo";
-			if (mode === "afk") {
-				return {
-					content: [{ type: "text", text: "sudo_run denied immediately — AFK mode is active." }],
-					details: makeDetails(command, reason, {
-						outcome: "denied",
-						cancellationKind: "denied",
-					}),
-				};
-			}
-
-			// ── No UI: block immediately ───────────────────────────────────────
-			if (!ctx.hasUI) {
-				return {
+			return runToolExecution({
+				signal,
+				onUpdate,
+				onError: (error, cancelled) => ({
 					content: [
 						{
-							type: "text",
-							text: "sudo_run requires an interactive session (no UI available).",
+							type: "text" as const,
+							text: cancelled
+								? "sudo_run cancelled."
+								: `sudo_run failed: ${getErrorMessage(error)}`,
 						},
 					],
-					details: makeDetails(command, reason, {
-						outcome: "error",
-						errorKind: "no-ui",
-					}),
-					isError: true,
-				};
-			}
-
-			updatePresentation(onUpdate, command, reason, "awaiting-approval");
-
-			// A valid PAM ticket lets us skip the password stage (confirm only).
-			signal?.throwIfAborted();
-			const cached = await hasValidTicket(signal);
-
-			const intent = reason?.trim();
-			const title = intent || "Root Command Request";
-			const body = [
-				"Review the command in the tool card below.",
-				...(intent ? [] : ["No reason provided by AI"]),
-			];
-
-			let result: { stdout: string; stderr: string; code: number } | undefined;
-			let executionError: unknown;
-
-			// ── Confirm (+ validate password inside the same open overlay) ───────
-			// YOLO auto-approves root, but only when a PAM ticket is already cached:
-			// the password cannot be auto-typed, so a no-ticket run still prompts.
-			if (yolo && cached) {
-				ctx.ui.notify("🔐 YOLO — root command auto-approved (cached ticket).", "warning");
-			}
-			const overlayResult: OverlayResult =
-				yolo && cached
-					? { action: "approved", password: "" }
-					: await withAgentBlock(pi.events, "sudo_run", "Root approval required", () => {
-							if (cached) {
-								return showOverlay(ctx.ui, {
-									signal,
-									mode: "confirm",
-									icon: icon("lock"),
-									title,
-									body: [...body, "(sudo session active — no password needed)"],
-									accent: "error",
-									timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-									choices: [
-										{ value: "yes", label: "Allow", description: "Run the command" },
-										{ value: "no", label: "Deny", description: "Block the command" },
-									],
-								});
-							}
-							return showOverlay(ctx.ui, {
-								signal,
-								mode: "sudo",
-								icon: icon("lock"),
-								title,
-								body,
-								accent: "error",
-								timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-								maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-								validatePassword: async (password, validationSignal) => {
-									try {
-										const validation = await validateSudoPassword(password, validationSignal);
-										if (detectAuthFailure(validation.code, validation.stderr)) return false;
-										if (validation.code !== 0) {
-											executionError = new Error(
-												validation.stderr || "sudo password validation failed",
-											);
-										}
-										return true;
-									} catch (err) {
-										executionError = err;
-										return true;
-									}
-								},
-								choices: [
-									{
-										value: "yes",
-										label: "Allow — enter password",
-										description: "Proceed to password prompt",
-									},
-									{
-										value: "no",
-										label: "Deny — block command",
-										description: "Prevent this command from running",
-									},
-								],
-							});
-						});
-
-			signal?.throwIfAborted();
-			// Checked before anything runs: a wrong password must never reach sudo.
-			if (overlayResult.passwordAttemptsExhausted) {
-				const text = `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
-				return {
-					content: [{ type: "text", text }],
-					details: makeDetails(command, reason, { outcome: "error", errorKind: "authentication" }),
-					isError: true,
-				};
-			}
-
-			// Cached ticket needs no password; otherwise a blank password is a cancel.
-			const missingPassword = !cached && !overlayResult.password?.trim();
-			if (overlayResult.action !== "approved" || missingPassword) {
-				const cancellationKind: SudoCancellationKind =
-					overlayResult.action === "timeout"
-						? "timeout"
-						: overlayResult.action === "denied"
-							? "denied"
-							: "missing-password";
-				const outcome: SudoOutcome =
-					cancellationKind === "timeout"
-						? "timed-out"
-						: cancellationKind === "denied"
-							? "denied"
-							: "cancelled";
-				const msg =
-					outcome === "timed-out"
-						? "Timed out — auto-denied."
-						: outcome === "denied"
-							? "Denied by user."
-							: "Cancelled — no password entered.";
-				return {
-					content: [{ type: "text", text: `Cancelled — ${msg}` }],
-					details: makeDetails(command, reason, { outcome, cancellationKind }),
-				};
-			}
-
-			if (executionError) {
-				const msg = getErrorMessage(executionError);
-				return {
-					content: [{ type: "text", text: `sudo_run failed: ${msg}` }],
-					details: makeDetails(command, reason, {
-						outcome: "error",
-						errorKind: "authentication",
-					}),
-					isError: true,
-				};
-			}
-
-			updatePresentation(onUpdate, command, reason, "running");
-
-			// Password validation refreshes sudo's PAM ticket with `sudo -v`; the
-			// requested command always runs afterward, outside the checking overlay.
-			try {
-				result = await runWithSudo(command, "", signal);
-			} catch (err) {
-				const msg = getErrorMessage(err);
-				return {
-					content: [{ type: "text", text: `sudo_run failed: ${msg}` }],
 					details: makeDetails(
 						command,
 						reason,
-						signal?.aborted
+						cancelled
 							? { outcome: "cancelled", cancellationKind: "aborted" }
 							: { outcome: "error", errorKind: "execution" },
 					),
-					isError: signal?.aborted !== true,
-				};
-			}
-
-			if (!result) {
-				return {
-					content: [{ type: "text", text: "sudo_run failed: command produced no result" }],
-					details: makeDetails(command, reason, {
-						outcome: "error",
-						errorKind: "no-result",
-					}),
-					isError: true,
-				};
-			}
-
-			if (detectAuthFailure(result.code, result.stderr)) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`,
-						},
-					],
-					details: makeDetails(command, reason, {
-						outcome: "error",
-						exitCode: result.code,
-						lineCount: outputLineCount(result.stderr),
-						truncated: false,
-						errorKind: "authentication",
-						_render: normalizeLineEndings(result.stderr),
-					}),
-					isError: true,
-				};
-			}
-
-			// ── Step 5: Truncate + return ──────────────────────────────────────
-			const combined = [
-				result.stdout && `[stdout]\n${result.stdout}`,
-				result.stderr && `[stderr]\n${result.stderr}`,
-			]
-				.filter(Boolean)
-				.join("\n");
-
-			const { text: truncatedText, truncated } = truncate(combined || "(no output)");
-
-			const suffix = truncated
-				? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
-				: "";
-
-			const combinedOut =
-				[result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)";
-
-			const rendered = normalizeLineEndings(combinedOut)
-				.replace(/\n{3,}/g, "\n\n")
-				.replace(/^\n+|\n+$/g, "");
-
-			return {
-				content: [
-					{
-						type: "text",
-						text: `Exit code: ${result.code}\n\n${truncatedText}${suffix}`,
-					},
-				],
-				details: makeDetails(command, reason, {
-					outcome: result.code === 0 ? "success" : "error",
-					exitCode: result.code,
-					lineCount: outputLineCount(rendered),
-					truncated,
-					...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
-					_render: rendered,
+					isError: !cancelled,
 				}),
-				isError: result.code !== 0,
-			};
+				execute: async ({ update: onUpdate }) => {
+					const mode = getUnattendedMode(pi.events);
+					const yolo = mode === "yolo";
+					if (mode === "afk") {
+						return {
+							content: [
+								{ type: "text", text: "sudo_run denied immediately — AFK mode is active." },
+							],
+							details: makeDetails(command, reason, {
+								outcome: "denied",
+								cancellationKind: "denied",
+							}),
+						};
+					}
+
+					// ── No UI: block immediately ───────────────────────────────────────
+					if (!ctx.hasUI) {
+						return {
+							content: [
+								{
+									type: "text",
+									text: "sudo_run requires an interactive session (no UI available).",
+								},
+							],
+							details: makeDetails(command, reason, {
+								outcome: "error",
+								errorKind: "no-ui",
+							}),
+							isError: true,
+						};
+					}
+
+					updatePresentation(onUpdate, command, reason, "awaiting-approval");
+
+					// A valid PAM ticket lets us skip the password stage (confirm only).
+					signal?.throwIfAborted();
+					const cached = await hasValidTicket(signal);
+
+					const intent = reason?.trim();
+					const title = intent || "Root Command Request";
+					const body = [
+						"Review the command in the tool card below.",
+						...(intent ? [] : ["No reason provided by AI"]),
+					];
+
+					let executionError: unknown;
+
+					// ── Confirm (+ validate password inside the same open overlay) ───────
+					// YOLO auto-approves root, but only when a PAM ticket is already cached:
+					// the password cannot be auto-typed, so a no-ticket run still prompts.
+					if (yolo && cached) {
+						ctx.ui.notify("🔐 YOLO — root command auto-approved (cached ticket).", "warning");
+					}
+					const overlayResult: OverlayResult =
+						yolo && cached
+							? { action: "approved", password: "" }
+							: await withAgentBlock(pi.events, "sudo_run", "Root approval required", () => {
+									if (cached) {
+										return showOverlay(ctx.ui, {
+											signal,
+											mode: "confirm",
+											icon: icon("lock"),
+											title,
+											body: [...body, "(sudo session active — no password needed)"],
+											accent: "error",
+											timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+											choices: [
+												{ value: "yes", label: "Allow", description: "Run the command" },
+												{ value: "no", label: "Deny", description: "Block the command" },
+											],
+										});
+									}
+									return showOverlay(ctx.ui, {
+										signal,
+										mode: "sudo",
+										icon: icon("lock"),
+										title,
+										body,
+										accent: "error",
+										timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+										maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+										validatePassword: async (password, validationSignal) => {
+											try {
+												const validation = await validateSudoPassword(password, validationSignal);
+												if (detectAuthFailure(validation.code, validation.stderr)) return false;
+												if (validation.code !== 0) {
+													executionError = new Error(
+														validation.stderr || "sudo password validation failed",
+													);
+												}
+												return true;
+											} catch (err) {
+												executionError = err;
+												return true;
+											}
+										},
+										choices: [
+											{
+												value: "yes",
+												label: "Allow — enter password",
+												description: "Proceed to password prompt",
+											},
+											{
+												value: "no",
+												label: "Deny — block command",
+												description: "Prevent this command from running",
+											},
+										],
+									});
+								});
+
+					signal?.throwIfAborted();
+					// Checked before anything runs: a wrong password must never reach sudo.
+					if (overlayResult.passwordAttemptsExhausted) {
+						const text = `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
+						return {
+							content: [{ type: "text", text }],
+							details: makeDetails(command, reason, {
+								outcome: "error",
+								errorKind: "authentication",
+							}),
+							isError: true,
+						};
+					}
+
+					// Cached ticket needs no password; otherwise a blank password is a cancel.
+					const missingPassword = !cached && !overlayResult.password?.trim();
+					if (overlayResult.action !== "approved" || missingPassword) {
+						const cancellationKind: SudoCancellationKind =
+							overlayResult.action === "timeout"
+								? "timeout"
+								: overlayResult.action === "denied"
+									? "denied"
+									: "missing-password";
+						const outcome: SudoOutcome =
+							cancellationKind === "timeout"
+								? "timed-out"
+								: cancellationKind === "denied"
+									? "denied"
+									: "cancelled";
+						const msg =
+							outcome === "timed-out"
+								? "Timed out — auto-denied."
+								: outcome === "denied"
+									? "Denied by user."
+									: "Cancelled — no password entered.";
+						return {
+							content: [{ type: "text", text: `Cancelled — ${msg}` }],
+							details: makeDetails(command, reason, { outcome, cancellationKind }),
+						};
+					}
+
+					if (executionError) {
+						const msg = getErrorMessage(executionError);
+						return {
+							content: [{ type: "text", text: `sudo_run failed: ${msg}` }],
+							details: makeDetails(command, reason, {
+								outcome: "error",
+								errorKind: "authentication",
+							}),
+							isError: true,
+						};
+					}
+
+					updatePresentation(onUpdate, command, reason, "running");
+
+					// Password validation refreshes sudo's PAM ticket with `sudo -v`; the
+					// requested command always runs afterward, outside the checking overlay.
+					const result = await runWithSudo(command, "", signal);
+
+					if (detectAuthFailure(result.code, result.stderr)) {
+						return {
+							content: [
+								{
+									type: "text",
+									text: `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`,
+								},
+							],
+							details: makeDetails(command, reason, {
+								outcome: "error",
+								exitCode: result.code,
+								lineCount: outputLineCount(result.stderr),
+								truncated: false,
+								errorKind: "authentication",
+								_render: normalizeLineEndings(result.stderr),
+							}),
+							isError: true,
+						};
+					}
+
+					// ── Step 5: Truncate + return ──────────────────────────────────────
+					const combined = [
+						result.stdout && `[stdout]\n${result.stdout}`,
+						result.stderr && `[stderr]\n${result.stderr}`,
+					]
+						.filter(Boolean)
+						.join("\n");
+
+					const { text: truncatedText, truncated } = truncate(combined || "(no output)");
+
+					const suffix = truncated
+						? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
+						: "";
+
+					const combinedOut =
+						[result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)";
+
+					const rendered = normalizeLineEndings(combinedOut)
+						.replace(/\n{3,}/g, "\n\n")
+						.replace(/^\n+|\n+$/g, "");
+
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Exit code: ${result.code}\n\n${truncatedText}${suffix}`,
+							},
+						],
+						details: makeDetails(command, reason, {
+							outcome: result.code === 0 ? "success" : "error",
+							exitCode: result.code,
+							lineCount: outputLineCount(rendered),
+							truncated,
+							...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
+							_render: rendered,
+						}),
+						isError: result.code !== 0,
+					};
+				},
+			});
 		},
 
 		renderCall: ((

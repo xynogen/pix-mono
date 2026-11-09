@@ -65,6 +65,7 @@ import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { requireTool } from "@xynogen/pix-runtime/binaries";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import {
 	closeMaster,
@@ -648,7 +649,10 @@ export default function (pi: ExtensionAPI): void {
 			if (!ctx.hasUI) {
 				return {
 					content: [
-						{ type: "text", text: "ssh_run requires an interactive session (no UI available)." },
+						{
+							type: "text",
+							text: "ssh_run requires an interactive session (no UI available).",
+						},
 					],
 					details: makeDetails(command, host, sudo, reason, {
 						outcome: "error",
@@ -841,138 +845,136 @@ export default function (pi: ExtensionAPI): void {
 				...(sudoPassword ? { sudoPassword } : {}),
 			});
 
-			let spinnerFrame = 0;
-			const updateTransferPresentation = () => {
-				const verb = direction === "download" ? "Downloading from" : "Uploading to";
-				updatePresentation(
-					onUpdate,
-					command,
-					host,
-					sudo,
-					reason,
-					"running",
-					`${SPINNER[spinnerFrame] ?? ""} ${verb} ${host}…`,
-				);
-			};
-			if (action === "file") updateTransferPresentation();
-			else updatePresentation(onUpdate, command, host, sudo, reason, "running");
-			// ponytail: spinner shows liveness only; SCP has no stable byte-progress API.
-			// Use an SFTP client with byte callbacks if percentage progress is needed.
-			const spinnerTimer =
-				action === "file" && onUpdate
-					? setInterval(() => {
-							spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
-							updateTransferPresentation();
-						}, SPINNER_INTERVAL_MS)
-					: undefined;
-
-			let result: { stdout: string; stderr: string; code: number } | undefined;
-			try {
-				result =
-					action === "file"
-						? await runTransfer(spec, direction ?? "upload", source, destination, recursive, {
-								controlPath,
-								...(loginPassword ? { loginPassword } : {}),
-								...(sig ? { signal: sig } : {}),
-							})
-						: await runSsh(spec, command, {
-								controlPath,
-								...(loginPassword ? { loginPassword } : {}),
-								sudo,
-								...(sudo ? { sudoPassword: sudoPassword ?? "" } : {}),
-								...(sig ? { signal: sig } : {}),
-							});
-			} catch (err) {
-				const msg = getErrorMessage(err);
-				return {
-					content: [{ type: "text", text: `ssh_run failed: ${msg}` }],
+			const hasUpdates = Boolean(onUpdate);
+			return runToolExecution({
+				signal: sig,
+				onUpdate,
+				onError: (error, cancelled) => ({
+					content: [
+						{
+							type: "text" as const,
+							text: cancelled ? "ssh_run cancelled." : `ssh_run failed: ${getErrorMessage(error)}`,
+						},
+					],
 					details: makeDetails(
 						command,
 						host,
 						sudo,
 						reason,
-						sig?.aborted
+						cancelled
 							? { outcome: "cancelled", cancellationKind: "aborted" }
 							: { outcome: "error", errorKind: "execution" },
 					),
-					isError: sig?.aborted !== true,
-				};
-			} finally {
-				if (spinnerTimer) clearInterval(spinnerTimer);
-			}
-
-			if (!result) {
-				return {
-					content: [{ type: "text", text: "ssh_run failed: command produced no result" }],
-					details: makeDetails(command, host, sudo, reason, {
-						outcome: "error",
-						errorKind: "no-result",
-					}),
-					isError: true,
-				};
-			}
-
-			// SSH auth failure → drop the bad login password from the cache so the
-			// next call re-prompts.
-			if (detectSshFailure(result.code, result.stderr)) {
-				credCache.delete(key);
-				return {
-					content: [{ type: "text", text: `SSH authentication failed:\n${result.stderr}` }],
-					details: makeDetails(command, host, sudo, reason, {
-						outcome: "error",
-						exitCode: result.code,
-						lineCount: outputLineCount(result.stderr),
-						errorKind: "auth-ssh",
-						_render: normalizeLineEndings(result.stderr),
-					}),
-					isError: true,
-				};
-			}
-
-			// Remote sudo password failure → drop the bad sudo password.
-			if (sudo && detectSudoFailure(result.stderr)) {
-				credCache.set(key, loginPassword ? { loginPassword } : {});
-				return {
-					content: [{ type: "text", text: `Remote sudo authentication failed:\n${result.stderr}` }],
-					details: makeDetails(command, host, sudo, reason, {
-						outcome: "error",
-						exitCode: result.code,
-						...via,
-						lineCount: outputLineCount(result.stderr),
-						errorKind: "auth-sudo",
-						_render: normalizeLineEndings(result.stderr),
-					}),
-					isError: true,
-				};
-			}
-
-			const combined = [result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)";
-			const { text: truncatedText, truncated } = truncate(combined);
-			const suffix = truncated
-				? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
-				: "";
-			const rendered = normalizeLineEndings(combined)
-				.replace(/\n{3,}/g, "\n\n")
-				.replace(/^\n+|\n+$/g, "");
-
-			return {
-				content: [
-					{
-						type: "text",
-						text: `Exit code: ${result.code} (auth: ${via.auth}, ${via.connection} connection)\n\n${truncatedText}${suffix}`,
-					},
-				],
-				details: makeDetails(command, host, sudo, reason, {
-					outcome: result.code === 0 ? "success" : "error",
-					exitCode: result.code,
-					...via,
-					lineCount: outputLineCount(rendered),
-					truncated,
-					...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
-					_render: rendered,
+					isError: !cancelled,
 				}),
-				isError: result.code !== 0,
-			};
+				execute: async ({ update: onUpdate, onCleanup }) => {
+					let spinnerFrame = 0;
+					const updateTransferPresentation = () => {
+						const verb = direction === "download" ? "Downloading from" : "Uploading to";
+						updatePresentation(
+							onUpdate,
+							command,
+							host,
+							sudo,
+							reason,
+							"running",
+							`${SPINNER[spinnerFrame] ?? ""} ${verb} ${host}…`,
+						);
+					};
+					if (action === "file") updateTransferPresentation();
+					else updatePresentation(onUpdate, command, host, sudo, reason, "running");
+					// ponytail: spinner shows liveness only; SCP has no stable byte-progress API.
+					// Use an SFTP client with byte callbacks if percentage progress is needed.
+					const spinnerTimer =
+						action === "file" && hasUpdates
+							? setInterval(() => {
+									spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
+									updateTransferPresentation();
+								}, SPINNER_INTERVAL_MS)
+							: undefined;
+
+					onCleanup(() => clearInterval(spinnerTimer));
+					const result =
+						action === "file"
+							? await runTransfer(spec, direction ?? "upload", source, destination, recursive, {
+									controlPath,
+									...(loginPassword ? { loginPassword } : {}),
+									...(sig ? { signal: sig } : {}),
+								})
+							: await runSsh(spec, command, {
+									controlPath,
+									...(loginPassword ? { loginPassword } : {}),
+									sudo,
+									...(sudo ? { sudoPassword: sudoPassword ?? "" } : {}),
+									...(sig ? { signal: sig } : {}),
+								});
+
+					// SSH auth failure → drop the bad login password from the cache so the
+					// next call re-prompts.
+					if (detectSshFailure(result.code, result.stderr)) {
+						credCache.delete(key);
+						return {
+							content: [{ type: "text", text: `SSH authentication failed:\n${result.stderr}` }],
+							details: makeDetails(command, host, sudo, reason, {
+								outcome: "error",
+								exitCode: result.code,
+								lineCount: outputLineCount(result.stderr),
+								errorKind: "auth-ssh",
+								_render: normalizeLineEndings(result.stderr),
+							}),
+							isError: true,
+						};
+					}
+
+					// Remote sudo password failure → drop the bad sudo password.
+					if (sudo && detectSudoFailure(result.stderr)) {
+						credCache.set(key, loginPassword ? { loginPassword } : {});
+						return {
+							content: [
+								{ type: "text", text: `Remote sudo authentication failed:\n${result.stderr}` },
+							],
+							details: makeDetails(command, host, sudo, reason, {
+								outcome: "error",
+								exitCode: result.code,
+								...via,
+								lineCount: outputLineCount(result.stderr),
+								errorKind: "auth-sudo",
+								_render: normalizeLineEndings(result.stderr),
+							}),
+							isError: true,
+						};
+					}
+
+					const combined =
+						[result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)";
+					const { text: truncatedText, truncated } = truncate(combined);
+					const suffix = truncated
+						? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
+						: "";
+					const rendered = normalizeLineEndings(combined)
+						.replace(/\n{3,}/g, "\n\n")
+						.replace(/^\n+|\n+$/g, "");
+
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Exit code: ${result.code} (auth: ${via.auth}, ${via.connection} connection)\n\n${truncatedText}${suffix}`,
+							},
+						],
+						details: makeDetails(command, host, sudo, reason, {
+							outcome: result.code === 0 ? "success" : "error",
+							exitCode: result.code,
+							...via,
+							lineCount: outputLineCount(rendered),
+							truncated,
+							...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
+							_render: rendered,
+						}),
+						isError: result.code !== 0,
+					};
+				},
+			});
 		},
 
 		renderCall: ((args: SshParams, theme: ThemeLike, renderCtx: RenderContextLike) => {

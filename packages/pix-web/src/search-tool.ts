@@ -1,6 +1,7 @@
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { makeRenderCall, makeRenderResult } from "./render.ts";
 import { searchConfig } from "./search-config.ts";
@@ -23,8 +24,7 @@ function configuredProvider(): string[] | undefined {
 	return searchConfig.provider === "auto" ? undefined : [searchConfig.provider];
 }
 
-function errorResult(error: unknown, query: string, signal?: AbortSignal): ToolResult {
-	const cancelled = signal?.aborted === true;
+function errorResult(error: unknown, query: string, cancelled: boolean): ToolResult {
 	return {
 		content: [
 			{
@@ -79,39 +79,42 @@ export function registerSearchTool(pi: ExtensionAPI): void {
 				search_type?: SearchType;
 				max_results?: number;
 			};
-			onUpdate?.({
-				content: [{ type: "text", text: `Searching: ${params.query}...` }],
-				details: { outcome: "running", target: params.query, meta: "running" },
+			return runToolExecution({
+				signal,
+				onUpdate,
+				onError: (error, cancelled) => errorResult(error, params.query, cancelled),
+				execute: async ({ update }) => {
+					update({
+						content: [{ type: "text", text: `Searching: ${params.query}...` }],
+						details: { outcome: "running", target: params.query, meta: "running" },
+					});
+					const maxResults = Math.min(Math.max(params.max_results ?? 5, 1), 10);
+					const result = await runSearch(
+						{
+							query: params.query,
+							searchType: params.search_type ?? "web",
+							maxResults,
+							signal,
+						},
+						configuredProvider(),
+					);
+					const text = result.data
+						.map((item, index) => {
+							const meta = item.publishedAt ? `\n   ${item.publishedAt}` : "";
+							return `${index + 1}. ${item.title || item.url}\n   ${item.url}${meta}${item.snippet ? `\n   ${item.snippet}` : ""}`;
+						})
+						.join("\n\n");
+					const fallbackMeta = result.errors.length > 0 ? ` · ${result.errors.length} failed` : "";
+					return {
+						content: [{ type: "text", text: text || "No results." }],
+						details: {
+							outcome: "success",
+							target: params.query,
+							meta: `${result.data.length} ${result.data.length === 1 ? "result" : "results"} · ${result.provider}${fallbackMeta}`,
+						},
+					};
+				},
 			});
-			try {
-				const maxResults = Math.min(Math.max(params.max_results ?? 5, 1), 10);
-				const result = await runSearch(
-					{
-						query: params.query,
-						searchType: params.search_type ?? "web",
-						maxResults,
-						signal,
-					},
-					configuredProvider(),
-				);
-				const text = result.data
-					.map((item, index) => {
-						const meta = item.publishedAt ? `\n   ${item.publishedAt}` : "";
-						return `${index + 1}. ${item.title || item.url}\n   ${item.url}${meta}${item.snippet ? `\n   ${item.snippet}` : ""}`;
-					})
-					.join("\n\n");
-				const fallbackMeta = result.errors.length > 0 ? ` · ${result.errors.length} failed` : "";
-				return {
-					content: [{ type: "text", text: text || "No results." }],
-					details: {
-						outcome: "success",
-						target: params.query,
-						meta: `${result.data.length} ${result.data.length === 1 ? "result" : "results"} · ${result.provider}${fallbackMeta}`,
-					},
-				};
-			} catch (error) {
-				return errorResult(error, params.query, signal);
-			}
 		},
 	});
 }

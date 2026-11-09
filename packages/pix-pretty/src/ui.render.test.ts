@@ -185,7 +185,7 @@ test("picker, gate, confirm and progress actual component captures", async () =>
 		progress.setLabel("Checking fixture");
 		capture("progress");
 	} finally {
-		progress?.close();
+		await progress?.close();
 		component?.handleInput("\x1b");
 		jest.useRealTimers();
 		await fixture.restore();

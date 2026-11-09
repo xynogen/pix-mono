@@ -20,6 +20,7 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "./modal-frame.ts";
+import { createOverlayLifecycle } from "./overlay-lifecycle.ts";
 import { SPINNER } from "./widget-format.ts";
 
 interface ProgressTheme {
@@ -49,8 +50,8 @@ export interface ProgressUI {
 export interface ProgressHandle {
 	/** Update the status line shown under the title. */
 	setLabel(label: string): void;
-	/** Close the overlay and release input ownership. */
-	close(): void;
+	/** Close the overlay, release input ownership, and propagate any host UI failure. */
+	close(): Promise<void>;
 }
 
 // 120ms: smooth enough to read as motion, slow enough to barely touch the
@@ -63,51 +64,63 @@ const SPINNER_INTERVAL_MS = 120;
  */
 export function openProgress(ui: ProgressUI, title: string, accent = "accent"): ProgressHandle {
 	let setLabelImpl: (label: string) => void = () => {};
-	let closeImpl: () => void = () => {};
+	const lifecycle = createOverlayLifecycle<void>();
+	let pending: Promise<void>;
+	try {
+		pending = ui
+			.custom<void>(
+				(tui, theme, _kb, done) => {
+					let frame = 0;
+					let labelValue = "Working…";
+					lifecycle.bind(done);
 
-	ui.custom<void>(
-		(tui, theme, _kb, done) => {
-			let frame = 0;
-			let labelValue = "Working…";
+					const ticker = setInterval(() => {
+						frame = (frame + 1) % SPINNER.length;
+						if (lifecycle.closed) return;
+						tui.requestRender();
+					}, SPINNER_INTERVAL_MS);
+					lifecycle.onCleanup(() => clearInterval(ticker));
 
-			const ticker = setInterval(() => {
-				frame = (frame + 1) % SPINNER.length;
-				tui.requestRender();
-			}, SPINNER_INTERVAL_MS);
+					setLabelImpl = (label: string) => {
+						if (lifecycle.closed) return;
+						labelValue = label;
+						tui.requestRender();
+					};
 
-			setLabelImpl = (label: string) => {
-				labelValue = label;
-				tui.requestRender();
-			};
-			closeImpl = () => {
-				clearInterval(ticker);
-				done();
-			};
-
-			return {
-				render: (w: number) => {
-					const mw = modalWidth(w);
-					return frameModal({
-						width: mw,
-						maxHeight: terminalModalHeight(tui.terminal?.rows),
-						minHeight: MIN_MODAL_HEIGHT,
-						header: [theme.fg(accent, theme.bold(title))],
-						body: [`${theme.fg(accent, SPINNER[frame] ?? "")} ${theme.fg("dim", labelValue)}`],
-						color: (s) => theme.fg(accent, s),
-						bg: (s) => theme.bg("customMessageBg", s),
-					}).lines;
+					return {
+						render: (w: number) => {
+							const mw = modalWidth(w);
+							return frameModal({
+								width: mw,
+								maxHeight: terminalModalHeight(tui.terminal?.rows),
+								minHeight: MIN_MODAL_HEIGHT,
+								header: [theme.fg(accent, theme.bold(title))],
+								body: [`${theme.fg(accent, SPINNER[frame] ?? "")} ${theme.fg("dim", labelValue)}`],
+								color: (s) => theme.fg(accent, s),
+								bg: (s) => theme.bg("customMessageBg", s),
+							}).lines;
+						},
+						invalidate: () => {},
+						// Swallow every keystroke: a focused overlay owns input, so nothing
+						// reaches the editor while the update runs.
+						handleInput: () => {},
+					};
 				},
-				invalidate: () => {},
-				// Swallow every keystroke: a focused overlay owns input, so nothing
-				// reaches the editor while the update runs.
-				handleInput: () => {},
-			};
-		},
-		{ overlay: true, overlayOptions: modalOverlayOptions() },
-	);
+				{ overlay: true, overlayOptions: modalOverlayOptions() },
+			)
+			.finally(lifecycle.dispose);
+	} catch (error) {
+		lifecycle.dispose();
+		throw error;
+	}
+	// Observe early UI failures until the owner awaits close() in its finally block.
+	void pending.catch(() => {});
 
 	return {
 		setLabel: (label) => setLabelImpl(label),
-		close: () => closeImpl(),
+		close: async () => {
+			lifecycle.finish();
+			await pending;
+		},
 	};
 }

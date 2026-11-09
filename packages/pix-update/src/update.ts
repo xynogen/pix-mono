@@ -261,7 +261,7 @@ async function updateAll(ctx: ExtensionCommandContext) {
 		await updatePi(ctx, progress);
 		await updatePackages(ctx, progress);
 	} finally {
-		progress?.close();
+		await progress?.close();
 	}
 	// Updates land on disk but need a fresh process to load. Quit so the
 	// next launch picks up new Pi + extensions; shutdown defers until idle.

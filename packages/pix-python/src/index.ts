@@ -46,6 +46,7 @@ import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { normalizeCode, resolvePython, runPython } from "./lib.ts";
 
@@ -178,7 +179,6 @@ function register(pi: ExtensionAPI): void {
 		}),
 
 		async execute(_id, params, signal, onUpdate, ctx) {
-			signal?.throwIfAborted();
 			const intent = oneLine(params.intent) || "(no intent)";
 			const code = normalizeCode(params.code);
 			const python = params.python?.trim() || undefined;
@@ -191,100 +191,109 @@ function register(pi: ExtensionAPI): void {
 					outcome,
 					...extra,
 				}) satisfies PythonResultDetails;
-			const update = (outcome: "awaiting-approval" | "running", text: string) =>
-				(onUpdate as AgentToolUpdateCallback<PythonResultDetails> | undefined)?.({
-					content: [{ type: "text", text }],
-					details: details(outcome),
-				});
-			const deny = (why: string, isError = false) => ({
-				content: [{ type: "text" as const, text: `python_run not run: ${why}` }],
-				details: details(isError ? "error" : "denied"),
-				isError,
-			});
-
-			if (!code) return deny("empty code", true);
-			let interpreter: string;
-			try {
-				interpreter = resolvePython(python, ctx.cwd);
-			} catch (err) {
-				return deny(getErrorMessage(err), true);
-			}
-
-			const mode = getUnattendedMode(pi.events);
-			if (!sessionAllowed && mode !== "yolo") {
-				if (mode === "afk")
-					return deny("AFK mode is active and python_run is not allowed this session.");
-				if (!ctx.hasUI) return deny("approval needs an interactive session.", true);
-				update("awaiting-approval", "Awaiting approval…");
-				const choice = await withAgentBlock(pi.events, TOOL, "Python approval required", () =>
-					showOverlay(ctx.ui, {
-						signal,
-						mode: "confirm",
-						icon: icon("process"),
-						title: intent,
-						accent: "warning",
-						timeoutMs: PROMPT_TIMEOUT_MS,
-						approveValue: ["yes", "session"],
-						body: [
-							`Cwd: ${ctx.cwd}`,
-							...(python ? [`Python: ${interpreter}`] : []),
-							"Review the code in the tool card below.",
-						],
-						choices: [
-							{ value: "yes", label: "Allow", description: "Run this snippet" },
-							{
-								value: "session",
-								label: "Allow for this session",
-								description: "Stop asking until /new",
-							},
-							{ value: "no", label: "Deny", description: "Do not run it" },
-						],
-					}),
-				);
-				signal?.throwIfAborted();
-				if (choice.action === "timeout") return deny("approval timed out.");
-				if (choice.action !== "approved") return deny("denied by user.");
-				if (choice.choice === "session") sessionAllowed = true;
-			}
-
-			update("running", "Running…");
-			const startedAt = Date.now();
-			let run: Awaited<ReturnType<typeof runPython>>;
-			try {
-				run = await runPython(code, ctx.cwd, signal, interpreter);
-			} catch (err) {
-				return {
-					content: [{ type: "text", text: `python_run failed: ${getErrorMessage(err)}` }],
-					details: details(signal?.aborted ? "cancelled" : "error"),
-					isError: !signal?.aborted,
-				};
-			}
-			const durationMs = Date.now() - startedAt;
-			const stdout = trimBlank(run.stdout);
-			const stderr = trimBlank(run.stderr);
-			const out = [stdout, stderr].filter(Boolean).join("\n");
-			// Tracebacks end the output, so keep the tail.
-			const t = truncateTail(out || "(no output)", {
-				maxLines: DEFAULT_MAX_LINES,
-				maxBytes: DEFAULT_MAX_BYTES,
-			});
-			const status = run.timedOut ? "killed" : `Exit code: ${run.code}`;
-			const note = t.truncated
-				? `\n[Output truncated: last ${t.outputLines} of ${t.totalLines} lines]`
-				: "";
-			const ok = run.code === 0;
-			return {
-				content: [{ type: "text", text: `${status}\n\n${t.content}${note}` }],
-				details: details(ok ? "success" : "error", {
-					exitCode: run.code,
-					lineCount: out ? out.split("\n").length : 0,
-					durationMs,
-					interpreter,
-					stdout,
-					stderr,
+			return runToolExecution({
+				signal,
+				onUpdate: onUpdate as AgentToolUpdateCallback<PythonResultDetails> | undefined,
+				onError: (error, cancelled) => ({
+					content: [
+						{
+							type: "text" as const,
+							text: cancelled
+								? "python_run cancelled."
+								: `python_run failed: ${getErrorMessage(error)}`,
+						},
+					],
+					details: details(cancelled ? "cancelled" : "error"),
+					isError: !cancelled,
 				}),
-				isError: !ok,
-			};
+				execute: async ({ update: publish }) => {
+					const update = (outcome: "awaiting-approval" | "running", text: string) =>
+						publish({
+							content: [{ type: "text", text }],
+							details: details(outcome),
+						});
+					const deny = (why: string, isError = false) => ({
+						content: [{ type: "text" as const, text: `python_run not run: ${why}` }],
+						details: details(isError ? "error" : "denied"),
+						isError,
+					});
+
+					if (!code) return deny("empty code", true);
+					let interpreter: string;
+					try {
+						interpreter = resolvePython(python, ctx.cwd);
+					} catch (err) {
+						return deny(getErrorMessage(err), true);
+					}
+
+					const mode = getUnattendedMode(pi.events);
+					if (!sessionAllowed && mode !== "yolo") {
+						if (mode === "afk")
+							return deny("AFK mode is active and python_run is not allowed this session.");
+						if (!ctx.hasUI) return deny("approval needs an interactive session.", true);
+						update("awaiting-approval", "Awaiting approval…");
+						const choice = await withAgentBlock(pi.events, TOOL, "Python approval required", () =>
+							showOverlay(ctx.ui, {
+								signal,
+								mode: "confirm",
+								icon: icon("process"),
+								title: intent,
+								accent: "warning",
+								timeoutMs: PROMPT_TIMEOUT_MS,
+								approveValue: ["yes", "session"],
+								body: [
+									`Cwd: ${ctx.cwd}`,
+									...(python ? [`Python: ${interpreter}`] : []),
+									"Review the code in the tool card below.",
+								],
+								choices: [
+									{ value: "yes", label: "Allow", description: "Run this snippet" },
+									{
+										value: "session",
+										label: "Allow for this session",
+										description: "Stop asking until /new",
+									},
+									{ value: "no", label: "Deny", description: "Do not run it" },
+								],
+							}),
+						);
+						signal?.throwIfAborted();
+						if (choice.action === "timeout") return deny("approval timed out.");
+						if (choice.action !== "approved") return deny("denied by user.");
+						if (choice.choice === "session") sessionAllowed = true;
+					}
+
+					update("running", "Running…");
+					const startedAt = Date.now();
+					const run = await runPython(code, ctx.cwd, signal, interpreter);
+					const durationMs = Date.now() - startedAt;
+					const stdout = trimBlank(run.stdout);
+					const stderr = trimBlank(run.stderr);
+					const out = [stdout, stderr].filter(Boolean).join("\n");
+					// Tracebacks end the output, so keep the tail.
+					const t = truncateTail(out || "(no output)", {
+						maxLines: DEFAULT_MAX_LINES,
+						maxBytes: DEFAULT_MAX_BYTES,
+					});
+					const status = run.timedOut ? "killed" : `Exit code: ${run.code}`;
+					const note = t.truncated
+						? `\n[Output truncated: last ${t.outputLines} of ${t.totalLines} lines]`
+						: "";
+					const ok = run.code === 0;
+					return {
+						content: [{ type: "text", text: `${status}\n\n${t.content}${note}` }],
+						details: details(ok ? "success" : "error", {
+							exitCode: run.code,
+							lineCount: out ? out.split("\n").length : 0,
+							durationMs,
+							interpreter,
+							stdout,
+							stderr,
+						}),
+						isError: !ok,
+					};
+				},
+			});
 		},
 
 		renderCall: ((

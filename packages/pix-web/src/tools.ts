@@ -1,6 +1,7 @@
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { fetchConfig } from "./config.ts";
 import type { FetchFormat } from "./providers.ts";
@@ -23,8 +24,7 @@ function configuredProvider(): string[] | undefined {
 	return fetchConfig.provider === "auto" ? undefined : [fetchConfig.provider];
 }
 
-function errorResult(error: unknown, target: string, signal?: AbortSignal): ToolResult {
-	const cancelled = signal?.aborted === true;
+function errorResult(error: unknown, target: string, cancelled: boolean): ToolResult {
 	return {
 		content: [
 			{
@@ -79,45 +79,48 @@ export function registerFetchTool(pi: ExtensionAPI): void {
 				format?: FetchFormat;
 				max_characters?: number;
 			};
-			onUpdate?.({
-				content: [{ type: "text", text: `Fetching: ${params.url}...` }],
-				details: { outcome: "running", target: params.url, meta: "running" },
+			return runToolExecution({
+				signal,
+				onUpdate,
+				onError: (error, cancelled) => errorResult(error, params.url, cancelled),
+				execute: async ({ update }) => {
+					update({
+						content: [{ type: "text", text: `Fetching: ${params.url}...` }],
+						details: { outcome: "running", target: params.url, meta: "running" },
+					});
+					const url = new URL(params.url);
+					if (url.protocol !== "http:" && url.protocol !== "https:") {
+						throw new Error("Fetch URL must use HTTP or HTTPS");
+					}
+					const maxCharacters = Math.max(params.max_characters ?? 1000, 0);
+					const result = await runFetch(
+						{
+							url: params.url,
+							format: params.format ?? "markdown",
+							maxCharacters,
+							signal,
+						},
+						configuredProvider(),
+					);
+					const page = result.data;
+					const body = [page.title ? `# ${page.title}` : "", `URL: ${page.url}`, "", page.content]
+						.filter((line, index) => line || index === 2)
+						.join("\n");
+					const text =
+						maxCharacters > 0 && body.length > maxCharacters
+							? `${body.slice(0, maxCharacters)}\n\n[truncated]`
+							: body;
+					const fallbackMeta = result.errors.length > 0 ? ` · ${result.errors.length} failed` : "";
+					return {
+						content: [{ type: "text", text: text.slice(0, 20_000) }],
+						details: {
+							outcome: "success",
+							target: params.url,
+							meta: `${body.length} chars · ${result.provider}${fallbackMeta}`,
+						},
+					};
+				},
 			});
-			try {
-				const url = new URL(params.url);
-				if (url.protocol !== "http:" && url.protocol !== "https:") {
-					throw new Error("Fetch URL must use HTTP or HTTPS");
-				}
-				const maxCharacters = Math.max(params.max_characters ?? 1000, 0);
-				const result = await runFetch(
-					{
-						url: params.url,
-						format: params.format ?? "markdown",
-						maxCharacters,
-						signal,
-					},
-					configuredProvider(),
-				);
-				const page = result.data;
-				const body = [page.title ? `# ${page.title}` : "", `URL: ${page.url}`, "", page.content]
-					.filter((line, index) => line || index === 2)
-					.join("\n");
-				const text =
-					maxCharacters > 0 && body.length > maxCharacters
-						? `${body.slice(0, maxCharacters)}\n\n[truncated]`
-						: body;
-				const fallbackMeta = result.errors.length > 0 ? ` · ${result.errors.length} failed` : "";
-				return {
-					content: [{ type: "text", text: text.slice(0, 20_000) }],
-					details: {
-						outcome: "success",
-						target: params.url,
-						meta: `${body.length} chars · ${result.provider}${fallbackMeta}`,
-					},
-				};
-			} catch (error) {
-				return errorResult(error, params.url, signal);
-			}
 		},
 	});
 }
