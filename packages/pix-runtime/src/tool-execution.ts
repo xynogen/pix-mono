@@ -55,3 +55,26 @@ export async function runToolExecution<R, U, E>(options: {
 	}
 	return result;
 }
+
+/** Standard text failure for tools using outcome/target/meta details. */
+export function toolFailureResult(
+	error: unknown,
+	cancelled: boolean,
+	target: string,
+	cancelledText: string,
+) {
+	return {
+		content: [
+			{
+				type: "text" as const,
+				text: cancelled ? cancelledText : error instanceof Error ? error.message : String(error),
+			},
+		],
+		details: {
+			outcome: cancelled ? ("cancelled" as const) : ("error" as const),
+			target,
+			meta: cancelled ? "cancelled" : "failed",
+		},
+		...(!cancelled ? { isError: true } : {}),
+	};
+}

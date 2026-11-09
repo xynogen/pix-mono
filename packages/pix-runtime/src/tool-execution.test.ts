@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { runToolExecution, type ToolExecutionContext } from "./tool-execution.ts";
+import {
+	runToolExecution,
+	type ToolExecutionContext,
+	toolFailureResult,
+} from "./tool-execution.ts";
 
 test("pre-cancelled execution never starts or publishes updates", async () => {
 	let started = false;
@@ -95,4 +99,26 @@ test("cleanup failures remain errors even when cancellation is active", async ()
 		onError: (error, cancelled) => ({ error, cancelled }),
 	});
 	expect(result).toMatchObject({ cancelled: false, error: expect.any(AggregateError) });
+});
+
+test.each([
+	[new Error("provider failed"), "provider failed"],
+	["provider unavailable", "provider unavailable"],
+	[undefined, "undefined"],
+	[null, "null"],
+])("standard failure preserves the error message (%s)", (error, text) => {
+	expect(toolFailureResult(error, false, "https://example.test", "Fetch cancelled.")).toEqual({
+		content: [{ type: "text", text }],
+		details: { outcome: "error", target: "https://example.test", meta: "failed" },
+		isError: true,
+	});
+});
+
+test("standard cancellation uses tool wording without exposing the abort reason", () => {
+	expect(
+		toolFailureResult(new Error("private reason"), true, "test query", "Search cancelled."),
+	).toEqual({
+		content: [{ type: "text", text: "Search cancelled." }],
+		details: { outcome: "cancelled", target: "test query", meta: "cancelled" },
+	});
 });

@@ -1,7 +1,6 @@
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
+import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { makeRenderCall, makeRenderResult } from "./render.ts";
 import { searchConfig } from "./search-config.ts";
@@ -14,31 +13,8 @@ interface Details {
 	target: string;
 	meta: string;
 }
-interface ToolResult {
-	content: { type: "text"; text: string }[];
-	details: Details;
-	isError?: boolean;
-}
-
 function configuredProvider(): string[] | undefined {
 	return searchConfig.provider === "auto" ? undefined : [searchConfig.provider];
-}
-
-function errorResult(error: unknown, query: string, cancelled: boolean): ToolResult {
-	return {
-		content: [
-			{
-				type: "text",
-				text: cancelled ? "Search cancelled." : getErrorMessage(error),
-			},
-		],
-		details: {
-			outcome: cancelled ? "cancelled" : "error",
-			target: query,
-			meta: cancelled ? "cancelled" : "failed",
-		},
-		...(!cancelled ? { isError: true } : {}),
-	};
 }
 
 export function registerSearchTool(pi: ExtensionAPI): void {
@@ -82,7 +58,8 @@ export function registerSearchTool(pi: ExtensionAPI): void {
 			return runToolExecution({
 				signal,
 				onUpdate,
-				onError: (error, cancelled) => errorResult(error, params.query, cancelled),
+				onError: (error, cancelled) =>
+					toolFailureResult(error, cancelled, params.query, "Search cancelled."),
 				execute: async ({ update }) => {
 					update({
 						content: [{ type: "text", text: `Searching: ${params.query}...` }],
