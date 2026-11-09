@@ -8,6 +8,7 @@ import {
 	fillToolBackground,
 	formatToolCallTitle,
 	frameToolResult,
+	getTextContent,
 	hideCollapsedToolCall,
 	padIcon,
 	pluralize,
@@ -107,10 +108,7 @@ export function renderToolSearchResult(
 	ctx: Context,
 ) {
 	resolveBaseBackground(theme);
-	const body = result.content
-		.filter((block) => block.type === "text")
-		.map((block) => block.text)
-		.join("\n");
+	const body = getTextContent(result);
 	if (options.isPartial) return new Text("", 0, 0);
 	if (ctx.isError) return frameToolResult(bodyText(theme.fg("error", body)), theme, true);
 	const loaded = result.details?.loaded ?? [];

@@ -24,6 +24,7 @@ import {
 	formatCollapsedToolRow,
 	formatToolCallTitle,
 	frameToolResult,
+	getTextContent,
 	hideCollapsedToolCall,
 	moreLines,
 	unframeToolResult,
@@ -65,13 +66,6 @@ function getText(lastComponent: Component | undefined): TextLike {
 	return new Text("", 0, 0) as unknown as TextLike;
 }
 
-function allText(result: AgentToolResult<unknown>): string {
-	return (result.content ?? [])
-		.filter((block): block is { type: "text"; text: string } => block.type === "text")
-		.map((block) => block.text)
-		.join("\n");
-}
-
 function dimBody(body: string, theme: Theme, ctx: RenderCtx, expanded: boolean): string {
 	const lines = body.split("\n");
 	const maxShow = expanded ? lines.length : MAX_PREVIEW_LINES;
@@ -110,7 +104,7 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 		ctx: RenderCtx,
 	): Component => {
 		const text = getText(ctx.lastComponent);
-		const body = allText(result);
+		const body = getTextContent(result);
 
 		if (ctx.isError) {
 			text.setText(`${BODY_PAD}${theme.fg("error", body || "Error")}`);

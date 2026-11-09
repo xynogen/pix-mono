@@ -23,6 +23,7 @@ import {
 	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
+	getTextContent,
 	hideCollapsedToolCall,
 	humanSize,
 	moreLines,
@@ -710,10 +711,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 		},
 
 		renderResult(result, options, theme, renderCtx) {
-			const text = result.content
-				?.filter((content) => content.type === "text")
-				.map((content) => content.text || "")
-				.join("\n");
+			const text = getTextContent(result);
 			const component =
 				renderCtx.lastComponent instanceof Text ? renderCtx.lastComponent : new Text("", 0, 0);
 			const details = result.details as SkillResultDetails | undefined;

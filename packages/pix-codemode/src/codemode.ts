@@ -16,6 +16,7 @@ import {
 	formatJson,
 	formatToolCallTitle,
 	frameToolResult,
+	getTextContent,
 	hideCollapsedToolCall,
 	padIcon,
 	pluralize,
@@ -116,14 +117,7 @@ export function compactRenderers(
 					ctx.state.compactResult = component;
 					return component;
 				}
-				const text = new Text(
-					result.content
-						.filter((block) => block.type === "text")
-						.map((block) => block.text)
-						.join("\n"),
-					0,
-					0,
-				);
+				const text = new Text(getTextContent(result), 0, 0);
 				return options.isPartial ? text : frameToolResult(text, theme, ctx.isError);
 			}
 			ctx.state.compactDuration = duration(ctx.toolCallId) ?? ctx.state.compactDuration;

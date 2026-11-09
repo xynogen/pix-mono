@@ -17,6 +17,7 @@ import {
 	formatCollapsedToolRow,
 	formatToolCallTitle,
 	frameToolResult,
+	getTextContent,
 	termW,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -367,10 +368,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 			},
 			renderResult(result, options, theme, context) {
 				const details = result.details as TodoResultDetails | undefined;
-				const resultText = result.content
-					.filter((part) => part.type === "text")
-					.map((part) => part.text)
-					.join("\n");
+				const resultText = getTextContent(result);
 				const isPartial = options.isPartial === true;
 				if (context.isError || details?.outcome === "error" || !details) {
 					const component = new Text(resultText, 0, 0);

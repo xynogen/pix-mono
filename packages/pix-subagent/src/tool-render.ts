@@ -1,3 +1,4 @@
+import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
@@ -5,6 +6,7 @@ import {
 	dotJoin,
 	formatCollapsedToolRow,
 	frameToolResult,
+	getTextContent,
 	padIcon,
 } from "@xynogen/pix-pretty/utils";
 import {
@@ -49,13 +51,6 @@ export function formatAgentCall(
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-function resultText(result: { content: { type: string; text?: string }[] }): string {
-	return result.content
-		.filter((block) => block.type === "text")
-		.map((block) => block.text ?? "")
-		.join("\n");
-}
 
 /** Split `s` on the first occurrence of `sep`; the separator is discarded. */
 function splitFirst(s: string, sep: string): [string, string] {
@@ -279,7 +274,7 @@ function renderExpandedUtility(
 }
 
 export function renderAgentUtilityResult(
-	result: { content: { type: string; text?: string }[]; details?: unknown },
+	result: AgentToolResult<unknown>,
 	expanded: boolean,
 	isPartial: boolean,
 	theme: Theme,
@@ -290,7 +285,7 @@ export function renderAgentUtilityResult(
 	},
 ) {
 	const details = result.details as AgentUtilityResultDetails | undefined;
-	const text = resultText(result);
+	const text = getTextContent(result);
 	const component = new Text(text, 0, 0);
 	if (isPartial) return component;
 	if (!details) {

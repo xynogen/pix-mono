@@ -6,6 +6,7 @@ import {
 	formatCollapsedToolRow,
 	formatToolCallTitle,
 	frameToolResult,
+	getTextContent,
 	hideCollapsedToolCall,
 	pluralize,
 } from "@xynogen/pix-pretty/utils";
@@ -143,10 +144,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					return text;
 				}
 				if (renderCtx.isError) {
-					const error = result.content
-						.filter((part) => part.type === "text")
-						.map((part) => part.text)
-						.join("\n");
+					const error = getTextContent(result);
 					if (
 						tickCollapse(
 							"ask_user",

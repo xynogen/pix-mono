@@ -27,6 +27,7 @@ import {
 	formatToolCallTitle,
 	frameToolResult,
 	frameToolSection,
+	getTextContent,
 	hideCollapsedToolCall,
 	linkedShortPath,
 	moreLines,
@@ -46,6 +47,22 @@ import {
 	widgetActivityRow,
 	widgetTitle,
 } from "./utils.ts";
+
+it("extracts ordered text blocks without trimming whitespace or mutating mixed content", () => {
+	const result = {
+		details: undefined,
+		content: [
+			{ type: "text" as const, text: "  first\r\n" },
+			{ type: "image" as const, data: "AA==", mimeType: "image/png" },
+			{ type: "text" as const, text: "" },
+			{ type: "text" as const, text: "last  " },
+		],
+	};
+	const before = structuredClone(result);
+	expect(getTextContent(result)).toBe("  first\r\n\n\nlast  ");
+	expect(getTextContent({ content: [], details: undefined })).toBe("");
+	expect(result).toEqual(before);
+});
 
 it("collapsed status marks follow live icon mode changes", () => {
 	const previous = getIconMode();

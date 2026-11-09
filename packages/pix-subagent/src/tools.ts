@@ -26,6 +26,7 @@ import {
 	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
+	getTextContent,
 	hideCollapsedToolCall,
 } from "@xynogen/pix-pretty/utils";
 import { describeActivity, formatContext } from "@xynogen/pix-pretty/widget-format";
@@ -493,10 +494,7 @@ export function createAgentTool(
 			);
 			let line = formatAgentFinishedLine(details, theme);
 			if (!collapsed) {
-				const resultText = result.content
-					.filter((block) => block.type === "text")
-					.map((block) => block.text)
-					.join("\n");
+				const resultText = getTextContent(result);
 				if (resultText) {
 					const resultLines = resultText.split("\n");
 					for (const resultLine of resultLines) {
