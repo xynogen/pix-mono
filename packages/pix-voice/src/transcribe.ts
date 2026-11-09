@@ -8,6 +8,7 @@ import { basename, dirname, isAbsolute, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { voiceConfig, voiceModel } from "./config.ts";
 import { resolveProvider } from "./providers.ts";
@@ -43,13 +44,20 @@ export function resolveOutputPath(outputFile: string): string {
 
 /** Write transcription text to disk, creating parent directories as needed.
  *  Performs pre-flight safety checks; throws on rejection. */
-export async function writeTranscriptionFile(outputFile: string, text: string): Promise<string> {
+export async function writeTranscriptionFile(
+	outputFile: string,
+	text: string,
+	signal?: AbortSignal,
+): Promise<string> {
+	signal?.throwIfAborted();
 	const abs = resolveOutputPath(outputFile);
 	const validation = await validateOutputPath(abs);
 	if (!validation.ok) {
 		throw new Error(`output_file rejected: ${validation.reason}`);
 	}
+	signal?.throwIfAborted();
 	await mkdir(dirname(abs), { recursive: true });
+	signal?.throwIfAborted();
 	await writeFile(abs, text, "utf-8");
 	return abs;
 }
@@ -66,7 +74,9 @@ export async function buildTranscriptionResult(
 	outputFile: string | undefined,
 	file = "audio",
 	language?: string,
+	signal?: AbortSignal,
 ): Promise<TranscribeResult> {
+	signal?.throwIfAborted();
 	const details: TranscribeResultDetails = {
 		_type: "transcribeResult",
 		outcome: "success",
@@ -80,7 +90,7 @@ export async function buildTranscriptionResult(
 
 	if (outputFile) {
 		try {
-			const abs = await writeTranscriptionFile(outputFile, text);
+			const abs = await writeTranscriptionFile(outputFile, text, signal);
 			details.output_path = abs;
 			return {
 				content: [
@@ -92,6 +102,7 @@ export async function buildTranscriptionResult(
 				details,
 			};
 		} catch (writeErr) {
+			signal?.throwIfAborted();
 			const msg = getErrorMessage(writeErr);
 			details.outcome = "error";
 			details.truncated = text.length > CHAT_TRUNCATE_LIMIT;
@@ -121,10 +132,12 @@ export async function transcribeAudioFile(
 	file: string,
 	signal?: AbortSignal,
 ): Promise<{ text: string; provider: string; model: string; language?: string }> {
+	signal?.throwIfAborted();
 	const provider = resolveProvider("stt", voiceConfig.sttProvider);
 	const model = voiceModel("stt", provider);
 	const language = voiceConfig.sttLanguage === "auto" ? undefined : voiceConfig.sttLanguage;
 	const text = await provider.transcribe({ file, model, language, signal });
+	signal?.throwIfAborted();
 	return { text, provider: provider.id, model, language };
 }
 
@@ -191,43 +204,50 @@ export default function registerTranscribe(pi: ExtensionAPI): void {
 				model: "",
 				...(params.language ? { language: params.language } : {}),
 			};
-			try {
-				const provider = resolveProvider("stt", voiceConfig.sttProvider);
-				const model = voiceModel("stt", provider);
-				Object.assign(base, { provider: provider.id, model });
-				onUpdate?.({
-					content: [
-						{ type: "text", text: `Transcribing ${filePath} with ${provider.id}/${model}...` },
-					],
-					details: { ...base, outcome: "running" },
-				});
-				const text = await provider.transcribe({
-					file: filePath,
-					model,
-					language: params.language,
-					signal,
-				});
-				return await buildTranscriptionResult(
-					text,
-					model,
-					provider.id,
-					params.output_file,
-					filePath,
-					params.language,
-				);
-			} catch (error) {
-				const message = getErrorMessage(error);
-				return {
+			return runToolExecution({
+				signal,
+				onUpdate,
+				onError: (error, cancelled) => ({
 					content: [
 						{
-							type: "text",
-							text: `Transcription failed (${base.provider}/${base.model}): ${message}`,
+							type: "text" as const,
+							text: cancelled
+								? "Transcription cancelled."
+								: `Transcription failed (${base.provider}/${base.model}): ${getErrorMessage(error)}`,
 						},
 					],
-					details: { ...base, outcome: signal?.aborted ? "cancelled" : "error" },
-					isError: true,
-				};
-			}
+					details: { ...base, outcome: cancelled ? ("cancelled" as const) : ("error" as const) },
+					isError: !cancelled,
+				}),
+				execute: async ({ update }) => {
+					const provider = resolveProvider("stt", voiceConfig.sttProvider);
+					const model = voiceModel("stt", provider);
+					Object.assign(base, { provider: provider.id, model });
+					update({
+						content: [
+							{ type: "text", text: `Transcribing ${filePath} with ${provider.id}/${model}...` },
+						],
+						details: { ...base, outcome: "running" },
+					});
+					signal?.throwIfAborted();
+					const text = await provider.transcribe({
+						file: filePath,
+						model,
+						language: params.language,
+						signal,
+					});
+					signal?.throwIfAborted();
+					return await buildTranscriptionResult(
+						text,
+						model,
+						provider.id,
+						params.output_file,
+						filePath,
+						params.language,
+						signal,
+					);
+				},
+			});
 		},
 	});
 }

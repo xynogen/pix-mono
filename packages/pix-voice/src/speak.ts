@@ -10,6 +10,7 @@ import { getErrorMessage, humanSize } from "@xynogen/pix-pretty/utils";
 import { playAudio } from "@xynogen/pix-runtime/audio";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { voiceConfig, voiceModel } from "./config.ts";
 import { resolveProvider } from "./providers.ts";
@@ -32,11 +33,18 @@ interface TtsDetails {
 /** Test seam for playback. */
 export const player = { play: playAudio };
 
-export async function saveSpeech(outputFile: string, audio: Uint8Array): Promise<string> {
+export async function saveSpeech(
+	outputFile: string,
+	audio: Uint8Array,
+	signal?: AbortSignal,
+): Promise<string> {
+	signal?.throwIfAborted();
 	const path = resolveOutputPath(outputFile);
 	const validation = await validateOutputPath(path);
 	if (!validation.ok) throw new Error(`output_file rejected: ${validation.reason}`);
+	signal?.throwIfAborted();
 	await mkdir(dirname(path), { recursive: true });
+	signal?.throwIfAborted();
 	await writeFile(path, audio);
 	return path;
 }
@@ -45,8 +53,16 @@ export default function registerSpeak(pi: ExtensionAPI): void {
 	const renderResult = makeRenderResult<TtsDetails>({
 		tool: "speak",
 		target: (details) => basename(details.output_path),
-		meta: (details) => `${humanSize(details.bytes ?? 0)} · ${details.provider}/${details.model}`,
-		status: (details) => (details.outcome === "error" ? "error" : "success"),
+		meta: (details) =>
+			details.outcome === "cancelled"
+				? "cancelled"
+				: `${humanSize(details.bytes ?? 0)} · ${details.provider}/${details.model}`,
+		status: (details) =>
+			details.outcome === "error"
+				? "error"
+				: details.outcome === "cancelled"
+					? "warning"
+					: "success",
 	});
 
 	pi.registerTool({
@@ -74,75 +90,86 @@ export default function registerSpeak(pi: ExtensionAPI): void {
 				format: FORMAT,
 				output_path: "",
 			};
-			try {
-				const provider = resolveProvider("tts", voiceConfig.ttsProvider);
-				details.provider = provider.id;
-				details.model = voiceModel("tts", provider);
-				onUpdate?.({
-					content: [
-						{ type: "text", text: `Generating speech with ${provider.id}/${details.model}...` },
-					],
-					details,
-				});
-				const speech = await provider.synthesize({
-					input: params.input,
-					model: details.model,
-					format: FORMAT,
-					signal,
-				});
-				details.format = speech.format;
-				// A provider may return another format than requested. Name the file by the real one.
-				const outputFile =
-					params.output_file?.trim() || join(tempDir(), `pix-tts-${randomUUID()}.${speech.format}`);
-				details.output_path = resolveOutputPath(outputFile);
-				const saved = await saveSpeech(outputFile, speech.audio);
-				const size = humanSize(speech.audio.byteLength);
-				const mismatch =
-					params.output_file && extname(saved).slice(1).toLowerCase() !== speech.format
-						? ` · ${provider.id} returned ${speech.format}`
-						: "";
-				const play = voiceConfig.ttsPlay;
-				if (play) {
-					onUpdate?.({
-						content: [{ type: "text", text: `${icon("audio.play")} ${basename(saved)} · ${size}` }],
-						details,
-					});
-					// First run may download ffmpeg (~120 MB). Show it in the tool row.
-					await player.play(saved, {
-						signal,
-						onStatus: (s) =>
-							onUpdate?.({ content: [{ type: "text", text: formatToolStatus(s) }], details }),
-					});
-				}
-				return {
+			return runToolExecution({
+				signal,
+				onUpdate,
+				onError: (error, cancelled) => ({
 					content: [
 						{
-							type: "text",
-							text: play
-								? `${icon("audio.stop")} ${basename(saved)} · ${size}${mismatch}`
-								: `${icon("audio.file")} ${saved} · ${size}${mismatch}`,
+							type: "text" as const,
+							text: cancelled
+								? "Speech generation cancelled."
+								: `TTS failed (${details.provider}/${details.model}): ${getErrorMessage(error)}`,
 						},
 					],
-					details: {
-						...details,
-						outcome: "success" as const,
-						output_path: saved,
-						bytes: speech.audio.byteLength,
-					},
-				};
-			} catch (error) {
-				const message = getErrorMessage(error);
-				return {
-					content: [
-						{ type: "text", text: `TTS failed (${details.provider}/${details.model}): ${message}` },
-					],
-					details: {
-						...details,
-						outcome: signal?.aborted ? ("cancelled" as const) : ("error" as const),
-					},
-					isError: true,
-				};
-			}
+					details: { ...details, outcome: cancelled ? ("cancelled" as const) : ("error" as const) },
+					isError: !cancelled,
+				}),
+				execute: async ({ update }) => {
+					const provider = resolveProvider("tts", voiceConfig.ttsProvider);
+					details.provider = provider.id;
+					details.model = voiceModel("tts", provider);
+					update({
+						content: [
+							{ type: "text", text: `Generating speech with ${provider.id}/${details.model}...` },
+						],
+						details,
+					});
+					signal?.throwIfAborted();
+					const speech = await provider.synthesize({
+						input: params.input,
+						model: details.model,
+						format: FORMAT,
+						signal,
+					});
+					signal?.throwIfAborted();
+					details.format = speech.format;
+					// A provider may return another format than requested. Name the file by the real one.
+					const outputFile =
+						params.output_file?.trim() ||
+						join(tempDir(), `pix-tts-${randomUUID()}.${speech.format}`);
+					details.output_path = resolveOutputPath(outputFile);
+					const saved = await saveSpeech(outputFile, speech.audio, signal);
+					signal?.throwIfAborted();
+					const size = humanSize(speech.audio.byteLength);
+					const mismatch =
+						params.output_file && extname(saved).slice(1).toLowerCase() !== speech.format
+							? ` · ${provider.id} returned ${speech.format}`
+							: "";
+					const play = voiceConfig.ttsPlay;
+					if (play) {
+						update({
+							content: [
+								{ type: "text", text: `${icon("audio.play")} ${basename(saved)} · ${size}` },
+							],
+							details,
+						});
+						signal?.throwIfAborted();
+						// First run may download ffmpeg (~120 MB). Show it in the tool row.
+						await player.play(saved, {
+							signal,
+							onStatus: (s) =>
+								update({ content: [{ type: "text", text: formatToolStatus(s) }], details }),
+						});
+					}
+					return {
+						content: [
+							{
+								type: "text",
+								text: play
+									? `${icon("audio.stop")} ${basename(saved)} · ${size}${mismatch}`
+									: `${icon("audio.file")} ${saved} · ${size}${mismatch}`,
+							},
+						],
+						details: {
+							...details,
+							outcome: "success" as const,
+							output_path: saved,
+							bytes: speech.audio.byteLength,
+						},
+					};
+				},
+			});
 		},
 	});
 }
