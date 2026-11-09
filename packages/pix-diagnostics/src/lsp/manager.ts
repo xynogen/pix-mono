@@ -15,6 +15,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { abortable } from "@xynogen/pix-runtime/abort";
 import type { DiagnosticSnapshot, PixDiagnostic } from "../types.ts";
 import {
 	createResolver,
@@ -195,14 +196,13 @@ function keyFor(serverId: string, root: string): string {
 }
 
 /** Await a promise but reject early when a signal aborts. Does not reject `p`. */
-function awaitWithSignal<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
-	if (!signal) return p;
-	if (signal.aborted) return Promise.reject(new AbortError("aborted"));
-	return new Promise<T>((resolve, reject) => {
-		const onAbort = (): void => reject(new AbortError("aborted"));
-		signal.addEventListener("abort", onAbort, { once: true });
-		p.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
-	});
+async function awaitWithSignal<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+	try {
+		return await abortable(p, signal);
+	} catch (error) {
+		if (signal?.aborted) throw new AbortError("aborted");
+		throw error;
+	}
 }
 
 class LazyLspManager implements LspManager {

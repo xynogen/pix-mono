@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { getEventListeners } from "node:events";
 import {
 	createManagerWith,
 	type LspManager,
@@ -195,21 +196,34 @@ describe("LazyLspManager", () => {
 		await expect(pending).rejects.toMatchObject({ name: "AbortError" });
 	});
 
-	test("one caller can abort a shared start", async () => {
-		const harness = createManagerHarness({ pausedStart: true });
-		const controller = new AbortController();
-		const first = harness.manager.check({
-			paths: ["/repo/a.ts"],
-			severity: "all",
-			signal: controller.signal,
+	for (const reason of [new Error("user stopped"), "user stopped"]) {
+		test("one caller can abort a pending shared start without changing AbortError or stopping the server", async () => {
+			const harness = createManagerHarness({ pausedStart: true });
+			const controller = new AbortController();
+			const first = harness.manager.check({
+				paths: ["/repo/a.ts"],
+				severity: "all",
+				signal: controller.signal,
+			});
+			const second = harness.manager.check({ paths: ["/repo/b.ts"], severity: "all" });
+			for (
+				let turn = 0;
+				turn < 20 && getEventListeners(controller.signal, "abort").length === 0;
+				turn++
+			)
+				await Promise.resolve();
+			expect(harness.starts).toBe(1);
+			expect(getEventListeners(controller.signal, "abort")).toHaveLength(1);
+			controller.abort(reason);
+			await expect(first).rejects.toMatchObject({ name: "AbortError", message: "aborted" });
+			expect(harness.stops).toBe(0);
+			harness.resolveStart();
+			expect(await second).toHaveLength(1);
+			expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+			expect(harness.starts).toBe(1);
+			await harness.manager.shutdown();
 		});
-		const second = harness.manager.check({ paths: ["/repo/b.ts"], severity: "all" });
-		controller.abort();
-		harness.resolveStart();
-		await expect(first).rejects.toMatchObject({ name: "AbortError" });
-		const result = await second;
-		expect(result).toHaveLength(1);
-	});
+	}
 
 	test("stops idle servers", async () => {
 		const clock = new FakeClock();
