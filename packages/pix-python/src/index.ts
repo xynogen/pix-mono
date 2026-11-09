@@ -227,7 +227,7 @@ function register(pi: ExtensionAPI): void {
 					}
 
 					const mode = getUnattendedMode(pi.events);
-					if (!sessionAllowed && mode !== "yolo") {
+					if (!sessionAllowed && mode !== "yolo" && mode !== "nuclear") {
 						if (mode === "afk")
 							return deny("AFK mode is active and python_run is not allowed this session.");
 						if (!ctx.hasUI) return deny("approval needs an interactive session.", true);

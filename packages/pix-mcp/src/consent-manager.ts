@@ -1,3 +1,5 @@
+import type { EventBus } from "@earendil-works/pi-coding-agent";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { ConsentError } from "./errors.ts";
 import { logger } from "./logger.ts";
 
@@ -8,11 +10,15 @@ export class ConsentManager {
 	private deniedServers = new Set<string>();
 	private log = logger.child({ component: "ConsentManager" });
 
-	constructor(private mode: ToolConsentMode = "once-per-server") {
+	constructor(
+		private mode: ToolConsentMode = "once-per-server",
+		private events?: EventBus,
+	) {
 		this.log.debug("Initialized", { mode });
 	}
 
 	requiresPrompt(serverName: string): boolean {
+		if (this.events && getUnattendedMode(this.events) === "nuclear") return false;
 		if (this.mode === "never") return false;
 		if (this.deniedServers.has(serverName)) return true;
 		if (this.mode === "always") return true;
@@ -38,6 +44,7 @@ export class ConsentManager {
 	}
 
 	ensureApproved(serverName: string): void {
+		if (this.events && getUnattendedMode(this.events) === "nuclear") return;
 		if (this.mode === "never") return;
 		if (this.deniedServers.has(serverName)) {
 			throw new ConsentError(serverName, { denied: true });

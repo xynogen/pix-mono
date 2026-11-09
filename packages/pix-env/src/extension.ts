@@ -183,27 +183,31 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 							String(params.value),
 							params.action,
 						);
-						if (!ctx.hasUI) throw new Error("env writes require interactive user approval");
-						const result = await withAgentBlock(pi.events, "read_env", "env write approval", () =>
-							showOverlay(ctx.ui, {
-								signal,
-								mode: "confirm",
-								icon: icon("secret"),
-								title: `${params.action === "add" ? "Add" : "Edit"} Environment Variable`,
-								body: [
-									`File: ${path}`,
-									`Variable: ${params.name}`,
-									"Values are hidden. Other assignments are preserved.",
-								],
-								accent: "warning",
-								timeoutMs: 30_000,
-								choices: [
-									{ value: "no", label: "Deny", description: "Keep file unchanged" },
-									{ value: "yes", label: "Write", description: `Save ${params.name}` },
-								],
-								approveValue: "yes",
-							}),
-						);
+						const nuclear = getUnattendedMode(pi.events) === "nuclear";
+						if (!ctx.hasUI && !nuclear)
+							throw new Error("env writes require interactive user approval");
+						const result = nuclear
+							? { action: "approved" }
+							: await withAgentBlock(pi.events, "read_env", "env write approval", () =>
+									showOverlay(ctx.ui, {
+										signal,
+										mode: "confirm",
+										icon: icon("secret"),
+										title: `${params.action === "add" ? "Add" : "Edit"} Environment Variable`,
+										body: [
+											`File: ${path}`,
+											`Variable: ${params.name}`,
+											"Values are hidden. Other assignments are preserved.",
+										],
+										accent: "warning",
+										timeoutMs: 30_000,
+										choices: [
+											{ value: "no", label: "Deny", description: "Keep file unchanged" },
+											{ value: "yes", label: "Write", description: `Save ${params.name}` },
+										],
+										approveValue: "yes",
+									}),
+								);
 						signal?.throwIfAborted();
 						if (result.action !== "approved")
 							return {
@@ -279,7 +283,8 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 						isError: true,
 					};
 				}
-				if (!ctx.hasUI) {
+				const nuclear = getUnattendedMode(pi.events) === "nuclear";
+				if (!ctx.hasUI && !nuclear) {
 					return {
 						content: [{ type: "text", text: "read_env requires interactive user approval." }],
 						details: { action: "read", revealed: [] },
@@ -288,29 +293,27 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				}
 
 				const list = names.sort((a, b) => a.localeCompare(b)).join(", ");
-				const result = await withAgentBlock(
-					pi.events,
-					"read_env",
-					"secret disclosure approval",
-					() =>
-						showOverlay(ctx.ui, {
-							signal,
-							mode: "confirm",
-							icon: icon("secret"),
-							title: `Reveal Environment Value${names.length > 1 ? "s" : ""}`,
-							body: [
-								`Variables: ${list}`,
-								"Warning: approved values enter model context and session transcript.",
-							],
-							accent: "error",
-							timeoutMs: 30_000,
-							choices: [
-								{ value: "no", label: "Deny", description: "Keep values hidden" },
-								{ value: "yes", label: "Reveal", description: `Expose only ${list}` },
-							],
-							approveValue: "yes",
-						}),
-				);
+				const result = nuclear
+					? { action: "approved" }
+					: await withAgentBlock(pi.events, "read_env", "secret disclosure approval", () =>
+							showOverlay(ctx.ui, {
+								signal,
+								mode: "confirm",
+								icon: icon("secret"),
+								title: `Reveal Environment Value${names.length > 1 ? "s" : ""}`,
+								body: [
+									`Variables: ${list}`,
+									"Warning: approved values enter model context and session transcript.",
+								],
+								accent: "error",
+								timeoutMs: 30_000,
+								choices: [
+									{ value: "no", label: "Deny", description: "Keep values hidden" },
+									{ value: "yes", label: "Reveal", description: `Expose only ${list}` },
+								],
+								approveValue: "yes",
+							}),
+						);
 				signal?.throwIfAborted();
 				if (result.action !== "approved") {
 					return {
@@ -385,8 +388,8 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			}
 
 			// YOLO: auto-inject without the popup.
-			if (mode === "yolo") {
-				ctx.ui?.notify?.(`🔑 YOLO — secret auto-injected: ${list}`, "warning");
+			if (mode === "yolo" || mode === "nuclear") {
+				ctx.ui?.notify?.(`Secret auto-injected — ${mode.toUpperCase()}: ${list}`, "warning");
 				inject(event, reg, shell, keys);
 				return undefined;
 			}

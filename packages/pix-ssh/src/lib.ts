@@ -21,6 +21,7 @@ import {
 	DEFAULT_MAX_LINES,
 	truncateHead,
 } from "@earendil-works/pi-coding-agent";
+import type { UnattendedMode } from "@xynogen/pix-runtime";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import { expandHome, homeDir, tempDir } from "@xynogen/pix-runtime/paths";
@@ -58,13 +59,14 @@ export interface SshResult {
 }
 
 export type TransferDirection = "upload" | "download";
-export type UnattendedMode = "off" | "afk" | "yolo";
+export type { UnattendedMode } from "@xynogen/pix-runtime";
 
 /** Warning-level transfer policy. Password prompts cannot run unattended. */
 export function transferApprovalDecision(
 	mode: UnattendedMode,
 	loginPasswordMissing: boolean,
 ): "ask" | "allow" | "deny" {
+	if (mode === "nuclear") return loginPasswordMissing ? "ask" : "allow";
 	if (mode === "off") return "ask";
 	return loginPasswordMissing ? "deny" : "allow";
 }

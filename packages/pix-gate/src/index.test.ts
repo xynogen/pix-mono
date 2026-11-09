@@ -13,7 +13,7 @@ type Result = { block?: boolean; reason?: string } | undefined;
 async function run(
 	toolName: string,
 	input: Record<string, unknown>,
-	opts: { tools?: string[]; dialog?: "approved" | "denied" } = {},
+	opts: { tools?: string[]; dialog?: "approved" | "denied"; nuclear?: boolean } = {},
 ): Promise<{ result: Result; dialogs: number }> {
 	const handlers: Array<(event: any, ctx: any) => Promise<unknown>> = [];
 	const pi = {
@@ -24,6 +24,7 @@ async function run(
 		},
 	};
 	registerGate(pi as never);
+	if (opts.nuclear) setUnattendedMode(pi.events, "nuclear");
 	let dialogs = 0;
 	const ctx = {
 		hasUI: true,
@@ -45,6 +46,29 @@ async function run(
 }
 
 describe("gate flow", () => {
+	test("nuclear skips redirects, circuit breakers, and path approval without dialogs", async () => {
+		for (const tool of [
+			"bash",
+			"powershell",
+			"proc",
+			"read",
+			"write",
+			"edit",
+			"grep",
+			"find",
+			"ls",
+		]) {
+			for (const command of ["ssh host uptime", "sudo id", "rm -rf /", "git push --force"]) {
+				expect(
+					await run(
+						tool,
+						{ command, path: ".env", paths: ["~/.ssh"] },
+						{ nuclear: true, tools: ["ssh_run", "sudo_run"] },
+					),
+				).toEqual({ result: undefined, dialogs: 0 });
+			}
+		}
+	});
 	test("plain ssh redirects to ssh_run even with no matching rule", async () => {
 		const { result } = await run("bash", { command: "ssh host uptime" }, { tools: ["ssh_run"] });
 		expect(result?.reason).toContain("ssh_run");

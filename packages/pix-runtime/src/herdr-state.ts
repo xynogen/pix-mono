@@ -1,7 +1,7 @@
 import type { EventBus } from "@earendil-works/pi-coding-agent";
 
 export type PixAgentState = "working" | "blocked" | "idle";
-export type UnattendedMode = "off" | "afk" | "yolo";
+export type UnattendedMode = "off" | "afk" | "yolo" | "nuclear";
 export type PixAgentStateEvent = {
 	state: PixAgentState;
 	message?: string;

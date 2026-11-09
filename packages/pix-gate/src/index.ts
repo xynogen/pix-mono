@@ -20,7 +20,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { withAgentBlock } from "@xynogen/pix-runtime";
+import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import {
 	buildRules,
 	canAutoApprove,
@@ -83,6 +83,7 @@ export default function (pi: ExtensionAPI): void {
 	const DIR_TOOLS = new Set(["grep", "find", "ls"]);
 	const PATH_ORDER = { block: 0, warn: 1, info: 2 } as const;
 	pi.on("tool_call", async (event, ctx) => {
+		if (getUnattendedMode(pi.events) === "nuclear") return undefined;
 		const tool = String(event.toolName);
 		const op = PATH_TOOLS[tool];
 		if (!op) return undefined;
@@ -156,6 +157,7 @@ export default function (pi: ExtensionAPI): void {
 	// Pi's built-in `powershell` tool uses the same `input.command` shape.
 	const GATED_COMMAND_TOOLS = new Set(["bash", "proc", "powershell"]);
 	pi.on("tool_call", async (event, ctx) => {
+		if (getUnattendedMode(pi.events) === "nuclear") return undefined;
 		const toolName = String(event.toolName);
 		if (!GATED_COMMAND_TOOLS.has(toolName)) return undefined;
 

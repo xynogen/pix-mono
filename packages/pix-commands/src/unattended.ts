@@ -1,19 +1,5 @@
 /**
- * Unattended modes — /afk and /yolo.
- *
- * Both relax the permission gate so the agent keeps moving without a human
- * clicking Allow/Deny. The danger is not the relaxed gate itself: it is that
- * the *model* keeps acting as if a human will still catch a bad call. When the
- * net is gone the model must KNOW, so every turn we inject an awareness banner
- * (see {@link unattendedBanner}) and, for YOLO, a red/root self-justification
- * directive.
- *
- * Behavior read by pix-gate (`unattendedGateDecision`) and pix-sudo via the
- * `__pixAfk` / `__pixYolo` globals:
- *   off  — every gate prompts (default).
- *   afk  — yellow auto-allow; red + root auto-DENY.
- *   yolo — everything auto-allows, including red + root (root still needs a
- *          cached PAM ticket; the password cannot be auto-typed).
+ * Session modes — /afk, /yolo, and /nuclear.
  */
 
 import type { EventBus, ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -23,6 +9,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	getUnattendedMode,
 	hasYoloConsent,
+	resetUnattendedState,
 	setUnattendedMode,
 	setYoloConsent,
 	type UnattendedMode,
@@ -43,10 +30,9 @@ const STATUS_KEY = "unattended";
 export { getUnattendedMode as getMode, setUnattendedMode as setMode };
 
 function syncStatus(events: EventBus, ui: StatusUI): void {
-	// ponytail: reuses the existing "afk"/"warn" glyphs instead of adding a YOLO
-	//           icon to pix-pretty (that is a public-API minor bump + approval).
 	const labels: Record<UnattendedMode, string | undefined> = {
 		yolo: `${icon("warn")} YOLO`,
+		nuclear: `${icon("mode.nuclear")} NUCLEAR`,
 		afk: `${icon("afk")} AFK`,
 		off: undefined,
 	};
@@ -106,6 +92,17 @@ export function modelScore(ctx: ModelCtx): number | null {
  */
 export function unattendedBanner(events: EventBus): string | undefined {
 	const mode = getUnattendedMode(events);
+	if (mode === "nuclear") {
+		return [
+			'<pix-unattended mode="nuclear">',
+			"NUCLEAR MODE ACTIVE. Pix approval gates, shell SSH/sudo redirects, and the",
+			"circuit breaker are disabled for this session. No human approval stops execution.",
+			"This does not authorize unrelated actions or override system/OS restrictions.",
+			"Authentication, input validation, cancellation, and SSH host-key verification remain active.",
+			"Never expose passwords or secrets. Stay within the user's requested scope.",
+			"</pix-unattended>",
+		].join("\n");
+	}
 	if (mode === "yolo") {
 		return [
 			'<pix-unattended mode="yolo">',
@@ -136,7 +133,10 @@ export function unattendedBanner(events: EventBus): string | undefined {
 }
 
 export default function registerUnattended(pi: ExtensionAPI): void {
-	pi.on("session_start", (_event, ctx) => syncStatus(pi.events, ctx.ui));
+	pi.on("session_start", (_event, ctx) => {
+		resetUnattendedState(pi.events);
+		syncStatus(pi.events, ctx.ui);
+	});
 
 	// Every turn: prepend the awareness banner while a mode is active.
 	pi.on("before_agent_start", (event) => {
@@ -198,6 +198,50 @@ export default function registerUnattended(pi: ExtensionAPI): void {
 					"auto-approves. No human will stop a destructive action. You are accountable.",
 				"warning",
 			);
+		},
+	});
+
+	pi.registerCommand("nuclear", {
+		description: "Toggle session-only nuclear mode — disable all Pix approval gates",
+		handler: async (_args, ctx) => {
+			if (getUnattendedMode(pi.events) === "nuclear") {
+				setUnattendedMode(pi.events, "off");
+				syncStatus(pi.events, ctx.ui);
+				ctx.ui.notify("Nuclear mode off — approval gates restored.", "info");
+				return;
+			}
+			if (!ctx.hasUI) {
+				ctx.ui.notify(
+					"Nuclear mode requires explicit confirmation in an interactive session.",
+					"error",
+				);
+				return;
+			}
+			const result = await showOverlay(ctx.ui, {
+				mode: "confirm",
+				accent: "error",
+				icon: icon("mode.nuclear"),
+				title: "Nuclear Mode — Disable Pix Approval Gates",
+				body: [
+					"Command/path approval, SSH/sudo redirects, secret injection approval,",
+					"and the circuit breaker will be disabled. Destructive actions can run",
+					"without confirmation and may cause irreversible data loss.",
+					"Authentication, secret protection, input validation, and SSH host-key checks remain.",
+					"Only this session. /nuclear disables it; /new resets it.",
+				],
+				choices: [
+					{ value: "no", label: "Cancel", description: "Keep current protections" },
+					{
+						value: "yes",
+						label: "Accept all risk",
+						description: "Disable Pix approval gates this session",
+					},
+				],
+			});
+			if (result.action !== "approved") return;
+			setUnattendedMode(pi.events, "nuclear");
+			syncStatus(pi.events, ctx.ui);
+			ctx.ui.notify("NUCLEAR — Pix approval gates disabled for this session.", "warning");
 		},
 	});
 }

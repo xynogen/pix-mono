@@ -218,7 +218,7 @@ export default function (pi: ExtensionAPI): void {
 				}),
 				execute: async ({ update: onUpdate }) => {
 					const mode = getUnattendedMode(pi.events);
-					const yolo = mode === "yolo";
+					const yolo = mode === "yolo" || mode === "nuclear";
 					if (mode === "afk") {
 						return {
 							content: [
@@ -267,7 +267,10 @@ export default function (pi: ExtensionAPI): void {
 					// YOLO auto-approves root, but only when a PAM ticket is already cached:
 					// the password cannot be auto-typed, so a no-ticket run still prompts.
 					if (yolo && cached) {
-						ctx.ui.notify("🔐 YOLO — root command auto-approved (cached ticket).", "warning");
+						ctx.ui.notify(
+							`${mode.toUpperCase()} — root command auto-approved (cached ticket).`,
+							"warning",
+						);
 					}
 					const overlayResult: OverlayResult =
 						yolo && cached

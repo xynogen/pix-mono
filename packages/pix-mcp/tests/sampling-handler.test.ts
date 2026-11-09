@@ -8,7 +8,9 @@ const mocks = {
 	complete: mock(),
 };
 
+const actualCompat = await import("@earendil-works/pi-ai/compat");
 mock.module("@earendil-works/pi-ai/compat", () => ({
+	...actualCompat,
 	complete: mocks.complete,
 }));
 
@@ -166,6 +168,22 @@ describe("sampling handler", () => {
 			),
 		).rejects.toThrow("MCP sampling requires interactive approval");
 		expect(mocks.complete).not.toHaveBeenCalled();
+	});
+
+	it("nuclear bypasses sampling approval dynamically without changing configured auto-approve", async () => {
+		const { createEventBus } = await import("@earendil-works/pi-coding-agent");
+		const { setUnattendedMode } = await import("@xynogen/pix-runtime");
+		const { handleSamplingRequest } = await import("../src/sampling-handler.ts");
+		const events = createEventBus();
+		const options = createOptions({ autoApprove: false, ui: undefined, events });
+		const request = createSamplingRequest({ messages: [], maxTokens: 50 });
+		setUnattendedMode(events, "nuclear");
+		await handleSamplingRequest(options, request);
+		expect(mocks.complete).toHaveBeenCalled();
+		setUnattendedMode(events, "off");
+		await expect(handleSamplingRequest(options, request)).rejects.toThrow(
+			"MCP sampling requires interactive approval",
+		);
 	});
 
 	it("asks for approval with inspectable request and response content", async () => {

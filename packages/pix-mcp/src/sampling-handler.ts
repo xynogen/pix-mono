@@ -1,6 +1,6 @@
 import type { Api, AssistantMessage, Message, Model, TextContent } from "@earendil-works/pi-ai";
 import { complete } from "@earendil-works/pi-ai/compat";
-import type { ExtensionUIContext, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import type { EventBus, ExtensionUIContext, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type {
 	Client,
 	CreateMessageRequest,
@@ -9,11 +9,13 @@ import type {
 	SamplingMessage,
 	SamplingMessageContentBlock,
 } from "@modelcontextprotocol/client";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { truncateAtWord } from "./utils.ts";
 
 export interface SamplingHandlerOptions {
 	serverName: string;
 	autoApprove: boolean;
+	events?: EventBus;
 	ui?: ExtensionUIContext;
 	modelRegistry: ModelRegistry;
 	getCurrentModel: () => Model<Api> | undefined;
@@ -185,7 +187,8 @@ async function confirmSampling(
 	title: string,
 	message: string,
 ): Promise<void> {
-	if (options.autoApprove) return;
+	if (options.autoApprove || (options.events && getUnattendedMode(options.events) === "nuclear"))
+		return;
 	if (!options.ui) {
 		throw new Error(
 			"MCP sampling requires interactive approval. Set settings.samplingAutoApprove to true to allow it without UI.",

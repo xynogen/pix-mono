@@ -22,5 +22,8 @@ it("resolves pix-pretty's own icons in every mode", () => {
 	}
 	expect(shim.iconFor("mode.plan", "ascii")).toBe("P");
 	expect(shim.iconFor("mode.normal", "ascii")).toBe(">");
+	expect(shim.iconFor("mode.nuclear", "unicode")).toBe("\u{1F680}");
+	expect(shim.iconFor("mode.nuclear", "nerd")).toBe("\u{F135}");
+	expect(shim.iconFor("mode.nuclear", "ascii")).toBe("^");
 	expect(shim.iconFor("mode.plan", "nerd")).not.toBe(shim.iconFor("mode.normal", "nerd"));
 });

@@ -34,7 +34,7 @@ describe("pix-commands registration", () => {
 		const { pi, commands, renderers } = host();
 		extension(pi);
 		extension(pi);
-		expect(commands).toEqual(["clear", "btw", "afk", "yolo"]);
+		expect(commands).toEqual(["clear", "btw", "afk", "yolo", "nuclear"]);
 		expect(renderers).toEqual(["pix-btw-answer"]);
 	});
 
@@ -43,8 +43,8 @@ describe("pix-commands registration", () => {
 		const second = host();
 		extension(first.pi);
 		extension(second.pi);
-		expect(first.commands).toEqual(["clear", "btw", "afk", "yolo"]);
-		expect(second.commands).toEqual(["clear", "btw", "afk", "yolo"]);
+		expect(first.commands).toEqual(["clear", "btw", "afk", "yolo", "nuclear"]);
+		expect(second.commands).toEqual(["clear", "btw", "afk", "yolo", "nuclear"]);
 	});
 
 	test("/afk toggles shared state and status", async () => {

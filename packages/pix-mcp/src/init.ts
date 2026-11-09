@@ -50,6 +50,7 @@ export async function initializeMcp(
 	if (config.settings?.sampling !== false && (ctx.hasUI || samplingAutoApprove)) {
 		manager.setSamplingConfig({
 			autoApprove: samplingAutoApprove,
+			events: pi.events,
 			ui: ctx.hasUI ? ctx.ui : undefined,
 			modelRegistry: ctx.modelRegistry,
 			getCurrentModel: () => ctx.model,
@@ -67,7 +68,7 @@ export async function initializeMcp(
 	const toolMetadata = new Map<string, ToolMetadata[]>();
 	const failureTracker = new Map<string, number>();
 	const uiResourceHandler = new UiResourceHandler(manager);
-	const consentManager = new ConsentManager("once-per-server");
+	const consentManager = new ConsentManager("once-per-server", pi.events);
 	const ui = ctx.hasUI ? ctx.ui : undefined;
 	const state: McpExtensionState = {
 		manager,

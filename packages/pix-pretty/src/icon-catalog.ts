@@ -32,6 +32,7 @@ const PRETTY_CATALOG = {
 	// ── agent mode (pix-core plan mode, footer) ───────────────────────────
 	"mode.plan": { nerd: "\u{F034D}", unicode: `\u2630${VS}`, ascii: "P" },
 	"mode.normal": { nerd: "\u{F0174}", unicode: `\u276F${VS}`, ascii: ">" },
+	"mode.nuclear": { nerd: "\u{F135}", unicode: "\u{1F680}", ascii: "^" },
 	// ── model kind (pix-models picker) ─────────────────────────────────────
 	"model.classifier": { nerd: "\u{F05D1}", unicode: `\u2696${VS}`, ascii: "C" },
 	// ── steering hint (pix-nudge cards): advice, not a warning — keep it off `⚠` ──

@@ -1,7 +1,20 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { createEventBus } from "@earendil-works/pi-coding-agent";
+import { setUnattendedMode } from "@xynogen/pix-runtime";
 import { ConsentManager } from "../src/consent-manager.ts";
 
 describe("ConsentManager", () => {
+	it("nuclear temporarily bypasses consent without caching approval", () => {
+		const events = createEventBus();
+		const manager = new ConsentManager("always", events);
+		manager.registerDecision("server", false);
+		setUnattendedMode(events, "nuclear");
+		expect(manager.requiresPrompt("server")).toBe(false);
+		expect(() => manager.ensureApproved("server")).not.toThrow();
+		setUnattendedMode(events, "off");
+		expect(manager.requiresPrompt("server")).toBe(true);
+		expect(() => manager.ensureApproved("server")).toThrow();
+	});
 	describe("mode: never", () => {
 		let manager: ConsentManager;
 

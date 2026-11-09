@@ -184,6 +184,42 @@ test("unattended transfers stay unblocked; a missing login password still prompt
 	expect(overlay).toHaveBeenCalledTimes(1);
 });
 
+test("nuclear skips command and transfer approval but still prompts for missing authentication", async () => {
+	const { pi, tool } = capturePi();
+	const events = createEventBus();
+	register({ ...pi, events } as unknown as ExtensionAPI);
+	setUnattendedMode(events, "nuclear");
+	const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+	const overlay = mock(custom);
+	const ctx = { hasUI: true, ui: { custom: overlay, notify() {} } };
+	keyWorks = true;
+	for (const params of [
+		{ action: "command", host: "nuclear-command", command: "sudo id", sudo: true },
+		{
+			action: "file",
+			host: "nuclear-transfer",
+			direction: "upload",
+			source: "a",
+			destination: "b",
+		},
+	]) {
+		const result = await execute("n", params, undefined, undefined, ctx);
+		expect(result.details).toMatchObject({ outcome: "success" });
+	}
+	// sudo needs its own password, even when login uses a key.
+	expect(overlay).toHaveBeenCalledTimes(1);
+	keyWorks = false;
+	const result = await execute(
+		"n",
+		{ action: "command", host: "nuclear-password", command: "id" },
+		undefined,
+		undefined,
+		ctx,
+	);
+	expect(result.details).toMatchObject({ outcome: "success", auth: "password" });
+	expect(overlay).toHaveBeenCalledTimes(2);
+});
+
 test("host key mismatch: red menu defaults to Cancel even in YOLO; reset reconnects only after explicit approval", async () => {
 	const { pi, tool } = capturePi();
 	const events = createEventBus();

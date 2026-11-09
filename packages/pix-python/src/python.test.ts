@@ -91,6 +91,12 @@ const getText = (r: ToolResultLike) =>
 	(r.content ?? []).map((c) => ("text" in c ? c.text : "")).join("");
 
 describe("python_run", () => {
+	test("nuclear runs without approval UI", async () => {
+		const { execute, events } = host();
+		setUnattendedMode(events, "nuclear");
+		const result = await execute("n", args, undefined, undefined, { hasUI: false, cwd: "/work" });
+		expect(result.details).toMatchObject({ outcome: "success" });
+	});
 	test("approval shows controls while code stays in the tool card", async () => {
 		const { tool, execute } = host();
 		let popup = "";

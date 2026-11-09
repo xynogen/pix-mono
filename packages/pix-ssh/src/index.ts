@@ -647,7 +647,7 @@ export default function (pi: ExtensionAPI): void {
 			let creds = credCache.get(key) ?? {};
 
 			const mode = getUnattendedMode(pi.events);
-			const yolo = mode === "yolo";
+			const yolo = mode === "yolo" || mode === "nuclear";
 			if (action === "command" && mode === "afk") {
 				return {
 					content: [{ type: "text", text: "ssh_run denied immediately — AFK mode is active." }],

@@ -567,7 +567,7 @@ export function unattendedGateDecision(
 	tier: number,
 ): "allow" | "deny" | undefined {
 	const mode = getUnattendedMode(events);
-	if (mode === "yolo") return "allow";
+	if (mode === "yolo" || mode === "nuclear") return "allow";
 	if (mode === "afk") return tier >= 4 ? "deny" : "allow";
 	return undefined;
 }
