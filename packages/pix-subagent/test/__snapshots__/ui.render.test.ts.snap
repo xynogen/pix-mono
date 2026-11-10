@@ -64,7 +64,7 @@ exports[`captures registered agent, control and utility render states 1`] = `
 {"label":"info empty filtered","width":80,"surface":"host-self","rows":["","   <accent>●︎</accent> <toolTitle+bold>Models</toolTitle+bold> <muted>· 0</muted>","     <muted>(none)</muted>","","   <muted>Omit model to inherit.</muted>","<success>────────────────────────────────────────────────────────────────────────────────</success>"]}
 {"label":"utility metadata-free error","width":80,"surface":"host-self","rows":["","transport failed                                                                ","<error>────────────────────────────────────────────────────────────────────────────────</error>"]}
 {"label":"agent_control hidden call","width":80,"surface":"host-self","rows":[]}
-{"label":"agent_control restored call","width":80,"surface":"host-self","rows":["","<muted>○︎ </muted> <toolTitle+bold>agent_control stop</toolTitle+bold> <dim>agent-one</dim>                                                 "]}
+{"label":"agent_control restored call","width":80,"surface":"host-self","rows":["","<muted>○︎ </muted> <toolTitle+bold>agent_control · stop</toolTitle+bold> <dim>agent-one</dim>                                               "]}
 {"label":"agent_info hidden call","width":80,"surface":"host-self","rows":[]}
 {"label":"agent_info restored call","width":80,"surface":"host-self","rows":["","<muted>○︎ </muted> <toolTitle+bold>agent_info</toolTitle+bold> models                                                            "]}
 {"label":"agent_result hidden call","width":80,"surface":"host-self","rows":[]}

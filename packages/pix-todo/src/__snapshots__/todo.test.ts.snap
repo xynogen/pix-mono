@@ -2,7 +2,7 @@
 
 exports[`W1 capture: registered todo boards and self shell: open call 1`] = `
 [
-  "<muted>○︎ </muted> <toolTitle+bold>todo set</toolTitle+bold>                                                                     ",
+  "<muted>○︎ </muted> <toolTitle+bold>todo · set</toolTitle+bold>                                                                   ",
 ]
 `;
 

@@ -14,15 +14,24 @@
 
 import { type FSWatcher, watch } from "node:fs";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import {
+	stripTerminalSequences,
+	Text,
+	truncateToWidth,
+	visibleWidth,
+} from "@earendil-works/pi-tui";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
+	BODY_PAD,
+	expandHint,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
+	pluralize,
+	renderDimPreview,
 	renderRow,
 	renderTitle,
 	rule,
@@ -48,11 +57,21 @@ interface ProcResultDetails {
 	ok: boolean;
 	lines: string[];
 	error?: string;
+	handle?: string;
+	processes?: ProcMeta[];
+	output?: string[];
+	notes?: string[];
+	logPath?: string;
 }
 
 function textResult(details: ProcResultDetails) {
 	return {
-		content: [{ type: "text" as const, text: details.lines.join("\n") || `${details.action} ok` }],
+		content: [
+			{
+				type: "text" as const,
+				text: details.error ?? (details.lines.join("\n") || `${details.action} ok`),
+			},
+		],
 		details,
 		isError: !details.ok,
 	};
@@ -243,6 +262,12 @@ export default function registerRunner(pi: ExtensionAPI): void {
 				return new Text("", 0, 0);
 			const a = args as { action?: string; command?: string; handle?: string };
 			const target = a.command ?? a.handle ?? "";
+			if (!a.command)
+				return new Text(
+					`${renderTitle(theme, "proc", context, a.action)}${target ? `${theme.fg("muted", " · ")}${theme.fg("dim", target)}` : ""}`,
+					0,
+					0,
+				);
 			return commandPreview(
 				renderTitle(theme, "proc", context, a.action),
 				target,
@@ -260,29 +285,73 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			const fallback = result.content
 				.flatMap((part) => (part.type === "text" ? [part.text] : []))
 				.join("\n");
-			const body = details
-				? details.ok
-					? details.lines.join("\n") || `${details.action} ok`
-					: (details.error ?? `${details.action} failed`)
-				: fallback;
-			const text = new Text(body, 0, 0);
-			if (options.isPartial) return text;
 			const failed = context.isError || details?.ok === false;
-			if (
-				tickCollapse("proc", context.state as CollapseState, context.invalidate, options.expanded)
-			)
-				return new Text(
-					renderRow(
-						theme,
-						"proc",
-						body.replace(/\s+/g, " ").trim(),
-						"",
-						failed ? "error" : "success",
-					),
-					0,
-					0,
-				);
-			return frameToolResult(text, theme, failed);
+			const clean = (value: string) =>
+				stripTerminalSequences(value)
+					.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")
+					.trim();
+			const title = details?.action ? `proc · ${details.action}` : "proc";
+			const target = clean(
+				details?.error ??
+					details?.handle ??
+					(details?.action === "list"
+						? pluralize(details.processes?.length ?? details.lines.length, "process", "processes")
+						: (details?.lines[0] ?? "")),
+			);
+			const meta = details?.output?.length ? pluralize(details.output.length, "line") : "";
+			const now = Date.now();
+			const collapsed =
+				!options.isPartial &&
+				tickCollapse("proc", context.state as CollapseState, context.invalidate, options.expanded);
+			const component = {
+				render(width: number): string[] {
+					const heading = options.isPartial
+						? `${renderTitle(theme, "proc", { ...context, executionStarted: true, isPartial: true }, details?.action)}${target ? ` ${theme.fg("dim", target)}` : ""}`
+						: renderRow(theme, title, target, meta, failed ? "error" : "success", width);
+					if (collapsed) return [heading];
+					const rows = [heading];
+					const processes = details?.processes ?? [];
+					const shown = options.expanded ? processes : processes.slice(0, 6);
+					for (const proc of shown) {
+						rows.push(`${BODY_PAD}${processRow(proc, now, Math.max(1, width - 3), theme)}`);
+						rows.push(
+							`${BODY_PAD}${theme.fg("muted", `${clean(proc.handle)} · pid ${proc.pid} · ${clean(proc.cwd)}${proc.foreign ? " · read-only" : ""}`)}`,
+						);
+						if (proc.logError) rows.push(`${BODY_PAD}${theme.fg("error", clean(proc.logError))}`);
+					}
+					const notes = details?.notes ?? [];
+					for (const note of notes)
+						rows.push(
+							`${BODY_PAD}${theme.fg(details?.action === "stop" || details?.action === "rm" ? "muted" : "warning", clean(note))}`,
+						);
+					if (details?.error) rows.push(`${BODY_PAD}${theme.fg("error", details.error)}`);
+					if (details?.logPath)
+						rows.push(`${BODY_PAD}${theme.fg("muted", `Full log · ${clean(details.logPath)}`)}`);
+					const output =
+						details?.output ??
+						(processes.length || notes.length || details?.error
+							? []
+							: (details?.lines ?? fallback.split("\n")));
+					if (output.length)
+						rows.push(
+							renderDimPreview(
+								output.join("\n"),
+								theme as unknown as Parameters<typeof renderDimPreview>[1],
+								{
+									maxLines: options.expanded ? output.length : 8,
+									ctx: context,
+								},
+							),
+						);
+					if (processes.length > shown.length)
+						rows.push(
+							`${BODY_PAD}${theme.fg("muted", `… ${processes.length - shown.length} more processes `)}${expandHint(theme, context)}`,
+						);
+					return new Text(rows.join("\n"), 0, 0).render(width);
+				},
+				invalidate() {},
+			};
+			return options.isPartial || collapsed ? component : frameToolResult(component, theme, failed);
 		},
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			signal?.throwIfAborted();
@@ -329,13 +398,22 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		if (meta.status !== "running") {
 			lines.push(`${statusWord(meta)} in <1s — use bash for one-shot commands`);
 		}
-		return ok("start", ...lines);
+		return {
+			...ok("start", ...lines),
+			handle: meta.handle,
+			processes: [{ ...meta }],
+			output: view?.lines ?? [],
+			notes: meta.status !== "running" ? [lines.at(-1)!] : [],
+		};
 	}
 
 	function doList(): ProcResultDetails {
 		const all = [...mgr.list(), ...mgr.foreign()];
-		if (all.length === 0) return ok("list", "no processes");
-		return ok("list", ...all.map((m) => statusLine(m, Date.now())));
+		if (all.length === 0) return { ...ok("list", "no processes"), processes: [], output: [] };
+		return {
+			...ok("list", ...all.map((m) => statusLine(m, Date.now()))),
+			processes: all.map((m) => ({ ...m })),
+		};
 	}
 
 	async function doLogs(p: { handle?: string; tail?: number }): Promise<ProcResultDetails> {
@@ -347,7 +425,13 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			if (t.logError) head.push(`log stopped: ${t.logError} — process may still be running`);
 			else if (t.capped)
 				head.push("log capped at 50 MB — process still running, output no longer recorded");
-			return ok("logs", ...head, ...(t.lines.length ? t.lines : ["(no output)"]));
+			return {
+				...ok("logs", ...head, ...(t.lines.length ? t.lines : ["(no output)"])),
+				handle: p.handle,
+				logPath: t.logPath,
+				notes: head.slice(1),
+				output: t.lines.length ? t.lines : ["(no output)"],
+			};
 		}
 		const view = await mgr.logsSince(p.handle);
 		if (!view) return fail("logs", `unknown handle ${p.handle}`);
@@ -356,19 +440,35 @@ export default function registerRunner(pi: ExtensionAPI): void {
 		if (view.logError) head.push(`log stopped: ${view.logError} — process may still be running`);
 		else if (view.capped)
 			head.push("log capped at 50 MB — process still running, output no longer recorded");
-		return ok("logs", ...head, ...(view.lines.length ? view.lines : ["(no new output)"]));
+		return {
+			...ok("logs", ...head, ...(view.lines.length ? view.lines : ["(no new output)"])),
+			handle: p.handle,
+			logPath: view.logPath,
+			notes: head.slice(1),
+			output: view.lines.length ? view.lines : ["(no new output)"],
+		};
 	}
 
 	async function doStop(p: { handle?: string }): Promise<ProcResultDetails> {
 		if (!p.handle) return fail("stop", "stop requires a handle");
 		const r = await mgr.stop(p.handle);
-		return r.ok ? ok("stop", r.note) : fail("stop", r.note);
+		return {
+			...(r.ok ? ok("stop", r.note) : fail("stop", r.note)),
+			handle: p.handle,
+			notes: r.ok ? [r.note] : [],
+			output: [],
+		};
 	}
 
 	function doRm(p: { handle?: string }): ProcResultDetails {
 		if (!p.handle) return fail("rm", "rm requires a handle");
 		const r = mgr.rm(p.handle);
-		return r.ok ? ok("rm", r.note) : fail("rm", r.note);
+		return {
+			...(r.ok ? ok("rm", r.note) : fail("rm", r.note)),
+			handle: p.handle,
+			notes: r.ok ? [r.note] : [],
+			output: [],
+		};
 	}
 
 	// ── /proc user command — inspect + stop without the model ────────────────

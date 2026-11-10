@@ -143,9 +143,48 @@ describe("download renderer", () => {
 			})
 			.render(20);
 
-		expect(success[0]?.trimEnd()).toBe("queued");
+		expect(success.join("\n")).toContain("queued");
 		expect(success.at(-1)).toBe(`<success>${"─".repeat(20)}</success>`);
-		expect(error[0]?.trimEnd()).toBe("failed");
+		expect(error.join("\n")).toContain("failed");
 		expect(error.at(-1)).toBe(`<error>${"─".repeat(20)}</error>`);
+	});
+	test("renders structured downloads and keeps collapsed output to a summary", () => {
+		const host = tool();
+		const downloads = Array.from({ length: 9 }, (_, i) => ({
+			handle: `dl-${i}`,
+			status: {
+				gid: `${i}`,
+				status: "active",
+				totalLength: "1000",
+				completedLength: "500",
+				downloadSpeed: "100",
+				files: [{ path: `/tmp/file-${i}.iso` }],
+			},
+		}));
+		const value = { content: [], details: { action: "list", ok: true, lines: [], downloads } };
+		for (const expanded of [false, true]) {
+			const rows = host
+				.renderResult(value, { expanded, isPartial: false }, plainTheme, {
+					state: {},
+					invalidate() {},
+					expanded,
+				})
+				.render(100)
+				.join("\n");
+			expect(rows).toContain("50%");
+			expect(rows).toContain("eta 5s");
+			expect(rows.includes("file-8.iso")).toBe(expanded);
+			if (!expanded) expect(rows).toContain("3 more downloads");
+		}
+		const compact = host
+			.renderResult(value, { expanded: false }, plainTheme, {
+				state: { collapsed: true },
+				invalidate() {},
+				expanded: false,
+			})
+			.render(80);
+		expect(compact).toHaveLength(1);
+		expect(compact[0]).toContain("9 active downloads");
+		expect(compact[0]).not.toContain("file-0");
 	});
 });

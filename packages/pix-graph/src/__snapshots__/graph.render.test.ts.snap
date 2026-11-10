@@ -4,11 +4,11 @@ exports[`captures actual graph calls, progress, trees and terminal result states
 {
   "bfs": [
     "",
-    "<warning>◐︎ </warning> <toolTitle+bold>graph query</toolTitle+bold> <dim>“What calls authenticate?”</dim> <muted>· bfs</muted>                                 ",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph · query</toolTitle+bold> <dim>“What calls authenticate?”</dim> <muted>· bfs</muted>                               ",
   ],
   "build": [
     "",
-    "<warning>◐︎ </warning> <toolTitle+bold>graph build</toolTitle+bold> <dim>src</dim>                                                              ",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph · build</toolTitle+bold> <dim>src</dim>                                                            ",
   ],
   "built": [
     "",
@@ -18,15 +18,15 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   ],
   "collapsed": [
     "",
-    "<success>✓︎ </success> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>done</muted>                                                           ",
+    "<success>✓︎ </success> <toolTitle+bold>graph · build</toolTitle+bold> <muted>·</muted> <muted>done</muted>                                                         ",
   ],
   "collapsedError": [
     "",
-    "<error>✗︎ </error> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <muted>·</muted> <muted>failed</muted>                                                         ",
+    "<error>✗︎ </error> <toolTitle+bold>graph · build</toolTitle+bold> <muted>·</muted> <muted>failed</muted>                                                       ",
   ],
   "dfs": [
     "",
-    "<warning>◐︎ </warning> <toolTitle+bold>graph query</toolTitle+bold> <dim>“Trace authenticate to the token cache and show each dependency  </dim>",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph · query</toolTitle+bold> <dim>“Trace authenticate to the token cache and show each dependency</dim>",
     "<dim>across the request path.”</dim> <muted>· dfs</muted>                                                 ",
   ],
   "empty": [
@@ -54,6 +54,22 @@ exports[`captures actual graph calls, progress, trees and terminal result states
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "hiddenCall": [],
+  "impactExpanded": [
+    "",
+    "<success>✓︎ </success> <toolTitle+bold>graph · impact</toolTitle+bold> <dim>authenticate</dim> <muted>·</muted> <muted>0 dependents · 0 files · 0 tests</muted>               ",
+    "   <dim>full evidence unique-source-line</dim>                                             ",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
+  ],
+  "impactPreview": [
+    "",
+    "<success>✓︎ </success> <toolTitle+bold>graph · impact</toolTitle+bold> <dim>authenticate</dim> <muted>·</muted> <muted>3 dependents · 2 files · 1 test</muted>                ",
+    "   <accent>packages/a</accent><muted> · 1 file</muted>                                                          ",
+    "   <accent>packages/b</accent><muted> · 1 file</muted>                                                          ",
+    "   <muted>Test · </muted><dim>packages/a/src/a.test.ts</dim>                                              ",
+    "   <warning>Impact truncated; narrow with path before assuming all callers are covered.</warning>  ",
+    "   <muted>(ctrl+o to expand)</muted>                                                           ",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
+  ],
   "partial": [
     "",
     "<success>●︎</success> Extracting 3 files…                                                           ",
@@ -65,6 +81,20 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   "runningFallback": [
     "",
     "<muted>building graph…</muted>                                                                 ",
+  ],
+  "summaryExpanded": [
+    "",
+    "<success>✓︎ </success> <toolTitle+bold>graph · summarize</toolTitle+bold> <dim>0/2 missing or stale</dim>                                       ",
+    "   <success>All summaries are current</success>                                                    ",
+    "   <dim>full evidence unique-card-line</dim>                                               ",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
+  ],
+  "summaryPreview": [
+    "",
+    "<success>✓︎ </success> <toolTitle+bold>graph · summarize</toolTitle+bold> <dim>1/2 missing or stale</dim>                                       ",
+    "   <accent>@xynogen/pix-a</accent><warning> · missing</warning>                                                     ",
+    "   <muted>(ctrl+o to expand)</muted>                                                           ",
+    "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "tree": [
     "",

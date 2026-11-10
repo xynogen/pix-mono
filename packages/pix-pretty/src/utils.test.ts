@@ -135,9 +135,18 @@ describe("tool call lifecycle", () => {
 			);
 		}
 	});
-	it("keeps tool and action in one title without empty-action spacing", () => {
+	it("separates tool and action with a dot without empty-action spacing", () => {
 		const theme = { fg: (role: string, text: string) => `<${role}>${text}</${role}>` };
-		expect(renderTitle(theme, "proc", {}, "start")).toContain("<toolTitle>proc start</toolTitle>");
+		for (const [tool, action] of [
+			["proc", "start"],
+			["download", "pause"],
+			["graph", "query"],
+			["ssh", "info"],
+		] as const) {
+			expect(renderTitle(theme, tool, {}, action)).toContain(
+				`<toolTitle>${tool} · ${action}</toolTitle>`,
+			);
+		}
 		expect(renderTitle(theme, "proc", {}, "")).toBe(renderTitle(theme, "proc"));
 	});
 });
@@ -184,7 +193,7 @@ describe("renderCall", () => {
 			(args) => String(args.action ?? ""),
 		);
 		const component = render({ action: "list" }, theme, { state: {}, expanded: false });
-		expect(component.render(80).join("\n")).toContain("todo list");
+		expect(component.render(80).join("\n")).toContain("todo · list");
 	});
 });
 

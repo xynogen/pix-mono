@@ -2,10 +2,11 @@
 
 exports[`W1 capture: read_env component and default Box results: typed component 1`] = `
 [
-  "◆︎ <accent>ENABLED</accent> <muted>boolean</muted>                                                               ",
-  "# <accent>PORT</accent> <muted>int</muted>                                                                      ",
-  "≈︎ <accent>RATE</accent> <muted>float</muted>                                                                    ",
-  "“︎ <accent>TOKEN</accent> <muted>string</muted>                                                                  ",
+  "<success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold>                                                              ",
+  "   ◆︎ <accent>ENABLED</accent><muted> · boolean</muted>                                                          ",
+  "   # <accent>PORT</accent><muted> · int</muted>                                                                 ",
+  "   ≈︎ <accent>RATE</accent><muted> · float</muted>                                                               ",
+  "   “︎ <accent>TOKEN</accent><muted> · string</muted>                                                             ",
   "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
 `;
@@ -14,10 +15,11 @@ exports[`W1 capture: read_env component and default Box results: typed Box 1`] =
 [
   "",
   "                                                                                ",
-  " ◆︎ <accent>ENABLED</accent> <muted>boolean</muted>                                                              ",
-  " # <accent>PORT</accent> <muted>int</muted>                                                                     ",
-  " ≈︎ <accent>RATE</accent> <muted>float</muted>                                                                   ",
-  " “︎ <accent>TOKEN</accent> <muted>string</muted>                                                                 ",
+  " <success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold>                                                             ",
+  "    ◆︎ <accent>ENABLED</accent><muted> · boolean</muted>                                                         ",
+  "    # <accent>PORT</accent><muted> · int</muted>                                                                ",
+  "    ≈︎ <accent>RATE</accent><muted> · float</muted>                                                              ",
+  "    “︎ <accent>TOKEN</accent><muted> · string</muted>                                                            ",
   " <success>──────────────────────────────────────────────────────────────────────────────</success> ",
   "                                                                                ",
 ]
@@ -27,10 +29,11 @@ exports[`W1 capture: read_env component and default Box results: partial keeps c
 [
   "",
   "                                                                                ",
-  " ◆︎ <accent>ENABLED</accent> <muted>boolean</muted>                                                              ",
-  " # <accent>PORT</accent> <muted>int</muted>                                                                     ",
-  " ≈︎ <accent>RATE</accent> <muted>float</muted>                                                                   ",
-  " “︎ <accent>TOKEN</accent> <muted>string</muted>                                                                 ",
+  " <success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold>                                                             ",
+  "    ◆︎ <accent>ENABLED</accent><muted> · boolean</muted>                                                         ",
+  "    # <accent>PORT</accent><muted> · int</muted>                                                                ",
+  "    ≈︎ <accent>RATE</accent><muted> · float</muted>                                                              ",
+  "    “︎ <accent>TOKEN</accent><muted> · string</muted>                                                            ",
   "                                                                                ",
 ]
 `;
@@ -39,7 +42,8 @@ exports[`W1 capture: read_env component and default Box results: names fallback 
 [
   "",
   "                                                                                ",
-  " TOKEN = string                                                                 ",
+  " <success>✓︎ </success> <toolTitle+bold>read_env</toolTitle+bold>                                                                    ",
+  "    <dim>TOKEN = string</dim>                                                              ",
   " <success>──────────────────────────────────────────────────────────────────────────────</success> ",
   "                                                                                ",
 ]
@@ -49,7 +53,8 @@ exports[`W1 capture: read_env component and default Box results: synthetic read 
 [
   "",
   "                                                                                ",
-  " TOKEN=fixture-value                                                            ",
+  " <success>✓︎ </success> <toolTitle+bold>read_env · read</toolTitle+bold> <muted>·</muted> <muted>values hidden</muted>                                             ",
+  "    <dim>TOKEN=fixture-value</dim>                                                         ",
   " <success>──────────────────────────────────────────────────────────────────────────────</success> ",
   "                                                                                ",
 ]
@@ -59,7 +64,8 @@ exports[`W1 capture: read_env component and default Box results: error 1`] = `
 [
   "",
   "                                                                                ",
-  " read_env requires interactive user approval.                                   ",
+  " <error>✗︎ </error> <toolTitle+bold>read_env</toolTitle+bold>                                                                    ",
+  "    <dim>read_env requires interactive user approval.</dim>                                ",
   " <error>──────────────────────────────────────────────────────────────────────────────</error> ",
   "                                                                                ",
 ]
@@ -69,6 +75,8 @@ exports[`W1 capture: read_env component and default Box results: empty typed bod
 [
   "",
   "                                                                                ",
+  " <success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold>                                                             ",
+  "    <dim>No env variables loaded.</dim>                                                    ",
   " <success>──────────────────────────────────────────────────────────────────────────────</success> ",
   "                                                                                ",
 ]

@@ -382,7 +382,10 @@ describe("read_env tool", () => {
 
 	test("renders info with type icons and accent-colored names", () => {
 		const tool = captureEnvRead();
-		const theme = { fg: (color: string, text: string) => `[${color}]${text}[/]` };
+		const theme = {
+			fg: (color: string, text: string) => `[${color}]${text}[/]`,
+			bold: (text: string) => text,
+		};
 		const result = {
 			content: [
 				{ type: "text", text: "ENABLED = boolean\nHOST = string\nPORT = int\nRATE = float" },
@@ -407,7 +410,10 @@ describe("read_env tool", () => {
 
 	test("frames successful results green and errors red", () => {
 		const tool = captureEnvRead();
-		const theme = { fg: (color: string, text: string) => `[${color}]${text}[/]` };
+		const theme = {
+			fg: (color: string, text: string) => `[${color}]${text}[/]`,
+			bold: (text: string) => text,
+		};
 		const result = { content: [{ type: "text", text: "HOST = string" }] };
 		const success = tool.renderResult(result, { isPartial: false }, theme, makeRenderCtx());
 		const failure = tool.renderResult(
@@ -419,10 +425,10 @@ describe("read_env tool", () => {
 
 		const successLines = success.render(20);
 		const failureLines = failure.render(20);
-		expect(successLines[0]?.trimEnd()).toBe("HOST = string");
-		expect(successLines[1]).toBe(`[success]${"─".repeat(20)}[/]`);
-		expect(failureLines[0]?.trimEnd()).toBe("HOST = string");
-		expect(failureLines[1]).toBe(`[error]${"─".repeat(20)}[/]`);
+		expect(successLines.join("\n")).toContain("HOST =");
+		expect(successLines.at(-1)).toBe(`[success]${"─".repeat(20)}[/]`);
+		expect(failureLines.join("\n")).toContain("HOST =");
+		expect(failureLines.at(-1)).toBe(`[error]${"─".repeat(20)}[/]`);
 	});
 
 	test("read rejects missing names and no-UI disclosure", async () => {

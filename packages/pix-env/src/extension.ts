@@ -22,10 +22,14 @@ import { Text } from "@earendil-works/pi-tui";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
+	BODY_PAD,
+	expandHint,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
+	pluralize,
 	renderCall,
+	renderDimPreview,
 	renderRow,
 } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
@@ -120,44 +124,91 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 			renderShell: "self",
 			renderCall: renderCall(
 				"read_env",
-				() => "",
+				(args) =>
+					String(
+						args.name ?? (Array.isArray(args.names) ? args.names.join(", ") : (args.path ?? "")),
+					),
 				(args) => String(args.action ?? ""),
 			),
 			renderResult(result, _options, theme, renderCtx) {
 				const details = result.details as
-					| { action?: string; types?: Record<string, "boolean" | "int" | "float" | "string"> }
+					| {
+							action?: string;
+							name?: string;
+							path?: string;
+							revealed?: string[];
+							outcome?: string;
+							count?: number;
+							types?: Record<string, "boolean" | "int" | "float" | "string">;
+					  }
 					| undefined;
-				const body =
-					details?.action === "info" && details.types
-						? Object.entries(details.types)
-								.map(
-									([name, type]) =>
-										`${icon(`data.${type}`)} ${theme.fg("accent", name)} ${theme.fg("muted", type)}`,
-								)
-								.join("\n")
-						: getTextContent(result) || "No env variables loaded.";
-				if (
+				const entries = Object.entries(details?.types ?? {});
+				const hiddenRead = details?.action === "read" && !renderCtx.isError;
+				const names = hiddenRead ? (details?.revealed ?? []) : details?.name ? [details.name] : [];
+				const target =
+					names.join(", ") ||
+					(details?.count !== undefined ? pluralize(details.count, "variable") : "");
+				const status = renderCtx.isError
+					? "error"
+					: details?.outcome && details.outcome !== "approved"
+						? "warning"
+						: "success";
+				const collapsed =
 					!_options.isPartial &&
 					tickCollapse(
 						"read_env",
 						renderCtx.state as CollapseState,
 						renderCtx.invalidate,
 						_options.expanded,
-					)
-				)
-					return new Text(
-						renderRow(
-							theme,
-							"read_env",
-							details?.action ?? "",
-							"",
-							renderCtx.isError ? "error" : "success",
-						),
-						0,
-						0,
 					);
-				const text = new Text(body, 0, 0);
-				return _options.isPartial ? text : frameToolResult(text, theme, renderCtx.isError);
+				const component = {
+					render(width: number): string[] {
+						const rows = [
+							renderRow(
+								theme,
+								details?.action ? `read_env · ${details.action}` : "read_env",
+								target,
+								details?.outcome ?? (hiddenRead || details?.name ? "values hidden" : ""),
+								status,
+								width,
+							),
+						];
+						if (collapsed) return rows;
+						if (entries.length) {
+							const shown = _options.expanded ? entries : entries.slice(0, 12);
+							for (const [name, type] of shown)
+								rows.push(
+									`${BODY_PAD}${icon(`data.${type}`)} ${theme.fg("accent", name)}${theme.fg("muted", ` · ${type}`)}`,
+								);
+							if (entries.length > shown.length)
+								rows.push(
+									`${BODY_PAD}${theme.fg("muted", `… ${entries.length - shown.length} more variables `)}${expandHint(theme, renderCtx)}`,
+								);
+						} else if (hiddenRead && names.length) {
+							for (const name of names)
+								rows.push(
+									`${BODY_PAD}${theme.fg("accent", name)}${theme.fg("muted", " · value hidden")}`,
+								);
+						} else {
+							const text = getTextContent(result) || "No env variables loaded.";
+							rows.push(
+								renderDimPreview(text, theme as unknown as Parameters<typeof renderDimPreview>[1], {
+									maxLines: _options.expanded || renderCtx.isError ? Number.MAX_SAFE_INTEGER : 8,
+									ctx: renderCtx,
+								}),
+							);
+						}
+						if (details?.path)
+							rows.push(
+								`${BODY_PAD}${theme.fg("muted", "File · ")}${theme.fg("dim", details.path)}`,
+							);
+						return new Text(rows.join("\n"), 0, 0).render(width);
+					},
+					invalidate() {},
+				};
+				return _options.isPartial || collapsed
+					? component
+					: frameToolResult(component, theme, renderCtx.isError);
 			},
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				signal?.throwIfAborted();
@@ -206,7 +257,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 						if (result.action !== "approved")
 							return {
 								content: [{ type: "text", text: `read_env ${result.action}: ${params.name}` }],
-								details: { action: params.action },
+								details: { action: params.action, name: params.name, outcome: result.action },
 							};
 						const recheck = await validateOutputPath(path);
 						if (!recheck.ok) throw new Error(recheck.reason);
@@ -315,7 +366,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				if (result.action !== "approved") {
 					return {
 						content: [{ type: "text", text: `read_env ${result.action}: ${list}` }],
-						details: { action: "read", revealed: [] },
+						details: { action: "read", revealed: [], outcome: result.action },
 					};
 				}
 

@@ -109,7 +109,7 @@ test("renders a compact colored summary and hides internal ids from expanded UI"
 
 	expect(tool.renderShell).toBe("self");
 	expect(rendered(tool.renderCall(args, taggedTheme, renderContext()))).toContain(
-		"[toolTitle][bold]hunk navigate +1[/bold][/toolTitle]",
+		"[toolTitle][bold]hunk · navigate +1[/bold][/toolTitle]",
 	);
 	const compactContext = renderContext(false, true);
 	expect(rendered(tool.renderCall(args, taggedTheme, compactContext))).toBe("");

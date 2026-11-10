@@ -3,35 +3,43 @@
 exports[`proc registered self shell, modal, and widget with a fake manager 1`] = `
 "wrapped call
 
-<muted>○︎ </muted> <toolTitle+bold>proc start</toolTitle+bold><muted> · </muted>
+<muted>○︎ </muted> <toolTitle+bold>proc · start</toolTitle+bold><muted> · </muted>
    <dim>serve --port 5173 --host localhost --config fixture/config.ts --watch</dim>
    <dim>fixture/source</dim>
 partial
 
-ready                                                                           
-listening                                                                       
+<warning>◐︎ </warning> <toolTitle+bold>proc</toolTitle+bold>                                                                         
+   <dim>ready</dim>                                                                        
+   <dim>listening</dim>                                                                    
 compact success
 
-proc-dev started                                                                
-ready                                                                           
+<success>✓︎ </success> <toolTitle+bold>proc · start</toolTitle+bold> <dim>proc-dev</dim> <muted>·</muted> <muted>1 line</muted>                                               
+   <accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                                      <muted>5s</muted>
+   <muted>proc-dev · pid 42 · /fixture</muted>                                                 
+   <dim>ready</dim>                                                                        
 <success>────────────────────────────────────────────────────────────────────────────────</success>
 expanded
 
-proc-dev started                                                                
-ready                                                                           
+<success>✓︎ </success> <toolTitle+bold>proc · start</toolTitle+bold> <dim>proc-dev</dim> <muted>·</muted> <muted>1 line</muted>                                               
+   <accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                                      <muted>5s</muted>
+   <muted>proc-dev · pid 42 · /fixture</muted>                                                 
+   <dim>ready</dim>                                                                        
 <success>────────────────────────────────────────────────────────────────────────────────</success>
 compact error
 
-start requires a command                                                        
+<error>✗︎ </error> <toolTitle+bold>proc · start</toolTitle+bold> <dim>start requires a command</dim>                                        
+   <error>start requires a command</error>                                                     
 <error>────────────────────────────────────────────────────────────────────────────────</error>
 expanded error
 
-start requires a command                                                        
+<error>✗︎ </error> <toolTitle+bold>proc · start</toolTitle+bold> <dim>start requires a command</dim>                                        
+   <error>start requires a command</error>                                                     
 <error>────────────────────────────────────────────────────────────────────────────────</error>
 fallback
 
-ready                                                                           
-listening                                                                       
+<success>✓︎ </success> <toolTitle+bold>proc</toolTitle+bold>                                                                         
+   <dim>ready</dim>                                                                        
+   <dim>listening</dim>                                                                    
 <success>────────────────────────────────────────────────────────────────────────────────</success>
 orphan prompt
 <accent+bg:customMessageBg>╭──────────────────────────────────────────────────────────────────────────────╮</accent+bg:customMessageBg>

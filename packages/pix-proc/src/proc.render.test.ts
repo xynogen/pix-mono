@@ -167,6 +167,9 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 									action: "start",
 									ok: !failed,
 									lines: ["proc-dev started", "ready"],
+									handle: "proc-dev",
+									processes: failed ? [] : [procs[0]!],
+									output: failed ? [] : ["ready"],
 									error: failed ? "start requires a command" : undefined,
 								}
 							: undefined,

@@ -96,6 +96,45 @@ test("captures actual graph calls, progress, trees and terminal result states", 
 		await result("collapsedError", "Build failed", failure, { collapsed: true, isError: true });
 		await result("expanded", text, build, { collapsed: true, expanded: true });
 		await result("wide", text, build, { width: 120 });
+		await result("impactPreview", "full evidence unique-source-line", {
+			...query,
+			action: "impact",
+			impact: {
+				files: ["packages/a/src/a.ts", "packages/b/src/b.ts"],
+				tests: ["packages/a/src/a.test.ts"],
+				dependents: 3,
+				truncated: true,
+			},
+		});
+		expect(captures.impactPreview?.join("\n")).toContain("3 dependents");
+		expect(captures.impactPreview?.join("\n")).toContain("packages/a");
+		expect(captures.impactPreview?.join("\n")).toContain("Impact truncated");
+		expect(captures.impactPreview?.join("\n")).not.toContain("unique-source-line");
+		await result(
+			"impactExpanded",
+			"full evidence unique-source-line",
+			{
+				...query,
+				action: "impact",
+				impact: { files: [], tests: [], dependents: 0, truncated: false },
+			},
+			{ expanded: true },
+		);
+		expect(captures.impactExpanded?.join("\n")).toContain("unique-source-line");
+		await result("summaryPreview", "full evidence unique-card-line", {
+			...build,
+			action: "summarize",
+			summary: { modules: [{ name: "@xynogen/pix-a", status: "missing" }], remaining: 1, total: 2 },
+		});
+		expect(captures.summaryPreview?.join("\n")).toContain("missing or stale");
+		expect(captures.summaryPreview?.join("\n")).toContain("@xynogen/pix-a");
+		await result(
+			"summaryExpanded",
+			"full evidence unique-card-line",
+			{ ...build, action: "summarize", summary: { modules: [], remaining: 0, total: 2 } },
+			{ expanded: true },
+		);
+		expect(captures.summaryExpanded?.join("\n")).toContain("unique-card-line");
 		expect(captures.fallback?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 		expect(captures.built?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 		expect(captures.error?.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);

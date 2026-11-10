@@ -20,10 +20,14 @@ import { Text } from "@earendil-works/pi-tui";
 import { grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
+	BODY_PAD,
 	dotJoin,
+	expandHint,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
+	pluralize,
+	renderDimPreview,
 	renderRow,
 	renderTitle,
 } from "@xynogen/pix-pretty/utils";
@@ -84,6 +88,8 @@ interface GraphResultDetails {
 	elapsedMs?: number;
 	/** Structured query result, for the colored hit render. */
 	query?: { question: string; traversal: "bfs" | "dfs" | "impact"; hits: QueryHitRow[] };
+	impact?: { files: string[]; tests: string[]; dependents: number; truncated: boolean };
+	summary?: { modules: { name: string; status: string }[]; remaining: number; total: number };
 }
 
 type Theme = {
@@ -261,6 +267,12 @@ function runImpact(graph: GraphData, question?: string, inFile?: string) {
 		action: "impact",
 		outcome: "success",
 		query: { question: target, traversal: "impact", hits: rows },
+		impact: {
+			files: r.files,
+			tests: r.tests,
+			dependents: r.hits.length - r.seeds.length,
+			truncated: r.truncated,
+		},
 	};
 	return { content: [{ type: "text" as const, text: impactText(r, rows) }], details };
 }
@@ -487,6 +499,61 @@ export default function registerGraph(pi: ExtensionAPI): void {
 						0,
 						0,
 					);
+				} else if (details?.impact || details?.summary) {
+					const rows: string[] = [];
+					if (details.impact) {
+						const info = details.impact;
+						rows.push(
+							renderRow(
+								t,
+								"graph · impact",
+								details.query?.question ?? "",
+								`${pluralize(info.dependents, "dependent")} · ${pluralize(info.files.length, "file")} · ${pluralize(info.tests.length, "test")}`,
+							),
+						);
+						const packages = new Map<string, number>();
+						for (const file of info.files)
+							packages.set(packageOf(file), (packages.get(packageOf(file)) ?? 0) + 1);
+						const groups = [...packages];
+						for (const [name, count] of options.expanded ? groups : groups.slice(0, 12))
+							rows.push(
+								`${BODY_PAD}${t.fg("accent", name)}${t.fg("muted", ` · ${pluralize(count, "file")}`)}`,
+							);
+						if (!options.expanded && groups.length > 12)
+							rows.push(
+								`${BODY_PAD}${t.fg("muted", `… ${groups.length - 12} more packages `)}${expandHint(t, context)}`,
+							);
+						if (!options.expanded && info.tests.length > 6)
+							rows.push(
+								`${BODY_PAD}${t.fg("muted", `… ${info.tests.length - 6} more tests `)}${expandHint(t, context)}`,
+							);
+						for (const file of info.tests.slice(0, options.expanded ? info.tests.length : 6))
+							rows.push(`${BODY_PAD}${t.fg("muted", "Test · ")}${t.fg("dim", file)}`);
+						if (info.truncated)
+							rows.push(
+								`${BODY_PAD}${t.fg("warning", "Impact truncated; narrow with path before assuming all callers are covered.")}`,
+							);
+					} else if (details.summary) {
+						rows.push(
+							renderRow(
+								t,
+								"graph · summarize",
+								`${details.summary.remaining}/${details.summary.total} missing or stale`,
+							),
+						);
+						for (const module of details.summary.modules)
+							rows.push(
+								`${BODY_PAD}${t.fg("accent", module.name)}${t.fg(module.status === "stored" ? "success" : "warning", ` · ${module.status}`)}`,
+							);
+						if (!details.summary.modules.length)
+							rows.push(`${BODY_PAD}${t.fg("success", "All summaries are current")}`);
+					}
+					if (options.expanded)
+						rows.push(
+							renderDimPreview(text, t, { maxLines: Number.MAX_SAFE_INTEGER, ctx: context }),
+						);
+					else rows.push(`${BODY_PAD}${expandHint(t, context)}`);
+					component = new Text(rows.join("\n"), 0, 0);
 				} else if (details?.query) {
 					component = new Text(renderQuery(details.query, t), 0, 0);
 				} else if (details?.action === "build") {
@@ -507,8 +574,8 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					return new Text(
 						renderRow(
 							t,
-							"graph",
-							details.action,
+							`graph · ${details.action}`,
+							"",
 							isError ? "failed" : "done",
 							isError ? "error" : "success",
 						),
@@ -623,24 +690,58 @@ export default function registerGraph(pi: ExtensionAPI): void {
 							const saved = storeSummary(summariesPath, card, text, model);
 							if (typeof saved === "string") return fail(`Summary rejected: ${saved}`);
 							const left = staleCards(cards, loadSummaries(summariesPath)).length;
-							return ok(
+							const result = ok(
 								`Stored summary for ${card.module} (model ${model}, evidence ${card.hash}) → ${OUT_DIR}/summaries.json. ${left} module(s) still missing or stale.`,
 							);
+							return {
+								...result,
+								details: {
+									...result.details,
+									summary: {
+										modules: [{ name: card.module, status: "stored" }],
+										remaining: left,
+										total: cards.length,
+									},
+								},
+							};
 						}
 						const stale = staleCards(cards, stored);
 						if (stale.length === 0) {
-							return ok(`All ${cards.length} module summaries are current. Nothing to write.`);
+							const result = ok(
+								`All ${cards.length} module summaries are current. Nothing to write.`,
+							);
+							return {
+								...result,
+								details: {
+									...result.details,
+									summary: { modules: [], remaining: 0, total: cards.length },
+								},
+							};
 						}
 						// Bounded work list: the agent summarizes a few modules per call and comes back.
 						const batch = stale.slice(0, 5);
 						const tokens = batch.reduce((n, c) => n + estimateTokens(c.text), 0);
-						return ok(
+						const result = ok(
 							[
 								`${stale.length} of ${cards.length} module summaries missing or stale. Showing ${batch.length} evidence card(s), ~${tokens} tokens.`,
 								`For each, call graph(action:"summarize", module, summary) with 2-5 sentences grounded only in its card.`,
 								...batch.map((c) => `\n${c.text}`),
 							].join("\n"),
 						);
+						return {
+							...result,
+							details: {
+								...result.details,
+								summary: {
+									modules: batch.map((card) => ({
+										name: card.module,
+										status: stored.modules[card.module] ? "stale" : "missing",
+									})),
+									remaining: stale.length,
+									total: cards.length,
+								},
+							},
+						};
 					}
 
 					if (action === "impact") {

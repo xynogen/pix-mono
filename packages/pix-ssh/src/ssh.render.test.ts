@@ -207,10 +207,11 @@ test("SSH self-shell command, file, info and result states", async () => {
 		captures.reopened = render(output, true, false, true);
 		expect(captures.success?.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 		expect(captures.error?.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
-		// Every info body row shares one indent, so keys line up under the header.
+		// Structured config rows use muted labels and accented values below the summary.
 		const configBody = captures.config?.slice(1, -1) ?? [];
 		expect(configBody.length).toBeGreaterThan(1);
-		for (const row of configBody) expect(row).toMatch(/^ {3}<muted>\S/);
+		expect(configBody.some((row) => row.includes("<muted>Host"))).toBe(true);
+		expect(configBody.some((row) => row.includes("<accent>node.invalid</accent>"))).toBe(true);
 		// ponytail: one JSON row array per state keeps the capture small without changing any row bytes.
 		expect(
 			Object.entries(captures)

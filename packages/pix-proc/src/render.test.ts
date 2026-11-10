@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rgbColor } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
 import registerRunner from "./index.ts";
@@ -66,7 +67,7 @@ describe("proc renderer", () => {
 				{ state: {}, invalidate() {}, expanded: false },
 			)
 			.render(32);
-		expect(lines[0]).toContain("proc start ·");
+		expect(lines[0]).toContain("proc · start ·");
 		expect(lines.length).toBeGreaterThan(2);
 		expect(lines[1]).toMatch(/^ {2}/);
 	});
@@ -122,5 +123,125 @@ describe("proc renderer", () => {
 			.render(20);
 		expect(success.at(-1)).toBe(`<success>${"─".repeat(20)}</success>`);
 		expect(error.at(-1)).toBe(`<error>${"─".repeat(20)}</error>`);
+	});
+	test("renders every action with a separated title and no dangling parameter separator", () => {
+		const host = tool();
+		for (const action of ["start", "list", "logs", "stop", "rm"]) {
+			const line = host
+				.renderCall({ action }, plainTheme, { state: {}, invalidate() {}, expanded: false })
+				.render(80)[0]!;
+			expect(line).toContain(`proc · ${action}`);
+			expect(line.trimEnd().endsWith("·")).toBe(false);
+		}
+	});
+
+	test("renders process metadata and warnings separately from log output", () => {
+		const host = tool();
+		const theme = {
+			...plainTheme,
+			fg: (key: string, text: string) => `<${key}>${text}</${key}>`,
+			colors: {
+				dim: rgbColor(136, 136, 136),
+				muted: rgbColor(102, 102, 102),
+				accent: rgbColor(255, 255, 255),
+			},
+			style: (text: string) => text,
+		};
+		const value = {
+			...result(true, []),
+			details: {
+				_type: "procResult",
+				action: "start",
+				ok: true,
+				lines: [],
+				handle: "proc-dev",
+				processes: [
+					{
+						handle: "proc-dev",
+						command: "TOKEN=private npm run dev",
+						cwd: "/project",
+						pid: 42,
+						pgid: 42,
+						status: "running",
+						startTime: Date.now(),
+						capped: false,
+						foreign: true,
+					},
+				],
+				notes: ["log stopped: disk full"],
+				output: ["ready on :5173"],
+				logPath: "/logs/proc-dev.log",
+			},
+		};
+		const rendered = host
+			.renderResult(value, { expanded: true, isPartial: false }, theme, {
+				state: {},
+				invalidate() {},
+				expanded: true,
+				isError: false,
+			})
+			.render(120)
+			.join("\n");
+		expect(rendered).toContain("proc · start");
+		expect(rendered).toContain("pid 42 · /project · read-only");
+		expect(rendered).toContain("<warning>log stopped: disk full</warning>");
+		expect(rendered).toContain("Full log · /logs/proc-dev.log");
+		expect(rendered).toContain("ready on :5173");
+		expect(rendered).not.toContain("private");
+	});
+
+	test("bounds previews without dropping expanded output", () => {
+		const host = tool();
+		const output = Array.from({ length: 40 }, (_, i) => `output-line-${i + 1}`);
+		const value = {
+			...result(true, []),
+			details: {
+				_type: "procResult",
+				action: "logs",
+				ok: true,
+				lines: output,
+				handle: "proc-dev",
+				output,
+			},
+		};
+		for (const expanded of [false, true]) {
+			const rendered = host
+				.renderResult(value, { expanded, isPartial: true }, plainTheme, {
+					state: {},
+					invalidate() {},
+					expanded,
+					isError: false,
+				})
+				.render(100)
+				.join("\n");
+			expect(rendered.includes("output-line-40")).toBe(expanded);
+			if (!expanded) expect(rendered).toContain("32 more lines");
+		}
+	});
+
+	test("collapsed result never flattens logs into the summary", () => {
+		const host = tool();
+		const value = {
+			...result(true, []),
+			details: {
+				_type: "procResult",
+				action: "logs",
+				ok: true,
+				lines: ["do not repeat"],
+				output: ["do not repeat"],
+				handle: "proc-dev",
+			},
+		};
+		const rows = host
+			.renderResult(value, { expanded: false, isPartial: false }, plainTheme, {
+				state: { collapsed: true },
+				invalidate() {},
+				expanded: false,
+				isError: false,
+			})
+			.render(32);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toContain("proc · logs");
+		expect(rows[0]).not.toContain("do not repeat");
 	});
 });

@@ -4,10 +4,13 @@ import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { type FadeTheme, fadeRowsOf } from "@xynogen/pix-pretty/text";
 import {
+	BODY_PAD,
 	expandHint,
 	formatJson,
 	frameToolResult,
+	pluralize,
 	renderCollapsed,
+	renderDimPreview,
 	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -310,14 +313,21 @@ export function formatMcpDirectToolCallLines(
 	return [displayName, formatJsonish(args, maxInputChars)];
 }
 
-function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRenderCtx) {
+function renderToolCallLines(
+	lines: string[],
+	theme: RenderTheme,
+	ctx?: McpRenderCtx,
+	action?: string,
+) {
 	// Once the result collapses to its one-row summary, the call row (title +
 	// JSON args) is redundant — blank it so only the `✓ mcp <tool> · N lines`
 	// summary remains, matching bash/read. Expanding restores the full call.
 	if (ctx?.state?.collapsed && !ctx.expanded) return new Text("", 0, 0);
 
 	const [title = "mcp", ...rest] = lines;
-	const styledTitle = `${renderTitle(theme, "mcp", ctx)}${title.startsWith("mcp ") ? ` ${theme.fg("dim", title.slice(4))}` : ""}`;
+	const prefix = action ? `mcp ${action}` : "mcp";
+	const target = title.slice(prefix.length).trim();
+	const styledTitle = `${renderTitle(theme, "mcp", ctx, action)}${target ? ` ${theme.fg("dim", target)}` : ""}`;
 
 	// The trailing lines are a pretty-printed args block (JSON); highlight it.
 	if (ctx?.state && ctx.invalidate) {
@@ -334,7 +344,18 @@ export function renderMcpProxyToolCall(
 	theme: RenderTheme,
 	ctx?: McpRenderCtx,
 ) {
-	return renderToolCallLines(formatMcpProxyToolCallLines(args), theme, ctx);
+	const action = args.tool
+		? undefined
+		: args.connect
+			? "connect"
+			: args.describe
+				? "describe"
+				: args.search
+					? "search"
+					: args.server && !args.action
+						? "list"
+						: (args.action ?? "status");
+	return renderToolCallLines(formatMcpProxyToolCallLines(args), theme, ctx, action);
 }
 
 export function createMcpDirectToolCallRenderer(displayName: string) {
@@ -429,6 +450,120 @@ function collapsedRow(
 	);
 }
 
+function renderManagementResult(
+	result: AgentToolResult<McpToolResultDetails>,
+	options: ToolRenderResultOptions,
+	theme: RenderTheme,
+	context?: McpRenderCtx,
+) {
+	const d = result.details;
+	if (
+		typeof d.mode !== "string" ||
+		!["status", "search", "list", "describe", "connect", "auth-start", "auth-complete"].includes(
+			d.mode,
+		)
+	)
+		return;
+	const failed = context?.isError === true || Boolean(d.error);
+	const target =
+		typeof d.server === "string" ? d.server : typeof d.query === "string" ? d.query : "";
+	const count =
+		typeof d.count === "number"
+			? pluralize(
+					d.count,
+					d.mode === "search" ? "match" : "tool",
+					d.mode === "search" ? "matches" : "tools",
+				)
+			: typeof d.totalTools === "number"
+				? pluralize(d.totalTools, "tool")
+				: "";
+	const rows: string[] = [];
+	const records = (value: unknown): Record<string, unknown>[] =>
+		Array.isArray(value)
+			? value.filter(
+					(item): item is Record<string, unknown> =>
+						!!item && typeof item === "object" && !Array.isArray(item),
+				)
+			: [];
+	if (d.mode === "status") {
+		for (const server of records(d.servers)) {
+			if (typeof server.name !== "string" || typeof server.status !== "string") continue;
+			const role =
+				server.status === "connected"
+					? "success"
+					: server.status === "failed"
+						? "error"
+						: "warning";
+			rows.push(
+				`${BODY_PAD}${theme.fg("accent", server.name)}${theme.fg("muted", " · ")}${theme.fg(role, server.status)}${typeof server.toolCount === "number" ? theme.fg("muted", ` · ${pluralize(server.toolCount, "tool")}`) : ""}`,
+			);
+		}
+	} else if (d.mode === "search") {
+		for (const match of records(d.matches)) {
+			if (typeof match.tool === "string")
+				rows.push(
+					`${BODY_PAD}${theme.fg("accent", match.tool)}${typeof match.server === "string" ? theme.fg("muted", ` · ${match.server}`) : ""}`,
+				);
+		}
+	} else if (d.mode === "list" || d.mode === "connect") {
+		if (Array.isArray(d.tools))
+			for (const tool of d.tools)
+				if (typeof tool === "string") rows.push(`${BODY_PAD}${theme.fg("accent", tool)}`);
+	} else if (d.mode === "describe") {
+		const tool = records([d.tool])[0];
+		if (typeof tool?.name === "string") rows.push(`${BODY_PAD}${theme.fg("accent", tool.name)}`);
+		if (typeof tool?.description === "string")
+			rows.push(`${BODY_PAD}${theme.fg("dim", tool.description)}`);
+	}
+	if (typeof d.omitted === "number" && d.omitted > 0)
+		rows.push(
+			`${BODY_PAD}${theme.fg("warning", `${d.omitted} omitted by discovery limit; refine search or raise limit`)}`,
+		);
+	const collapsed =
+		!options.isPartial &&
+		context?.state &&
+		context.invalidate &&
+		theme.bold &&
+		tickCollapse("mcp", context.state, context.invalidate, options.expanded);
+	const component = {
+		render(width: number): string[] {
+			const title = renderTitle(
+				theme,
+				"mcp",
+				{ ...context, isPartial: options.isPartial === true, isError: failed },
+				d.mode as string,
+			);
+			const heading = truncateToWidth(
+				`${title}${target ? ` ${theme.fg("dim", target)}` : ""}${count ? theme.fg("muted", ` · ${count}`) : ""}${failed ? theme.fg("error", ` · ${String(d.error)}`) : ""}`,
+				width,
+				"…",
+			);
+			if (collapsed) return [heading];
+			const body = result.content.flatMap(blockToLines).join("\n");
+			// Keep schema, auth instructions, diagnostics, and all source text available on expansion.
+			const showSource = options.expanded || failed || !rows.length;
+			const output = showSource
+				? renderDimPreview(body, theme, {
+						maxLines: options.expanded || failed ? Number.MAX_SAFE_INTEGER : 12,
+						ctx: context,
+					})
+				: rows.slice(0, 12).join("\n");
+			const schema =
+				d.mode === "describe" && !showSource
+					? `\n${renderDimPreview(body, theme, { maxLines: 12, ctx: context })}`
+					: "";
+			const more =
+				!showSource && rows.length > 12
+					? `\n${BODY_PAD}${theme.fg("muted", `… ${rows.length - 12} more `)}${expandHint(theme, context)}`
+					: "";
+			const hint = !options.expanded && !failed ? `\n${BODY_PAD}${expandHint(theme, context)}` : "";
+			return new Text(`${heading}\n${output}${schema}${more}${hint}`, 0, 0).render(width);
+		},
+		invalidate() {},
+	};
+	return options.isPartial || collapsed ? component : frameToolResult(component, theme, failed);
+}
+
 export function renderMcpToolResult(
 	result: AgentToolResult<McpToolResultDetails>,
 	options: ToolRenderResultOptions,
@@ -436,6 +571,10 @@ export function renderMcpToolResult(
 	context?: McpRenderCtx,
 	displayName?: string,
 ) {
+	if (!displayName) {
+		const management = renderManagementResult(result, options, theme, context);
+		if (management) return management;
+	}
 	if (options.isPartial) {
 		return new Text(theme.fg("warning", "Running MCP tool..."), 0, 0);
 	}

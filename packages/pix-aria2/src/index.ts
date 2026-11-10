@@ -15,7 +15,15 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
-import { frameToolResult, renderCall, renderRow } from "@xynogen/pix-pretty/utils";
+import {
+	BODY_PAD,
+	expandHint,
+	frameToolResult,
+	pluralize,
+	renderCall,
+	renderDimPreview,
+	renderRow,
+} from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
@@ -160,11 +168,20 @@ interface DlResultDetails {
 	ok: boolean;
 	lines: string[];
 	error?: string;
+	handle?: string;
+	url?: string;
+	dir?: string;
+	downloads?: { handle: string; status: DlStatus }[];
 }
 
 function textResult(details: DlResultDetails) {
 	return {
-		content: [{ type: "text" as const, text: details.lines.join("\n") || `${details.action} ok` }],
+		content: [
+			{
+				type: "text" as const,
+				text: details.error ?? (details.lines.join("\n") || `${details.action} ok`),
+			},
+		],
 		details,
 		isError: !details.ok,
 	};
@@ -194,14 +211,22 @@ async function handleAdd(
 	const gid = (await aria2.addUri(daemon.conn, [p.url], opts)) as string;
 	const handle = mgr.track(gid);
 	mgr.startPolling();
-	return ok("add", `${handle} queued — ${p.url}`);
+	return { ...ok("add", `${handle} queued — ${p.url}`), handle, url: p.url, dir: p.dir };
 }
 
 async function handleList(mgr: DownloadManager, daemon: DaemonHandle): Promise<DlResultDetails> {
 	// SAFETY: see DownloadManager.tick() — active downloads always carry the DlStatus subset at runtime.
 	const active = (await aria2.tellActive(daemon.conn)) as unknown as DlStatus[];
-	if (active.length === 0) return ok("list", "no active downloads");
-	return ok("list", ...active.map((s) => progressLine(mgr.handleFor(s.gid), s)));
+	const downloads = active.map((status) => ({ handle: mgr.handleFor(status.gid), status }));
+	return {
+		...ok(
+			"list",
+			...(downloads.length
+				? downloads.map(({ handle, status }) => progressLine(handle, status))
+				: ["no active downloads"]),
+		),
+		downloads,
+	};
 }
 
 async function handleGidOp(
@@ -218,7 +243,7 @@ async function handleGidOp(
 		await aria2.unpause(daemon.conn, gid);
 		mgr.startPolling();
 	} else await aria2.remove(daemon.conn, gid);
-	return ok(action, `${handle} ${action === "rm" ? "removed" : `${action}d`}`);
+	return { ...ok(action, `${handle} ${action === "rm" ? "removed" : `${action}d`}`), handle };
 }
 
 export default function registerDownload(pi: ExtensionAPI): void {
@@ -267,29 +292,69 @@ export default function registerDownload(pi: ExtensionAPI): void {
 					? details.lines.join("\n") || `${details.action} ok`
 					: (details.error ?? `${details.action} failed`)
 				: fallback;
-			const text = new Text(body, 0, 0);
-			if (options.isPartial) return text;
 			const failed = context.isError || details?.ok === false;
-			if (
+			const downloads = details?.downloads;
+			const target =
+				details?.error ??
+				details?.handle ??
+				(downloads ? pluralize(downloads.length, "active download") : (body.split("\n")[0] ?? ""));
+			const collapsed =
+				!options.isPartial &&
 				tickCollapse(
 					"download",
 					context.state as CollapseState,
 					context.invalidate,
 					options.expanded,
-				)
-			)
-				return new Text(
-					renderRow(
-						theme,
-						"download",
-						body.replace(/\s+/g, " ").trim(),
-						"",
-						failed ? "error" : "success",
-					),
-					0,
-					0,
 				);
-			return frameToolResult(text, theme, failed);
+			const component = {
+				render(width: number): string[] {
+					const rows = [
+						renderRow(
+							theme,
+							details?.action ? `download · ${details.action}` : "download",
+							target,
+							details?.action === "add" && details.handle ? "queued" : "",
+							failed ? "error" : options.isPartial ? "warning" : "success",
+							width,
+						),
+					];
+					if (collapsed) return rows;
+					if (downloads) {
+						const shown = options.expanded ? downloads : downloads.slice(0, 6);
+						for (const { handle, status } of shown) {
+							rows.push(...renderDownloadWidget([status], width, theme).slice(1));
+							rows.push(
+								`${BODY_PAD}${theme.fg("accent", handle)}${theme.fg("muted", ` · ${status.status}`)}`,
+							);
+							if (status.errorMessage)
+								rows.push(`${BODY_PAD}${theme.fg("error", status.errorMessage)}`);
+						}
+						if (downloads.length > shown.length)
+							rows.push(
+								`${BODY_PAD}${theme.fg("muted", `… ${downloads.length - shown.length} more downloads `)}${expandHint(theme, context)}`,
+							);
+					} else if (details?.url) {
+						rows.push(
+							`${BODY_PAD}${theme.fg("muted", "Source · ")}${theme.fg("dim", details.url)}`,
+						);
+						if (details.dir)
+							rows.push(
+								`${BODY_PAD}${theme.fg("muted", "Destination · ")}${theme.fg("dim", details.dir)}`,
+							);
+					} else {
+						const count = body.split("\n").length;
+						rows.push(
+							renderDimPreview(body, theme as unknown as Parameters<typeof renderDimPreview>[1], {
+								maxLines: options.expanded || failed ? count : 8,
+								ctx: context,
+							}),
+						);
+					}
+					return new Text(rows.join("\n"), 0, 0).render(width);
+				},
+				invalidate() {},
+			};
+			return collapsed || options.isPartial ? component : frameToolResult(component, theme, failed);
 		},
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			signal?.throwIfAborted();

@@ -471,6 +471,39 @@ function formatHostInfo(host: string, info: HostInfo): string {
 	return [`Effective SSH config for ${host}:`, ...rows.map(([k, v]) => `${k} ${v}`)].join("\n");
 }
 
+function renderHostInfo(
+	info: { host?: string; info?: HostInfo; aliases?: HostAlias[] },
+	body: string,
+	theme: ThemeLike,
+): string {
+	const rows = [renderRow(theme, "ssh · info", info.host ?? "", "read-only")];
+	if (info.info) {
+		for (const [label, value] of [
+			["Host", info.info.hostname],
+			["User", info.info.user],
+			["Port", info.info.port],
+			["Via", info.info.proxyJump === "none" ? undefined : info.info.proxyJump],
+			["Identity", info.info.identityFile],
+		] as const) {
+			if (value)
+				rows.push(
+					`${BODY_PAD}${theme.fg("muted", label.padEnd(9))}${theme.fg("accent", safeOneLine(value))}`,
+				);
+		}
+	} else if (info.aliases?.length) {
+		const seen = new Set<string>();
+		for (const alias of info.aliases) {
+			if (seen.has(alias.alias)) continue;
+			seen.add(alias.alias);
+			const endpoint = `${alias.user ? `${alias.user}@` : ""}${alias.hostname ?? alias.alias}${alias.port ? `:${alias.port}` : ""}`;
+			rows.push(
+				`${BODY_PAD}${theme.fg("accent", safeOneLine(alias.alias))}${theme.fg("muted", " · ")}${theme.fg("dim", safeOneLine(endpoint))}${alias.proxyJump && alias.proxyJump !== "none" ? theme.fg("muted", ` · via ${safeOneLine(alias.proxyJump)}`) : ""}`,
+			);
+		}
+	} else rows.push(`${BODY_PAD}${theme.fg("muted", body)}`);
+	return fillToolBackground(rows.join("\n"));
+}
+
 function formatAliasList(aliases: HostAlias[]): string {
 	if (aliases.length === 0) {
 		return "No SSH host aliases found in ~/.ssh/config.";
@@ -530,12 +563,14 @@ async function infoResult(host: string | undefined, sig?: AbortSignal) {
 				isError: true,
 			};
 		}
-		const text = formatHostInfo(hostTarget(spec), await resolveHostInfo(spec, sig));
-		return { content: [{ type: "text" as const, text }], details };
+		const info = await resolveHostInfo(spec, sig);
+		const text = formatHostInfo(hostTarget(spec), info);
+		return { content: [{ type: "text" as const, text }], details: { ...details, info } };
 	}
+	const aliases = readSshConfigAliases();
 	return {
-		content: [{ type: "text" as const, text: formatAliasList(readSshConfigAliases()) }],
-		details,
+		content: [{ type: "text" as const, text: formatAliasList(aliases) }],
+		details: { ...details, aliases },
 	};
 }
 
@@ -1291,7 +1326,10 @@ export default function (pi: ExtensionAPI): void {
 			const completed = (isError: boolean) => frameToolResult(text, theme, isError);
 
 			if (details?._type !== "sshResult") {
-				const info = (result.details as { _type?: string; host?: string } | undefined) ?? {};
+				const info =
+					(result.details as
+						| { _type?: string; host?: string; info?: HostInfo; aliases?: HostAlias[] }
+						| undefined) ?? {};
 				if (
 					!isPartial &&
 					info._type === "sshInfo" &&
@@ -1306,7 +1344,7 @@ export default function (pi: ExtensionAPI): void {
 					text.setText(
 						renderCollapsed(
 							theme,
-							"ssh info",
+							"ssh · info",
 							info.host ?? "",
 							renderCtx.isError ? "failed" : "",
 							status,
@@ -1315,6 +1353,10 @@ export default function (pi: ExtensionAPI): void {
 					return text;
 				}
 				const body = getTextContent(result) || "done";
+				if (info._type === "sshInfo" && !renderCtx.isError) {
+					text.setText(renderHostInfo(info, body, theme));
+					return isPartial ? text : completed(false);
+				}
 				text.setText(
 					renderCtx.isError
 						? renderToolError(body, theme)

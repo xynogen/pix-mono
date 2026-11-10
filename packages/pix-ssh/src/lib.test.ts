@@ -382,7 +382,7 @@ describe("ssh call renderer", () => {
 				})
 				.render(80)
 				.join("\n");
-			expect(rendered).toContain(`ssh ${action} host`);
+			expect(rendered).toContain(`ssh · ${action} host`);
 			expect(rendered).not.toContain("ssh file");
 		}
 	});

@@ -381,7 +381,7 @@ export function renderTitle(
 		: context.executionStarted
 			? "status.running"
 			: "status.pending";
-	const label = action ? `${tool} ${action}` : tool;
+	const label = action ? `${tool} · ${action}` : tool;
 	return `${theme.fg(role, padIcon(icon(marker)))} ${theme.fg("toolTitle", theme.bold?.(label) ?? label)}`;
 }
 
