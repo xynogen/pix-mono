@@ -95,10 +95,13 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			contextWindow: 8_000,
 		};
 		let available: typeof models | Promise<typeof models> = models;
-		let refreshes = 0;
+		const refreshCalls: { force?: boolean; signal?: AbortSignal }[] = [];
+		let refreshGate: Promise<void> | undefined;
 		const registry = {
-			refresh() {
-				refreshes++;
+			async refresh(options: { force?: boolean; signal?: AbortSignal } = {}) {
+				refreshCalls.push(options);
+				await refreshGate;
+				return { aborted: false, errors: new Map<string, Error>() };
 			},
 			getAvailable: () => available,
 			getAvailableOfType: async (type: string) =>
@@ -147,6 +150,12 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 						);
 					};
 					if (mode === "capture") {
+						// Opening refresh runs in the background, then replaces the list with registry data.
+						expect(refreshCalls.at(-1)?.force).toBe(false);
+						capture("opening refresh");
+						const opened = Promise.withResolvers<void>();
+						completion = opened.resolve;
+						await opened.promise;
 						capture("current, scored, unscored, and missing");
 						component.handleInput("\t");
 						capture("classifier tab");
@@ -164,15 +173,17 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 						component.handleInput("zzzz");
 						capture("no match");
 						component.handleInput("\x15");
-						const pending = Promise.withResolvers<typeof models>();
-						available = pending.promise;
+						await Promise.resolve();
+						const gate = Promise.withResolvers<void>();
+						refreshGate = gate.promise;
 						component.handleInput("\x12");
+						expect(refreshCalls.at(-1)?.force).toBe(true);
 						const rendered = Promise.withResolvers<void>();
 						completion = rendered.resolve;
 						try {
 							capture("reload pending");
-						} finally {
-							pending.resolve([
+							// Fresh provider data lands in the registry before refresh() resolves.
+							available = [
 								...models,
 								...Array.from({ length: 12 }, (_, i) => ({
 									provider: "fixture",
@@ -180,8 +191,11 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 									name: `Extra ${i}`,
 									contextWindow: 0,
 								})),
-							]);
+							];
+						} finally {
+							gate.resolve();
 							await rendered.promise;
+							refreshGate = undefined;
 						}
 						expect(timers.size).toBe(0);
 						for (let i = 0; i < 14; i++) component.handleInput("\x1b[B");
@@ -209,7 +223,8 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			},
 		};
 		await handler("", ctx);
-		expect(refreshes).toBe(2);
+		expect(refreshCalls.map((call) => call.force)).toEqual([false, true]);
+		expect(refreshCalls.every((call) => call.signal?.aborted)).toBe(true);
 		expect(selected).toEqual([]);
 		mode = "classifier";
 		await handler("", ctx);

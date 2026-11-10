@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ModelsDevModel, RouterModel } from "./data.ts";
+import type { RouterModel } from "./data.ts";
 import {
 	classifySystemOne,
 	getContextWindow,
@@ -14,22 +14,11 @@ import {
 // ── getInputTypes ────────────────────────────────────────────────────────────
 
 describe("getInputTypes", () => {
-	it("uses devModel modalities when present", () => {
-		const model: RouterModel = { id: "some-model" };
-		const dev: ModelsDevModel = {
-			id: "some-model",
-			modalities: { input: ["text", "image"] },
-		};
-		expect(getInputTypes(model, dev)).toEqual(["text", "image"]);
-	});
-
-	it("filters out non text/image modalities from devModel", () => {
-		const model: RouterModel = { id: "some-model" };
-		const dev: ModelsDevModel = {
-			id: "some-model",
-			modalities: { input: ["text", "audio"] },
-		};
-		expect(getInputTypes(model, dev)).toEqual(["text"]);
+	it("uses router capabilities.vision when present", () => {
+		expect(getInputTypes({ id: "some-model", capabilities: { vision: true } })).toEqual([
+			"text",
+			"image",
+		]);
 	});
 
 	it("falls back to pattern match for claude", () => {
@@ -44,17 +33,13 @@ describe("getInputTypes", () => {
 		expect(getInputTypes({ id: "kimi-k2-instruct" })).toEqual(["text", "image"]);
 	});
 
-	it("returns text-only for unknown model with no devModel", () => {
+	it("returns text-only for unknown model without router capabilities", () => {
 		expect(getInputTypes({ id: "some-random-llm" })).toEqual(["text"]);
 	});
 
-	it("uses devModel over pattern when both match", () => {
-		const model: RouterModel = { id: "claude-opus-4" };
-		const dev: ModelsDevModel = {
-			id: "claude-opus-4",
-			modalities: { input: ["text"] }, // explicitly text-only despite claude pattern
-		};
-		expect(getInputTypes(model, dev)).toEqual(["text"]);
+	it("router capabilities.vision beats the name pattern", () => {
+		const model: RouterModel = { id: "claude-opus-4", capabilities: { vision: false } };
+		expect(getInputTypes(model)).toEqual(["text"]);
 	});
 });
 
@@ -62,13 +47,7 @@ describe("getInputTypes", () => {
 
 describe("getModelName", () => {
 	it("prefers router model.name", () => {
-		expect(getModelName({ id: "x", name: "Router Name" }, { id: "x", name: "Dev Name" })).toBe(
-			"Router Name",
-		);
-	});
-
-	it("falls back to devModel.name", () => {
-		expect(getModelName({ id: "x" }, { id: "x", name: "Dev Name" })).toBe("Dev Name");
+		expect(getModelName({ id: "x", name: "Router Name" })).toBe("Router Name");
 	});
 
 	it("falls back to model.id", () => {
@@ -85,10 +64,11 @@ describe("getModelName", () => {
 describe("getContextWindow", () => {
 	it("prefers model.context_window", () => {
 		expect(
-			getContextWindow(
-				{ id: "x", context_window: 32_000 },
-				{ id: "x", limit: { context: 100_000 } },
-			),
+			getContextWindow({
+				id: "x",
+				context_window: 32_000,
+				capabilities: { contextWindow: 100_000 },
+			}),
 		).toBe(32_000);
 	});
 
@@ -112,19 +92,6 @@ describe("getContextWindow", () => {
 		).toBe(64_000);
 	});
 
-	it("capabilities.contextWindow beats devModel.limit.context", () => {
-		expect(
-			getContextWindow(
-				{ id: "x", capabilities: { contextWindow: 1_000_000 } },
-				{ id: "x", limit: { context: 200_000 } },
-			),
-		).toBe(1_000_000);
-	});
-
-	it("falls back to devModel.limit.context", () => {
-		expect(getContextWindow({ id: "x" }, { id: "x", limit: { context: 200_000 } })).toBe(200_000);
-	});
-
 	it("falls back to DEFAULT_CONTEXT_WINDOW", () => {
 		expect(getContextWindow({ id: "x" })).toBe(128_000);
 	});
@@ -134,9 +101,9 @@ describe("getContextWindow", () => {
 
 describe("getMaxTokens", () => {
 	it("prefers model.max_tokens", () => {
-		expect(
-			getMaxTokens({ id: "x", max_tokens: 4_096 }, { id: "x", limit: { output: 32_000 } }),
-		).toBe(4_096);
+		expect(getMaxTokens({ id: "x", max_tokens: 4_096, capabilities: { maxOutput: 32_000 } })).toBe(
+			4_096,
+		);
 	});
 
 	it("falls back to model.maxTokens", () => {
@@ -151,19 +118,6 @@ describe("getMaxTokens", () => {
 		expect(getMaxTokens({ id: "x", maxTokens: 8_192, capabilities: { maxOutput: 64_000 } })).toBe(
 			8_192,
 		);
-	});
-
-	it("capabilities.maxOutput beats devModel.limit.output", () => {
-		expect(
-			getMaxTokens(
-				{ id: "x", capabilities: { maxOutput: 64_000 } },
-				{ id: "x", limit: { output: 16_000 } },
-			),
-		).toBe(64_000);
-	});
-
-	it("falls back to devModel.limit.output", () => {
-		expect(getMaxTokens({ id: "x" }, { id: "x", limit: { output: 16_000 } })).toBe(16_000);
 	});
 
 	it("falls back to DEFAULT_MAX_TOKENS", () => {
@@ -184,23 +138,10 @@ describe("getMaxTokens", () => {
 
 describe("getReasoning", () => {
 	it("keeps the project thinking default available for cached GPT reasoning models", () => {
-		const mapper = toModelConfig(new Map());
 		for (const id of ["cx/gpt-6.1-sol", "cx/gpt-5.4", "gpt-5"]) {
-			expect(mapper({ id }).reasoning).toBe(true);
+			expect(toModelConfig({ id }).reasoning).toBe(true);
 		}
 		expect(getReasoning({ id: "cx/gpt-4.1" })).toBe(false);
-		expect(getReasoning({ id: "cx/gpt-6.1-sol" }, { id: "gpt-6.1", reasoning: false })).toBe(false);
-	});
-
-	it("uses devModel.reasoning when boolean true", () => {
-		expect(getReasoning({ id: "x" }, { id: "x", reasoning: true })).toBe(true);
-	});
-
-	it("uses devModel.reasoning when boolean false", () => {
-		// even if pattern would match, devModel wins
-		expect(getReasoning({ id: "claude-opus-4" }, { id: "claude-opus-4", reasoning: false })).toBe(
-			false,
-		);
 	});
 
 	it("falls back to pattern — opus", () => {
@@ -219,32 +160,16 @@ describe("getReasoning", () => {
 		expect(getReasoning({ id: "o1-reasoner" })).toBe(true);
 	});
 
-	it("returns false for plain model with no devModel", () => {
+	it("returns false for plain model without router capabilities", () => {
 		expect(getReasoning({ id: "llama-3-8b-instruct" })).toBe(false);
 	});
 
-	it("uses router capabilities first — offline cache path has no devModel", () => {
-		// glm-5.3-flash matches none of the fallback patterns; without this the
-		// startup registration marks it non-reasoning and clamps the thinking
-		// level to off until the background models.dev refresh lands.
+	it("uses router capabilities first", () => {
+		// glm-5.3-flash matches none of the fallback patterns.
 		expect(getReasoning({ id: "glm-cn/glm-5.3-flash", capabilities: { reasoning: true } })).toBe(
 			true,
 		);
-	});
-
-	it("router capabilities beat both devModel and the name pattern", () => {
-		expect(
-			getReasoning(
-				{ id: "glm-cn/glm-5.3-flash", capabilities: { reasoning: true } },
-				{ id: "glm-5.3-flash", reasoning: false },
-			),
-		).toBe(true);
-		expect(
-			getReasoning(
-				{ id: "claude-opus-4", capabilities: { reasoning: false } },
-				{ id: "claude-opus-4", reasoning: true },
-			),
-		).toBe(false);
+		expect(getReasoning({ id: "claude-opus-4", capabilities: { reasoning: false } })).toBe(false);
 	});
 });
 
@@ -284,8 +209,7 @@ describe("isClassifierModel", () => {
 
 describe("toModelConfig", () => {
 	it("configures classifier models with type classifier and system-one api", () => {
-		const mapper = toModelConfig(new Map());
-		const config = mapper({ id: "oc/jev-1.13-free", contextWindow: 200_000 });
+		const config = toModelConfig({ id: "oc/jev-1.13-free", contextWindow: 200_000 });
 		expect(config.type).toBe("classifier");
 		expect((config as any).api).toBe("typesafe-system-one");
 		expect(config.contextWindow).toBe(200_000);
@@ -293,8 +217,7 @@ describe("toModelConfig", () => {
 	});
 
 	it("configures chat models without classifier type and with compat", () => {
-		const mapper = toModelConfig(new Map());
-		const config = mapper({ id: "ag/gemini-3.8-flash", contextWindow: 1_000_000 });
+		const config = toModelConfig({ id: "ag/gemini-3.8-flash", contextWindow: 1_000_000 });
 		expect(config.type).toBeUndefined();
 		expect((config as any).compat).toBeDefined();
 		expect(config.contextWindow).toBe(1_000_000);

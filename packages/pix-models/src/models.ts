@@ -121,6 +121,8 @@ export function classifierProtocol(api: string): string {
 /** Picker value prefixes for non-chat rows. They cannot be chat models. */
 export const CLASSIFIER_VALUE_PREFIX = "classifier:";
 export const IMAGE_VALUE_PREFIX = "image:";
+// Matches Pi's built-in selector refresh deadline.
+const MODEL_REFRESH_TIMEOUT_MS = 15_000;
 
 /** Picker tabs, one per Pi model type, so each task's models stay separate. */
 export const MODEL_TABS = [
@@ -211,20 +213,10 @@ async function showEnhancedPicker(
 	ctx: ExtensionContext,
 	initialSearch = "",
 ): Promise<void> {
-	// Mirror the built-in /model selector, which calls refresh() then awaits
-	// getAvailable() (see model-selector.js). Without refresh(), this extension
-	// reads whatever `this.models` was last loaded into — which, depending on
-	// extension load order vs oauth/auth resolution, can omit oauth providers
-	// whose models were registered as built-ins but resolved after the last
-	// load (notably `openai-codex`). 9router survives because it's registered
-	// as a custom provider with an env-key apiKey. refresh() rebuilds the model
-	// list (resetOAuthProviders → loadModels → re-apply registered providers)
-	// so oauth-backed codex models reappear, exactly as the built-in does.
-	//
-	// The public ExtensionContext type narrows modelRegistry to a sync
-	// getAvailable() only; at runtime ctx.modelRegistry is the full
-	// ModelRegistry instance (verified in runner.js) with refresh() and an
-	// async-capable getAvailable(). Reach through the narrowed type.
+	// Open from the current snapshot so the picker appears immediately, then refresh
+	// provider catalogs in the background like Pi's built-in selector. ModelRegistry.refresh()
+	// is async in Pi 1.5: getAvailable() reads the snapshot, so it must run after refresh resolves.
+	// The public ExtensionContext type narrows modelRegistry; at runtime it is the full registry.
 	type AvailableModels = ReturnType<typeof ctx.modelRegistry.getAvailable>;
 	type TypedModel = {
 		provider: string;
@@ -235,7 +227,10 @@ async function showEnhancedPicker(
 	};
 	// SAFETY: Runtime ModelRegistry includes refresh and async availability missing from public types.
 	const registry = ctx.modelRegistry as unknown as {
-		refresh?: () => void;
+		refresh?: (options?: {
+			force?: boolean;
+			signal?: AbortSignal;
+		}) => Promise<{ aborted: boolean; errors: ReadonlyMap<string, Error> }> | undefined;
 		getAvailable(): AvailableModels | Promise<AvailableModels>;
 		getAvailableOfType?: (type: "classifier" | "image") => Promise<readonly TypedModel[]>;
 	};
@@ -244,9 +239,13 @@ async function showEnhancedPicker(
 	const loadOfType = async (type: "classifier" | "image") =>
 		(await registry.getAvailableOfType?.(type).catch(() => [])) ?? [];
 	const loadTyped = () => Promise.all([loadOfType("classifier"), loadOfType("image")]);
-	registry.refresh?.();
 	let available = await registry.getAvailable();
 	let [classifiers, images] = await loadTyped();
+	if (available.length === 0) {
+		await registry.refresh?.({ signal: AbortSignal.timeout(MODEL_REFRESH_TIMEOUT_MS) });
+		available = await registry.getAvailable();
+		[classifiers, images] = await loadTyped();
+	}
 	if (available.length === 0) {
 		ctx.ui.notify("No models with configured auth.", "warning");
 		return;
@@ -416,9 +415,15 @@ async function showEnhancedPicker(
 				},
 			);
 			if (currentIdx >= 0) list.setSelectedIndex(currentIdx);
-			list.onSelect = (item) => done(item.value);
-			list.onCancel = () => done(null);
-			search.onEscape = () => done(null);
+			// Closing the picker cancels its catalog refresh; Pi keeps shared refreshes alive for other callers.
+			const closed = new AbortController();
+			const finish = (value: string | null) => {
+				closed.abort();
+				done(value);
+			};
+			list.onSelect = (item) => finish(item.value);
+			list.onCancel = () => finish(null);
+			search.onEscape = () => finish(null);
 
 			type ListInternal = {
 				items: SelectItem[];
@@ -460,8 +465,13 @@ async function showEnhancedPicker(
 				applyFuzzy(search.getValue?.() ?? "", selectedValue);
 				pager.followSelection();
 			};
-			const reload = async () => {
-				if (reloading) return;
+			let forceQueued = false;
+			const reload = async (force: boolean) => {
+				// Ctrl+R during the opening refresh must still force a live fetch afterwards.
+				if (reloading) {
+					forceQueued ||= force;
+					return;
+				}
 				reloading = true;
 				const spinnerTimer = setInterval(() => {
 					spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
@@ -469,24 +479,46 @@ async function showEnhancedPicker(
 				}, 120);
 				tui.requestRender();
 				try {
-					const selectedValue = list.getSelectedItem()?.value;
-					registry.refresh?.();
+					const signal = AbortSignal.any([
+						closed.signal,
+						AbortSignal.timeout(MODEL_REFRESH_TIMEOUT_MS),
+					]);
+					const outcome = await registry.refresh?.({ force, signal });
+					if (closed.signal.aborted) return;
+					if (outcome?.aborted)
+						ctx.ui.notify("Model refresh timed out; showing cached models.", "warning");
+					else if (outcome?.errors.size)
+						ctx.ui.notify(
+							`Model refresh failed for ${[...outcome.errors.keys()].join(", ")}; showing cached models.`,
+							"warning",
+						);
 					const refreshed = await registry.getAvailable();
+					const typed = await loadTyped();
+					if (closed.signal.aborted) return;
 					if (refreshed.length === 0) {
 						ctx.ui.notify("No models with configured auth.", "warning");
 						return;
 					}
 					available = refreshed;
-					[classifiers, images] = await loadTyped();
-					showData(buildPickerData(tab), selectedValue);
+					[classifiers, images] = typed;
+					// Read the selection after the await: input stays live during refresh.
+					showData(buildPickerData(tab), list.getSelectedItem()?.value);
 				} catch (error) {
-					ctx.ui.notify(`Failed to reload models: ${String(error)}`, "error");
+					if (!closed.signal.aborted)
+						ctx.ui.notify(`Failed to reload models: ${String(error)}`, "error");
 				} finally {
 					clearInterval(spinnerTimer);
 					reloading = false;
-					tui.requestRender();
+					if (!closed.signal.aborted) {
+						tui.requestRender();
+						if (forceQueued) {
+							forceQueued = false;
+							void reload(true);
+						}
+					}
 				}
 			};
+			void reload(false);
 
 			// Swap the list to another tab's models. Chat keeps the current model selected.
 			const counts = () => ({
@@ -600,15 +632,15 @@ async function showEnhancedPicker(
 					// clamps to model capability, so unsupported rungs land on the nearest allowed.
 					// ctrl+r refreshes and replaces list data without disposing the overlay.
 					if (matchesKey(data, Key.ctrl("r"))) {
-						void reload();
+						void reload(true);
 						return;
 					}
 					// Esc must always close, even while a slow reload is in flight.
 					if (matchesKey(data, "escape")) {
-						done(null);
+						finish(null);
 						return;
 					}
-					if (reloading || applyingThinking) return;
+					if (applyingThinking) return;
 					const shiftTab = matchesKey(data, Key.shift(Key.tab));
 					if (shiftTab || matchesKey(data, Key.tab)) {
 						switchTab(shiftTab ? -1 : 1);

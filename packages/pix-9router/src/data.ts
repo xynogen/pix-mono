@@ -5,10 +5,8 @@
  *   - routerBaseUrl()  — resolved API base URL from env
  *   - routerModels     — DataSource<RouterModel[]>, cached 30m at ~/.cache/pi/9router.json
  *
- * models.dev + BenchLM data is provided by @xynogen/pix-data
- * (github.com/xynogen/pix-mono/tree/main/packages/pix-data), which shares the
- * same ~/.cache/pi/ cache directory. The DataSource implementation and the
- * models.dev index helpers live there — imported here, not duplicated.
+ * The router's /models response carries all provider metadata (capabilities, limits).
+ * No external catalog is consulted, so registration never waits on another service.
  *
  * Environment:
  *   NINEROUTER_URL   — canonical base URL
@@ -18,19 +16,6 @@
 
 import { join } from "node:path";
 import { CACHE_DIR, DataSource } from "@xynogen/pix-data";
-
-export type {
-	ModelGrepModel,
-	ModelsDevApi,
-	ModelsDevModel,
-} from "@xynogen/pix-data";
-// Re-export the shared models.dev API so existing consumers (provider.ts)
-// can keep importing these names from "./data".
-export {
-	buildModelsDevIndex,
-	fetchModelsDevIndex,
-	lookupInIndex,
-} from "@xynogen/pix-data";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,6 +31,8 @@ export interface RouterModel {
 	capabilities?: {
 		contextWindow?: number;
 		maxOutput?: number;
+		reasoning?: boolean;
+		vision?: boolean;
 		[key: string]: unknown;
 	};
 }
@@ -83,8 +70,3 @@ export const routerModels = new DataSource<RouterModel[]>({
 		((data as RouterModelsResponse | undefined)?.data ?? []).filter((m) => Boolean(m.id)),
 	empty: [],
 });
-
-// ── models.dev index (read from pix-data shared cache) ────────────────────────
-// fetchModelsDevIndex / buildModelsDevIndex / lookupInIndex are re-exported
-// above directly from @xynogen/pix-data — they read the same shared
-// ~/.cache/pi/models.json cache that pix-data warms.

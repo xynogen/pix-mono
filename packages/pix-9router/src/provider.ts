@@ -20,8 +20,8 @@ import {
 } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
-import type { ModelsDevModel, RouterModel } from "./data.ts";
-import { fetchModelsDevIndex, lookupInIndex, routerBaseUrl, routerModels } from "./data.ts";
+import type { RouterModel } from "./data.ts";
+import { routerBaseUrl, routerModels } from "./data.ts";
 
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 const DEFAULT_MAX_TOKENS = 16_384;
@@ -33,7 +33,7 @@ const ZERO_COST = {
 	cacheWrite: 0,
 };
 
-// Fallback pattern-based detection if models.dev lookup fails
+// Fallback when the router omits capabilities.vision.
 const IMAGE_CAPABLE_PATTERNS = [/claude/i, /gpt-5/i, /gpt-4/i, /kimi-k2/i, /hy3/i];
 
 /** Known patterns for classifier models (System One protocol) */
@@ -68,79 +68,61 @@ const COMPAT = {
 	maxTokensField: "max_tokens",
 } as const;
 
-export function toModelConfig(devIndex: Map<string, ModelsDevModel>) {
-	return (model: RouterModel) => {
-		const id = model.id ?? "";
-		const devModel = lookupInIndex(id, devIndex);
-
-		if (isClassifierModel(model)) {
-			return {
-				type: "classifier" as const,
-				id,
-				name: getModelName(model, devModel),
-				api: "typesafe-system-one",
-				baseUrl: routerBaseUrl() ?? "",
-				input: ["text" as const],
-				cost: ZERO_COST,
-				contextWindow: getContextWindow(model, devModel),
-			};
-		}
-
+/** Router metadata is first-party; name patterns cover only fields the router omits. */
+export function toModelConfig(model: RouterModel) {
+	const id = model.id ?? "";
+	if (isClassifierModel(model)) {
 		return {
+			type: "classifier" as const,
 			id,
-			name: getModelName(model, devModel),
-			reasoning: getReasoning(model, devModel),
-			input: getInputTypes(model, devModel),
+			name: getModelName(model),
+			api: "typesafe-system-one",
+			baseUrl: routerBaseUrl() ?? "",
+			input: ["text" as const],
 			cost: ZERO_COST,
-			contextWindow: getContextWindow(model, devModel),
-			maxTokens: getMaxTokens(model, devModel),
-			compat: COMPAT,
+			contextWindow: getContextWindow(model),
 		};
+	}
+	return {
+		id,
+		name: getModelName(model),
+		reasoning: getReasoning(model),
+		input: getInputTypes(model),
+		cost: ZERO_COST,
+		contextWindow: getContextWindow(model),
+		maxTokens: getMaxTokens(model),
+		compat: COMPAT,
 	};
 }
 
-export function getInputTypes(model: RouterModel, devModel?: ModelsDevModel): ("text" | "image")[] {
-	if (devModel?.modalities?.input) {
-		const inputs = devModel.modalities.input.filter(
-			(i): i is "text" | "image" => i === "text" || i === "image",
-		);
-		if (inputs.length > 0) return inputs;
-	}
+export function getInputTypes(model: RouterModel): ("text" | "image")[] {
+	const vision = model.capabilities?.vision;
+	if (typeof vision === "boolean") return vision ? ["text", "image"] : ["text"];
 	const id = model.id ?? "";
 	if (IMAGE_CAPABLE_PATTERNS.some((p) => p.test(id))) return ["text", "image"];
 	return ["text"];
 }
 
-export function getModelName(model: RouterModel, devModel?: ModelsDevModel): string {
-	return model.name || devModel?.name || model.id || "unknown";
+export function getModelName(model: RouterModel): string {
+	return model.name || model.id || "unknown";
 }
 
-export function getContextWindow(model: RouterModel, devModel?: ModelsDevModel): number {
+export function getContextWindow(model: RouterModel): number {
 	return (
 		model.context_window ||
 		model.contextWindow ||
 		model.capabilities?.contextWindow ||
-		devModel?.limit?.context ||
 		DEFAULT_CONTEXT_WINDOW
 	);
 }
 
-export function getMaxTokens(model: RouterModel, devModel?: ModelsDevModel): number {
-	return (
-		model.max_tokens ||
-		model.maxTokens ||
-		model.capabilities?.maxOutput ||
-		devModel?.limit?.output ||
-		DEFAULT_MAX_TOKENS
-	);
+export function getMaxTokens(model: RouterModel): number {
+	return model.max_tokens || model.maxTokens || model.capabilities?.maxOutput || DEFAULT_MAX_TOKENS;
 }
 
-export function getReasoning(model: RouterModel, devModel?: ModelsDevModel): boolean {
-	// Router's own declaration is first-party — the startup path registers from the
-	// disk cache with an empty models.dev index, so this is the only reliable
-	// source until the background refresh lands.
+export function getReasoning(model: RouterModel): boolean {
+	// The router's own declaration wins; the pattern only covers models that omit it.
 	if (typeof model.capabilities?.reasoning === "boolean") return model.capabilities.reasoning;
-	if (typeof devModel?.reasoning === "boolean") return devModel.reasoning;
 	// ponytail: Detect GPT-5/6 offline. Add metadata for new families instead of a network wait.
 	return /reasoner|thinking|xhigh|high|max|pro|codex|opus|sonnet|(?:^|\/)gpt-[56](?:[.-]|$)/i.test(
 		model.id ?? "",
@@ -166,18 +148,14 @@ export default async function registerProvider(pi: ExtensionAPI): Promise<void> 
 	// Upstream moved OpenAI `compat` settings from the provider level to the
 	// per-model level (ProviderModelConfig.compat). Applied in toModelConfig.
 
-	// Register from disk cache only — startup must not block on network.
+	// Register from the router list cache only — startup must not block on network.
 	const cached = routerModels.getCached();
-	pi.registerProvider("9router", providerConfig(apiKey, baseUrl, cached, new Map()));
+	pi.registerProvider("9router", providerConfig(apiKey, baseUrl, cached));
 
-	// Background refresh; re-registering after startup applies immediately.
-	void Promise.all([
-		routerModels.get(),
-		fetchModelsDevIndex().catch(() => new Map<string, ModelsDevModel>()),
-	])
-		.then(([models, devIndex]) =>
-			pi.registerProvider("9router", providerConfig(apiKey, baseUrl, models, devIndex)),
-		)
+	// Background router list refresh; re-registering after startup applies immediately.
+	void routerModels
+		.get()
+		.then((models) => pi.registerProvider("9router", providerConfig(apiKey, baseUrl, models)))
 		.catch(() => {});
 }
 
@@ -208,25 +186,20 @@ export async function classifySystemOne(
 	return typesafe.classify(model, context, options);
 }
 
-function providerConfig(
-	apiKey: string,
-	baseUrl: string,
-	models: RouterModel[],
-	devIndex: Map<string, ModelsDevModel>,
-) {
+function providerConfig(apiKey: string, baseUrl: string, models: RouterModel[]) {
 	return {
 		name: "9Router",
 		baseUrl,
 		apiKey,
 		api: "openai-completions",
-		models: models.map(toModelConfig(devIndex)),
+		models: models.map(toModelConfig),
 		classifiers: { "typesafe-system-one": { classify: classifySystemOne } },
 		// Live fetch on /model refresh — bypasses the disk cache.
 		// Pi calls refreshModels once per provider at every startup with
 		// allowNetwork:false (awaited, no timeout) — never touch the network
 		// there; serve the registered snapshot instead.
 		async refreshModels({ signal, allowNetwork }: RefreshModelsContext) {
-			if (!allowNetwork) return models.map(toModelConfig(devIndex));
+			if (!allowNetwork) return models.map(toModelConfig);
 			const res = await fetch(`${baseUrl}/models`, {
 				signal: ioTimeoutSignal(signal),
 				headers: {
@@ -237,8 +210,7 @@ function providerConfig(
 			if (!res.ok) throw new Error(`9router /models: ${res.status}`);
 			const raw = (await res.json()) as RouterModelsResponse;
 			const list = (raw.data ?? []).filter((m) => Boolean(m.id));
-			const fresh = await fetchModelsDevIndex().catch(() => new Map<string, ModelsDevModel>());
-			return list.map(toModelConfig(fresh));
+			return list.map(toModelConfig);
 		},
 	};
 }
