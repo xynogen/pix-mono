@@ -83,7 +83,9 @@ export function installHooks(cwd: string): string | undefined {
 		if (unset.code !== 0) throw new Error(unset.stderr || "Cannot remove legacy core.hooksPath");
 		const effective = git(["config", "--get", "core.hooksPath"]);
 		if (effective.code !== 1)
-			throw new Error("An inherited core.hooksPath still overrides the installed hook; migrate it explicitly.");
+			throw new Error(
+				"An inherited core.hooksPath still overrides the installed hook; migrate it explicitly.",
+			);
 	}
 	return target;
 }

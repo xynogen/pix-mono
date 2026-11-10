@@ -28,7 +28,11 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 		if (name === "node_modules" || name === "dist" || name.startsWith(".")) continue;
 		const p = join(dir, name);
 		if (statSync(p).isDirectory()) sourceFiles(p, out);
-		else if (/\.ts$/.test(name) && !/\.test\.ts$/.test(name) && !p.includes(`${join("", "test", "")}`))
+		else if (
+			/\.ts$/.test(name) &&
+			!/\.test\.ts$/.test(name) &&
+			!p.includes(`${join("", "test", "")}`)
+		)
 			out.push(p);
 	}
 	return out;
@@ -49,7 +53,8 @@ describe("catalog binaries go through pix-runtime", () => {
 			readFileSync(file, "utf8")
 				.split("\n")
 				.forEach((line, i) => {
-					if (BARE.test(line) && !/^\s*(\/\/|\*)/.test(line)) offenders.push(`${rel}:${i + 1}: ${line.trim()}`);
+					if (BARE.test(line) && !/^\s*(\/\/|\*)/.test(line))
+						offenders.push(`${rel}:${i + 1}: ${line.trim()}`);
 				});
 		}
 		expect(offenders).toEqual([]);

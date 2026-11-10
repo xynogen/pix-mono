@@ -133,7 +133,11 @@ export function formatStats(s: SessionStats): string {
 		`masked: ${s.masked.output} output + ${s.masked.staleRead} stale read, ${s.masked.chars} chars`,
 		`bash ${s.bash} · shell for a native tool ${s.shellForTool} (${pct(s.shellForTool, s.bash)}) · nudges ${s.nudges}`,
 		`tool_search ${s.toolSearch.calls} calls · loaded ${s.toolSearch.loaded} (MCP ${s.toolSearch.mcpLoaded}, ${pct(s.toolSearch.mcpLoaded, s.toolSearch.loaded)})`,
-		`graph: ${Object.entries(s.graph).map(([a, n]) => `${a} ${n}`).join(", ") || "none"}`,
+		`graph: ${
+			Object.entries(s.graph)
+				.map(([a, n]) => `${a} ${n}`)
+				.join(", ") || "none"
+		}`,
 	].join("\n");
 }
 

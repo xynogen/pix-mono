@@ -3,8 +3,9 @@ import { writeSync } from "node:fs";
 
 // coverage-ratchet.ts — CI's only test run: runs the suite with coverage, fails on any test
 // failure, then fails if coverage drops below thresholds.
-// Current baseline ~72% funcs / 70% lines. Threshold set slightly below to ratchet.
-const THRESHOLDS = { funcs: 60, lines: 58 } as const;
+// Baseline ~84% funcs / 86% lines (CI, 2026-11). Threshold sits a few points below so noise
+// passes but real drops fail. Raise it when the baseline grows; never lower it to pass.
+const THRESHOLDS = { funcs: 80, lines: 82 } as const;
 
 const proc = Bun.spawn(["bun", "test", "--isolate", "--coverage", "--coverage-reporter=text"], {
 	stdout: "pipe",

@@ -7,22 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": [
-			"packages/**/*.ts",
-			"packages/**/*.json",
-			"scripts/check-versions*.ts",
-			"scripts/coverage-ratchet*.ts",
-			"scripts/ui-capture*.ts",
-			"scripts/deps.test.ts",
-			"scripts/eval/*.ts",
-			"scripts/publish-all.ts",
-			"scripts/static-analysis*.ts",
-			"scripts/package-smoke.ts",
-			"scripts/distro.ts",
-			"scripts/profile-startup.ts",
-			"scripts/profile-render.ts",
-			"*.json"
-		]
+		"includes": ["packages/**/*.ts", "packages/**/*.json", "scripts/**/*.ts", "*.json"]
 	},
 	"formatter": {
 		"enabled": true,

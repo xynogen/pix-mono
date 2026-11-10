@@ -31,7 +31,9 @@ test("counts re-reads, masking, shell-for-tool, nudges, tool_search and graph us
 		{
 			type: "context_edit",
 			targetId: "r1",
-			replacement: { content: [{ type: "text", text: "[pix compaction: output masked — read a.ts" }] },
+			replacement: {
+				content: [{ type: "text", text: "[pix compaction: output masked — read a.ts" }],
+			},
 		},
 	]);
 	expect(s).toMatchObject({
@@ -48,5 +50,7 @@ test("counts re-reads, masking, shell-for-tool, nudges, tool_search and graph us
 		toolSearch: { calls: 1, loaded: 2, mcpLoaded: 1 },
 		graph: { impact: 1 },
 	});
-	expect(formatStats(s)).toMatch(/^reads 3 · re-reads without an edit between 1 \(33%\): a\.ts \+1$/m);
+	expect(formatStats(s)).toMatch(
+		/^reads 3 · re-reads without an edit between 1 \(33%\): a\.ts \+1$/m,
+	);
 });

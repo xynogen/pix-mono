@@ -42,6 +42,10 @@ jobs:
           sudo tar -xzf "${asset}" -C /usr/local/bin rtk
           rg --version | head -1; ffmpeg -version | head -1; hunk --version; rtk --version
 
+      # shellcheck ships with the ubuntu-latest runner image.
+      - name: Shell scripts
+        run: shellcheck scripts/*.sh
+
       - name: Static analysis
         run: bun run static-analysis
 

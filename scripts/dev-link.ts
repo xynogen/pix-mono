@@ -94,7 +94,8 @@ export function devLink({ root, npmDir, settingsFile, unlink, names }: DevLinkOp
 		: undefined;
 	const entries = Array.isArray(settings?.packages) ? settings.packages : [];
 	const before = JSON.stringify(entries);
-	const sourceOf = (entry: Entry) => slash((typeof entry === "string" ? entry : entry?.source) ?? "");
+	const sourceOf = (entry: Entry) =>
+		slash((typeof entry === "string" ? entry : entry?.source) ?? "");
 	let count = 0;
 
 	for (const [name, { dir, pkg }] of pkgs) {
@@ -104,7 +105,8 @@ export function devLink({ root, npmDir, settingsFile, unlink, names }: DevLinkOp
 		const local = slash(dir);
 		const owns = (entry: Entry) => [`npm:${name}`, local].includes(sourceOf(entry));
 		const themes = pkg.pi?.themes;
-		const hasResources = Boolean(pkg.pi?.extensions?.length) || typeof themes === "string" || Array.isArray(themes);
+		const hasResources =
+			Boolean(pkg.pi?.extensions?.length) || typeof themes === "string" || Array.isArray(themes);
 		const register = hasResources && !coreMembers.has(name);
 
 		if (unlink) {
@@ -125,10 +127,12 @@ export function devLink({ root, npmDir, settingsFile, unlink, names }: DevLinkOp
 		if (!hasResources) continue;
 		const index = entries.findIndex(owns);
 		const keep = !unlink && register && index !== -1 ? entries[index] : undefined;
-		for (let i = entries.length - 1; i >= 0; i--) if (owns(entries[i] as Entry)) entries.splice(i, 1);
+		for (let i = entries.length - 1; i >= 0; i--)
+			if (owns(entries[i] as Entry)) entries.splice(i, 1);
 		if (unlink || !register) continue;
 		// Keep an object entry's options; only its source switches from npm to the local path.
-		const entry = keep === undefined || typeof keep === "string" ? local : { ...keep, source: local };
+		const entry =
+			keep === undefined || typeof keep === "string" ? local : { ...keep, source: local };
 		entries.splice(index === -1 ? entries.length : index, 0, entry);
 	}
 
@@ -137,7 +141,9 @@ export function devLink({ root, npmDir, settingsFile, unlink, names }: DevLinkOp
 		writeFileSync(settingsFile, `${JSON.stringify(settings, null, 2)}\n`);
 		console.log(`Updated ${slash(settingsFile)}`);
 	}
-	console.log(`\n${unlink ? "Restored" : "Linked"} ${count} package(s). Restart your Pi session to reload.`);
+	console.log(
+		`\n${unlink ? "Restored" : "Linked"} ${count} package(s). Restart your Pi session to reload.`,
+	);
 }
 
 if (import.meta.main) {

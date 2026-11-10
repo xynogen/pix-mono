@@ -15,5 +15,11 @@ process.env.PI_CODING_AGENT_DIR = join(home, ".pi", "agent");
 
 // User settings in the shell must not change test results. CI has none of these,
 // so a developer machine must match it. Tests that need one set it themselves.
-for (const key of ["NINEROUTER_URL", "NINEROUTER_KEY", "ROUTER_API_BASE", "ROUTER_API_KEY", "PRETTY_ICONS"])
+for (const key of [
+	"NINEROUTER_URL",
+	"NINEROUTER_KEY",
+	"ROUTER_API_BASE",
+	"ROUTER_API_KEY",
+	"PRETTY_ICONS",
+])
 	delete process.env[key];

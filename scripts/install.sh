@@ -126,7 +126,7 @@ ask_yes_no() {
 	if [ -t 0 ]; then
 		tty_in=0
 	elif { : </dev/tty; } 2>/dev/null; then
-		tty_in=tty
+		tty_in="tty"
 	else
 		warn "Non-interactive shell — skipping: $question"
 		return 1

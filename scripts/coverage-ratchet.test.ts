@@ -11,8 +11,9 @@ test("coverage gate preserves large failure logs and enforces coverage threshold
 		expect(source).toContain(command);
 		for (const [exitCode, summary, expectedCode, expectedMessage] of [
 			[1, "All files | 100 | 100 |", 1, "Tests failed (exit 1); coverage not checked."],
-			[0, "All files | 80 | 80 |", 0, "Coverage ratchet passed."],
-			[0, "All files | 59 | 57 |", 1, "Coverage below threshold:"],
+			[0, "All files | 80 | 82 |", 0, "Coverage ratchet passed."],
+			[0, "All files | 79.9 | 90 |", 1, "Coverage below threshold:"],
+			[0, "All files | 90 | 81.9 |", 1, "Coverage below threshold:"],
 			[0, "no summary", 1, "Coverage: could not find 'All files' summary"],
 		] as const) {
 			const fixture = `import { writeSync } from "node:fs";
