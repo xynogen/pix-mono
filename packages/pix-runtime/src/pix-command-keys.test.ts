@@ -453,7 +453,7 @@ describe("/pix tabs", () => {
 		for (const ch of "ssh") d.feed(ch);
 		// One status glyph, then the name. The "Other platforms" header has no glyph.
 		const rows = () => d.lines().filter((l) => /│ [→ ] \S{1,2}\s+[\w-]+\s{2}/.test(l));
-		expect(rows().every((l) => /ssh|scp|sshpass/.test(l))).toBe(true);
+		expect(rows().every((l) => /ssh|scp|sftp|sshpass/.test(l))).toBe(true);
 		d.feed("\r");
 		d.feed("\u001b");
 		expect(d.closed()).toBe(false);

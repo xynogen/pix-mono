@@ -24,6 +24,11 @@ const resets = mock(async () => {
 const probes: string[] = [];
 const closed = mock(async () => {});
 const runs: RunOptions[] = [];
+const fileRuns: Array<{
+	action: string;
+	input: { path: string };
+	opts: Pick<RunOptions, "controlPath" | "loginPassword" | "signal">;
+}> = [];
 mock.module("./lib.ts", () => ({
 	...actual,
 	controlPathFor: () => "/fixture/none.sock",
@@ -32,6 +37,20 @@ mock.module("./lib.ts", () => ({
 		probes.push(controlPath);
 		if (hostKeyError) throw new actual.HostKeyError(hostKeyError);
 		return keyWorks ? "ok" : "auth";
+	},
+	probeSftp: async (_spec: HostSpec, controlPath: string) => {
+		probes.push(controlPath);
+		if (hostKeyError) throw new actual.HostKeyError(hostKeyError);
+		return keyWorks ? "ok" : "auth";
+	},
+	runFile: async (
+		_spec: HostSpec,
+		action: string,
+		input: { path: string },
+		opts: Pick<RunOptions, "controlPath" | "loginPassword" | "signal">,
+	) => {
+		fileRuns.push({ action, input, opts });
+		return { stdout: "1#ABC|hello", stderr: "", code: 0 };
 	},
 	probePasswordAuth: async () => true,
 	probeSudoNoPassword: async () => false,
@@ -280,4 +299,44 @@ test("host key mismatch: red menu defaults to Cancel even in YOLO; reset reconne
 	} finally {
 		hostKeyError = "";
 	}
+});
+
+test("SFTP actions validate before auth, retain approval, and use the file backend", async () => {
+	keyWorks = true;
+	const { pi, tool } = capturePi();
+	const events = createEventBus();
+	register({ ...pi, events } as unknown as ExtensionAPI);
+	const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+	const overlay = mock(custom);
+	const ctx = { hasUI: true, ui: { custom: overlay, notify() {} } };
+	const call = (params: Record<string, unknown>) =>
+		execute("files", { host: "u@sftp-host", reason: "file", ...params }, undefined, undefined, ctx);
+	const beforeProbes = probes.length;
+	for (const params of [
+		{ action: "write", path: "/a" },
+		{ action: "read", path: "bad\n!command" },
+		{ action: "edit", path: "/a", edits: [] },
+		{ action: "read", path: "/a", offset: 0 },
+		{ action: "write", path: "/a", content: "x", sudo: true },
+	]) {
+		expect((await call(params)).isError).toBe(true);
+	}
+	expect(probes.length).toBe(beforeProbes);
+	expect(overlay).not.toHaveBeenCalled();
+	for (const params of [
+		{ action: "read", path: "C:\\app\\a" },
+		{ action: "write", path: "/a", content: "" },
+		{ action: "edit", path: "/a", edits: [{ oldText: "a", newText: "b" }] },
+	]) {
+		expect((await call(params)).details).toMatchObject({ outcome: "success" });
+	}
+	expect(fileRuns.slice(-3).map((r) => r.action)).toEqual(["read", "write", "edit"]);
+	expect(fileRuns.at(-3)?.input.path).toBe("/C:/app/a");
+	expect(overlay).toHaveBeenCalledTimes(3);
+	setUnattendedMode(events, "afk");
+	const before = fileRuns.length;
+	expect((await call({ action: "write", path: "/a", content: "x" })).details).toMatchObject({
+		outcome: "denied",
+	});
+	expect(fileRuns.length).toBe(before);
 });

@@ -211,6 +211,16 @@ export const CATALOG = {
 			default: "install openssh-client",
 		},
 	},
+	sftp: {
+		usedBy: ["pix-ssh"],
+		os: ALL,
+		versionArgs: null,
+		hint: {
+			win32:
+				"enable the OpenSSH Client optional feature or winget install Microsoft.OpenSSH.Preview",
+			default: "install openssh-client",
+		},
+	},
 	sshpass: {
 		usedBy: ["pix-ssh"],
 		os: UNIX,

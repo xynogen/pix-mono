@@ -44,6 +44,7 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { editPath, writeText } from "@xynogen/pix-runtime/files";
 
 export function registerWriteTool(
 	pi: PiPrettyApi,
@@ -60,10 +61,10 @@ export function registerWriteTool(
 		renderShell: "self",
 
 		async execute(
-			tid: string,
+			_tid: string,
 			params: WriteParams,
 			sig: AbortSignal | undefined,
-			upd: AgentToolUpdateCallback<unknown> | undefined,
+			_upd: AgentToolUpdateCallback<unknown> | undefined,
 			toolCtx: ExtensionContext,
 		) {
 			const fp = params.path ?? params.file_path ?? "";
@@ -77,14 +78,13 @@ export function registerWriteTool(
 
 			let result: ToolResultLike;
 			try {
-				result = (await origWrite.execute(
-					tid,
-					// SAFETY: WriteParams preserves the built-in write schema and only adds legacy file_path.
-					params as unknown as Parameters<typeof origWrite.execute>[1],
-					sig,
-					upd,
-					toolCtx,
-				)) as ToolResultLike;
+				if (!fp || typeof params.content !== "string")
+					throw new Error("path and content are required");
+				await writeText(editPath(fp, toolCtx?.cwd || cwd), content, undefined, sig);
+				result = {
+					content: [{ type: "text", text: `Successfully wrote to ${fp}` }],
+					details: undefined,
+				};
 			} catch (error) {
 				const text = getErrorMessage(error);
 				if (sig?.aborted || /aborted/i.test(text)) throw error;

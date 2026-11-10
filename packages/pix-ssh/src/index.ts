@@ -65,6 +65,9 @@ import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { requireTool } from "@xynogen/pix-runtime/binaries";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { editSchema, prepareEditArguments, readText } from "@xynogen/pix-runtime/files";
+import { initHashline } from "@xynogen/pix-runtime/hashline";
+import { sftpPath } from "@xynogen/pix-runtime/sftp";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import {
@@ -85,11 +88,13 @@ import {
 	parseHost,
 	probeKeyAuth,
 	probePasswordAuth,
+	probeSftp,
 	probeSudoNoPassword,
 	readSshConfigAliases,
 	resetKnownHost,
 	resolveHostInfo,
 	resolveSshHost,
+	runFile,
 	runSsh,
 	runTransfer,
 	type TransferDirection,
@@ -128,9 +133,11 @@ async function prepareConnection(
 	creds: HostCreds,
 	fresh: boolean | undefined,
 	sig?: AbortSignal,
+	files = false,
 ): Promise<{ creds: HostCreds; connection: "new" | "reused" }> {
 	if (fresh === true) await closeMaster(spec, controlPath, sig);
-	const next = await recheckKey(spec, controlPath, key, creds, fresh === true, sig);
+	const next = await recheckKey(spec, controlPath, key, creds, fresh === true, sig, files);
+	if (files) return { creds: next, connection: "new" };
 	return { creds: next, connection: existsSync(controlPath) ? "reused" : "new" };
 }
 
@@ -151,10 +158,11 @@ async function recheckKey(
 	creds: HostCreds,
 	force: boolean,
 	sig?: AbortSignal,
+	files = false,
 ): Promise<HostCreds> {
 	if (!creds.loginPassword) return creds;
 	if (!force && (keyRecheckAt.get(key) ?? 0) > Date.now()) return creds;
-	if ((await probeKeyAuth(spec, "none", sig)) !== "ok") {
+	if ((await probeConnection(spec, "none", sig, files)) !== "ok") {
 		keyRecheckAt.set(key, Date.now() + KEY_RECHECK_MS);
 		return creds;
 	}
@@ -176,8 +184,12 @@ export function validatorFor(
 	spec: HostSpec,
 	controlPath: string,
 	sig?: AbortSignal,
+	files = false,
 ): (pw: string, validationSignal?: AbortSignal) => Promise<boolean> {
 	if (stage !== "login") return (pw) => Promise.resolve(pw.trim().length > 0);
+	if (files)
+		return async (pw, validationSignal) =>
+			Boolean(pw.trim()) && (await probeSftp(spec, "none", validationSignal ?? sig, pw)) !== "auth";
 	return (pw, validationSignal) =>
 		pw.trim().length === 0
 			? Promise.resolve(false)
@@ -225,9 +237,14 @@ export interface SshResultDetails {
 // Flat shape mirroring the single Type.Object schema. Conditional fields are
 // optional here and validated at runtime by normalizeOperation.
 type SshParams = {
-	action?: "command" | "upload" | "download" | "info";
+	action?: "command" | "upload" | "download" | "info" | "read" | "write" | "edit";
 	host?: string;
 	command?: string;
+	path?: string;
+	content?: string;
+	offset?: number;
+	limit?: number;
+	edits?: unknown;
 	sudo?: boolean;
 	source?: string;
 	destination?: string;
@@ -237,7 +254,7 @@ type SshParams = {
 };
 
 interface SshOperation {
-	action: "command" | "file";
+	action: "command" | "file" | "read" | "write" | "edit";
 	command: string;
 	sudo: boolean;
 	reason?: string;
@@ -247,7 +264,44 @@ interface SshOperation {
 	recursive: boolean;
 }
 
+function isFileAction(action: SshParams["action"]): action is "read" | "write" | "edit" {
+	return action === "read" || action === "write" || action === "edit";
+}
+
+function probeConnection(
+	spec: HostSpec,
+	controlPath: string,
+	sig: AbortSignal | undefined,
+	files: boolean,
+) {
+	return files ? probeSftp(spec, "none", sig) : probeKeyAuth(spec, controlPath, sig);
+}
+
+async function validateFile(params: SshParams) {
+	if (!isFileAction(params.action)) return;
+	if (params.sudo) throw new Error("SFTP file actions do not support sudo");
+	params.path = sftpPath(params.path ?? "");
+	if (params.action === "write" && typeof params.content !== "string")
+		throw new Error("content is required for write");
+	if (params.action === "edit")
+		params.edits = (
+			prepareEditArguments({ path: params.path, edits: params.edits }) as { edits: unknown }
+		).edits;
+	await initHashline();
+	if (params.action === "read") readText(Buffer.alloc(0), params.offset, params.limit);
+}
 function normalizeOperation(params: SshParams): SshOperation {
+	if (params.action === "read" || params.action === "write" || params.action === "edit") {
+		return {
+			action: params.action,
+			command: `${params.action} ${params.path ?? "(empty path)"}`,
+			sudo: false,
+			reason: params.reason,
+			source: params.path ?? "",
+			destination: "",
+			recursive: false,
+		};
+	}
 	if (params.action === "upload" || params.action === "download") {
 		const source = (params.source ?? "").trim();
 		const destination = (params.destination ?? "").trim();
@@ -276,6 +330,7 @@ function normalizeOperation(params: SshParams): SshOperation {
 /** The model's reason heads the modal; the action name is only the fallback. */
 function approvalTitle({ action, direction, reason }: SshOperation): string {
 	if (reason?.trim()) return reason.trim();
+	if (action === "read" || action === "write" || action === "edit") return `SSH ${action}`;
 	if (action !== "file") return "SSH Command Request";
 	return `SSH ${direction === "download" ? "Download" : "Upload"}`;
 }
@@ -285,8 +340,13 @@ function approvalBody(operation: SshOperation, host: string, port?: number): str
 	return [
 		...(reason?.trim() ? [] : ["No reason provided by AI"]),
 		`Host: ${host}${port ? ` (port ${port})` : ""}`,
-		...(action === "command"
-			? ["Review the command in the tool card below."]
+		...(action !== "file"
+			? [
+					action === "command"
+						? "Review the command in the tool card below."
+						: `${action.toUpperCase()} ${source}`,
+					...(action === "write" ? ["Warning: replaces the entire file"] : []),
+				]
 			: [
 					`Direction: ${direction === "download" ? "Download" : "Upload"}`,
 					`From: ${source}`,
@@ -441,8 +501,12 @@ function formatAliasList(aliases: HostAlias[]): string {
  * needs (ssh, plus scp for file transfers), or undefined when all resolve.
  * sshpass is checked lazily: it only matters when a login password is used.
  */
-export function missingSshTools(action: "command" | "file"): string | undefined {
-	for (const name of action === "file" ? ["ssh", "scp"] : ["ssh"]) {
+export function missingSshTools(action: SshOperation["action"]): string | undefined {
+	for (const name of action === "file"
+		? ["ssh", "scp"]
+		: action === "command"
+			? ["ssh"]
+			: ["ssh", "sftp"]) {
 		try {
 			requireTool(name);
 		} catch (err) {
@@ -496,11 +560,15 @@ export default function (pi: ExtensionAPI): void {
 			"Pick one `action`; each has its own parameters:\n" +
 			"- command: run a command. Required: host, command. Optional: sudo (remote POSIX root).\n" +
 			"- upload/download: transfer a file or directory (may overwrite the destination). Required: host, source, destination. Optional: recursive.\n" +
+			"- read: read remote UTF-8 text with edit anchors. Required: host, path. Optional: offset, limit.\n" +
+			"- write: create or replace remote UTF-8 text. Required: host, path, content.\n" +
+			"- edit: change remote text with the same hash-anchor or exact-text edits as local edit. Required: host, path, edits.\n" +
 			"- info: read SSH config, no connection. Optional: host (omit = list aliases, set = effective config).\n" +
-			"Always set `reason`. Windows/PowerShell remotes are best-effort.",
+			"Always set `reason`. File actions use SFTP, not the remote shell; they run as the SSH user (no sudo). Text files must be regular UTF-8 files, at most 50MB; symlinks are rejected. Replacement preserves permission bits, not ownership, ACLs or hard links. Paths use /, Windows drive paths may use C:/ or /C:/. Relative paths start at the SFTP home. command on Windows/PowerShell remains best-effort.",
 		promptSnippet: "Run a remote command, transfer files, or read SSH config over SSH",
 		promptGuidelines: [
 			'ssh_run: REMOTE host only — use `bash`/`sudo_run` locally. `action` is required: "command" (host, command, sudo?), "upload" or "download" (host, source, destination, recursive?), "info" (host? — no host = list aliases). `host` is `[user@]host[:port]`. Use "info" instead of reading `~/.ssh/config`. Always set `reason`.',
+			"For remote files use read/write/edit, not shell cat/sed/PowerShell. read returns LINE#HASH anchors for edit; write replaces the whole file. Never reuse anchors from another host or file.",
 		],
 
 		renderShell: "self",
@@ -517,6 +585,9 @@ export default function (pi: ExtensionAPI): void {
 					Type.Literal("upload"),
 					Type.Literal("download"),
 					Type.Literal("info"),
+					Type.Literal("read"),
+					Type.Literal("write"),
+					Type.Literal("edit"),
 				],
 				{
 					description:
@@ -526,7 +597,7 @@ export default function (pi: ExtensionAPI): void {
 			host: Type.Optional(
 				Type.String({
 					description:
-						"`[user@]host[:port]`, e.g. `deploy@10.0.0.5:2222`. REQUIRED for command, upload and download. For info: omit to list aliases, set to resolve one host.",
+						"`[user@]host[:port]`, e.g. `deploy@10.0.0.5:2222`. REQUIRED except for info: omit to list aliases, set to resolve one host.",
 				}),
 			),
 			// command
@@ -540,6 +611,29 @@ export default function (pi: ExtensionAPI): void {
 					description: "[command] Optional, default false. Run as root on the remote via sudo.",
 				}),
 			),
+			path: Type.Optional(
+				Type.String({
+					minLength: 1,
+					description:
+						"[read|write|edit] REQUIRED. Remote SFTP path; use forward slashes. Relative to remote home, not local cwd.",
+				}),
+			),
+			content: Type.Optional(
+				Type.String({
+					description:
+						"[write] REQUIRED. Full UTF-8 file content, including an empty string to clear it.",
+				}),
+			),
+			offset: Type.Optional(
+				Type.Integer({ minimum: 1, description: "[read] Starting line, default 1." }),
+			),
+			limit: Type.Optional(
+				Type.Integer({
+					minimum: 1,
+					description: "[read] Line limit, default 400; output capped at 2,000 lines/50KB.",
+				}),
+			),
+			edits: Type.Optional(editSchema.properties.edits),
 			// file
 			source: Type.Optional(
 				Type.String({
@@ -585,6 +679,18 @@ export default function (pi: ExtensionAPI): void {
 					}),
 					isError: true,
 				};
+			}
+			const fileAction = isFileAction(params.action);
+			if (fileAction) {
+				try {
+					await validateFile(params);
+				} catch (error) {
+					return {
+						content: [{ type: "text", text: `ssh_run failed: ${getErrorMessage(error)}` }],
+						isError: true,
+						details: undefined,
+					};
+				}
 			}
 			const operation = normalizeOperation(params);
 			const { action, command, destination, direction, reason, recursive, source, sudo } =
@@ -652,7 +758,7 @@ export default function (pi: ExtensionAPI): void {
 
 			const mode = getUnattendedMode(pi.events);
 			const yolo = mode === "yolo" || mode === "nuclear";
-			if (action === "command" && mode === "afk") {
+			if ((action === "command" || fileAction) && mode === "afk") {
 				return {
 					content: [{ type: "text", text: "ssh_run denied immediately — AFK mode is active." }],
 					details: makeDetails(command, host, sudo, reason, {
@@ -746,17 +852,25 @@ export default function (pi: ExtensionAPI): void {
 			let prep: Awaited<ReturnType<typeof prepareConnection>>;
 			let probe: Awaited<ReturnType<typeof probeKeyAuth>>;
 			try {
-				prep = await prepareConnection(spec, controlPath, key, creds, params.fresh, sig);
+				prep = await prepareConnection(
+					spec,
+					controlPath,
+					key,
+					creds,
+					params.fresh,
+					sig,
+					fileAction,
+				);
 				creds = prep.creds;
 				// Cached passwords still need an identity check when their master has expired.
-				probe = await probeKeyAuth(spec, controlPath, sig);
+				probe = await probeConnection(spec, controlPath, sig, fileAction);
 			} catch (error) {
 				if (!(error instanceof HostKeyError)) throw error;
 				const failure = await handleHostKeyError(error);
 				if (failure) return failure;
 				prep = { creds, connection: "new" as const };
 				try {
-					probe = await probeKeyAuth(spec, controlPath, sig);
+					probe = await probeConnection(spec, controlPath, sig, fileAction);
 				} catch (retryError) {
 					if (!(retryError instanceof HostKeyError)) throw retryError;
 					return {
@@ -892,7 +1006,7 @@ export default function (pi: ExtensionAPI): void {
 						// wrong one re-prompts (up to MAX_PASSWORD_ATTEMPTS), mirroring
 						// pix-sudo. Sudo stage can't be validated until login succeeds, so
 						// it keeps the non-empty check and surfaces failures on the run.
-						validatePassword: validatorFor(stage, spec, controlPath, sig),
+						validatePassword: validatorFor(stage, spec, controlPath, sig, fileAction),
 						choices: [
 							{
 								value: "yes",
@@ -996,6 +1110,31 @@ export default function (pi: ExtensionAPI): void {
 							: undefined;
 
 					onCleanup(() => clearInterval(spinnerTimer));
+					if (fileAction) {
+						const result = await runFile(
+							spec,
+							action as "read" | "write" | "edit",
+							{
+								path: params.path!,
+								content: params.content,
+								edits: params.edits,
+								offset: params.offset,
+								limit: params.limit,
+							},
+							{ controlPath, loginPassword, signal: sig },
+						);
+						return {
+							content: [{ type: "text", text: result.stdout }],
+							structuredContent: result.stdout,
+							details: makeDetails(command, host, false, reason, {
+								outcome: "success",
+								exitCode: 0,
+								...via,
+								lineCount: outputLineCount(result.stdout),
+								_render: result.stdout,
+							}),
+						};
+					}
 					const result =
 						action === "file"
 							? await runTransfer(spec, direction ?? "upload", source, destination, recursive, {
@@ -1109,6 +1248,14 @@ export default function (pi: ExtensionAPI): void {
 				text.setText(
 					fillToolBackground(
 						`${renderTitle(theme, "ssh", renderCtx, "info")} ${theme.fg("dim", host || "list aliases")}`,
+					),
+				);
+				return text;
+			}
+			if (args.action === "read" || args.action === "write" || args.action === "edit") {
+				text.setText(
+					fillToolBackground(
+						`${renderTitle(theme, "ssh", renderCtx, args.action)} ${theme.fg("dim", `${host} ${safeOneLine(args.path ?? "")}`)}`,
 					),
 				);
 				return text;

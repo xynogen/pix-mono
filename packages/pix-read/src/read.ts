@@ -10,7 +10,6 @@ import type {
 import {
 	detectSupportedImageMimeTypeFromFile,
 	type ReadToolOptions,
-	truncateHead,
 } from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
@@ -56,9 +55,9 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { anchor, decodeLines } from "@xynogen/pix-runtime/hashline";
+import { DEFAULT_READ_LIMIT, readText } from "@xynogen/pix-runtime/files";
 
-export const DEFAULT_READ_LIMIT = 400;
+export { DEFAULT_READ_LIMIT } from "@xynogen/pix-runtime/files";
 
 const LINE_NOUNS = ["line", "lines"] as const;
 
@@ -242,49 +241,15 @@ export function registerReadTool(
 				}
 				if (image) return result;
 				if (!captured) throw new Error("Read operation did not capture source bytes");
-				if (
-					!Number.isSafeInteger(offset) ||
-					offset < 1 ||
-					!Number.isSafeInteger(effectiveParams.limit) ||
-					effectiveParams.limit! < 1
-				)
-					throw new Error("offset and limit must be positive integers");
-				const source = decodeLines(captured);
-				if (source.lines.length && offset > source.lines.length)
-					throw new Error(
-						`Offset ${offset} is beyond end of file (${source.lines.length} lines total)`,
-					);
-				const selected = source.lines.slice(offset - 1, offset - 1 + effectiveParams.limit!);
-				const annotated = selected
-					.map((line, i) => `${anchor(offset + i, line.text)}|${line.text}`)
-					.join("\n");
-				let capped = truncateHead(annotated);
-				if (offset - 1 + capped.outputLines < source.lines.length) {
-					const reserve = Buffer.byteLength(
-						`[Read continues at offset=${offset + selected.length}. The next line exceeds the byte limit.]\n\n`,
-					);
-					capped = truncateHead(annotated, { maxBytes: BATCH_MAX_BYTES - reserve });
-				}
-				const count = capped.outputLines;
-				const notice =
-					offset - 1 + count < source.lines.length
-						? `[Read continues at offset=${offset + count}. ${capped.firstLineExceedsLimit ? "The next line exceeds the byte limit." : ""}]`
-						: "";
+				const data = readText(captured, offset, effectiveParams.limit);
 				result.content = [
-					{ type: "text", text: [capped.content, notice].filter(Boolean).join("\n\n") },
+					{ type: "text", text: [data.modelContent, data.notice].filter(Boolean).join("\n\n") },
 				];
 				Object.assign(result, { structuredContent: getTextContent(result) });
 				setResultDetails(result, {
 					_type: "readFile",
 					filePath: path,
-					content: selected
-						.slice(0, count)
-						.map((line) => line.text)
-						.join("\n"),
-					offset,
-					lineCount: count,
-					modelContent: capped.content,
-					notice,
+					...data,
 				});
 				return result;
 			};

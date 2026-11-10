@@ -32,12 +32,14 @@
 		"./icon-catalog": "./src/icon-catalog.ts",
 		"./io": "./src/io.ts",
 		"./hashline": "./src/hashline.ts",
+		"./files": "./src/files.ts",
 		"./lfid": "./src/lfid.ts",
 		"./once": "./src/once.ts",
 		"./paths": "./src/paths.ts",
 		"./platform": "./src/platform.ts",
 		"./testing": "./src/testing.ts",
 		"./exec": "./src/exec.ts",
+		"./sftp": "./src/sftp.ts",
 		"./os": "./src/os.ts",
 		"./sysstat": "./src/sysstat.ts",
 		"./audio": "./src/audio.ts",
@@ -69,6 +71,8 @@
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-ai": "*",
+		"typebox": "*",
 		"@earendil-works/pi-tui": "*",
 		"@ast-grep/napi": "^0.45.0"
 	},

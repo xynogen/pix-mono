@@ -24,7 +24,9 @@ import {
 import type { UnattendedMode } from "@xynogen/pix-runtime";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import { type EditInput, editText, readText, writeText } from "@xynogen/pix-runtime/files";
 import { expandHome, homeDir, tempDir } from "@xynogen/pix-runtime/paths";
+import { runSftp, sftpPath, withSftp } from "@xynogen/pix-runtime/sftp";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.
@@ -651,11 +653,83 @@ export interface RunOptions {
 	signal?: AbortSignal;
 }
 
-/**
- * Run `command` on the remote host. When `loginPassword` is set, ssh is wrapped
- * in `sshpass -e` (password via env, not argv). When `sudo` is set, the command
- * is wrapped in `sudo -S` and `sudoPassword` is written to the remote stdin.
- */
+/** Probe the SFTP subsystem without running a remote shell. */
+export async function probeSftp(
+	spec: HostSpec,
+	controlPath: string,
+	signal?: AbortSignal,
+	loginPassword?: string,
+): Promise<ProbeResult> {
+	try {
+		const result = await runSftp(
+			{
+				host: hostTarget(spec),
+				args: baseScpArgs(spec, controlPath, false),
+				signal,
+				loginPassword,
+			},
+			["pwd"],
+		);
+		if (result.code !== 0 && detectHostKeyFailure(result.stderr))
+			throw new HostKeyError(result.stderr);
+		return result.code === 0
+			? "ok"
+			: isUnreachable(result.stderr)
+				? "unreachable"
+				: detectSshFailure(result.code ?? 1, result.stderr)
+					? "auth"
+					: "unreachable";
+	} catch (error) {
+		signal?.throwIfAborted();
+		if (error instanceof HostKeyError) throw error;
+		return "unreachable";
+	}
+}
+
+export async function runFile(
+	spec: HostSpec,
+	action: "read" | "write" | "edit",
+	input: { path: string; content?: string; offset?: number; limit?: number; edits?: unknown },
+	opts: Pick<RunOptions, "controlPath" | "loginPassword" | "signal">,
+): Promise<SshResult> {
+	input = { ...input, path: sftpPath(input.path) };
+	return withSftp(
+		{
+			host: hostTarget(spec),
+			args: baseScpArgs(spec, "none", false),
+			loginPassword: opts.loginPassword,
+			signal: opts.signal,
+		},
+		async (files) => {
+			const key = `ssh:${hostTarget(spec)}:${spec.port ?? 22}:${input.path}`;
+			if (action === "read") {
+				const data = readText(await files.readFile(input.path), input.offset, input.limit);
+				return {
+					code: 0,
+					stderr: "",
+					stdout: [data.modelContent, data.notice].filter(Boolean).join("\n\n"),
+				};
+			}
+			if (action === "write") {
+				await writeText(input.path, input.content!, files, opts.signal, key);
+				return { code: 0, stderr: "", stdout: `Successfully wrote to ${input.path}` };
+			}
+			const applied = await editText(
+				input.path,
+				{ path: input.path, edits: input.edits } as EditInput,
+				files,
+				opts.signal,
+				key,
+			);
+			return {
+				code: 0,
+				stderr: "",
+				stdout: `Edited ${input.path}: ${applied.ops.length} operations.\nCurrent anchors:\n${applied.fresh}`,
+			};
+		},
+	);
+}
+
 export function runTransfer(
 	spec: HostSpec,
 	direction: TransferDirection,
@@ -697,6 +771,7 @@ export function buildRunSshArgs(
 	return { bin: "ssh", args: [...base, "-o", "BatchMode=yes", hostTarget(spec), remote] };
 }
 
+/** Run a remote shell command; sudo and login passwords never enter argv. */
 export function runSsh(spec: HostSpec, command: string, opts: RunOptions): Promise<SshResult> {
 	const { bin, args } = buildRunSshArgs(spec, command, opts);
 	const env = opts.loginPassword ? { ...process.env, SSHPASS: opts.loginPassword } : process.env;

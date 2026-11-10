@@ -370,7 +370,7 @@ describe("ssh call renderer", () => {
 		} as unknown as ExtensionAPI);
 		expect(
 			tool.parameters.properties.action.anyOf.map((value: { const: string }) => value.const),
-		).toEqual(["command", "upload", "download", "info"]);
+		).toEqual(["command", "upload", "download", "info", "read", "write", "edit"]);
 		expect(tool.parameters.properties).not.toHaveProperty("direction");
 		const theme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
 		for (const action of ["upload", "download"]) {
