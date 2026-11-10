@@ -15,9 +15,11 @@ import { fffState } from "./fff.ts";
 import { clearHighlightCache } from "./highlight.ts";
 import { initIconMode } from "./icon-persist.ts";
 import { installOrderedWidgets } from "./ordered-widgets.ts";
+import { installOverlayImages } from "./overlay-images.ts";
 import type { PiPrettyApi } from "./types.ts";
 
 export default function piPrettyExtension(pi: ExtensionAPI): void {
+	installOverlayImages();
 	once(pi, "pix-pretty-widgets", () => {
 		let restore: (() => void) | undefined;
 		pi.on("session_start", (_event, ctx) => {
