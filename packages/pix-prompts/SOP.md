@@ -82,6 +82,8 @@ Use markdown and backticks for `names` and `file:line`. No emojis unless asked.
 
 ## 7. Code Style
 
+**The magic word is consistency.** Keep naming, terminology, file layout, API shapes, and behavior consistent across related code. Follow existing repository patterns first; where none exists, use well-established language or platform conventions. Use the same name for the same concept, not new synonyms. Prefer familiar patterns over custom designs, but do not force an abstraction just to use a pattern. Keep consistency changes within the requested scope.
+
 Defer to repo linter/formatter. Otherwise: language-conventional naming; early returns over nesting; handle errors explicitly with context, never swallow; comments say *why*; no dead/commented-out code, magic values, unused imports; DRY on real duplication only, YAGNI.
 
 ---
