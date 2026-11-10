@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
+import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerDownload from "./index.ts";
 
@@ -148,43 +149,67 @@ describe("download renderer", () => {
 		expect(error.join("\n")).toContain("failed");
 		expect(error.at(-1)).toBe(`<error>${"─".repeat(20)}</error>`);
 	});
-	test("renders structured downloads and keeps collapsed output to a summary", () => {
-		const host = tool();
-		const downloads = Array.from({ length: 9 }, (_, i) => ({
-			handle: `dl-${i}`,
-			status: {
-				gid: `${i}`,
-				status: "active",
-				totalLength: "1000",
-				completedLength: "500",
-				downloadSpeed: "100",
-				files: [{ path: `/tmp/file-${i}.iso` }],
-			},
-		}));
-		const value = { content: [], details: { action: "list", ok: true, lines: [], downloads } };
-		for (const expanded of [false, true]) {
-			const rows = host
-				.renderResult(value, { expanded, isPartial: false }, plainTheme, {
-					state: {},
+	test("renders structured downloads and keeps collapsed output to a summary", async () => {
+		const fixture = await withUiFixture();
+		try {
+			const host = tool();
+			const downloads = Array.from({ length: 9 }, (_, i) => ({
+				handle: `dl-${i}`,
+				status: {
+					gid: `${i}`,
+					status: "active",
+					totalLength: "1000",
+					completedLength: "500",
+					downloadSpeed: "100",
+					files: [{ path: `/tmp/file-${i}.iso` }],
+				},
+			}));
+			const value = { content: [], details: { action: "list", ok: true, lines: [], downloads } };
+			for (const expanded of [false, true]) {
+				const rows = host
+					.renderResult(value, { expanded, isPartial: false }, plainTheme, {
+						state: {},
+						invalidate() {},
+						expanded,
+					})
+					.render(100)
+					.join("\n");
+				expect(rows).toContain("50%");
+				expect(rows).toContain("eta 5s");
+				expect(rows.includes("file-8.iso")).toBe(expanded);
+				if (!expanded) expect(rows).toContain("3 more downloads");
+				for (const width of [40, 80]) {
+					const component = host.renderResult(value, { expanded, isPartial: false }, roleTheme(), {
+						state: {},
+						expanded,
+						invalidate() {},
+					});
+					expect(captureRows(component, { width, surface: "host-self" })).toMatchSnapshot(
+						`structured ${expanded ? "expanded" : "preview"} ${width}`,
+					);
+				}
+			}
+			await fixture.runtime.update(collapseSection, { enabled: true });
+			const compact = host
+				.renderResult(value, { expanded: false }, plainTheme, {
+					state: { collapsed: true },
 					invalidate() {},
-					expanded,
+					expanded: false,
 				})
-				.render(100)
-				.join("\n");
-			expect(rows).toContain("50%");
-			expect(rows).toContain("eta 5s");
-			expect(rows.includes("file-8.iso")).toBe(expanded);
-			if (!expanded) expect(rows).toContain("3 more downloads");
-		}
-		const compact = host
-			.renderResult(value, { expanded: false }, plainTheme, {
+				.render(80);
+			expect(compact).toHaveLength(1);
+			expect(compact[0]).toContain("9 active downloads");
+			expect(compact[0]).not.toContain("file-0");
+			const collapsed = host.renderResult(value, { expanded: false }, roleTheme(), {
 				state: { collapsed: true },
-				invalidate() {},
 				expanded: false,
-			})
-			.render(80);
-		expect(compact).toHaveLength(1);
-		expect(compact[0]).toContain("9 active downloads");
-		expect(compact[0]).not.toContain("file-0");
+				invalidate() {},
+			});
+			expect(captureRows(collapsed, { width: 80, surface: "host-self" })).toMatchSnapshot(
+				"structured collapsed",
+			);
+		} finally {
+			await fixture.restore();
+		}
 	});
 });

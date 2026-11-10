@@ -1,0 +1,91 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`env renderer hides disclosed values even on expansion and summarizes types: read collapsed 40 1`] = `
+[
+  "",
+  "<success>✓︎ </success> <toolTitle+bold>read_env · read</toolTitle+bold> <dim>TOKEN</dim> <muted>·</muted> <muted>values hidden</muted>",
+]
+`;
+
+exports[`env renderer hides disclosed values even on expansion and summarizes types: read collapsed 80 1`] = `
+[
+  "",
+  "<success>✓︎ </success> <toolTitle+bold>read_env · read</toolTitle+bold> <dim>TOKEN</dim> <muted>·</muted> <muted>values hidden</muted>",
+]
+`;
+
+exports[`env renderer hides disclosed values even on expansion and summarizes types: read expanded 40 1`] = `
+[
+  "",
+  "<success>✓︎ </success> <toolTitle+bold>read_env · read</toolTitle+bold> <dim>TOKEN</dim> <muted>·</muted> <muted>values hidden</muted>",
+  "   <accent>TOKEN</accent><muted> · value hidden</muted>                 ",
+  "<success>────────────────────────────────────────</success>",
+]
+`;
+
+exports[`env renderer hides disclosed values even on expansion and summarizes types: read expanded 80 1`] = `
+[
+  "",
+  "<success>✓︎ </success> <toolTitle+bold>read_env · read</toolTitle+bold> <dim>TOKEN</dim> <muted>·</muted> <muted>values hidden</muted>                                        ",
+  "   <accent>TOKEN</accent><muted> · value hidden</muted>                                                         ",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
+]
+`;
+
+exports[`env renderer hides disclosed values even on expansion and summarizes types: types preview 1`] = `
+[
+  "",
+  "<success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold> <dim>20 variables</dim>                                                 ",
+  "   “︎ <accent>KEY_0</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_1</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_2</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_3</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_4</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_5</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_6</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_7</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_8</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_9</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_10</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_11</accent><muted> · string</muted>                                                            ",
+  "   <muted>… 8 more variables (ctrl+o to expand)</muted>                                        ",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
+]
+`;
+
+exports[`env renderer hides disclosed values even on expansion and summarizes types: types expanded 1`] = `
+[
+  "",
+  "<success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold> <dim>20 variables</dim>                                                 ",
+  "   “︎ <accent>KEY_0</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_1</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_2</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_3</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_4</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_5</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_6</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_7</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_8</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_9</accent><muted> · string</muted>                                                             ",
+  "   “︎ <accent>KEY_10</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_11</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_12</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_13</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_14</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_15</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_16</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_17</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_18</accent><muted> · string</muted>                                                            ",
+  "   “︎ <accent>KEY_19</accent><muted> · string</muted>                                                            ",
+  "<success>────────────────────────────────────────────────────────────────────────────────</success>",
+]
+`;
+
+exports[`env renderer hides disclosed values even on expansion and summarizes types: denied 1`] = `
+[
+  "",
+  "<warning>⚠︎ </warning> <toolTitle+bold>read_env · read</toolTitle+bold> <muted>·</muted> <muted>denied</muted>             ",
+  "   <dim>Denied</dim>                               ",
+  "<success>────────────────────────────────────────</success>",
+]
+`;
