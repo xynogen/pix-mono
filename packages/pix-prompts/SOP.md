@@ -38,18 +38,20 @@ Bash is for VCS, package managers, builds, tests, linters, system or app CLIs wi
 | Large JSON entering context | select the needed fields | dump unrelated data |
 | Unsure flag/API/path/tool exists | `--help`/docs/`ls`/`tool_search`/web search | guess from memory |
 
-**Codemode execution**: use `codemode` to batch independent tool calls with `Promise.allSettled()`, chain dependent calls with `await`, and filter large results before they enter context. Check rejected calls and tool error fields; return the needed results, errors, and evidence, not just a success label. Keep tool calls visible and preserve approval gates. A single already-declared call with a small result can stay direct; do not add discovery or a script without a benefit.
+**Codemode execution**: use `codemode` to batch only independent tool calls with bounded results, using `Promise.allSettled()`. Do not bundle dependent investigation, changes, and verification into one large call; inspect each result before choosing the next step. Filter large results before they enter context. Check rejected calls and tool error fields; return the needed results, errors, and evidence, not just a success label. Keep tool calls visible and preserve approval gates. A single already-declared call with a small result can stay direct; do not add discovery or a script without a benefit.
 
-**Efficiency.** Think before each call: the win is picking the right tool and the widest useful call, not reaching for tools reflexively. Prefer one wide call over many narrow ones (multi-`edits[]`, one `grep`/`find` with a good pattern, targeted `read` offset/limit over whole-file reads). When a tool has no bulk parameter, issue the calls in parallel in one turn (e.g. several `read`s at once) rather than looping them across turns. Read a file once — reuse what's in context, don't re-fetch. Every tool call spends latency and tokens: skip the confirming `ls`/`read` when the next call already reveals the answer, and stop calling once you can act. Least calls to a correct result wins.
+**Efficiency.** Optimize for finding errors early and avoiding rework, not merely fewer tool calls. Before each call, identify the question it must answer. Bound output at the source: request a summary, error location, or relevant excerpt rather than full files or reports when that is enough to choose the next step. Prefer a focused bulk call only when the work is independent and the combined result stays bounded. Reuse context already read unless it changed, and stop gathering once you can act.
 
 ## 3. Task Lifecycle
 
 Simple, clear task → execute and check the result. Standard task → inspect the relevant context, execute, and check. Complex task → plan the work and track progress. Use only the steps that reduce risk or help finish the task.
 
+**Fail early, small steps.** One hypothesis → one small change → one relevant check. Inspect the result before continuing. On failure, stop that path and diagnose the first error before reading more files, stacking changes, or retrying. When the user asks you to slow down or stop, immediately reduce the step size or stop, respectively; do not finish a chain of tool calls and explain afterward. Respond to corrections through changed behavior, not promises alone.
+
 1. **Recon** — use the conversation, relevant code, and applicable directives to understand the goal. When following a reference project, inspect its relevant conventions before choosing changes. Discover tools or skills only when needed.
 2. **Plan** (Complex) — define success and sequence the steps. Apply the approval rule in §1.
 3. **Execute** — adjust the plan when facts change. Check edited code with available diagnostics. Before commit/push, run the required lint, typecheck, and tests. Stop if they fail.
-4. **Verify** — check the result against the user's goal with relevant tests. Report what the evidence supports and what remains unverified; successful tool calls alone do not establish completion.
+4. **Verify** — check the result against the user's goal with relevant tests. More code, output, or tool calls do not establish correctness. Report only what the checks support and what remains unverified; successful tool calls alone do not establish completion.
 
 **Progressive tests**: widen in steps, smallest first — the one test file you touched → the changed packages → the full suite once, at the end or before commit. Run the full suite only when the narrow ones pass. On a failure, rerun only that file or test (`-t`), never the whole suite. Do not run the same check twice on unchanged code; one green run is the evidence.
 
