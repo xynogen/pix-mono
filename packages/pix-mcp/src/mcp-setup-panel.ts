@@ -501,8 +501,7 @@ export class McpSetupPanel {
 	private renderActions(innerW: number): string[] {
 		const lines: string[] = [];
 		const actions = this.getActions();
-		for (let index = 0; index < actions.length; index++) {
-			const action = actions[index];
+		for (const [index, action] of actions.entries()) {
 			const selected = index === this.actionCursor;
 			const cursor = selected ? fg(this.t.selected, "›") : " ";
 			lines.push(`${cursor} ${action.label}`);
@@ -525,8 +524,7 @@ export class McpSetupPanel {
 			),
 		);
 		lines.push(this.padLine("", innerW));
-		for (let index = 0; index < this.discovery.imports.length; index++) {
-			const entry = this.discovery.imports[index];
+		for (const [index, entry] of this.discovery.imports.entries()) {
 			const selected = this.selectedImports.has(entry.kind) ? "[x]" : "[ ]";
 			const cursor = index === this.importCursor ? fg(this.t.selected, "›") : " ";
 			lines.push(this.padLine(`${cursor} ${selected} ${entry.kind}  ${entry.path}`, innerW));

@@ -205,6 +205,7 @@ export async function initializeMcp(
 				10,
 				async (name) => {
 					const definition = config.mcpServers[name];
+					if (!definition) return { name, ok: false };
 					try {
 						const connection = await manager.connect(name, definition, ctx.signal);
 						if (connection.status === "needs-auth") {

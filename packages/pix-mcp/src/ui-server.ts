@@ -148,7 +148,7 @@ export async function startUiServer(options: UiServerOptions): Promise<UiServerH
 		for (let index = eventLog.length - 1; index >= 0; index -= 1) {
 			const entry = eventLog[index];
 			const envelope = getVisualizationStreamEnvelope(
-				(entry.payload as { structuredContent?: unknown } | null)?.structuredContent,
+				(entry?.payload as { structuredContent?: unknown } | null | undefined)?.structuredContent,
 			);
 			if (envelope?.frameType === "checkpoint" || envelope?.frameType === "final") {
 				return index;

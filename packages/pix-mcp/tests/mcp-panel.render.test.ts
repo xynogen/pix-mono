@@ -11,6 +11,11 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 	const fixture = await withUiFixture({ hostTheme: true });
 	const panels: Array<{ dispose(): void }> = [];
 	const captures: Record<string, string[]> = {};
+	const snap = (name: string): string[] => {
+		const rows = captures[name];
+		if (!rows) throw new Error(`Missing capture: ${name}`);
+		return rows;
+	};
 	const theme = roleTheme();
 	let rendered: (() => void) | undefined;
 	const tui = { terminal: { rows: 40 }, requestRender: () => rendered?.() };
@@ -162,7 +167,7 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 		capture("servers-constrained-next", constrained);
 		constrained.handleInput("\x1b[5~");
 		expect(captureRows(constrained, { width: 80, surface: "component" })).toEqual(
-			captures["servers-constrained"],
+			snap("servers-constrained"),
 		);
 		for (let i = 0; i < 4; i++) {
 			constrained.handleInput("\x1b[C");
@@ -174,7 +179,7 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 			["servers-constrained-next", 2, 3, 8],
 			["servers-constrained-last", 5, 12, 7],
 		] as const) {
-			const rows = captures[name];
+			const rows = snap(name);
 			expect(rows).toHaveLength(19);
 			expect(rows.map((row) => visibleWidth(row.replace(/<[^>]+>/g, "")))).toEqual(
 				Array(19).fill(80),
@@ -183,17 +188,17 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 			expect([...rows.join("\n").matchAll(/server-\d{2}/g)].map(([name]) => name)).toEqual(
 				Array.from({ length: count }, (_, i) => `server-${String(first + i).padStart(2, "0")}`),
 			);
-			expect(rows.slice(0, 5)).toEqual(captures["servers-constrained"].slice(0, 5));
-			expect(rows.slice(-5)).toEqual(captures["servers-constrained"].slice(-5));
-			expect(rows[0]).toBe(captures["auth-complete"][0]);
-			expect(rows.at(-1)).toBe(captures["auth-complete"].at(-1));
+			expect(rows.slice(0, 5)).toEqual(snap("servers-constrained").slice(0, 5));
+			expect(rows.slice(-5)).toEqual(snap("servers-constrained").slice(-5));
+			expect(rows[0]).toBe(snap("auth-complete")[0]);
+			expect(rows.at(-1)).toBe(snap("auth-complete").at(-1));
 		}
 		for (let i = 0; i < 4; i++) {
 			constrained.handleInput("\x1b[D");
 			constrained.render(80);
 		}
 		expect(captureRows(constrained, { width: 80, surface: "component" })).toEqual(
-			captures["servers-constrained"],
+			snap("servers-constrained"),
 		);
 		tui.terminal.rows = 40;
 
@@ -270,7 +275,7 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 		);
 		panels.push(add);
 		capture("http-edit-masked", add);
-		expect(captures["http-edit-masked"].join("\n")).not.toContain("not-a-real-token");
+		expect(snap("http-edit-masked").join("\n")).not.toContain("not-a-real-token");
 		add.handleInput("\r");
 		capture("edit-preview", add);
 

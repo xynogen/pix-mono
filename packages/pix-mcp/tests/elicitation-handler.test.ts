@@ -48,7 +48,7 @@ describe("MCP elicitation", () => {
 			["Continue", "Decline"],
 		]);
 		expect(ui.input).toHaveBeenCalledWith("GitHub username (required)", undefined);
-		expect(ui.select.mock.calls[2][0]).toContain("GitHub username: octocat");
+		expect(ui.select.mock.calls[2]?.[0]).toContain("GitHub username: octocat");
 		expect(result).toEqual({ action: "accept", content: { username: "octocat" } });
 	});
 

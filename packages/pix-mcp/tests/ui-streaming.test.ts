@@ -341,7 +341,7 @@ describe("UI Streaming", () => {
 			expect(patchEvents).toHaveLength(1);
 
 			const envelope = getVisualizationStreamEnvelope(
-				(patchEvents[0].data as { structuredContent?: unknown })?.structuredContent,
+				(patchEvents[0]?.data as { structuredContent?: unknown })?.structuredContent,
 			);
 			expect(envelope?.frameType).toBe("patch");
 			expect(envelope?.phase).toBe("shell");
@@ -368,7 +368,7 @@ describe("UI Streaming", () => {
 			const ids = eventIds.map(Number).filter((n) => !Number.isNaN(n));
 			expect(ids).toHaveLength(3);
 			for (let i = 1; i < ids.length; i++) {
-				expect(ids[i]).toBeGreaterThan(ids[i - 1]);
+				expect(ids[i]).toBeGreaterThan(ids[i - 1]!);
 			}
 		});
 
@@ -392,7 +392,7 @@ describe("UI Streaming", () => {
 			// Get the ID of the first patch event
 			const patchEvents = firstEvents.filter((e) => e.name === "result-patch");
 			expect(patchEvents.length).toBe(3);
-			const firstPatchId = patchEvents[0].id;
+			const firstPatchId = patchEvents[0]?.id;
 			expect(firstPatchId).toBeDefined();
 
 			// Second connection with Last-Event-ID should replay from that point

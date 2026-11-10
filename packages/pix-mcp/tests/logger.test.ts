@@ -29,8 +29,8 @@ describe("Logger", () => {
 			logger.error("error message");
 
 			expect(entries).toHaveLength(2);
-			expect(entries[0].level).toBe("warn");
-			expect(entries[1].level).toBe("error");
+			expect(entries[0]?.level).toBe("warn");
+			expect(entries[1]?.level).toBe("error");
 		});
 
 		it("logs all levels when set to debug", () => {
@@ -54,7 +54,7 @@ describe("Logger", () => {
 
 			logger.info("test", { server: "test-server", tool: "test-tool" });
 
-			expect(entries[0].context).toEqual({
+			expect(entries[0]?.context).toEqual({
 				server: "test-server",
 				tool: "test-tool",
 			});
@@ -67,7 +67,7 @@ describe("Logger", () => {
 
 			logger.info("test", { tool: "my-tool" });
 
-			expect(entries[0].context).toEqual({
+			expect(entries[0]?.context).toEqual({
 				server: "default-server",
 				tool: "my-tool",
 			});
@@ -80,7 +80,7 @@ describe("Logger", () => {
 
 			logger.info("test", { server: "override-server" });
 
-			expect(entries[0].context?.server).toBe("override-server");
+			expect(entries[0]?.context?.server).toBe("override-server");
 		});
 	});
 
@@ -92,7 +92,7 @@ describe("Logger", () => {
 			const child = logger.child({ server: "child-server" });
 			child.info("child message");
 
-			expect(entries[0].context?.server).toBe("child-server");
+			expect(entries[0]?.context?.server).toBe("child-server");
 		});
 
 		it("can add additional context", () => {
@@ -102,7 +102,7 @@ describe("Logger", () => {
 			const child = logger.child({ server: "child-server" });
 			child.info("message", { tool: "child-tool" });
 
-			expect(entries[0].context).toEqual({
+			expect(entries[0]?.context).toEqual({
 				server: "child-server",
 				tool: "child-tool",
 			});
@@ -116,7 +116,7 @@ describe("Logger", () => {
 			const child2 = child1.child({ session: "session123" });
 			child2.info("nested message");
 
-			expect(entries[0].context).toEqual({
+			expect(entries[0]?.context).toEqual({
 				server: "server",
 				session: "session123",
 			});
@@ -150,8 +150,8 @@ describe("Logger", () => {
 			const error = new Error("test error");
 			logger.error("something failed", error, { server: "test" });
 
-			expect(entries[0].error).toBe(error);
-			expect(entries[0].message).toBe("something failed");
+			expect(entries[0]?.error).toBe(error);
+			expect(entries[0]?.message).toBe("something failed");
 		});
 	});
 

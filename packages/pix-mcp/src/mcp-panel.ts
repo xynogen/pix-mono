@@ -374,11 +374,13 @@ class McpPanel {
 		}
 		for (let si = 0; si < this.servers.length; si++) {
 			const server = this.servers[si];
+			if (!server) continue;
 			const serverMatches = mode === "name" && fuzzyScore(query, server.name) > 0;
 			const matchingTools: number[] = [];
 			if (server.expanded || query) {
 				for (let ti = 0; ti < server.tools.length; ti++) {
 					const tool = server.tools[ti];
+					if (!tool) continue;
 					if (query) {
 						const score =
 							mode === "name"
@@ -579,6 +581,7 @@ class McpPanel {
 				return;
 			}
 			const server = this.servers[item.serverIndex];
+			if (!server) return;
 			if (item.type === "server") {
 				if (server.connectionStatus === "needs-auth") {
 					this.authenticateServer(server);
@@ -589,6 +592,7 @@ class McpPanel {
 				this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
 			} else if (item.toolIndex !== undefined) {
 				const tool = server.tools[item.toolIndex];
+				if (!tool) return;
 				tool.isDirect = !tool.isDirect;
 				if (tool.isDirect && server.source === "import") {
 					this.importNotice = `Imported from ${sanitizeDisplayText(server.importKind ?? "external")} — will copy to user config on save`;
@@ -763,6 +767,7 @@ class McpPanel {
 
 	private toggleItem(item: VisibleItem): void {
 		const server = this.servers[item.serverIndex];
+		if (!server) return;
 		if (item.type === "server") {
 			const newState = !server.tools.every((t) => t.isDirect);
 			if (server.source === "import" && newState) {
@@ -771,6 +776,7 @@ class McpPanel {
 			for (const t of server.tools) t.isDirect = newState;
 		} else if (item.toolIndex !== undefined) {
 			const tool = server.tools[item.toolIndex];
+			if (!tool) return;
 			tool.isDirect = !tool.isDirect;
 			if (tool.isDirect && server.source === "import") {
 				this.importNotice = `Imported from ${sanitizeDisplayText(server.importKind ?? "external")} — will copy to user config on save`;
@@ -926,17 +932,20 @@ class McpPanel {
 
 			for (let i = 0; i < total; i++) {
 				const item = this.visibleItems[i];
+				if (!item) continue;
 				const isCursor = i === this.cursorIndex;
 				if (item.type === "add") {
 					body.push(row(this.renderAddRow(isCursor)));
 					continue;
 				}
 				const server = this.servers[item.serverIndex];
+				if (!server) continue;
 
 				if (item.type === "server") {
 					body.push(row(this.renderServerRow(server, isCursor)));
 				} else if (item.toolIndex !== undefined) {
-					body.push(row(this.renderToolRow(server.tools[item.toolIndex], isCursor, innerW)));
+					const tool = server.tools[item.toolIndex];
+					if (tool) body.push(row(this.renderToolRow(tool, isCursor, innerW)));
 				}
 			}
 

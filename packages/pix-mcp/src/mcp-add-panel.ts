@@ -699,7 +699,9 @@ export class McpAddPanel {
 				return;
 			}
 			if (this.keys.selectConfirm(data)) {
-				this.selectedType = TYPE_ITEMS[this.typeCursor].id;
+				const type = TYPE_ITEMS[this.typeCursor];
+				if (!type) return;
+				this.selectedType = type.id;
 				this.fieldDefs = fieldsForType(this.selectedType);
 				this.fieldValues = {};
 				for (const f of this.fieldDefs) this.fieldValues[f.key] = "";
@@ -838,6 +840,7 @@ export class McpAddPanel {
 		if (this.step === "pickType") {
 			for (let i = 0; i < TYPE_ITEMS.length; i++) {
 				const item = TYPE_ITEMS[i];
+				if (!item) continue;
 				const isCursor = i === this.typeCursor;
 				const marker = isCursor ? fg(t.selected, "▶") : " ";
 				const name = isCursor ? bold(fg(t.selected, item.label)) : item.label;
@@ -848,6 +851,7 @@ export class McpAddPanel {
 		} else if (this.step === "form") {
 			for (let i = 0; i < this.fieldDefs.length; i++) {
 				const field = this.fieldDefs[i];
+				if (!field) continue;
 				const isFocused = i === this.fieldCursor;
 				const value = this.fieldValues[field.key] ?? "";
 				const cursor = isFocused ? fg(t.selected, "│") : "";
@@ -885,11 +889,11 @@ export class McpAddPanel {
 				},
 				{ id: "global", label: "Global", path: this.options.callbacks.resolveTargetPath("global") },
 			];
-			for (let i = 0; i < scopes.length; i++) {
+			for (const [i, scope] of scopes.entries()) {
 				const isCursor = i === this.scopeCursor;
 				const marker = isCursor ? fg(t.selected, "▶") : " ";
-				const name = isCursor ? bold(fg(t.selected, scopes[i].label)) : scopes[i].label;
-				const path = fg(t.muted, sanitizeDisplayText(scopes[i].path));
+				const name = isCursor ? bold(fg(t.selected, scope.label)) : scope.label;
+				const path = fg(t.muted, sanitizeDisplayText(scope.path));
 				body.push(row(`${marker} ${name}  ${path}`));
 			}
 			body.push(emptyRow());

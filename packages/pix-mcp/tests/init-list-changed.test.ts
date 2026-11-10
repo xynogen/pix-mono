@@ -80,7 +80,7 @@ describe("dynamic MCP metadata cache", () => {
 		updateServerMetadata(state, "demo");
 		updateMetadataCache(state, "demo");
 		expect(state.toolMetadata.get("demo")).toEqual([]);
-		expect(cache.servers.demo.resources).toEqual([]);
+		expect(cache.servers.demo?.resources).toEqual([]);
 	});
 
 	it("registers before startup connect and rebuilds metadata plus cache on change", async () => {
@@ -91,17 +91,17 @@ describe("dynamic MCP metadata cache", () => {
 		const state = await initializeMcp(pi, ctx);
 		expect(manager.setMetadataChangedCallback).toHaveBeenCalledTimes(1);
 		expect(manager.setMetadataChangedCallback.mock.invocationCallOrder[0]).toBeLessThan(
-			manager.connect.mock.invocationCallOrder[0],
+			manager.connect.mock.invocationCallOrder[0]!,
 		);
 		connection.tools = [{ name: "new", inputSchema: { type: "object" } }];
 		connection.resources = [];
 		callback?.("demo");
 		expect(state.toolMetadata.get("demo")?.map((entry) => entry.originalName)).toEqual(["new"]);
-		expect(cache.servers.demo.tools.map((entry) => entry.name)).toEqual(["new"]);
-		expect(cache.servers.demo.resources).toEqual([]);
+		expect(cache.servers.demo?.tools.map((entry) => entry.name)).toEqual(["new"]);
+		expect(cache.servers.demo?.resources).toEqual([]);
 		connection.tools = [];
 		callback?.("demo");
 		expect(state.toolMetadata.get("demo")).toEqual([]);
-		expect(cache.servers.demo.tools).toEqual([]);
+		expect(cache.servers.demo?.tools).toEqual([]);
 	});
 });

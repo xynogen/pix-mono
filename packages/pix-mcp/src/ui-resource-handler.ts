@@ -95,7 +95,8 @@ export class UiResourceHandler {
 
 function selectContent(result: ReadResourceResult, preferredUri: string): ResourceContentRecord {
 	const contents = (result.contents ?? []) as ResourceContentRecord[];
-	if (contents.length === 0) {
+	const first = contents[0];
+	if (!first) {
 		throw new Error(`No contents returned for UI resource: ${preferredUri}`);
 	}
 
@@ -107,7 +108,7 @@ function selectContent(result: ReadResourceResult, preferredUri: string): Resour
 	);
 	if (byHtmlMime) return byHtmlMime;
 
-	return contents[0];
+	return first;
 }
 
 function isHtmlMimeType(mimeType: string): boolean {

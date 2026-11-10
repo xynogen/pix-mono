@@ -1,8 +1,5 @@
 {
 	"extends": "../../tsconfig.base.json",
-	"compilerOptions": {
-		"noUncheckedIndexedAccess": false
-	},
 	"include": ["src/**/*.ts", "cli.ts"],
 	"exclude": ["tests/**", "node_modules/**"]
 }

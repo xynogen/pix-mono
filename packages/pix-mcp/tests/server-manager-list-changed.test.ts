@@ -128,7 +128,7 @@ describe("MCP list_changed refresh", () => {
 
 		await expect(instance.connect("demo", definition)).rejects.toThrow("resources failed");
 		expect(instance.getConnection("demo")).toBeUndefined();
-		expect(clients[0].close).toHaveBeenCalled();
+		expect(clients[0]?.close).toHaveBeenCalled();
 	});
 
 	it("skips listResources when the server does not advertise the resources capability", async () => {
@@ -140,8 +140,8 @@ describe("MCP list_changed refresh", () => {
 		const instance = manager();
 		const connection = await instance.connect("demo", definition);
 
-		expect(clients[0].listResources).not.toHaveBeenCalled();
-		expect(clients[0].listTools).toHaveBeenCalledTimes(1);
+		expect(clients[0]?.listResources).not.toHaveBeenCalled();
+		expect(clients[0]?.listTools).toHaveBeenCalledTimes(1);
 		expect(connection.resources).toEqual([]);
 		expect(connection.tools.map(({ name }) => name)).toEqual(["old"]);
 	});
@@ -153,8 +153,8 @@ describe("MCP list_changed refresh", () => {
 		const instance = manager();
 		const connection = await instance.connect("demo", definition);
 
-		expect(clients[0].listTools).not.toHaveBeenCalled();
-		expect(clients[0].listResources).toHaveBeenCalledTimes(1);
+		expect(clients[0]?.listTools).not.toHaveBeenCalled();
+		expect(clients[0]?.listResources).toHaveBeenCalledTimes(1);
 		expect(connection.tools).toEqual([]);
 		expect(connection.resources.map(({ name }) => name)).toEqual(["old"]);
 	});

@@ -223,12 +223,13 @@ function highlightedBlock(
 	const highlights = state._highlights;
 	let slot = highlights[surface];
 	if (slot?.key !== key) {
-		slot = { key };
-		highlights[surface] = slot;
+		const pending: { key: string; text?: string } = { key };
+		slot = pending;
+		highlights[surface] = pending;
 		hlBlock(body, lang, theme)
 			.then((styled) => {
-				if (highlights[surface] !== slot) return;
-				slot.text = styled.join("\n");
+				if (highlights[surface] !== pending) return;
+				pending.text = styled.join("\n");
 				invalidate();
 			})
 			.catch(() => {});

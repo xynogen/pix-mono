@@ -12,7 +12,7 @@ function createCache(config: McpConfig): MetadataCache {
 		version: 1,
 		servers: {
 			github: {
-				configHash: computeServerHash(config.mcpServers.github),
+				configHash: computeServerHash(config.mcpServers.github!),
 				cachedAt: Date.now(),
 				tools: [{ name: "search", description: "Search" }],
 				resources: [],

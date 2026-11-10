@@ -523,11 +523,14 @@ function buildUnifiedDiff(beforeText: string, afterText: string): string {
 	const rows = before.length;
 	const cols = after.length;
 	const lcs = Array.from({ length: rows + 1 }, () => Array<number>(cols + 1).fill(0));
+	// Indices stay within the (rows+1)×(cols+1) table; the default only satisfies the type checker.
+	const cell = (r: number, c: number) => lcs[r]?.[c] ?? 0;
 
 	for (let i = rows - 1; i >= 0; i--) {
+		const row = lcs[i] as number[];
 		for (let j = cols - 1; j >= 0; j--) {
-			lcs[i][j] =
-				before[i] === after[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+			row[j] =
+				before[i] === after[j] ? cell(i + 1, j + 1) + 1 : Math.max(cell(i + 1, j), cell(i, j + 1));
 		}
 	}
 
@@ -541,7 +544,7 @@ function buildUnifiedDiff(beforeText: string, afterText: string): string {
 			j++;
 			continue;
 		}
-		if (j < cols && (i === rows || lcs[i][j + 1] >= lcs[i + 1][j])) {
+		if (j < cols && (i === rows || cell(i, j + 1) >= cell(i + 1, j))) {
 			lines.push(`+ ${after[j]}`);
 			j++;
 			continue;

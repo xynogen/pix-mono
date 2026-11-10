@@ -202,11 +202,11 @@ describe("sampling handler", () => {
 		);
 
 		expect(ui.confirm).toHaveBeenCalledTimes(2);
-		expect(ui.confirm.mock.calls[0][0]).toBe("Approve MCP sampling request");
-		expect(ui.confirm.mock.calls[0][1]).toContain("System: Translate tersely.");
-		expect(ui.confirm.mock.calls[0][1]).toContain("1. user: Hello");
-		expect(ui.confirm.mock.calls[1][0]).toBe("Return MCP sampling response");
-		expect(ui.confirm.mock.calls[1][1]).toContain("Bonjour");
+		expect(ui.confirm.mock.calls[0]?.[0]).toBe("Approve MCP sampling request");
+		expect(ui.confirm.mock.calls[0]?.[1]).toContain("System: Translate tersely.");
+		expect(ui.confirm.mock.calls[0]?.[1]).toContain("1. user: Hello");
+		expect(ui.confirm.mock.calls[1]?.[0]).toBe("Return MCP sampling response");
+		expect(ui.confirm.mock.calls[1]?.[1]).toContain("Bonjour");
 	});
 
 	it("uses model preference hints before the current conversation model", async () => {
@@ -221,7 +221,7 @@ describe("sampling handler", () => {
 			{ hints: [{ name: "haiku" }] },
 		);
 
-		expect(mocks.complete.mock.calls[0][0]).toBe(haiku);
+		expect(mocks.complete.mock.calls[0]?.[0]).toBe(haiku);
 	});
 
 	it("matches model preference hints case-insensitively after trimming", async () => {
@@ -236,7 +236,7 @@ describe("sampling handler", () => {
 			{ hints: [{ name: " HAIKU " }] },
 		);
 
-		expect(mocks.complete.mock.calls[0][0]).toBe(haiku);
+		expect(mocks.complete.mock.calls[0]?.[0]).toBe(haiku);
 	});
 
 	it("matches model preference hints against display names", async () => {
@@ -251,7 +251,7 @@ describe("sampling handler", () => {
 			{ hints: [{ name: "2.5 Flash" }] },
 		);
 
-		expect(mocks.complete.mock.calls[0][0]).toBe(geminiFlash);
+		expect(mocks.complete.mock.calls[0]?.[0]).toBe(geminiFlash);
 	});
 
 	it("matches model preference hints against provider/id", async () => {
@@ -266,7 +266,7 @@ describe("sampling handler", () => {
 			{ hints: [{ name: "google/gemini" }] },
 		);
 
-		expect(mocks.complete.mock.calls[0][0]).toBe(geminiFlash);
+		expect(mocks.complete.mock.calls[0]?.[0]).toBe(geminiFlash);
 	});
 
 	it("preserves preference order across multiple model hints", async () => {
@@ -281,7 +281,7 @@ describe("sampling handler", () => {
 			{ hints: [{ name: "gemini" }, { name: "haiku" }] },
 		);
 
-		expect(mocks.complete.mock.calls[0][0]).toBe(geminiFlash);
+		expect(mocks.complete.mock.calls[0]?.[0]).toBe(geminiFlash);
 	});
 
 	it("falls back when hinted models do not have configured auth", async () => {
@@ -303,7 +303,7 @@ describe("sampling handler", () => {
 
 		expect(getApiKeyAndHeaders).toHaveBeenNthCalledWith(1, haiku);
 		expect(getApiKeyAndHeaders).toHaveBeenNthCalledWith(2, opus);
-		expect(mocks.complete.mock.calls[0][0]).toBe(opus);
+		expect(mocks.complete.mock.calls[0]?.[0]).toBe(opus);
 	});
 
 	it("preserves current-model-first selection when no hints are provided", async () => {
@@ -315,7 +315,7 @@ describe("sampling handler", () => {
 			getCurrentModel: mock(() => opus),
 		});
 
-		expect(mocks.complete.mock.calls[0][0]).toBe(opus);
+		expect(mocks.complete.mock.calls[0]?.[0]).toBe(opus);
 	});
 
 	it("rejects unsupported sampling features loudly", async () => {

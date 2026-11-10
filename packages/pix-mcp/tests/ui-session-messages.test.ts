@@ -47,9 +47,9 @@ describe("UiSessionMessages", () => {
 			};
 
 			expect(messages.intents).toHaveLength(2);
-			expect(messages.intents[0].intent).toBe("get_forecast");
-			expect(messages.intents[0].params).toEqual({ days: 7, location: "NYC" });
-			expect(messages.intents[1].params).toBeUndefined();
+			expect(messages.intents[0]?.intent).toBe("get_forecast");
+			expect(messages.intents[0]?.params).toEqual({ days: 7, location: "NYC" });
+			expect(messages.intents[1]?.params).toBeUndefined();
 		});
 	});
 

@@ -315,9 +315,8 @@ export function buildProxyDescription(
 	}
 
 	const serverSummaries: string[] = [];
-	for (const serverName of Object.keys(config.mcpServers)) {
+	for (const [serverName, definition] of Object.entries(config.mcpServers)) {
 		const entry = cache?.servers?.[serverName];
-		const definition = config.mcpServers[serverName];
 		const toolCount = (entry?.tools ?? []).filter(
 			(tool) => !isToolHidden(tool.name, serverName, prefix, definition),
 		).length;

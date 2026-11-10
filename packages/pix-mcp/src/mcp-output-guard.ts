@@ -194,7 +194,7 @@ function addAffixes(content: ContentBlock[], prefix: string, suffix: string): Co
 	if (prefix) {
 		const index = next.findIndex((block) => block.type === "text");
 		const block = next[index];
-		if (index >= 0 && block.type === "text") {
+		if (block?.type === "text") {
 			next[index] = { ...block, text: `${prefix}${block.text}` };
 		} else {
 			next.unshift({ type: "text", text: prefix });
@@ -204,13 +204,13 @@ function addAffixes(content: ContentBlock[], prefix: string, suffix: string): Co
 	if (suffix) {
 		let index = -1;
 		for (let i = next.length - 1; i >= 0; i--) {
-			if (next[i].type === "text") {
+			if (next[i]?.type === "text") {
 				index = i;
 				break;
 			}
 		}
 		const block = next[index];
-		if (index >= 0 && block.type === "text") {
+		if (block?.type === "text") {
 			next[index] = { ...block, text: `${block.text}${suffix}` };
 		} else {
 			next.push({ type: "text", text: suffix });

@@ -73,7 +73,8 @@ describe("guardMcpOutput", () => {
 		expect(guarded.outputGuard?.fullOutputPath).toBeTruthy();
 		expect(guarded.content).toHaveLength(1);
 		expect(guarded.content[0]).toMatchObject({ type: "text" });
-		const returnedText = guarded.content[0].type === "text" ? guarded.content[0].text : "";
+		const first = guarded.content[0];
+		const returnedText = first?.type === "text" ? first.text : "";
 		expect(returnedText).toContain("MCP text output truncated");
 		expect(returnedText).toContain("Full text saved to:");
 		expect(returnedText).not.toContain("line-19");
@@ -129,7 +130,7 @@ describe("guardMcpOutput", () => {
 
 		expect(guarded.outputGuard).toMatchObject({ truncated: true, imageBlocksPassedThrough: 1 });
 		expect(guarded.content).toHaveLength(2);
-		expect(guarded.content[0].type).toBe("text");
+		expect(guarded.content[0]?.type).toBe("text");
 		expect(guarded.content[1]).toEqual(image);
 
 		const saved = await readFile(guarded.outputGuard!.fullOutputPath!, "utf8");
@@ -144,7 +145,8 @@ describe("guardMcpOutput", () => {
 		});
 
 		expect(guarded.outputGuard).toMatchObject({ truncated: true, originalLines: 30 });
-		const returnedText = guarded.content[0].type === "text" ? guarded.content[0].text : "";
+		const first = guarded.content[0];
+		const returnedText = first?.type === "text" ? first.text : "";
 		expect(returnedText).toContain("entry-0");
 		expect(returnedText).not.toContain("entry-29");
 	});

@@ -88,7 +88,7 @@ describe("buildProxyDescription", () => {
 			version: 1,
 			servers: {
 				figma: {
-					configHash: computeServerHash(config.mcpServers.figma),
+					configHash: computeServerHash(config.mcpServers.figma!),
 					cachedAt: Date.now(),
 					tools: [
 						{ name: "get_screenshot", description: "Take screenshot" },
@@ -115,7 +115,7 @@ describe("codemode tool discovery", () => {
 			version: 1,
 			servers: {
 				demo: {
-					configHash: computeServerHash(config.mcpServers.demo),
+					configHash: computeServerHash(config.mcpServers.demo!),
 					cachedAt: Date.now(),
 					tools: [{ name: "lookup", description: "Find records", inputSchema: { type: "object" } }],
 					resources: [],
@@ -169,7 +169,7 @@ describe("resource name collisions", () => {
 			version: 1,
 			servers: {
 				demo: {
-					configHash: computeServerHash(config.mcpServers.demo),
+					configHash: computeServerHash(config.mcpServers.demo!),
 					cachedAt: Date.now(),
 					tools: [],
 					resources: [
@@ -394,7 +394,7 @@ describe("excludeTools filtering", () => {
 			version: 1,
 			servers: {
 				figma: {
-					configHash: computeServerHash(config.mcpServers.figma),
+					configHash: computeServerHash(config.mcpServers.figma!),
 					cachedAt: Date.now(),
 					tools: [
 						{ name: "get_screenshot", description: "Screenshot" },
@@ -471,7 +471,7 @@ describe("excludeTools filtering", () => {
 			version: 1,
 			servers: {
 				figma: {
-					configHash: computeServerHash(config.mcpServers.figma),
+					configHash: computeServerHash(config.mcpServers.figma!),
 					cachedAt: Date.now(),
 					tools: [
 						{ name: "get_screenshot", description: "Screenshot" },

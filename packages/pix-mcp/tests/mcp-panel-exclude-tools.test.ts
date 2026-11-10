@@ -25,7 +25,7 @@ describe("mcp-panel excludeTools", () => {
 			version: 1,
 			servers: {
 				figma: {
-					configHash: computeServerHash(config.mcpServers.figma),
+					configHash: computeServerHash(config.mcpServers.figma!),
 					cachedAt: Date.now(),
 					tools: [
 						{ name: "get_screenshot", description: "Screenshot" },

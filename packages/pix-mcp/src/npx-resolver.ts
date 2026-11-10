@@ -93,7 +93,7 @@ function parseNpxArgs(args: string[]): ParsedInvocation | null {
 	let foundFirstPositional = false;
 
 	for (let i = 0; i < before.length; i++) {
-		const arg = before[i];
+		const arg = before[i] as string;
 		if (foundFirstPositional) {
 			positionals.push(arg);
 			continue;
@@ -147,7 +147,7 @@ function parseNpmExecArgs(args: string[]): ParsedInvocation | null {
 
 	let packageSpec: string | undefined;
 	for (let i = 0; i < before.length; i++) {
-		const arg = before[i];
+		const arg = before[i] as string;
 		if (arg === "-y" || arg === "--yes") continue;
 		if (arg === "--package") {
 			const value = before[i + 1];
