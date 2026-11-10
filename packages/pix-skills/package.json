@@ -47,8 +47,8 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-gate": "^0.4.0",
-		"@xynogen/pix-pretty": "^1.38.0",
-		"@xynogen/pix-runtime": "^0.18.0"
+		"@xynogen/pix-gate": "^0.4.9",
+		"@xynogen/pix-pretty": "^2.0.0",
+		"@xynogen/pix-runtime": "^0.19.0"
 	}
 }

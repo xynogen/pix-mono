@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-edit",
-	"version": "0.2.16",
+	"version": "0.2.17",
 	"description": "Pi tool — precise text replacement edit with diff rendering",
 	"type": "module",
 	"main": "src/index.ts",
@@ -39,8 +39,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.38.0",
-		"@xynogen/pix-runtime": "^0.18.0"
+		"@xynogen/pix-pretty": "^2.0.0",
+		"@xynogen/pix-runtime": "^0.19.0"
 	},
 	"peerDependencies": {
 		"typebox": "*",

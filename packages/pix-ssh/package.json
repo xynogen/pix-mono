@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-ssh",
-	"version": "0.6.9",
+	"version": "0.7.0",
 	"description": "Pi tool — ssh_run: run remote commands over SSH with password/key auth and remote sudo",
 	"type": "module",
 	"main": "src/index.ts",
@@ -37,8 +37,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^1.38.0",
-		"@xynogen/pix-runtime": "^0.18.0"
+		"@xynogen/pix-pretty": "^2.0.0",
+		"@xynogen/pix-runtime": "^0.19.0"
 	},
 	"peerDependencies": {
 		"typebox": "*",
