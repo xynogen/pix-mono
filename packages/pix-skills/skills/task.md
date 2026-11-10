@@ -1,36 +1,22 @@
 ---
 name: task
-description: Executes a multi-step change in small verified steps — resolves vague references, maps impact, runs one step at a time, and stops on blockers. Use when the user gives an order with several steps, a terse follow-up like "do it" or "fix that", or a change that touches several files, tests, or configs.
+description: Carries a multi-step change through to a verified result using conversation context and proportionate planning. Use for multi-file work or short follow-ups such as "do it" or "fix that".
 disable-model-invocation: true
 ---
 # Task
 
-## Before you start
+## Approach
 
-1. **Resolve the request** from recent context. "Fix that" or "do it" refers to the last proposed plan or finding. If two readings remain and the wrong one is costly, ask.
-2. **Map the impact**: affected files, tests, docs, configs, and consumers. Flag breaking changes.
-3. **Check the state**: paths, versions, permissions, and a clean starting point.
+Use the whole conversation to resolve the goal and target. Inspect relevant code and any reference project before asking the user to fill gaps. Make routine implementation decisions yourself; ask only about unresolved choices that materially affect scope, cost, or safety.
 
 ## Execute
 
-Order: back up (only before destructive changes) → code → config → validation.
-
-Write each step as:
-
-```
-Step N: [action]
-- Files: [exact paths]
-- Command: [exact command]
-- Expected: [what success looks like]
-```
-
-- Do one step, check its result, then start the next.
-- For long plans, report after every batch of about 3 steps. Continue unless the user must decide something.
+Plan only as much as the change needs. Group related edits and checks; do not narrate every tool call or wait for approval between routine steps. Preserve unrelated work and respect permission boundaries.
 
 ## Blocked
 
-A missing dependency, a failing test, or an unclear instruction → stop. Do not guess or work around it. Report the command, the output, and the `file:line`, then ask.
+Diagnose failures and use available alternatives within the authorized scope. Stop for missing permission, a consequential user decision, or a blocker you cannot resolve safely. Report the specific cause and what is needed; do not retry blindly.
 
 ## Finish
 
-Apply the `verify` skill checks. Report each step, its evidence, and anything still open.
+Check the result against the user's goal with relevant tests and a diff review, following repo requirements. Report the outcome, evidence, and anything still unverified. Do not treat successful edits or tool calls as proof that the task is complete.

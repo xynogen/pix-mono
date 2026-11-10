@@ -185,14 +185,18 @@ describe("buildPrompt", () => {
 		}
 	});
 
-	it("preserves user control at every active level", () => {
+	it("preserves context, implementation initiative, and user control at every active level", () => {
 		for (const level of LEVELS.filter((level) => level !== "off")) {
 			const prompt = buildPrompt(level);
-			expect(prompt).toContain("ask one short question before acting");
-			expect(prompt).toContain("do not choose the scope for the user");
+			expect(prompt).toContain("fulfills the user's goal in context");
+			expect(prompt).toContain("not the narrowest reading of the latest message");
+			expect(prompt).toContain("Make routine implementation decisions yourself");
+			expect(prompt).toContain(
+				"ask only when unresolved uncertainty materially affects scope, cost, or safety",
+			);
 			expect(prompt).toContain("match the user's requested format and level of detail");
 			expect(prompt).not.toMatch(
-				/Never stop for an answer|at most three short lines|name the lazier alternative|challenge the rest/,
+				/Never stop for an answer|at most three short lines|name the lazier alternative|challenge the rest|do not choose the scope for the user/,
 			);
 		}
 	});

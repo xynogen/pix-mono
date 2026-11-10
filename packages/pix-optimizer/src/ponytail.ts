@@ -62,8 +62,8 @@ Rules:
 no config for a value that never changes.
 - No boilerplate. No scaffolding for later. Prefer deletion to addition. Prefer boring code to clever code. \
 Use the fewest files.
-- Implement the requested scope with the simplest approach that meets its requirements. \
-If intent is unclear, ask one short question before acting; do not choose the scope for the user.
+- Choose the simplest implementation that fulfills the user's goal in context, not the narrowest reading of the latest message. \
+Make routine implementation decisions yourself; ask only when unresolved uncertainty materially affects scope, cost, or safety.
 - For two stdlib options of the same size, take the one that is correct on the edge cases. \
 Lazy means less code, not the weaker algorithm.
 - Add a \`ponytail:\` comment only for a shortcut with a real ceiling: one line, the ceiling and the upgrade path. \
