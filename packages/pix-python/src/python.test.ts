@@ -68,24 +68,6 @@ function host() {
 	return { tool, events, execute };
 }
 
-/** UI whose overlay picks the choice at `index` (Down × index, then Enter). */
-function pickUi(index: number) {
-	let prompts = 0;
-	const custom = async (factory: (...a: unknown[]) => { handleInput(d: string): void }) =>
-		new Promise((resolve) => {
-			prompts++;
-			const c = factory(
-				{ requestRender() {}, terminal: { rows: 40 } },
-				makeTheme(),
-				undefined,
-				resolve,
-			);
-			for (let i = 0; i < index; i++) c.handleInput("\x1b[B");
-			c.handleInput("\r");
-		});
-	return { ui: { custom, notify() {} }, prompts: () => prompts };
-}
-
 const args = { intent: "Add numbers", code: "\tprint(40 + 2)" };
 const getText = (r: ToolResultLike) =>
 	(r.content ?? []).map((c) => ("text" in c ? c.text : "")).join("");
@@ -97,109 +79,76 @@ describe("python_run", () => {
 		const result = await execute("n", args, undefined, undefined, { hasUI: false, cwd: "/work" });
 		expect(result.details).toMatchObject({ outcome: "success" });
 	});
-	test("approval shows controls while code stays in the tool card", async () => {
-		const { tool, execute } = host();
-		let popup = "";
-		const ui = {
-			custom: async (
-				factory: (...a: unknown[]) => { render(w: number): string[]; handleInput(d: string): void },
-			) =>
-				new Promise((resolve) => {
-					const component = factory(
-						{ requestRender() {}, terminal: { rows: 40 } },
-						roleTheme(),
-						undefined,
-						resolve,
-					);
-					popup = component.render(100).join("\n");
-					component.handleInput("\x1b");
-				}),
-		};
-		await execute("t", args, undefined, undefined, { hasUI: true, ui, cwd: "/work" });
-		expect(popup).toMatch(/Add numbers[\s\S]*Review the code[\s\S]*Allow[\s\S]*Deny/);
-		expect(popup).not.toContain("print(40 + 2)");
+	test.each([true, false])("ordinary code runs without approval (hasUI=%s)", async (hasUI) => {
+		const { tool, execute, events } = host();
+		const custom = mock(() => {
+			throw new Error("unexpected approval");
+		});
+		const states: string[] = [];
+		events.on("pix:agent-state", (raw) => states.push((raw as { state: string }).state));
+		const result = await execute("t", args, undefined, undefined, {
+			hasUI,
+			ui: { custom },
+			cwd: "/work",
+		});
+		expect(result.details).toMatchObject({ outcome: "success", stdout: "42" });
+		expect(custom).not.toHaveBeenCalled();
+		expect(states).toEqual([]);
+		expect(runPython).toHaveBeenLastCalledWith(
+			"print(40 + 2)",
+			"/work",
+			undefined,
+			"python3",
+			undefined,
+			expect.any(Function),
+		);
 		const component = tool.renderCall?.(args, makeTheme(), makeRenderCtx({ expanded: true }));
 		expect(component?.render(100).join("\n")).toContain("print(40 + 2)");
 	});
 
-	test("Allow runs the repaired code once; the next call asks again", async () => {
-		const { execute } = host();
-		const ui = pickUi(0);
-		const ctx = { hasUI: true, ui: ui.ui, cwd: "/work" };
-		const r = await execute("t", args, undefined, undefined, ctx);
-		expect(r.isError).toBe(false);
-		expect(runPython).toHaveBeenLastCalledWith("print(40 + 2)", "/work", undefined, "python3");
-		expect(r.details).toMatchObject({
-			_type: "pythonResult",
-			outcome: "success",
-			exitCode: 0,
-			stdout: "42",
-			stderr: "",
-		});
-		await execute("t", args, undefined, undefined, ctx);
-		expect(ui.prompts()).toBe(2);
-	});
-
-	test("Allow for this session stops further prompts", async () => {
+	test("AFK does not block ordinary Python", async () => {
 		const { execute, events } = host();
-		const states: string[] = [];
-		events.on("pix:agent-state", (raw) => states.push((raw as { state: string }).state));
-		const ui = pickUi(1);
-		const ctx = { hasUI: true, ui: ui.ui, cwd: "/work" };
-		await execute("t", args, undefined, undefined, ctx);
-		expect(states).toEqual(["blocked", "idle"]);
-		states.length = 0;
-		await execute("t", args, undefined, undefined, ctx);
-		expect(ui.prompts()).toBe(1);
-		expect(states).toEqual([]);
+		setUnattendedMode(events, "afk");
+		const result = await execute("afk", args, undefined, undefined, { hasUI: false, cwd: "/work" });
+		expect(result.details).toMatchObject({ outcome: "success" });
 	});
 
-	test("python parameter: resolved before approval, shown in the prompt and details", async () => {
+	test("resolves the interpreter and rejects missing paths before running", async () => {
 		const root = mkdtempSync(join(tempDir(), "pix-python-run-"));
 		mkdirSync(join(root, ".venv", "bin"), { recursive: true });
 		writeFileSync(join(root, ".venv", "bin", "python3"), "");
 		const { execute } = host();
-		const ctx = { hasUI: true, ui: pickUi(0).ui, cwd: root };
+		const ctx = { hasUI: false, cwd: root };
 		const venvPy = process.platform === "win32" ? undefined : join(root, ".venv", "bin", "python3");
 		if (venvPy) {
 			const r = await execute("t", { ...args, python: ".venv" }, undefined, undefined, ctx);
-			expect(runPython).toHaveBeenLastCalledWith("print(40 + 2)", root, undefined, venvPy);
+			expect(runPython).toHaveBeenLastCalledWith(
+				"print(40 + 2)",
+				root,
+				undefined,
+				venvPy,
+				undefined,
+				expect.any(Function),
+			);
 			expect(r.details).toMatchObject({ python: ".venv", outcome: "success" });
 		}
 		runPython.mockClear();
-		const ui = pickUi(0);
 		const bad = await execute("t", { ...args, python: "./missing-env" }, undefined, undefined, {
 			...ctx,
-			ui: ui.ui,
 		});
 		expect(bad.isError).toBe(true);
 		expect(getText(bad)).toMatch(/python path not found/);
-		expect(ui.prompts()).toBe(0);
 		expect(runPython).not.toHaveBeenCalled();
 	});
 
-	test("Deny, AFK and no-UI do not run", async () => {
+	test("empty code never starts Python", async () => {
 		runPython.mockClear();
-		const denied = await host().execute("t", args, undefined, undefined, {
-			hasUI: true,
-			ui: pickUi(2).ui,
-			cwd: "/",
-		});
-		expect(denied.details).toMatchObject({ outcome: "denied" });
-
-		const afk = host();
-		setUnattendedMode(afk.events, "afk");
-		expect(
-			(await afk.execute("t", args, undefined, undefined, { hasUI: true, cwd: "/" })).details,
-		).toMatchObject({
-			outcome: "denied",
-		});
-
-		const headless = await host().execute("t", args, undefined, undefined, {
+		const result = await host().execute("empty", { ...args, code: " " }, undefined, undefined, {
 			hasUI: false,
-			cwd: "/",
+			cwd: "/work",
 		});
-		expect(headless.isError).toBe(true);
+		expect(result.isError).toBe(true);
+		expect(getText(result)).toContain("empty code");
 		expect(runPython).not.toHaveBeenCalled();
 	});
 
@@ -305,19 +254,11 @@ describe("python_run", () => {
 	});
 });
 
-test("cancellation during approval never starts Python", async () => {
+test("pre-cancelled calls never start Python", async () => {
 	const { execute } = host();
-	const controller = new AbortController();
 	const before = runPython.mock.calls.length;
-	const ui = {
-		custom: async () => {
-			controller.abort(new Error("stop approval"));
-			return { action: "approved", choice: "session" };
-		},
-	};
-	const result = await execute("cancel-approval", args, controller.signal, undefined, {
-		hasUI: true,
-		ui,
+	const result = await execute("cancel", args, AbortSignal.abort(new Error("stop")), undefined, {
+		hasUI: false,
 		cwd: "/work",
 	});
 	expect(result.details).toMatchObject({ outcome: "cancelled" });

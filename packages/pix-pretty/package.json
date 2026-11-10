@@ -11,6 +11,7 @@
 		"./confirm": "./src/confirm.ts",
 		"./progress": "./src/progress.ts",
 		"./overlay-lifecycle": "./src/overlay-lifecycle.ts",
+		"./user-prompt": "./src/user-prompt.ts",
 		"./config": "./src/config.ts",
 		"./diff": "./src/diff.ts",
 		"./diff-render": "./src/diff-render.ts",

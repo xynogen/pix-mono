@@ -7,6 +7,7 @@ import {
 	hyperlink,
 	MouseRegion,
 	mixColors,
+	Text,
 	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
@@ -356,13 +357,14 @@ export function widgetActivityRow(
 }
 
 /** Use the host lifecycle fields so every call has the same status marker. */
-export function formatToolCallTitle(
+export function renderTitle(
 	theme: {
 		fg: (role: "muted" | "warning" | "error" | "success" | "toolTitle", text: string) => string;
 		bold?: (text: string) => string;
 	},
 	tool: string,
 	context: { executionStarted?: boolean; isPartial?: boolean; isError?: boolean } = {},
+	action?: string,
 ): string {
 	const complete = context.isPartial === false;
 	const role = complete
@@ -379,11 +381,42 @@ export function formatToolCallTitle(
 		: context.executionStarted
 			? "status.running"
 			: "status.pending";
-	return `${theme.fg(role, padIcon(icon(marker)))} ${theme.fg("toolTitle", theme.bold?.(tool) ?? tool)}`;
+	const label = action ? `${tool} ${action}` : tool;
+	return `${theme.fg(role, padIcon(icon(marker)))} ${theme.fg("toolTitle", theme.bold?.(label) ?? label)}`;
+}
+
+/** Build a plain call renderer; command and rich previews keep their own body. */
+export function renderCall<TArgs = Record<string, unknown>>(
+	tool: string,
+	target: (args: TArgs) => string,
+	action?: (args: TArgs) => string | undefined,
+) {
+	return (
+		args: TArgs,
+		theme: Parameters<typeof renderTitle>[0] & { fg: (role: "dim", text: string) => string },
+		context: Parameters<typeof renderTitle>[2] & {
+			lastComponent?: Component;
+			state: Record<string, unknown>;
+			expanded: boolean;
+		},
+	): Component => {
+		const previous = context.lastComponent && unframeToolResult(context.lastComponent);
+		const text =
+			previous && "setText" in previous && typeof previous.setText === "function"
+				? (previous as Component & { setText(value: string): void })
+				: new Text("", 0, 0);
+		if (hideCollapsedToolCall(context.state, context.expanded, (value) => text.setText(value)))
+			return text;
+		const value = target(args);
+		text.setText(
+			`${renderTitle(theme, tool, context, action?.(args))}${value ? ` ${theme.fg("dim", value)}` : ""}`,
+		);
+		return text;
+	};
 }
 
 /** Format the shared one-row content without assuming a render shell. */
-export function formatCollapsedToolRow(
+export function renderRow(
 	theme: CollapsedToolTheme,
 	tool: string,
 	target: string,
@@ -404,7 +437,7 @@ export function formatCollapsedToolRow(
 }
 
 /** Render shared one-row content for tools using the self-rendered shell. */
-export function renderCollapsedToolRow(
+export function renderCollapsed(
 	theme: CollapsedToolTheme,
 	tool: string,
 	target: string,
@@ -413,7 +446,7 @@ export function renderCollapsedToolRow(
 	width?: number,
 ): string {
 	return fillToolBackground(
-		formatCollapsedToolRow(theme, tool, target, meta, status, width ?? termW()),
+		renderRow(theme, tool, target, meta, status, width ?? termW()),
 		BG_BASE,
 		width,
 	);

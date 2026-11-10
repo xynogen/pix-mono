@@ -439,7 +439,11 @@ describe("registerAsk", () => {
 					factory: (...args: any[]) => { render: (width: number) => string[] },
 					options: unknown,
 				) => {
-					expect(options).toEqual({ overlay: true, overlayOptions: modalOverlayOptions() });
+					expect(options).toEqual({
+						overlay: true,
+						overlayOptions: modalOverlayOptions(),
+						blocked: { kind: "question", message: "Waiting for user answer" },
+					});
 					const component = factory(
 						{ terminal: { rows: 40 }, requestRender() {} },
 						{

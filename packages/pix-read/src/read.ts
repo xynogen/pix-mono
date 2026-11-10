@@ -39,7 +39,6 @@ import {
 	dotJoin,
 	fadeRulePaint,
 	fillToolBackground,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -48,8 +47,9 @@ import {
 	isImageContent,
 	isTextContent,
 	normalizeLineEndings,
-	renderCollapsedToolRow,
+	renderCollapsed,
 	renderDimPreview,
+	renderTitle,
 	renderToolError,
 	ruleFrame,
 	setResultDetails,
@@ -399,7 +399,7 @@ export function registerReadTool(
 			const limit = args.limit ? ` ${theme.fg("muted", `(${args.limit} lines)`)}` : "";
 			text.setText(
 				fillToolBackground(
-					`${formatToolCallTitle(theme, "read", renderCtx)} ${theme.fg("dim", sp(fp))}${offset}${limit}`,
+					`${renderTitle(theme, "read", renderCtx)} ${theme.fg("dim", sp(fp))}${offset}${limit}`,
 				),
 			);
 			return text;
@@ -429,13 +429,13 @@ export function registerReadTool(
 			if (!isPartial && tickCollapse("read", cs, renderCtx.invalidate, renderCtx.expanded)) {
 				if (renderCtx.isError) {
 					text.setText(
-						renderCollapsedToolRow(theme, "read", sp(String(d?.filePath ?? "")), "failed", "error"),
+						renderCollapsed(theme, "read", sp(String(d?.filePath ?? "")), "failed", "error"),
 					);
 				} else if (d?._type === "readBatch") {
 					// SAFETY: _type discriminant is "readBatch", set only where we build ReadBatchDetails.
 					const batch = d as unknown as ReadBatchDetails;
 					text.setText(
-						renderCollapsedToolRow(
+						renderCollapsed(
 							theme,
 							"read",
 							formatCallTargets(batch.items.map((item) => sp(item.filePath))),
@@ -444,17 +444,12 @@ export function registerReadTool(
 					);
 				} else if (d?._type === "readFile") {
 					text.setText(
-						renderCollapsedToolRow(
-							theme,
-							"read",
-							sp(String(d.filePath ?? "")),
-							`${d.lineCount} lines`,
-						),
+						renderCollapsed(theme, "read", sp(String(d.filePath ?? "")), `${d.lineCount} lines`),
 					);
 				} else if (d?._type === "readImage") {
 					const byteSize = Math.ceil(((d.data as string).length * 3) / 4);
 					text.setText(
-						renderCollapsedToolRow(
+						renderCollapsed(
 							theme,
 							"read",
 							sp(String(d.filePath ?? "")),
@@ -462,7 +457,7 @@ export function registerReadTool(
 						),
 					);
 				} else {
-					text.setText(renderCollapsedToolRow(theme, "read", "", "done"));
+					text.setText(renderCollapsed(theme, "read", "", "done"));
 				}
 				return text;
 			}
@@ -475,6 +470,62 @@ export function registerReadTool(
 			if (d?._type === "readBatch") {
 				// SAFETY: _type discriminant is "readBatch", set only where we build ReadBatchDetails.
 				const batch = d as unknown as ReadBatchDetails;
+				const key = JSON.stringify([
+					batch,
+					renderCtx.expanded,
+					isPartial,
+					process.stdout.columns,
+					...[
+						"syntaxKeyword",
+						"syntaxFunction",
+						"syntaxVariable",
+						"syntaxString",
+						"syntaxNumber",
+						"syntaxType",
+						"syntaxOperator",
+						"syntaxPunctuation",
+						"syntaxComment",
+						"dim",
+						"muted",
+					].map((role) => theme.fg(role, "sample")),
+				]);
+				if (renderCtx.state._rbk !== key) {
+					renderCtx.state._rbk = key;
+					renderCtx.state._rbt = undefined;
+					Promise.all(
+						batch.items.map(async (item) => {
+							const header = `${BODY_PAD}${fileIcon(item.filePath, theme)}${theme.fg("dim", item.filePath)}`;
+							const body =
+								item._type === "readFile"
+									? await renderFileContent(
+											item.content,
+											item.filePath,
+											item.offset,
+											renderCtx.expanded ? item.lineCount : MAX_PREVIEW_LINES,
+											theme,
+											{ wrapLongLines: renderCtx.expanded, ctx: renderCtx },
+										)
+									: renderDimPreview(
+											item._type === "readError" ? item.message : item.mimeType,
+											theme,
+											{ ctx: renderCtx },
+										);
+							return `${header}\n${body}`;
+						}),
+					)
+						.then((sections) => {
+							if (renderCtx.state._rbk !== key) return;
+							renderCtx.state._rbt = fillToolBackground(
+								[`${BODY_PAD}${theme.fg("dim", batch.index)}`, ...sections].join("\n\n"),
+							);
+							renderCtx.invalidate();
+						})
+						.catch((error: unknown) => {
+							if (renderCtx.state._rbk !== key) return;
+							renderCtx.state._rbt = renderToolError(getErrorMessage(error), theme);
+							renderCtx.invalidate();
+						});
+				}
 				const full = batch.items
 					.map((item) =>
 						item._type === "readError"
@@ -485,11 +536,12 @@ export function registerReadTool(
 					)
 					.join("\n\n");
 				text.setText(
-					renderDimPreview(full || batch.index, theme, {
-						header: batch.index,
-						ctx: renderCtx,
-						...(renderCtx.expanded ? { maxLines: Number.MAX_SAFE_INTEGER } : {}),
-					}),
+					renderCtx.state._rbt ??
+						renderDimPreview(full || batch.index, theme, {
+							header: batch.index,
+							ctx: renderCtx,
+							...(renderCtx.expanded ? { maxLines: Number.MAX_SAFE_INTEGER } : {}),
+						}),
 				);
 				return isPartial ? text : completed();
 			}

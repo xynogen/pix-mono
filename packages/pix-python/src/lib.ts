@@ -6,7 +6,12 @@
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { runTool } from "@xynogen/pix-runtime/exec";
-import { expandHome } from "@xynogen/pix-runtime/paths";
+import {
+	type PathAccess,
+	type PathDecision,
+	withPathAccess,
+} from "@xynogen/pix-runtime/path-access";
+import { expandHome, moduleFile } from "@xynogen/pix-runtime/paths";
 
 const TAB = "    ";
 
@@ -88,14 +93,24 @@ export async function runPython(
 	/** Output of {@link resolvePython}. */
 	interpreter = "python3",
 	timeoutMs?: number,
+	decide?: (access: PathAccess) => Promise<PathDecision>,
 ): Promise<PythonRun> {
-	const r = await runTool(interpreter, ["-"], {
-		cwd,
-		input: `${code}\n`,
-		signal,
-		timeoutMs,
-		// Windows consoles default to a legacy code page; keep output UTF-8 everywhere.
-		env: { ...process.env, PYTHONIOENCODING: "utf-8" },
-	});
-	return { code: r.code, stdout: r.stdout, stderr: r.stderr, timedOut: r.timedOut };
+	const run = async (args: string[]) => {
+		const r = await runTool(interpreter, args, {
+			cwd,
+			input: `${code}\n`,
+			signal,
+			timeoutMs,
+			// Windows consoles default to a legacy code page; keep output UTF-8 everywhere.
+			env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+		});
+		return { code: r.code, stdout: r.stdout, stderr: r.stderr, timedOut: r.timedOut };
+	};
+	return decide
+		? withPathAccess(
+				decide,
+				({ port, token }) => run([moduleFile(import.meta.url, "audit.py"), String(port), token]),
+				signal,
+			)
+		: run(["-"]);
 }

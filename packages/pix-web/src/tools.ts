@@ -1,10 +1,11 @@
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { renderCall } from "@xynogen/pix-pretty/utils";
 import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { fetchConfig } from "./config.ts";
 import type { FetchFormat } from "./providers.ts";
-import { makeRenderCall, makeRenderResult } from "./render.ts";
+import { makeRenderResult } from "./render.ts";
 import { runFetch } from "./runner.ts";
 
 type Outcome = "running" | "success" | "cancelled" | "error";
@@ -24,7 +25,7 @@ export function registerFetchTool(pi: ExtensionAPI): void {
 		renderShell: "self",
 		description: "Fetch a URL as plain text through a configured provider.",
 		promptSnippet: "fetch(url, format?, max_characters?)",
-		renderCall: makeRenderCall<unknown>("fetch", (args) =>
+		renderCall: renderCall<unknown>("fetch", (args) =>
 			String((args as { url?: string }).url ?? ""),
 		),
 		renderResult: makeRenderResult<Details>({

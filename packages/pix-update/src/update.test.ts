@@ -1,8 +1,9 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import * as exec from "@xynogen/pix-runtime/exec";
 import type { Exec } from "./update.ts";
-import {
+import registerUpdate, {
 	currentVersion,
 	formatUpdateSummary,
 	isTransient,
@@ -300,4 +301,42 @@ describe("stalePackages", () => {
 	it("returns nothing for clean output", () => {
 		expect(stalePackages("Updated npm:@xynogen/pix-core to 0.7.20\n")).toEqual([]);
 	});
+});
+
+it("preserves package version changes, unchanged/offline summaries and warnings", async () => {
+	const runner = spyOn(exec, "runTool");
+	try {
+		for (const [output, level] of [
+			["npm:foo 1.2.0 -> 1.3.0", "info"],
+			["Packages are already up to date", "info"],
+			["Skipped package updates (offline mode)", "info"],
+			["No packages were updated, see the warnings above", "warning"],
+			["npm:foo is still 1.2.0 (registry reports 1.3.0)", "warning"],
+		] as const) {
+			runner.mockImplementation(async (name, args) => {
+				if (name !== "pi") throw new Error("Unexpected runner");
+				return {
+					stdout: args.includes("--extensions") ? `\x1b[32m${output}\x1b[39m` : "1.5.1",
+					stderr: "",
+					code: 0,
+				} as never;
+			});
+			let handler!: (args: string, ctx: unknown) => Promise<void>;
+			registerUpdate({
+				registerFlag() {},
+				on() {},
+				registerCommand: (_name: string, command: { handler: typeof handler }) => {
+					handler = command.handler;
+				},
+			} as never);
+			const notices: unknown[][] = [];
+			await handler("", {
+				hasUI: false,
+				ui: { notify: (...args: unknown[]) => notices.push(args) },
+			});
+			expect(notices).toContainEqual([output, level]);
+		}
+	} finally {
+		runner.mockRestore();
+	}
 });

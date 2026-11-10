@@ -6,9 +6,9 @@ import { type FadeTheme, fadeRowsOf } from "@xynogen/pix-pretty/text";
 import {
 	expandHint,
 	formatJson,
-	formatToolCallTitle,
 	frameToolResult,
-	renderCollapsedToolRow,
+	renderCollapsed,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -317,7 +317,7 @@ function renderToolCallLines(lines: string[], theme: RenderTheme, ctx?: McpRende
 	if (ctx?.state?.collapsed && !ctx.expanded) return new Text("", 0, 0);
 
 	const [title = "mcp", ...rest] = lines;
-	const styledTitle = `${formatToolCallTitle(theme, "mcp", ctx)}${title.startsWith("mcp ") ? ` ${theme.fg("dim", title.slice(4))}` : ""}`;
+	const styledTitle = `${renderTitle(theme, "mcp", ctx)}${title.startsWith("mcp ") ? ` ${theme.fg("dim", title.slice(4))}` : ""}`;
 
 	// The trailing lines are a pretty-printed args block (JSON); highlight it.
 	if (ctx?.state && ctx.invalidate) {
@@ -420,7 +420,7 @@ function collapsedRow(
 	const status = isError ? "error" : "success";
 	const diagnostic = isError ? (result.content.flatMap(blockToLines)[0] ?? "failed") : "";
 	const target = displayName?.slice(4) || (tool && server ? `${tool} @ ${server}` : tool || server);
-	return renderCollapsedToolRow(
+	return renderCollapsed(
 		theme,
 		"mcp",
 		[target, diagnostic].filter(Boolean).join(" · "),

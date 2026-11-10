@@ -15,10 +15,10 @@ import { Text } from "@earendil-works/pi-tui";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import {
@@ -83,7 +83,7 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { pattern?: string; lang?: string };
-			const title = formatToolCallTitle(t, "ast_search", context);
+			const title = renderTitle(t, "ast_search", context);
 			const pat = t.fg("dim", a.pattern ?? "");
 			const lang = a.lang ? t.fg("muted", ` · ${a.lang}`) : "";
 			return new Text(`${title} ${pat}${lang}`.trimEnd(), 0, 0);
@@ -104,7 +104,7 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						theme,
 						"ast_search",
 						"",

@@ -11,12 +11,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
-	frameToolResult,
-	hideCollapsedToolCall,
-} from "@xynogen/pix-pretty/utils";
+import { frameToolResult, renderCall, renderRow } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { Type } from "typebox";
 import type { Disposition, DispositionStore } from "../dispositions.ts";
@@ -49,16 +44,11 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 			note: Type.Optional(Type.String()),
 		}),
 
-		renderCall(args, theme, context) {
-			const t = theme as Theme;
-			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
-				return new Text("", 0, 0);
-			const a = args as { action?: string; disposition?: string; path?: string };
-			const title = formatToolCallTitle(t, "lsp_diagnostic_mark", context);
-			const act = t.fg("muted", a.action ?? "");
-			const extra = a.disposition ? t.fg("dim", ` ${a.disposition}`) : "";
-			return new Text(`${title} ${act}${extra}`.trimEnd(), 0, 0);
-		},
+		renderCall: renderCall(
+			"lsp_diagnostic_mark",
+			(args) => String(args.disposition ?? ""),
+			(args) => String(args.action ?? ""),
+		),
 
 		renderResult(result, options, theme, context) {
 			const t = theme as Theme;
@@ -86,7 +76,7 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						t,
 						"lsp_diagnostic_mark",
 						"",

@@ -1,17 +1,16 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
-import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import { createOverlayLifecycle } from "@xynogen/pix-pretty/overlay-lifecycle";
+import { withUserPrompt } from "@xynogen/pix-pretty/user-prompt";
 import {
 	dotJoin,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	pluralize,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
-import { withAgentBlock } from "@xynogen/pix-runtime";
 import { onAbort } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
@@ -85,29 +84,26 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					return { content: [{ type: "text", text }], details: result };
 				}
 
-				const result = await withAgentBlock(
-					pi.events,
-					"ask_user",
-					"Waiting for user answer",
-					async () => {
-						const lifecycle = createOverlayLifecycle<QuestionnaireResult | null>();
-						lifecycle.onCleanup(
-							onAbort(signal, () => lifecycle.finish({ answers: [], cancelled: true })),
-						);
-						try {
-							return await ctx.ui.custom<QuestionnaireResult | null>(
-								(tui, theme, keybindings, done) => {
+				const result = await (async () => {
+					const lifecycle = createOverlayLifecycle<QuestionnaireResult | null>();
+					lifecycle.onCleanup(
+						onAbort(signal, () => lifecycle.finish({ answers: [], cancelled: true })),
+					);
+					try {
+						return await withUserPrompt(
+							{ kind: "question", message: "Waiting for user answer" },
+							(options) =>
+								ctx.ui.custom<QuestionnaireResult | null>((tui, theme, keybindings, done) => {
 									lifecycle.bind(done);
 									if (lifecycle.closed) return new Text("", 0, 0);
 									return new AskQuestionnaire(typed, tui, theme, keybindings, lifecycle.finish);
-								},
-								{ overlay: true, overlayOptions: modalOverlayOptions() },
-							);
-						} finally {
-							lifecycle.dispose();
-						}
-					},
-				);
+								}, options),
+							{ events: pi.events, source: "ask_user" },
+						);
+					} finally {
+						lifecycle.dispose();
+					}
+				})();
 
 				// Preserve any answers filled before the user closed the modal. cancel()
 				// in the questionnaire already passes the partial set; only a truly empty
@@ -136,7 +132,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 				const questions = Array.isArray(args.questions) ? args.questions : [];
 				const count = questions.length;
 				const firstQ = questions[0]?.question ?? "";
-				const head = `${formatToolCallTitle(theme, "ask_user", renderCtx)} ${theme.fg("dim", firstQ)}`;
+				const head = `${renderTitle(theme, "ask_user", renderCtx)} ${theme.fg("dim", firstQ)}`;
 				text.setText(
 					dotJoin([head, theme.fg("muted", pluralize(count, "question"))], (s) =>
 						theme.fg("muted", s),
@@ -166,13 +162,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 						)
 					) {
 						text.setText(
-							formatCollapsedToolRow(
-								theme,
-								"ask_user",
-								error.split("\n")[0] || "Error",
-								"failed",
-								"error",
-							),
+							renderRow(theme, "ask_user", error.split("\n")[0] || "Error", "failed", "error"),
 						);
 						return text;
 					}
@@ -182,7 +172,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 				if (!details?.answers?.length) {
 					// Cancellation is a warning outcome, not success — shared row keeps the
 					// tool identity and a text label (never color alone) for accessibility.
-					text.setText(formatCollapsedToolRow(theme, "ask_user", "", "cancelled", "warning"));
+					text.setText(renderRow(theme, "ask_user", "", "cancelled", "warning"));
 					return text;
 				}
 				const values = details.answers.map((a) =>
@@ -198,7 +188,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 					);
 				if (collapsed) {
 					text.setText(
-						formatCollapsedToolRow(
+						renderRow(
 							theme,
 							"ask_user",
 							values.join(", "),

@@ -1,8 +1,9 @@
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { renderCall } from "@xynogen/pix-pretty/utils";
 import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
-import { makeRenderCall, makeRenderResult } from "./render.ts";
+import { makeRenderResult } from "./render.ts";
 import { searchConfig } from "./search-config.ts";
 import type { SearchType } from "./search-providers.ts";
 import { runSearch } from "./search-runner.ts";
@@ -24,7 +25,7 @@ export function registerSearchTool(pi: ExtensionAPI): void {
 		renderShell: "self",
 		description: "Search the web through a configured provider.",
 		promptSnippet: "search(query, search_type?, max_results?)",
-		renderCall: makeRenderCall<unknown>("search", (args) =>
+		renderCall: renderCall<unknown>("search", (args) =>
 			String((args as { query?: string }).query ?? ""),
 		),
 		renderResult: makeRenderResult<Details>({

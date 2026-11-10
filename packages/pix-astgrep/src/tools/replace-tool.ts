@@ -21,10 +21,10 @@ import { parseDiff } from "@xynogen/pix-pretty/diff";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import {
@@ -117,7 +117,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { pattern?: string; rewrite?: string; apply?: boolean };
-			const title = formatToolCallTitle(t, "ast_replace", context);
+			const title = renderTitle(t, "ast_replace", context);
 			const rule = t.fg("dim", `${a.pattern ?? ""} → ${a.rewrite ?? ""}`);
 			const mode = t.fg("muted", a.apply ? " · apply" : " · preview");
 			return new Text(`${title} ${rule}${mode}`, 0, 0);
@@ -138,7 +138,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						theme,
 						"ast_replace",
 						"",

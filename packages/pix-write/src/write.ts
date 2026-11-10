@@ -30,14 +30,14 @@ import type {
 import {
 	BODY_PAD,
 	fillToolBackground,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
 	moreLines,
-	renderCollapsedToolRow,
+	renderCollapsed,
+	renderTitle,
 	renderToolError,
 	setResultDetails,
 	termW,
@@ -139,7 +139,7 @@ export function registerWriteTool(
 				)
 			)
 				return text;
-			const hdr = `${formatToolCallTitle(theme, label, renderCtx)} ${theme.fg("dim", sp(fp))}`;
+			const hdr = `${renderTitle(theme, label, renderCtx)} ${theme.fg("dim", sp(fp))}`;
 
 			if (args?.content && isNew) {
 				const previewKey = `create:${diffThemeCacheKey(theme)}:${fp}:${String(args.content).length}:${renderCtx.expanded ? "full" : "preview"}`;
@@ -194,13 +194,7 @@ export function registerWriteTool(
 			if (!isPartial && tickCollapse("write", cs, renderCtx.invalidate, renderCtx.expanded)) {
 				if (renderCtx.isError) {
 					text.setText(
-						renderCollapsedToolRow(
-							theme,
-							"write",
-							sp(String(d?.filePath ?? "")),
-							"failed",
-							"error",
-						),
+						renderCollapsed(theme, "write", sp(String(d?.filePath ?? "")), "failed", "error"),
 					);
 					return text;
 				}
@@ -209,7 +203,7 @@ export function registerWriteTool(
 				else if (d?._type === "noChange") summary = "no changes";
 				else if (d?._type === "new") summary = `new file · ${d.lines} lines`;
 				const target = sp(String(d?.filePath ?? ""));
-				text.setText(renderCollapsedToolRow(theme, "write", target, summary));
+				text.setText(renderCollapsed(theme, "write", target, summary));
 				return text;
 			}
 

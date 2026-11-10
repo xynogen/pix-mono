@@ -51,8 +51,11 @@ function harness(controller: AbortController, delayed = false) {
 		{
 			hasUI: true,
 			ui: {
-				custom: (factory: Factory) =>
-					new Promise<QuestionnaireResult | null>((resolve, reject) => {
+				custom: (factory: Factory, options: unknown) => {
+					expect(options).toMatchObject({
+						blocked: { kind: "question", message: "Waiting for user answer" },
+					});
+					return new Promise<QuestionnaireResult | null>((resolve, reject) => {
 						dismiss = () => resolve(null);
 						fail = reject;
 						open = () => {
@@ -68,7 +71,8 @@ function harness(controller: AbortController, delayed = false) {
 							);
 						};
 						if (!delayed) open();
-					}),
+					});
+				},
 			},
 		} as never,
 	);

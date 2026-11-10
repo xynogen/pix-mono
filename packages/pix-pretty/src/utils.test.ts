@@ -22,9 +22,7 @@ import {
 	dotJoin,
 	fadeRulePaint,
 	fillToolBackground,
-	formatCollapsedToolRow,
 	formatJson,
-	formatToolCallTitle,
 	frameToolResult,
 	frameToolSection,
 	getTextContent,
@@ -33,8 +31,11 @@ import {
 	moreLines,
 	padIcon,
 	pluralize,
-	renderCollapsedToolRow,
+	renderCall,
+	renderCollapsed,
 	renderDimPreview,
+	renderRow,
+	renderTitle,
 	rule,
 	ruleFrame,
 	sectionFrame,
@@ -75,9 +76,7 @@ it("collapsed status marks follow live icon mode changes", () => {
 				["error", "status.error"],
 				["warning", "status.warn"],
 			] as const) {
-				expect(formatCollapsedToolRow(theme, "graph", "query", "done", status)).toStartWith(
-					padIcon(icon(key)),
-				);
+				expect(renderRow(theme, "graph", "query", "done", status)).toStartWith(padIcon(icon(key)));
 			}
 		}
 	} finally {
@@ -131,10 +130,61 @@ describe("tool call lifecycle", () => {
 			[{ executionStarted: true, isPartial: false }, "success", "status.ok"],
 			[{ executionStarted: true, isPartial: false, isError: true }, "error", "status.error"],
 		] as const) {
-			expect(formatToolCallTitle(theme, "edit", context)).toBe(
+			expect(renderTitle(theme, "edit", context)).toBe(
 				`<${role}>${padIcon(icon(key))}</${role}> <toolTitle>edit</toolTitle>`,
 			);
 		}
+	});
+	it("keeps tool and action in one title without empty-action spacing", () => {
+		const theme = { fg: (role: string, text: string) => `<${role}>${text}</${role}>` };
+		expect(renderTitle(theme, "proc", {}, "start")).toContain("<toolTitle>proc start</toolTitle>");
+		expect(renderTitle(theme, "proc", {}, "")).toBe(renderTitle(theme, "proc"));
+	});
+});
+
+describe("renderCall", () => {
+	it("reuses text, follows lifecycle, and restores collapsed calls when expanded", () => {
+		const theme = { fg: (role: string, text: string) => `<${role}>${text}</${role}>` };
+		const previous = new MockTextComponent();
+		const context = {
+			lastComponent: previous,
+			state: { collapsed: false },
+			expanded: false,
+			executionStarted: true,
+			isPartial: true,
+		};
+		const render = renderCall<{ action?: string; target?: string }>(
+			"download",
+			(args) => args.target ?? "",
+			(args) => args.action,
+		);
+		const args = { action: "pause", target: "dl-1" };
+		expect(render(args, theme, context)).toBe(previous);
+		expect(previous.render().join("\n")).toBe(
+			`${renderTitle(theme, "download", context, "pause")} <dim>dl-1</dim>`,
+		);
+		context.state.collapsed = true;
+		render(args, theme, context);
+		expect(previous.render().join("\n")).toBe("");
+		context.expanded = true;
+		context.isPartial = false;
+		render(args, theme, context);
+		expect(previous.render().join("\n")).toContain(
+			`<success>${padIcon(icon("status.ok"))}</success>`,
+		);
+		render({}, theme, context);
+		expect(previous.render().join("\n")).toBe(renderTitle(theme, "download", context));
+	});
+
+	it("creates a component when the host has no reusable text", () => {
+		const theme = { fg: (_role: string, text: string) => text };
+		const render = renderCall(
+			"todo",
+			() => "",
+			(args) => String(args.action ?? ""),
+		);
+		const component = render({ action: "list" }, theme, { state: {}, expanded: false });
+		expect(component.render(80).join("\n")).toContain("todo list");
 	});
 });
 
@@ -508,18 +558,16 @@ describe("collapsed tool rows", () => {
 			fg: (key: string, text: string) => `<${key}>${text}</${key}>`,
 			bold: (text: string) => text,
 		};
-		expect(
-			formatCollapsedToolRow(taggedTheme, "read", "src/a.ts", "12 lines", "success", 1000),
-		).toContain("<dim>src/a.ts</dim> <muted>·</muted> <muted>12 lines</muted>");
+		expect(renderRow(taggedTheme, "read", "src/a.ts", "12 lines", "success", 1000)).toContain(
+			"<dim>src/a.ts</dim> <muted>·</muted> <muted>12 lines</muted>",
+		);
 	});
 
 	it("renders a consistent status, tool, target, and metadata row", () => {
 		// The status marker is width-normalized to 2 cells (padIcon) so wide glyphs
 		// align with narrow ones; a 1-cell `✓` therefore carries one pad space.
-		expect(formatCollapsedToolRow(rowTheme, "read", "src/a.ts", "12 lines")).toBe(
-			"✓  read src/a.ts · 12 lines",
-		);
-		const rendered = plain(renderCollapsedToolRow(rowTheme, "read", "src/a.ts", "12 lines"));
+		expect(renderRow(rowTheme, "read", "src/a.ts", "12 lines")).toBe("✓  read src/a.ts · 12 lines");
+		const rendered = plain(renderCollapsed(rowTheme, "read", "src/a.ts", "12 lines"));
 		expect(rendered).toStartWith("✓  read src/a.ts · 12 lines");
 	});
 
@@ -531,7 +579,7 @@ describe("collapsed tool rows", () => {
 			style: (text: string, style: TextStyle) => styleText(text, style, "truecolor"),
 		};
 		for (const width of [35, 60, 90]) {
-			const row = formatCollapsedToolRow(
+			const row = renderRow(
 				fadeTheme,
 				"todo",
 				"界e\u0301🙂".repeat(60),
@@ -545,9 +593,7 @@ describe("collapsed tool rows", () => {
 		}
 		for (let width = 0; width < 35; width++) {
 			expect(
-				visibleWidth(
-					formatCollapsedToolRow(fadeTheme, "todo", "long task", "1/3 done", "error", width),
-				),
+				visibleWidth(renderRow(fadeTheme, "todo", "long task", "1/3 done", "error", width)),
 			).toBeLessThanOrEqual(width);
 		}
 	});

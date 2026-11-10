@@ -42,6 +42,7 @@
 		"./sysstat": "./src/sysstat.ts",
 		"./audio": "./src/audio.ts",
 		"./safe-path": "./src/safe-path.ts",
+		"./path-access": "./src/path-access.ts",
 		"./which": "./src/which.ts",
 		"./ast": "./src/ast/index.ts"
 	},

@@ -12,12 +12,10 @@ import {
 	BODY_PAD,
 	bodyLine,
 	type CollapsedToolStatus,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getTextContent,
-	hideCollapsedToolCall,
 	moreLines,
+	renderRow,
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -67,22 +65,6 @@ function dimBody(body: string, theme: Theme, ctx: RenderCtx, expanded: boolean):
 	return out.join("\n");
 }
 
-/** Build a `renderCall` that shows `<title> <secondary arg>`. */
-export function makeRenderCall<TArgs>(title: string, pickArg: (args: TArgs) => string) {
-	return (args: TArgs, theme: Theme, ctx: RenderCtx): Component => {
-		const text = getText(ctx.lastComponent);
-		if (
-			hideCollapsedToolCall(ctx.state as CollapseState, ctx.expanded, (value) =>
-				text.setText(value),
-			)
-		)
-			return text;
-		const arg = pickArg(args);
-		text.setText(`${formatToolCallTitle(theme, title, ctx)} ${theme.fg("dim", arg)}`);
-		return text;
-	};
-}
-
 /** Build a `renderResult` with a bounded detail preview and optional compact terminal row. */
 export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetails>) {
 	return (
@@ -111,7 +93,7 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 		) {
 			const text = getText(ctx.lastComponent);
 			text.setText(
-				formatCollapsedToolRow(
+				renderRow(
 					theme,
 					config.tool,
 					config.target(details),

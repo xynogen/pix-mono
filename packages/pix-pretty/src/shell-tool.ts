@@ -30,14 +30,14 @@ import {
 	dotJoin,
 	fadeRulePaint,
 	fillToolBackground,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
 	moreLines,
+	renderRow,
+	renderTitle,
 	renderToolError,
 	ruleFrame,
 	setResultDetails,
@@ -150,7 +150,7 @@ export function registerShellTool(
 			resolveBaseBackground(theme);
 			const displayCmdRaw = (args.command ?? "").trim();
 			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
-			const label = formatToolCallTitle(theme, name, renderCtx);
+			const label = renderTitle(theme, name, renderCtx);
 			const collapseState = renderCtx.state as CollapseState;
 			if (hideCollapsedToolCall(collapseState, renderCtx.expanded, (value) => text.setText(value)))
 				return text;
@@ -202,7 +202,7 @@ export function registerShellTool(
 						durationMs > 0 && formatDuration(durationMs, "bash"),
 					]);
 					return collapsedCommandRow(
-						formatCollapsedToolRow(theme, name, "", meta, status).trimEnd(),
+						renderRow(theme, name, "", meta, status).trimEnd(),
 						String(d.command ?? ""),
 						theme,
 					);

@@ -16,10 +16,10 @@ import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -76,7 +76,7 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { query?: string };
-			const title = formatToolCallTitle(t, "symbol_search", context);
+			const title = renderTitle(t, "symbol_search", context);
 			const q = t.fg("dim", `“${a.query ?? ""}”`);
 			return new Text(`${title} ${q}`, 0, 0);
 		},
@@ -96,7 +96,7 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						theme,
 						"symbol_search",
 						"",

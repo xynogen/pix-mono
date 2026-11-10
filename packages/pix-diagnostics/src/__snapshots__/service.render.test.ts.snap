@@ -75,7 +75,7 @@ src/b.ts:9:2
 <success>────────────────────────────────────────────────────────────────────────────────</success>
 lsp_diagnostic_mark:call
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                                
+<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark set</toolTitle+bold> <dim>defer</dim>                                                
 lsp_diagnostic_mark:success
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
@@ -101,7 +101,7 @@ lsp_diagnostic_mark:collapsed
 <success>✓︎ </success> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>·</muted> <muted>1 marks</muted>                                                
 lsp_diagnostic_mark:expanded
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>set</muted><dim> defer</dim>                                                
+<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark set</toolTitle+bold> <dim>defer</dim>                                                
 lsp_diagnostic_mark:expanded-result
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              

@@ -2,7 +2,7 @@
 
 exports[`W1 capture: registered download call and self results: call 1`] = `
 [
-  "<muted>○︎ </muted> <toolTitle+bold>download</toolTitle+bold> <dim>add</dim> <muted>https://example.test/file.iso</muted>                                   ",
+  "<muted>○︎ </muted> <toolTitle+bold>download add</toolTitle+bold> <dim>https://example.test/file.iso</dim>                                   ",
 ]
 `;
 

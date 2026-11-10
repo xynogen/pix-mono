@@ -7,6 +7,7 @@
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import type { UserPromptState } from "@xynogen/pix-pretty/user-prompt";
 import type { PathRule, Rule } from "./lib.ts";
 
 export interface GateDecision {
@@ -76,6 +77,8 @@ export async function promptPathDecision(
 	hit: PathRule,
 	op: string,
 	path: string,
+	state?: UserPromptState,
+	signal?: AbortSignal,
 ): Promise<GateDecision> {
 	const icon = PATH_SEVERITY_ICON[hit.severity];
 	const label = titleCase(hit.severity);
@@ -109,6 +112,8 @@ export async function promptPathDecision(
 				];
 
 	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
+		state,
+		signal,
 		mode: "confirm",
 		icon,
 		title: `${label} — ${hit.reason}`,
@@ -146,6 +151,7 @@ export async function promptMergedGateDecision(
 	ui: GatePromptUI,
 	concerns: Concern[],
 	_command: string,
+	state?: UserPromptState,
 ): Promise<GateDecision> {
 	// Sort by tier desc so the highest-severity concern drives dialog behavior.
 	const sorted = [...concerns].sort((a, b) => b.tier - a.tier);
@@ -209,6 +215,7 @@ export async function promptMergedGateDecision(
 			];
 
 	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
+		state,
 		mode: "confirm",
 		title,
 		body,
@@ -236,6 +243,7 @@ export async function promptGateDecision(
 	ui: GatePromptUI,
 	hit: Rule,
 	_command: string,
+	state?: UserPromptState,
 ): Promise<GateDecision> {
 	const icon = SEVERITY_ICON[hit.severity];
 	const label = titleCase(hit.severity);
@@ -266,6 +274,7 @@ export async function promptGateDecision(
 				];
 
 	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
+		state,
 		mode: "confirm",
 		icon,
 		title: `${label} — ${hit.reason}`,

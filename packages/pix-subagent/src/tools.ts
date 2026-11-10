@@ -23,11 +23,12 @@ import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { lookupBenchmark } from "@xynogen/pix-data";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import {
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
+	renderCall,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { describeActivity, formatContext } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -185,7 +186,7 @@ export function createAgentInfoTool(reloadCustomAgents: () => void, manager?: Ag
 				return text;
 			const kind = String(args.kind ?? "types");
 			const query = typeof args.query === "string" && args.query ? ` “${args.query}”` : "";
-			text.setText(`${formatToolCallTitle(theme, "agent_info", renderCtx)} ${kind}${query}`);
+			text.setText(`${renderTitle(theme, "agent_info", renderCtx)} ${kind}${query}`);
 			return text;
 		},
 
@@ -302,22 +303,14 @@ export function createAgentControlTool(
 				Type.Number({ description: "For result: return only last N turns.", minimum: 1 }),
 			),
 		}),
-		renderCall(args, theme, renderCtx) {
-			const text = new Text("", 0, 0);
-			if (
-				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
-			const action = String(args.action ?? "info");
-			const target =
-				action === "info" ? String(args.kind ?? "active") : String(args.agent_id ?? "");
-			text.setText(
-				`${formatToolCallTitle(theme, "agent_control", renderCtx)} ${theme.fg("dim", action)}${target ? ` ${theme.fg("accent", target)}` : ""}`,
-			);
-			return text;
-		},
+		renderCall: renderCall(
+			"agent_control",
+			(args) =>
+				args.action === "info" || !args.action
+					? String(args.kind ?? "active")
+					: String(args.agent_id ?? ""),
+			(args) => String(args.action ?? "info"),
+		),
 		renderResult(result, { expanded, isPartial }, theme, renderCtx) {
 			return renderAgentUtilityResult(result, expanded, isPartial, theme, renderCtx);
 		},
@@ -420,7 +413,7 @@ export function createAgentTool(
 			const input = args as Record<string, unknown>;
 			const header = formatAgentCall(input, theme, false).replace(
 				theme.fg("toolTitle", theme.bold("agent")),
-				formatToolCallTitle(theme, "agent", renderCtx),
+				renderTitle(theme, "agent", renderCtx),
 			);
 			if (typeof input.prompt !== "string" || !input.prompt) return new Text(header, 0, 0);
 			return commandPreview(
@@ -881,7 +874,7 @@ export function createAgentResultTool(
 			)
 				return text;
 			text.setText(
-				formatToolCallTitle(theme, "agent_result", renderCtx) +
+				renderTitle(theme, "agent_result", renderCtx) +
 					" " +
 					theme.fg("accent", args.agent_id as string),
 			);
@@ -1002,7 +995,7 @@ export function createAgentSteerTool(manager: AgentManager) {
 			const action = (args.action as string) || "steer";
 			const label = action === "stop" ? "agent_stop" : "agent_steer";
 			text.setText(
-				formatToolCallTitle(theme, label, renderCtx) +
+				renderTitle(theme, label, renderCtx) +
 					" " +
 					theme.fg(action === "stop" ? "error" : "accent", args.agent_id as string),
 			);

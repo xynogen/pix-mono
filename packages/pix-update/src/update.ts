@@ -226,13 +226,11 @@ async function updatePackages(ctx: ExtensionCommandContext, progress?: ProgressH
 		ctx.ui.notify(`Pi package update failed.${timedOut} ${output || "No output."}`, "error");
 		return;
 	}
-	const stale = stalePackages(output);
-	if (stale.length)
-		ctx.ui.notify(
-			`Pi packages updated, but some stayed old (npm registry metadata may be stale, retry in a few minutes):\n${stale.join("\n")}`,
-			"warning",
-		);
-	else ctx.ui.notify("Pi packages updated.", "info");
+	const summary = stripVTControlCharacters(output);
+	const warned =
+		stalePackages(summary).length > 0 ||
+		summary.includes("No packages were updated, see the warnings above");
+	ctx.ui.notify(summary || "Pi package update finished.", warned ? "warning" : "info");
 }
 
 async function updateAll(ctx: ExtensionCommandContext) {

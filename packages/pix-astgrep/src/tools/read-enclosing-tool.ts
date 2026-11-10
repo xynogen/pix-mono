@@ -13,10 +13,10 @@ import { Text } from "@earendil-works/pi-tui";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
@@ -88,7 +88,7 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string; line?: number };
-			const title = formatToolCallTitle(t, "ast_read_enclosing", context);
+			const title = renderTitle(t, "ast_read_enclosing", context);
 			const loc = a.path ? t.fg("dim", `${a.path}:${a.line ?? ""}`) : "";
 			return new Text(`${title} ${loc}`.trimEnd(), 0, 0);
 		},
@@ -108,7 +108,7 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						theme,
 						"ast_read_enclosing",
 						"",

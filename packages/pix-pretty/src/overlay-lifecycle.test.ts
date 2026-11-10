@@ -19,6 +19,7 @@ function harness(options: { delayed?: boolean; throwOnOpen?: Error } = {}) {
 	let fail!: (error: Error) => void;
 	let finishes = 0;
 	let renders = 0;
+	let customOptions: unknown;
 	const ui = {
 		custom<T>(
 			build: (
@@ -27,7 +28,9 @@ function harness(options: { delayed?: boolean; throwOnOpen?: Error } = {}) {
 				kb: ReturnType<typeof getKeybindings>,
 				done: (value: T) => void,
 			) => Component,
+			opts?: unknown,
 		): Promise<T | undefined> {
+			customOptions = opts;
 			const pending = new Promise<T | undefined>((resolve, reject) => {
 				dismiss = () => resolve(undefined);
 				fail = reject;
@@ -54,6 +57,9 @@ function harness(options: { delayed?: boolean; throwOnOpen?: Error } = {}) {
 	};
 	return {
 		ui,
+		get customOptions() {
+			return customOptions;
+		},
 		get component() {
 			return component;
 		},
@@ -98,6 +104,7 @@ test("host dismissal cancels validation and ignores a late approval", async () =
 			});
 		},
 	});
+	expect(h.customOptions).toMatchObject({ blocked: { kind: "auth", message: "Password" } });
 	h.component.handleInput("\r");
 	h.component.handleInput("password");
 	h.component.handleInput("\r");
@@ -121,6 +128,9 @@ test.each([
 		kind === "gate"
 			? showOverlay(h.ui, { mode: "confirm", title: "Gate", timeoutMs: 1000 })
 			: confirmOverlay(h.ui, { title: "Confirm", timeoutMs: 1000 });
+	expect(h.customOptions).toMatchObject({
+		blocked: { kind: "permission", message: kind === "gate" ? "Gate" : "Confirm" },
+	});
 	h.component.handleInput("\r");
 	h.component.handleInput("\x1b");
 	await result;

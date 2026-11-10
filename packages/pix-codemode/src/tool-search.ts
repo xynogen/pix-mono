@@ -6,13 +6,13 @@ import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
 	fillToolBackground,
-	formatToolCallTitle,
 	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	padIcon,
 	pluralize,
-	renderCollapsedToolRow,
+	renderCollapsed,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
@@ -90,10 +90,7 @@ export function renderToolSearchCall(args: Args, theme: ThemeLike, ctx: Context)
 	text.setText(
 		fillToolBackground(
 			dotJoin(
-				[
-					`${formatToolCallTitle(theme, "tool_search", ctx)}${limit}`,
-					theme.fg("dim", args.query ?? ""),
-				],
+				[`${renderTitle(theme, "tool_search", ctx)}${limit}`, theme.fg("dim", args.query ?? "")],
 				(part) => theme.fg("muted", part),
 			),
 		),
@@ -114,7 +111,7 @@ export function renderToolSearchResult(
 	const loaded = result.details?.loaded ?? [];
 	if (tickCollapse("tool_search", ctx.state, ctx.invalidate, options.expanded)) {
 		return new Text(
-			renderCollapsedToolRow(
+			renderCollapsed(
 				theme,
 				"tool_search",
 				ctx.args?.query ?? "",

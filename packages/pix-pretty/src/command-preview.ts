@@ -2,7 +2,7 @@ import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil
 import { hlBlock } from "./highlight.ts";
 import { fadePaint, fadeRowsOf, fadeText } from "./text.ts";
 import type { ThemeLike } from "./types.ts";
-import { type ExpandHintCtx, expandHint, type formatCollapsedToolRow } from "./utils.ts";
+import { type ExpandHintCtx, expandHint, type renderRow } from "./utils.ts";
 
 export function commandPreview(
 	header: string,
@@ -94,8 +94,7 @@ export function commandPreview(
 export function collapsedCommandRow(
 	header: string,
 	command: string,
-	theme: Pick<ThemeLike, "fg"> &
-		Pick<Parameters<typeof formatCollapsedToolRow>[0], "colors" | "style">,
+	theme: Pick<ThemeLike, "fg"> & Pick<Parameters<typeof renderRow>[0], "colors" | "style">,
 ) {
 	const plain = command.replace(/\s+/g, " ").trim();
 	const prefix = `${header}${theme.fg("muted", " · ")}`;

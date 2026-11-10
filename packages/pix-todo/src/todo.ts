@@ -14,10 +14,10 @@ import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	dotJoin,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getTextContent,
+	renderCall,
+	renderRow,
 	termW,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -62,14 +62,14 @@ const TODO_COLOR: Record<TodoStatus, string> = {
 	blocked: "error",
 };
 
-export type TodoTheme = Parameters<typeof formatCollapsedToolRow>[0] & {
+export type TodoTheme = Parameters<typeof renderRow>[0] & {
 	fg: (color: string, text: string) => string;
 	bold: (text: string) => string;
 };
 
 /** One-line shared summary used once a card has collapsed. */
 export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme, width?: number): string {
-	if (!items.length) return formatCollapsedToolRow(theme, "todo", "empty", "", "success", width);
+	if (!items.length) return renderRow(theme, "todo", "empty", "", "success", width);
 	const done = items.filter((t) => t.status === "done").length;
 	const active = items.find((t) => t.status === "in_progress");
 	const blocked = items.filter((t) => t.status === "blocked").length;
@@ -82,7 +82,7 @@ export function renderTodoSummaryLine(items: TodoItem[], theme: TodoTheme, width
 	// Blocked work with nothing active is not a success — surface the warning glyph
 	// (text meta already names the block count) so status is not color-only.
 	const status = blocked > 0 && !active && done !== items.length ? "warning" : "success";
-	return formatCollapsedToolRow(theme, "todo", target, meta, status, width);
+	return renderRow(theme, "todo", target, meta, status, width);
 }
 
 /** Kanban columns in workflow order: To Do → In Progress → Done → Blocked. */
@@ -358,14 +358,11 @@ export default function registerTodo(pi: ExtensionAPI): void {
 			}),
 			// Show the `todo <action>` title like other tool calls. Hidden once the
 			// card collapses — the collapsed summary row already carries the title.
-			renderCall(args, theme, context) {
-				const state = context.state as CollapseState;
-				if (state?.collapsed && !context.expanded) return new Text("", 0, 0);
-				const t = theme as TodoTheme;
-				const action = (args as { action?: string })?.action ?? "";
-				const title = formatToolCallTitle(t, "todo", context);
-				return new Text(action ? `${title} ${t.fg("dim", action)}` : title, 0, 0);
-			},
+			renderCall: renderCall(
+				"todo",
+				() => "",
+				(args) => String(args.action ?? ""),
+			),
 			renderResult(result, options, theme, context) {
 				const details = result.details as TodoResultDetails | undefined;
 				const resultText = getTextContent(result);
@@ -383,7 +380,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 						)
 					) {
 						return new Text(
-							formatCollapsedToolRow(
+							renderRow(
 								theme as TodoTheme,
 								"todo",
 								resultText.split("\n")[0] ?? "",

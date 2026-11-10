@@ -33,7 +33,6 @@ import {
 	countRipgrepMatches,
 	fadeRulePaint,
 	fillToolBackground,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
@@ -42,8 +41,9 @@ import {
 	makeTextResult,
 	normalizeLineEndings,
 	pluralize,
-	renderCollapsedToolRow,
+	renderCollapsed,
 	renderDimPreview,
+	renderTitle,
 	renderToolError,
 	setResultDetails,
 	unframeToolResult,
@@ -345,7 +345,7 @@ export function registerGrepTool(
 				return text;
 			text.setText(
 				fillToolBackground(
-					`${formatToolCallTitle(theme, "grep", renderCtx)} ${theme.fg("dim", pattern)}${path}${glob}`,
+					`${renderTitle(theme, "grep", renderCtx)} ${theme.fg("dim", pattern)}${path}${glob}`,
 				),
 			);
 			return text;
@@ -377,7 +377,7 @@ export function registerGrepTool(
 				const target = d?._type === "grepResult" ? `“${d.pattern}”` : "";
 				const scope = d?._type === "grepResult" && d.path ? ` in ${sp(d.path)}` : "";
 				text.setText(
-					renderCollapsedToolRow(
+					renderCollapsed(
 						theme,
 						"grep",
 						`${target}${scope}`,

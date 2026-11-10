@@ -23,12 +23,12 @@ import {
 	MIN_PERMISSION_MODAL_HEIGHT,
 	type ModalPageKeybindings,
 	ModalPager,
-	modalOverlayOptions,
 	modalWidth,
 	selectListTheme,
 	terminalModalHeight,
 } from "./modal-frame.ts";
 import { createOverlayLifecycle } from "./overlay-lifecycle.ts";
+import { type UserPromptOptions, type UserPromptState, withUserPrompt } from "./user-prompt.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +51,7 @@ export interface OverlayChoice {
 }
 
 interface BaseConfig {
+	state?: UserPromptState;
 	signal?: AbortSignal;
 	/** Accent colour token (e.g. "error", "warning", "accent"). Default "accent". */
 	accent?: string;
@@ -124,7 +125,7 @@ export interface OverlayUI {
 			kb: unknown,
 			done: (v: T) => void,
 		) => OverlayComponent,
-		opts?: { overlay?: boolean; overlayOptions?: ReturnType<typeof modalOverlayOptions> },
+		opts?: UserPromptOptions,
 	): Promise<T | undefined>;
 }
 
@@ -278,172 +279,174 @@ export async function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise
 	const finish = lifecycle.finish;
 	try {
 		return (
-			(await ui.custom<OverlayResult>(
-				(tui, theme, kb, done) => {
-					const pageKeybindings = asPageKeybindings(kb);
-					type Stage = "select" | "password";
-					let stage: Stage = "select";
-					const validation = new AbortController();
-					let countdownLine: string | undefined;
-					let passwordStatus: string | undefined;
-					let passwordAttempts = 0;
-					let validatingPassword = false;
-					const pager = new ModalPager();
+			(await withUserPrompt(
+				{ kind: config.mode === "sudo" ? "auth" : "permission", message: config.title },
+				(options) =>
+					ui.custom<OverlayResult>((tui, theme, kb, done) => {
+						const pageKeybindings = asPageKeybindings(kb);
+						type Stage = "select" | "password";
+						let stage: Stage = "select";
+						const validation = new AbortController();
+						let countdownLine: string | undefined;
+						let passwordStatus: string | undefined;
+						let passwordAttempts = 0;
+						let validatingPassword = false;
+						const pager = new ModalPager();
 
-					// Dead-man's-switch timer: counts down only while untouched. The
-					// first keypress cancels it (user is present → let them decide). If
-					// it expires with no input, auto-deny so the agent isn't stuck.
-					const timeoutMs = config.timeoutMs ?? 0;
-					let remaining = Math.ceil(timeoutMs / 1000);
-					let timer: ReturnType<typeof setInterval> | undefined;
-					const cancelTimer = () => {
-						if (timer) clearInterval(timer);
-						timer = undefined;
-						countdownLine = undefined;
-					};
-
-					// ── components ──────────────────────────────────────────────────
-					const selectItems: SelectItem[] = choices.map((c) => ({
-						value: c.value,
-						label: c.label,
-						description: c.description,
-					}));
-
-					const selectList = new SelectList(
-						selectItems,
-						selectItems.length,
-						selectListTheme(theme, accent),
-					);
-					const maskedInput = new MaskedInput();
-
-					lifecycle.onCleanup(cancelTimer);
-					lifecycle.onCleanup(() => validation.abort());
-					lifecycle.bind(done);
-					lifecycle.onCleanup(onAbort(config.signal, () => finish({ action: "denied" })));
-
-					// Arm the dead-man's switch (only when a timeout was requested).
-					if (!lifecycle.closed && timeoutMs > 0) {
-						const urgencyColor = (s: number): string =>
-							s <= 5 ? "error" : s <= 15 ? "warning" : "muted";
-						const countdownText = (s: number): string => {
-							const color = urgencyColor(s);
-							const text = `auto-deny in ${s}s`;
-							return s <= 5 ? theme.bold(theme.fg(color, text)) : theme.fg(color, text);
+						// Dead-man's-switch timer: counts down only while untouched. The
+						// first keypress cancels it (user is present → let them decide). If
+						// it expires with no input, auto-deny so the agent isn't stuck.
+						const timeoutMs = config.timeoutMs ?? 0;
+						let remaining = Math.ceil(timeoutMs / 1000);
+						let timer: ReturnType<typeof setInterval> | undefined;
+						const cancelTimer = () => {
+							if (timer) clearInterval(timer);
+							timer = undefined;
+							countdownLine = undefined;
 						};
-						countdownLine = countdownText(remaining);
-						timer = setInterval(() => {
-							remaining -= 1;
-							if (remaining <= 0) {
-								finish({ action: "timeout" });
+
+						// ── components ──────────────────────────────────────────────────
+						const selectItems: SelectItem[] = choices.map((c) => ({
+							value: c.value,
+							label: c.label,
+							description: c.description,
+						}));
+
+						const selectList = new SelectList(
+							selectItems,
+							selectItems.length,
+							selectListTheme(theme, accent),
+						);
+						const maskedInput = new MaskedInput();
+
+						lifecycle.onCleanup(cancelTimer);
+						lifecycle.onCleanup(() => validation.abort());
+						lifecycle.bind(done);
+						lifecycle.onCleanup(onAbort(config.signal, () => finish({ action: "denied" })));
+
+						// Arm the dead-man's switch (only when a timeout was requested).
+						if (!lifecycle.closed && timeoutMs > 0) {
+							const urgencyColor = (s: number): string =>
+								s <= 5 ? "error" : s <= 15 ? "warning" : "muted";
+							const countdownText = (s: number): string => {
+								const color = urgencyColor(s);
+								const text = `auto-deny in ${s}s`;
+								return s <= 5 ? theme.bold(theme.fg(color, text)) : theme.fg(color, text);
+							};
+							countdownLine = countdownText(remaining);
+							timer = setInterval(() => {
+								remaining -= 1;
+								if (remaining <= 0) {
+									finish({ action: "timeout" });
+									return;
+								}
+								countdownLine = countdownText(remaining);
+								tui.requestRender();
+							}, 1000);
+						}
+
+						// ── event wiring ─────────────────────────────────────────────────
+						selectList.onSelect = (item) => {
+							if (!approveVals.includes(item.value)) {
+								finish({ action: "denied", choice: item.value });
+							} else if (config.mode === "sudo") {
+								stage = "password";
+								tui.requestRender();
+							} else {
+								finish({ action: "approved", choice: item.value });
+							}
+						};
+						selectList.onCancel = () => finish({ action: "denied" });
+
+						maskedInput.onSubmit = async (pw) => {
+							if (config.mode !== "sudo" || !config.validatePassword) {
+								finish({ action: "approved", password: pw });
 								return;
 							}
-							countdownLine = countdownText(remaining);
+							if (!pw.trim() || validatingPassword) return;
+
+							validatingPassword = true;
+							passwordStatus = "Checking password…";
 							tui.requestRender();
-						}, 1000);
-					}
-
-					// ── event wiring ─────────────────────────────────────────────────
-					selectList.onSelect = (item) => {
-						if (!approveVals.includes(item.value)) {
-							finish({ action: "denied", choice: item.value });
-						} else if (config.mode === "sudo") {
-							stage = "password";
-							tui.requestRender();
-						} else {
-							finish({ action: "approved", choice: item.value });
-						}
-					};
-					selectList.onCancel = () => finish({ action: "denied" });
-
-					maskedInput.onSubmit = async (pw) => {
-						if (config.mode !== "sudo" || !config.validatePassword) {
-							finish({ action: "approved", password: pw });
-							return;
-						}
-						if (!pw.trim() || validatingPassword) return;
-
-						validatingPassword = true;
-						passwordStatus = "Checking password…";
-						tui.requestRender();
-						let valid: boolean;
-						try {
-							valid = await config.validatePassword(pw, validation.signal);
-						} catch {
-							finish({ action: "denied" });
-							return;
-						}
-						if (lifecycle.closed) return;
-						validatingPassword = false;
-						if (valid) {
-							finish({ action: "approved", password: pw });
-							return;
-						}
-
-						passwordAttempts += 1;
-						const maxAttempts = config.maxPasswordAttempts ?? 3;
-						if (passwordAttempts >= maxAttempts) {
-							// Fail closed: a caller that ignores the flag must not run anything.
-							finish({ action: "denied", passwordAttemptsExhausted: true });
-							return;
-						}
-						maskedInput.setValue("");
-						passwordStatus = `Incorrect password — attempt ${passwordAttempts} of ${maxAttempts}`;
-						tui.requestRender();
-					};
-					maskedInput.onEscape = () => {
-						finish({ action: "denied" });
-					};
-
-					// ── component interface ──────────────────────────────────────────
-					return {
-						render: (w) => {
-							const mw = modalWidth(w);
-							const sections = buildSections({
-								theme,
-								accent,
-								config,
-								stage,
-								selectList,
-								maskedInput,
-								countdownLine,
-								passwordStatus,
-								width: mw,
-							});
-							const result = frameModal({
-								width: mw,
-								maxHeight: terminalModalHeight(tui.terminal?.rows),
-								minHeight: MIN_PERMISSION_MODAL_HEIGHT,
-								...sections,
-								bodyOffset: pager.bodyOffset,
-								color: (s) => theme.fg(accent, s),
-								bg: (s) => theme.bg("customMessageBg", s),
-								fg: (s) => theme.fg("text", s),
-								overflowLine: ({ page, totalPages }) =>
-									theme.fg("muted", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
-							});
-							pager.sync(result);
-							return result.lines;
-						},
-						invalidate: () => {},
-						handleInput: (data) => {
-							if (lifecycle.closed) return;
-							if (matchesKey(data, "escape")) {
+							let valid: boolean;
+							try {
+								valid = await config.validatePassword(pw, validation.signal);
+							} catch {
 								finish({ action: "denied" });
 								return;
 							}
-							cancelTimer(); // user is present — stop the auto-deny countdown
-							if (validatingPassword) return;
-							if (pager.handleInput(data, pageKeybindings, true)) {
-								tui.requestRender();
+							if (lifecycle.closed) return;
+							validatingPassword = false;
+							if (valid) {
+								finish({ action: "approved", password: pw });
 								return;
 							}
-							if (stage === "select") selectList.handleInput(data);
-							else maskedInput.handleInput(data);
+
+							passwordAttempts += 1;
+							const maxAttempts = config.maxPasswordAttempts ?? 3;
+							if (passwordAttempts >= maxAttempts) {
+								// Fail closed: a caller that ignores the flag must not run anything.
+								finish({ action: "denied", passwordAttemptsExhausted: true });
+								return;
+							}
+							maskedInput.setValue("");
+							passwordStatus = `Incorrect password — attempt ${passwordAttempts} of ${maxAttempts}`;
 							tui.requestRender();
-						},
-					};
-				},
-				{ overlay: true, overlayOptions: modalOverlayOptions() },
+						};
+						maskedInput.onEscape = () => {
+							finish({ action: "denied" });
+						};
+
+						// ── component interface ──────────────────────────────────────────
+						return {
+							render: (w) => {
+								const mw = modalWidth(w);
+								const sections = buildSections({
+									theme,
+									accent,
+									config,
+									stage,
+									selectList,
+									maskedInput,
+									countdownLine,
+									passwordStatus,
+									width: mw,
+								});
+								const result = frameModal({
+									width: mw,
+									maxHeight: terminalModalHeight(tui.terminal?.rows),
+									minHeight: MIN_PERMISSION_MODAL_HEIGHT,
+									...sections,
+									bodyOffset: pager.bodyOffset,
+									color: (s) => theme.fg(accent, s),
+									bg: (s) => theme.bg("customMessageBg", s),
+									fg: (s) => theme.fg("text", s),
+									overflowLine: ({ page, totalPages }) =>
+										theme.fg("muted", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
+								});
+								pager.sync(result);
+								return result.lines;
+							},
+							invalidate: () => {},
+							handleInput: (data) => {
+								if (lifecycle.closed) return;
+								if (matchesKey(data, "escape")) {
+									finish({ action: "denied" });
+									return;
+								}
+								cancelTimer(); // user is present — stop the auto-deny countdown
+								if (validatingPassword) return;
+								if (pager.handleInput(data, pageKeybindings, true)) {
+									tui.requestRender();
+									return;
+								}
+								if (stage === "select") selectList.handleInput(data);
+								else maskedInput.handleInput(data);
+								tui.requestRender();
+							},
+						};
+					}, options),
+				config.state,
 			)) ?? { action: "denied" }
 		);
 	} finally {

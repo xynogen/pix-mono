@@ -36,13 +36,13 @@ import {
 	BODY_PAD,
 	dotJoin,
 	fillToolBackground,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
-	renderCollapsedToolRow,
+	renderCollapsed,
+	renderTitle,
 	renderToolError,
 	setResultDetails,
 	termW,
@@ -690,7 +690,7 @@ export function registerEditTool(
 				)
 			)
 				return text;
-			const hdr = `${formatToolCallTitle(theme, "edit", renderCtx)} ${theme.fg("dim", sp(fp))}`;
+			const hdr = `${renderTitle(theme, "edit", renderCtx)} ${theme.fg("dim", sp(fp))}`;
 
 			if (Array.isArray(args.edits) && args.edits.some((edit) => "pos" in edit)) {
 				text.setText(
@@ -753,7 +753,7 @@ export function registerEditTool(
 					filePath = String(ops?.[0]?.filePath ?? "");
 				}
 				text.setText(
-					renderCollapsedToolRow(
+					renderCollapsed(
 						theme,
 						"edit",
 						sp(filePath),

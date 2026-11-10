@@ -18,10 +18,10 @@ import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
@@ -141,7 +141,7 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { operation?: string; path?: string; query?: string };
-			const title = formatToolCallTitle(t, "lsp_navigation", context);
+			const title = renderTitle(t, "lsp_navigation", context);
 			const op = t.fg("muted", a.operation ?? "");
 			const target = a.path ? t.fg("dim", a.path) : a.query ? t.fg("dim", `“${a.query}”`) : "";
 			return new Text(`${title} ${op} ${target}`.trimEnd(), 0, 0);
@@ -166,7 +166,7 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						t,
 						"lsp_navigation",
 						details.operation,

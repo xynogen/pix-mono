@@ -1,7 +1,7 @@
 {
 	"name": "@xynogen/pix-python",
 	"version": "0.2.4",
-	"description": "Pi tool — python_run: run a local Python snippet behind an approval prompt, with indentation repair and a clean card",
+	"description": "Pi tool — python_run: run local Python snippets as the current user, with indentation repair and a clean card",
 	"type": "module",
 	"main": "src/index.ts",
 	"exports": {

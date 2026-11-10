@@ -21,11 +21,11 @@ import { grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	dotJoin,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { formatDuration, SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -453,23 +453,23 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					scope?: string;
 					module?: string;
 				};
-				const title = formatToolCallTitle(t, "graph", context);
+				const title = renderTitle(t, "graph", context, a.action ?? "build");
 				if (a.action === "query") {
 					const trav = a.scope === "global" ? "global" : a.dfs ? "dfs" : "bfs";
 					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
-					return new Text(`${title} ${t.fg("muted", `query · ${trav}`)} ${q}`, 0, 0);
+					return new Text(`${title} ${q} ${t.fg("muted", `· ${trav}`)}`, 0, 0);
 				}
 				if (a.action === "impact") {
 					const q = a.question ? t.fg("dim", `“${a.question}”`) : "";
 					const scope = a.path ? ` ${t.fg("muted", `in ${a.path}`)}` : "";
-					return new Text(`${title} ${t.fg("muted", "impact")} ${q}${scope}`, 0, 0);
+					return new Text(`${title} ${q}${scope}`, 0, 0);
 				}
 				if (a.action === "summarize") {
 					const target = a.module ? ` ${t.fg("dim", a.module)}` : "";
-					return new Text(`${title} ${t.fg("dim", "summarize")}${target}`, 0, 0);
+					return new Text(`${title}${target}`, 0, 0);
 				}
 				const target = a.path ? t.fg("dim", a.path) : t.fg("dim", ".");
-				return new Text(`${title} ${t.fg("dim", "build")} ${target}`, 0, 0);
+				return new Text(`${title} ${target}`, 0, 0);
 			},
 
 			renderResult(result, options, theme, context) {
@@ -505,7 +505,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 					)
 				)
 					return new Text(
-						formatCollapsedToolRow(
+						renderRow(
 							t,
 							"graph",
 							details.action,

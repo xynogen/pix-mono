@@ -108,9 +108,8 @@ test("SSH self-shell command, file, info and result states", async () => {
 		captures.wrap120 = await call(long, 120);
 		captures.multiline = await call({ ...target, command: "printf 'first'\nprintf 'second'" });
 		captures.file = await call({
-			action: "file",
+			action: "upload",
 			host: "node.invalid",
-			direction: "upload",
 			source: "./fixture",
 			destination: "/fixture",
 		});
@@ -284,8 +283,7 @@ test("SSH package command and overwrite approval components, login then remote s
 				sudo: mode === "passwords",
 				...(mode === "upload" || mode === "download"
 					? {
-							action: "file",
-							direction: mode,
+							action: mode,
 							source: "./fixture",
 							destination: "/fixture",
 							recursive: mode === "upload",

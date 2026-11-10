@@ -6,13 +6,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, renderCall } from "@xynogen/pix-pretty/utils";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { voiceConfig, voiceModel } from "./config.ts";
 import { resolveProvider } from "./providers.ts";
-import { makeRenderCall, makeRenderResult } from "./render.ts";
+import { makeRenderResult } from "./render.ts";
 
 const CHAT_TRUNCATE_LIMIT = 50_000; // only when no output_file is provided
 
@@ -176,7 +176,7 @@ export default function registerTranscribe(pi: ExtensionAPI): void {
 		renderShell: "self",
 		description: "Transcribe an audio file to text through the configured voice provider.",
 		promptSnippet: "transcribe(file, output_file?, language?)",
-		renderCall: makeRenderCall("transcribe", (args) => basename(String(args.file ?? ""))),
+		renderCall: renderCall("transcribe", (args) => basename(String(args.file ?? ""))),
 		renderResult: (result, options, theme, context) =>
 			renderTerminal(result, options, theme, {
 				...context,

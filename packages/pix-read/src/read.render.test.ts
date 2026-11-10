@@ -126,18 +126,35 @@ it("captures registered read pending, completed, expanded and non-text states", 
 		captures.image = await render(image);
 		captures.collapsedImage = await render(image, { collapsed: true });
 		expect(image.content).toEqual([{ type: "image", data: "AAAA", mimeType: "image/png" }]);
-		captures.batch = await render({
+		const batch: ToolResultLike = {
 			content: [],
 			details: {
 				_type: "readBatch",
-				index: "3 files",
+				index: "4 files",
 				items: [
-					{ _type: "readFile", filePath: "one.txt", content: "one", offset: 1, lineCount: 1 },
+					{
+						_type: "readFile",
+						filePath: "worker.py",
+						content: "from __future__ import annotations\nimport asyncio",
+						offset: 7,
+						lineCount: 2,
+					},
+					{
+						_type: "readFile",
+						filePath: "config.ts",
+						content: "const limit = 3;",
+						offset: 1,
+						lineCount: 1,
+					},
 					{ _type: "readImage", filePath: "image.png", data: "AAAA", mimeType: "image/png" },
 					{ _type: "readError", filePath: "missing.txt", message: "ENOENT: missing.txt" },
 				],
 			},
-		});
+		};
+		captures.batch = await preview(true, batch, theme, false);
+		expect(captures.batch.join("\n")).toContain("<syntaxKeyword>from</syntaxKeyword>");
+		expect(captures.batch.join("\n")).toContain("<syntaxKeyword>const</syntaxKeyword>");
+		expect(captures.batch.join("\n")).toContain("ENOENT: missing.txt");
 		const error = file("ENOENT: sample.ts");
 		captures.error = await render(error, { isError: true });
 		captures.collapsedError = await render(error, { collapsed: true, isError: true });

@@ -22,14 +22,13 @@ import { Text } from "@earendil-works/pi-tui";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
-	hideCollapsedToolCall,
+	renderCall,
+	renderRow,
 } from "@xynogen/pix-pretty/utils";
-import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
@@ -119,15 +118,11 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				},
 			),
 			renderShell: "self",
-			renderCall(args, theme, context) {
-				if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
-					return new Text("", 0, 0);
-				return new Text(
-					`${formatToolCallTitle(theme, "read_env", context)} ${theme.fg("dim", String(args.action))}`,
-					0,
-					0,
-				);
-			},
+			renderCall: renderCall(
+				"read_env",
+				() => "",
+				(args) => String(args.action ?? ""),
+			),
 			renderResult(result, _options, theme, renderCtx) {
 				const details = result.details as
 					| { action?: string; types?: Record<string, "boolean" | "int" | "float" | "string"> }
@@ -151,7 +146,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 					)
 				)
 					return new Text(
-						formatCollapsedToolRow(
+						renderRow(
 							theme,
 							"read_env",
 							details?.action ?? "",
@@ -188,26 +183,25 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 							throw new Error("env writes require interactive user approval");
 						const result = nuclear
 							? { action: "approved" }
-							: await withAgentBlock(pi.events, "read_env", "env write approval", () =>
-									showOverlay(ctx.ui, {
-										signal,
-										mode: "confirm",
-										icon: icon("secret"),
-										title: `${params.action === "add" ? "Add" : "Edit"} Environment Variable`,
-										body: [
-											`File: ${path}`,
-											`Variable: ${params.name}`,
-											"Values are hidden. Other assignments are preserved.",
-										],
-										accent: "warning",
-										timeoutMs: 30_000,
-										choices: [
-											{ value: "no", label: "Deny", description: "Keep file unchanged" },
-											{ value: "yes", label: "Write", description: `Save ${params.name}` },
-										],
-										approveValue: "yes",
-									}),
-								);
+							: await showOverlay(ctx.ui, {
+									state: { events: pi.events, source: "read_env", message: "env write approval" },
+									signal,
+									mode: "confirm",
+									icon: icon("secret"),
+									title: `${params.action === "add" ? "Add" : "Edit"} Environment Variable`,
+									body: [
+										`File: ${path}`,
+										`Variable: ${params.name}`,
+										"Values are hidden. Other assignments are preserved.",
+									],
+									accent: "warning",
+									timeoutMs: 30_000,
+									choices: [
+										{ value: "no", label: "Deny", description: "Keep file unchanged" },
+										{ value: "yes", label: "Write", description: `Save ${params.name}` },
+									],
+									approveValue: "yes",
+								});
 						signal?.throwIfAborted();
 						if (result.action !== "approved")
 							return {
@@ -295,25 +289,28 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				const list = names.sort((a, b) => a.localeCompare(b)).join(", ");
 				const result = nuclear
 					? { action: "approved" }
-					: await withAgentBlock(pi.events, "read_env", "secret disclosure approval", () =>
-							showOverlay(ctx.ui, {
-								signal,
-								mode: "confirm",
-								icon: icon("secret"),
-								title: `Reveal Environment Value${names.length > 1 ? "s" : ""}`,
-								body: [
-									`Variables: ${list}`,
-									"Warning: approved values enter model context and session transcript.",
-								],
-								accent: "error",
-								timeoutMs: 30_000,
-								choices: [
-									{ value: "no", label: "Deny", description: "Keep values hidden" },
-									{ value: "yes", label: "Reveal", description: `Expose only ${list}` },
-								],
-								approveValue: "yes",
-							}),
-						);
+					: await showOverlay(ctx.ui, {
+							state: {
+								events: pi.events,
+								source: "read_env",
+								message: "secret disclosure approval",
+							},
+							signal,
+							mode: "confirm",
+							icon: icon("secret"),
+							title: `Reveal Environment Value${names.length > 1 ? "s" : ""}`,
+							body: [
+								`Variables: ${list}`,
+								"Warning: approved values enter model context and session transcript.",
+							],
+							accent: "error",
+							timeoutMs: 30_000,
+							choices: [
+								{ value: "no", label: "Deny", description: "Keep values hidden" },
+								{ value: "yes", label: "Reveal", description: `Expose only ${list}` },
+							],
+							approveValue: "yes",
+						});
 				signal?.throwIfAborted();
 				if (result.action !== "approved") {
 					return {
@@ -402,25 +399,24 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				};
 			}
 
-			const result = await withAgentBlock(pi.events, "pix-env", "secret approval", () =>
-				showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
-					mode: "confirm",
-					icon: icon("secret"),
-					title: `Inject Secret${keys.length > 1 ? "s" : ""} — ${list}`,
-					body: [
-						`Tool "${event.toolName}" will receive the real value of: ${list}`,
-						...`Command: ${secretTarget(event.input)}`.split("\n"),
-						"Value is not shown here and stays out of your transcript unless the tool echoes it.",
-						`${icon("status.warn")} Warning: a tool that prints or logs its input (echo, cat, curl -v, error output) can leak the value into the transcript, files, or the network. Only inject into commands you trust with the real secret.`,
-					],
-					accent: "warning",
-					timeoutMs: 30_000,
-					choices: [
-						{ value: "yes", label: "Inject", description: "Resolve and run" },
-						{ value: "no", label: "Deny", description: "Block the tool call" },
-					],
-				}),
-			);
+			const result = await showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
+				state: { events: pi.events, source: "pix-env", message: "secret approval" },
+				mode: "confirm",
+				icon: icon("secret"),
+				title: `Inject Secret${keys.length > 1 ? "s" : ""} — ${list}`,
+				body: [
+					`Tool "${event.toolName}" will receive the real value of: ${list}`,
+					...`Command: ${secretTarget(event.input)}`.split("\n"),
+					"Value is not shown here and stays out of your transcript unless the tool echoes it.",
+					`${icon("status.warn")} Warning: a tool that prints or logs its input (echo, cat, curl -v, error output) can leak the value into the transcript, files, or the network. Only inject into commands you trust with the real secret.`,
+				],
+				accent: "warning",
+				timeoutMs: 30_000,
+				choices: [
+					{ value: "yes", label: "Inject", description: "Resolve and run" },
+					{ value: "no", label: "Deny", description: "Block the tool call" },
+				],
+			});
 
 			if (result.action !== "approved") {
 				const why = result.action === "timeout" ? "timed out" : "denied by user";

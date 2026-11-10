@@ -73,7 +73,11 @@ describe("showOverlay — confirm mode", () => {
 			),
 			{ mode: "confirm", title: "T" },
 		);
-		expect(options).toEqual({ overlay: true, overlayOptions: modalOverlayOptions() });
+		expect(options).toEqual({
+			overlay: true,
+			overlayOptions: modalOverlayOptions(),
+			blocked: { kind: "permission", message: "T" },
+		});
 	});
 
 	test("selecting the approve choice (first) returns approved", async () => {

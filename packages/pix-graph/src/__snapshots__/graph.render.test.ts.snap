@@ -4,11 +4,11 @@ exports[`captures actual graph calls, progress, trees and terminal result states
 {
   "bfs": [
     "",
-    "<warning>◐︎ </warning> <toolTitle+bold>graph</toolTitle+bold> <muted>query · bfs</muted> <dim>“What calls authenticate?”</dim>                                 ",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph query</toolTitle+bold> <dim>“What calls authenticate?”</dim> <muted>· bfs</muted>                                 ",
   ],
   "build": [
     "",
-    "<warning>◐︎ </warning> <toolTitle+bold>graph</toolTitle+bold> <dim>build</dim> <dim>src</dim>                                                              ",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph build</toolTitle+bold> <dim>src</dim>                                                              ",
   ],
   "built": [
     "",
@@ -26,8 +26,8 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   ],
   "dfs": [
     "",
-    "<warning>◐︎ </warning> <toolTitle+bold>graph</toolTitle+bold> <muted>query · dfs</muted> <dim>“Trace authenticate to the token cache and show each       </dim>",
-    "<dim>dependency across the request path.”</dim>                                            ",
+    "<warning>◐︎ </warning> <toolTitle+bold>graph query</toolTitle+bold> <dim>“Trace authenticate to the token cache and show each dependency  </dim>",
+    "<dim>across the request path.”</dim> <muted>· dfs</muted>                                                 ",
   ],
   "empty": [
     "",

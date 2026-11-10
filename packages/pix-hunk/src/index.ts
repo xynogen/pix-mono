@@ -3,11 +3,10 @@ import { Text } from "@earendil-works/pi-tui";
 import { reportToolStatus, type ToolStatusUI } from "@xynogen/pix-pretty/tool-status";
 import {
 	dotJoin,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
-	hideCollapsedToolCall,
+	renderCall,
+	renderRow,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { runTool } from "@xynogen/pix-runtime/exec";
@@ -396,7 +395,7 @@ function renderSummary(details: HunkResultDetails, theme: HunkTheme): string {
 		`${details.results.length} ops`,
 		comments > 0 && `${comments} comment${comments === 1 ? "" : "s"}`,
 	]);
-	return formatCollapsedToolRow(
+	return renderRow(
 		theme,
 		"hunk",
 		actionSummary(actions),
@@ -470,20 +469,11 @@ export default function registerHunk(pi: ExtensionAPI, runner: HunkRunner = runH
 				}),
 			),
 		}),
-		renderCall(args, theme, context) {
-			const text = new Text("", 0, 0);
-			if (
-				hideCollapsedToolCall(context.state as CollapseState, context.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
-			const actions = ((args as { ops?: ToolOp[] }).ops ?? []).map((op) => op.action);
-			text.setText(
-				`${formatToolCallTitle(theme, "hunk", context)} ${theme.fg("dim", actionSummary(actions))}`,
-			);
-			return text;
-		},
+		renderCall: renderCall(
+			"hunk",
+			() => "",
+			(args) => actionSummary(((args.ops as ToolOp[] | undefined) ?? []).map((op) => op.action)),
+		),
 		renderResult(result, options, theme, context) {
 			const text = new Text("", 0, 0);
 			const details = result.details as HunkResultDetails | undefined;

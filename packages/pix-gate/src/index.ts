@@ -19,8 +19,9 @@
  *                                    (never for chained commands or the circuit breaker)
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
+import { PATH_ACCESS, type PathDecision, type PathRequest } from "@xynogen/pix-runtime/path-access";
 import {
 	buildRules,
 	canAutoApprove,
@@ -82,57 +83,78 @@ export default function (pi: ExtensionAPI): void {
 	};
 	const DIR_TOOLS = new Set(["grep", "find", "ls"]);
 	const PATH_ORDER = { block: 0, warn: 1, info: 2 } as const;
-	pi.on("tool_call", async (event, ctx) => {
-		if (getUnattendedMode(pi.events) === "nuclear") return undefined;
-		const tool = String(event.toolName);
-		const op = PATH_TOOLS[tool];
-		if (!op) return undefined;
-		const input = event.input as Record<string, unknown>;
-
-		// `paths` is the batch form of pix-read / pix-ls.
-		const raw = [input.path, input.file_path, ...(Array.isArray(input.paths) ? input.paths : [])];
-		const targets = raw.filter((p): p is string => typeof p === "string" && p.length > 0);
+	const checkPaths = async (
+		targets: string[],
+		op: "read" | "write",
+		ctx: ExtensionContext,
+		signal?: AbortSignal,
+	): Promise<PathDecision> => {
+		if (getUnattendedMode(pi.events) === "nuclear")
+			return { approved: true, reason: "Nuclear mode" };
 		const hits = targets
-			.flatMap((p) => (DIR_TOOLS.has(tool) ? [p, `${p.replace(/[\\/]$/, "")}/`] : [p]))
 			.map((p) => ({ p, h: classifyPath(p, op, pathRules) }))
 			.filter((x): x is { p: string; h: NonNullable<typeof x.h> } => x.h !== undefined)
 			.sort((a, b) => PATH_ORDER[a.h.severity] - PATH_ORDER[b.h.severity]);
 		const top = hits[0];
-		if (!top) return undefined;
+		if (!top) return { approved: true, reason: "No protected path" };
 		const { p: path, h: hit } = top;
 
 		if (hit.severity === "info") {
 			ctx.ui.notify(`${PATH_SEVERITY_ICON.info} ${hit.reason}: ${path}`, "info");
-			return undefined;
+			return { approved: true, reason: hit.reason };
 		}
 
 		const unattended = unattendedGateDecision(pi.events, hit.severity === "block" ? 4 : 2);
-		if (unattended === "allow") return undefined;
+		if (unattended === "allow") return { approved: true, reason: "Auto-approved" };
 		if (unattended === "deny") {
 			return {
-				block: true,
+				approved: false,
 				reason: `[AFK][PATH:${hit.severity.toUpperCase()}] ${hit.reason}`,
 			};
 		}
 
 		if (!ctx.hasUI)
 			return {
-				block: true,
+				approved: false,
 				reason: `[PATH:${hit.severity.toUpperCase()}] ${hit.reason} (no UI)`,
 			};
 
-		const decision = await withAgentBlock(
-			pi.events,
-			"gate",
-			`${hit.severity.toUpperCase()} path approval required`,
-			() => promptPathDecision(ctx.ui, hit, op, path),
+		const decision = await promptPathDecision(
+			ctx.ui,
+			hit,
+			op,
+			path,
+			{
+				events: pi.events,
+				source: "gate",
+				message: `${hit.severity.toUpperCase()} path approval required`,
+			},
+			signal,
 		);
 		if (!decision.approved)
 			return {
-				block: true,
+				approved: false,
 				reason: `[PATH] ${decision.reason}: ${hit.reason}`,
 			};
-		return undefined;
+		return decision;
+	};
+
+	pi.events.on(PATH_ACCESS, (raw) => {
+		const request = raw as PathRequest;
+		request.decision = checkPaths(request.paths, request.op, request.context, request.signal);
+	});
+
+	pi.on("tool_call", async (event, ctx) => {
+		const tool = String(event.toolName);
+		const op = PATH_TOOLS[tool];
+		if (!op) return undefined;
+		const input = event.input as Record<string, unknown>;
+		const raw = [input.path, input.file_path, ...(Array.isArray(input.paths) ? input.paths : [])];
+		const targets = raw
+			.filter((p): p is string => typeof p === "string" && p.length > 0)
+			.flatMap((p) => (DIR_TOOLS.has(tool) ? [p, `${p.replace(/[\\/]$/, "")}/`] : [p]));
+		const decision = await checkPaths(targets, op, ctx);
+		return decision.approved ? undefined : { block: true, reason: decision.reason };
 	});
 
 	// ── Unified bash gate (path + command concerns in ONE dialog) ───────────
@@ -269,34 +291,37 @@ export default function (pi: ExtensionAPI): void {
 		// Single concern → use existing targeted dialog. Multiple → merged.
 		let decision: GateDecision;
 		if (concerns.length === 1 && cmdHit) {
-			decision = await withAgentBlock(
-				pi.events,
-				"gate",
-				`${highest.label} command approval required`,
-				() => promptGateDecision(ctx.ui, cmdHit, command),
-			);
+			decision = await promptGateDecision(ctx.ui, cmdHit, command, {
+				events: pi.events,
+				source: "gate",
+				message: `${highest.label} command approval required`,
+			});
 		} else if (concerns.length === 1 && !cmdHit) {
 			// Single path hit — reuse path dialog
 			const ph = candidates
 				.map((p) => ({ p, h: classifyPath(p, opFor(p), pathRules) }))
 				.find((x) => x.h?.severity !== "info" && x.h);
 			if (ph?.h) {
-				decision = await withAgentBlock(
-					pi.events,
-					"gate",
-					`${highest.label} path approval required`,
-					() => promptPathDecision(ctx.ui, ph.h as NonNullable<typeof ph.h>, "bash read", ph.p),
+				decision = await promptPathDecision(
+					ctx.ui,
+					ph.h as NonNullable<typeof ph.h>,
+					"bash read",
+					ph.p,
+					{
+						events: pi.events,
+						source: "gate",
+						message: `${highest.label} path approval required`,
+					},
 				);
 			} else {
 				return undefined;
 			}
 		} else {
-			decision = await withAgentBlock(
-				pi.events,
-				"gate",
-				`${highest.label} command approval required`,
-				() => promptMergedGateDecision(ctx.ui, concerns, command),
-			);
+			decision = await promptMergedGateDecision(ctx.ui, concerns, command, {
+				events: pi.events,
+				source: "gate",
+				message: `${highest.label} command approval required`,
+			});
 		}
 
 		if (!decision.approved) {

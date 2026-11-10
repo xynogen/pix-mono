@@ -46,6 +46,15 @@ async function run(
 }
 
 describe("gate flow", () => {
+	test("Python source is never classified as a shell command", async () => {
+		expect(
+			await run(
+				"python_run",
+				{ code: 'print("sudo rm -rf /; git push --force")' },
+				{ tools: ["sudo_run"] },
+			),
+		).toEqual({ result: undefined, dialogs: 0 });
+	});
 	test("nuclear skips redirects, circuit breakers, and path approval without dialogs", async () => {
 		for (const tool of [
 			"bash",

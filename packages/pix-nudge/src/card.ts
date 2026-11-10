@@ -33,7 +33,7 @@ type CardTheme = {
 	bold: (text: string) => string;
 };
 
-/** Same layout as pix-pretty `formatCollapsedToolRow`, with a hint icon instead of a status. */
+/** Same layout as pix-pretty `renderRow`, with a hint icon instead of a status. */
 export function nudgeRow(card: Pick<NudgeCard, "kind" | "summary">, theme: CardTheme): string {
 	return [
 		`${theme.fg("accent", padIcon(icon("nudge")))} ${theme.fg("toolTitle", theme.bold("nudge"))}`,

@@ -358,6 +358,34 @@ describe("truncate", () => {
 });
 
 describe("ssh call renderer", () => {
+	it("exposes upload and download as actions without a direction parameter", () => {
+		let tool!: {
+			parameters: { properties: Record<string, any> };
+			renderCall: (...args: any[]) => { render(width: number): string[] };
+		};
+		registerSsh({
+			registerTool(value: typeof tool) {
+				tool = value;
+			},
+		} as unknown as ExtensionAPI);
+		expect(
+			tool.parameters.properties.action.anyOf.map((value: { const: string }) => value.const),
+		).toEqual(["command", "upload", "download", "info"]);
+		expect(tool.parameters.properties).not.toHaveProperty("direction");
+		const theme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
+		for (const action of ["upload", "download"]) {
+			const rendered = tool
+				.renderCall({ action, host: "host", source: "a", destination: "b" }, theme, {
+					state: {},
+					expanded: false,
+					invalidate() {},
+				})
+				.render(80)
+				.join("\n");
+			expect(rendered).toContain(`ssh ${action} host`);
+			expect(rendered).not.toContain("ssh file");
+		}
+	});
 	it("separates the host and wraps highlighted commands at the viewport width", async () => {
 		let call: ((...args: unknown[]) => { render(width: number): string[] }) | undefined;
 		registerSsh({

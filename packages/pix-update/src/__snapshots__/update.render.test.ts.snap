@@ -74,7 +74,7 @@ exports[`captures registered update progress and completion with a guarded runne
   ],
   "successNotice2": [
     "",
-    " <dim>Pi packages updated.</dim>                                                           ",
+    " <dim>Pi package update finished.</dim>                                                    ",
   ],
   "successNotice3": [
     "",

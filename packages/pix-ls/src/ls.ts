@@ -29,12 +29,12 @@ import {
 	BODY_PAD,
 	fadeRulePaint,
 	fillToolBackground,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
-	renderCollapsedToolRow,
+	renderCollapsed,
+	renderTitle,
 	renderToolError,
 	ruleFrame,
 	setResultDetails,
@@ -178,9 +178,7 @@ export function registerLsTool(
 			)
 				return text;
 			text.setText(
-				fillToolBackground(
-					`${formatToolCallTitle(theme, "ls", renderCtx)} ${theme.fg("dim", sp(fp))}`,
-				),
+				fillToolBackground(`${renderTitle(theme, "ls", renderCtx)} ${theme.fg("dim", sp(fp))}`),
 			);
 			return text;
 		},
@@ -215,7 +213,7 @@ export function registerLsTool(
 							? sp(String(d.path ?? "."))
 							: ".";
 				text.setText(
-					renderCollapsedToolRow(
+					renderCollapsed(
 						theme,
 						"ls",
 						target,

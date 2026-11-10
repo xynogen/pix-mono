@@ -161,7 +161,7 @@ test("unattended transfers stay unblocked; a missing login password still prompt
 		setUnattendedMode(events, mode);
 		const result = await execute(
 			"transfer",
-			{ action: "file", host: "transfer-host", direction: "upload", source: "a", destination: "b" },
+			{ action: "upload", host: "transfer-host", source: "a", destination: "b" },
 			undefined,
 			undefined,
 			ctx,
@@ -196,9 +196,8 @@ test("nuclear skips command and transfer approval but still prompts for missing 
 	for (const params of [
 		{ action: "command", host: "nuclear-command", command: "sudo id", sudo: true },
 		{
-			action: "file",
+			action: "upload",
 			host: "nuclear-transfer",
-			direction: "upload",
 			source: "a",
 			destination: "b",
 		},

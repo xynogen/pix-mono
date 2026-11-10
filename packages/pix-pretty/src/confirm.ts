@@ -10,12 +10,12 @@ import {
 	frameModal,
 	MIN_PERMISSION_MODAL_HEIGHT,
 	ModalPager,
-	modalOverlayOptions,
 	modalWidth,
 	selectListTheme,
 	terminalModalHeight,
 } from "./modal-frame.ts";
 import { createOverlayLifecycle } from "./overlay-lifecycle.ts";
+import { type UserPromptOptions, type UserPromptState, withUserPrompt } from "./user-prompt.ts";
 
 // Minimal structural type for the `ctx.ui.custom` host call.
 interface CustomTheme {
@@ -39,11 +39,12 @@ export interface ConfirmUI {
 			kb: KeybindingsManager,
 			done: (v: T) => void,
 		) => CustomComponent,
-		opts?: { overlay?: boolean; overlayOptions?: ReturnType<typeof modalOverlayOptions> },
+		opts?: UserPromptOptions,
 	): Promise<T | undefined>;
 }
 
 export interface ConfirmOptions {
+	state?: UserPromptState;
 	/** Optional leading glyph for the title row, e.g. `icon("update")`. Rendered
 	 *  as "<icon> <title>" so callers pass a resolved icon + plain text. */
 	icon?: string;
@@ -77,97 +78,99 @@ export async function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promi
 		const timer = timeoutMs > 0 ? setTimeout(() => finish(false), timeoutMs) : undefined;
 		lifecycle.onCleanup(() => clearTimeout(timer));
 		return (
-			(await ui.custom<boolean>(
-				(tui, theme, kb, done) => {
-					let ticker: ReturnType<typeof setInterval> | undefined;
-					let countdownLine: string | undefined;
-					const pager = new ModalPager();
-					lifecycle.onCleanup(() => clearInterval(ticker));
-					lifecycle.bind(done);
+			(await withUserPrompt(
+				{ kind: "permission", message: opts.title },
+				(options) =>
+					ui.custom<boolean>((tui, theme, kb, done) => {
+						let ticker: ReturnType<typeof setInterval> | undefined;
+						let countdownLine: string | undefined;
+						const pager = new ModalPager();
+						lifecycle.onCleanup(() => clearInterval(ticker));
+						lifecycle.bind(done);
 
-					const choices: SelectItem[] = [
-						{
-							value: "yes",
-							label: opts.confirmLabel ?? "Yes",
-							description: "Proceed",
-						},
-						{
-							value: "no",
-							label: opts.denyLabel ?? "No",
-							description: "Cancel",
-						},
-					];
+						const choices: SelectItem[] = [
+							{
+								value: "yes",
+								label: opts.confirmLabel ?? "Yes",
+								description: "Proceed",
+							},
+							{
+								value: "no",
+								label: opts.denyLabel ?? "No",
+								description: "Cancel",
+							},
+						];
 
-					const selectList = new SelectList(
-						choices,
-						choices.length,
-						selectListTheme(theme, accent),
-					);
+						const selectList = new SelectList(
+							choices,
+							choices.length,
+							selectListTheme(theme, accent),
+						);
 
-					selectList.onSelect = (item) => finish(item.value === "yes");
-					selectList.onCancel = () => finish(false);
-					if (!lifecycle.closed && timeoutMs > 0) {
-						const deadlineMs = Date.now() + timeoutMs;
-						const updateCountdown = () => {
-							const remaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / SECOND_MS));
-							countdownLine =
-								theme.fg("muted", "Auto-cancel in ") +
-								theme.fg(remaining <= COUNTDOWN_WARN_S ? accent : "muted", `${remaining}s`);
-						};
-						updateCountdown();
-						ticker = setInterval(() => {
+						selectList.onSelect = (item) => finish(item.value === "yes");
+						selectList.onCancel = () => finish(false);
+						if (!lifecycle.closed && timeoutMs > 0) {
+							const deadlineMs = Date.now() + timeoutMs;
+							const updateCountdown = () => {
+								const remaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / SECOND_MS));
+								countdownLine =
+									theme.fg("muted", "Auto-cancel in ") +
+									theme.fg(remaining <= COUNTDOWN_WARN_S ? accent : "muted", `${remaining}s`);
+							};
 							updateCountdown();
-							tui.requestRender();
-						}, SECOND_MS);
-					}
-
-					return {
-						render: (w: number) => {
-							const mw = modalWidth(w);
-							const inner = mw - 4;
-							const footer = [theme.fg("muted", "─".repeat(inner))];
-							if (countdownLine !== undefined) footer.push(countdownLine);
-							footer.push(...selectList.render(inner));
-							footer.push("");
-							footer.push(
-								theme.fg("muted", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc cancel"),
-							);
-
-							const result = frameModal({
-								width: mw,
-								maxHeight: terminalModalHeight(tui.terminal?.rows),
-								minHeight: MIN_PERMISSION_MODAL_HEIGHT,
-								header: [
-									theme.fg(
-										accent,
-										theme.bold(opts.icon ? `${opts.icon} ${opts.title}` : opts.title),
-									),
-								],
-								body: (opts.body ?? []).map((line) => theme.fg("text", line)),
-								footer,
-								bodyOffset: pager.bodyOffset,
-								color: (s) => theme.fg(accent, s),
-								bg: (s) => theme.bg("customMessageBg", s),
-								fg: (s) => theme.fg("text", s),
-								overflowLine: ({ page, totalPages }) =>
-									theme.fg("muted", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
-							});
-							pager.sync(result);
-							return result.lines;
-						},
-						invalidate: () => {},
-						handleInput: (data: string) => {
-							if (lifecycle.closed) return;
-							if (pager.handleInput(data, kb, true)) {
+							ticker = setInterval(() => {
+								updateCountdown();
 								tui.requestRender();
-								return;
-							}
-							selectList.handleInput(data);
-							tui.requestRender();
-						},
-					};
-				},
-				{ overlay: true, overlayOptions: modalOverlayOptions() },
+							}, SECOND_MS);
+						}
+
+						return {
+							render: (w: number) => {
+								const mw = modalWidth(w);
+								const inner = mw - 4;
+								const footer = [theme.fg("muted", "─".repeat(inner))];
+								if (countdownLine !== undefined) footer.push(countdownLine);
+								footer.push(...selectList.render(inner));
+								footer.push("");
+								footer.push(
+									theme.fg("muted", "↑↓ choose • ←→/PgUp/PgDn inspect • enter select • esc cancel"),
+								);
+
+								const result = frameModal({
+									width: mw,
+									maxHeight: terminalModalHeight(tui.terminal?.rows),
+									minHeight: MIN_PERMISSION_MODAL_HEIGHT,
+									header: [
+										theme.fg(
+											accent,
+											theme.bold(opts.icon ? `${opts.icon} ${opts.title}` : opts.title),
+										),
+									],
+									body: (opts.body ?? []).map((line) => theme.fg("text", line)),
+									footer,
+									bodyOffset: pager.bodyOffset,
+									color: (s) => theme.fg(accent, s),
+									bg: (s) => theme.bg("customMessageBg", s),
+									fg: (s) => theme.fg("text", s),
+									overflowLine: ({ page, totalPages }) =>
+										theme.fg("muted", `←→/PgUp/PgDn inspect • ${page}/${totalPages}`),
+								});
+								pager.sync(result);
+								return result.lines;
+							},
+							invalidate: () => {},
+							handleInput: (data: string) => {
+								if (lifecycle.closed) return;
+								if (pager.handleInput(data, kb, true)) {
+									tui.requestRender();
+									return;
+								}
+								selectList.handleInput(data);
+								tui.requestRender();
+							},
+						};
+					}, options),
+				opts.state,
 			)) ?? false
 		);
 	} finally {

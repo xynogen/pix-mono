@@ -15,12 +15,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
-import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
-	frameToolResult,
-	hideCollapsedToolCall,
-} from "@xynogen/pix-pretty/utils";
+import { frameToolResult, renderCall, renderRow } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
@@ -257,17 +252,11 @@ export default function registerDownload(pi: ExtensionAPI): void {
 				Type.String({ description: "For add: destination directory. Default cwd." }),
 			),
 		}),
-		renderCall(args, theme, context) {
-			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
-				return new Text("", 0, 0);
-			const a = args as { action?: string; url?: string; handle?: string };
-			const target = a.url ?? a.handle ?? "";
-			const text = new Text("", 0, 0);
-			text.setText(
-				`${formatToolCallTitle(theme, "download", context)} ${theme.fg("dim", a.action ?? "")}${target ? ` ${theme.fg("muted", target)}` : ""}`,
-			);
-			return text;
-		},
+		renderCall: renderCall(
+			"download",
+			(args) => String(args.url ?? args.handle ?? ""),
+			(args) => String(args.action ?? ""),
+		),
 		renderResult(result, options, theme, context) {
 			const details = result.details as DlResultDetails | undefined;
 			const fallback = result.content
@@ -290,7 +279,7 @@ export default function registerDownload(pi: ExtensionAPI): void {
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						theme,
 						"download",
 						body.replace(/\s+/g, " ").trim(),

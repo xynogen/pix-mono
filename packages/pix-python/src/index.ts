@@ -5,11 +5,10 @@
  * through `bash` (`python3 -c "…"` / `python3 - <<EOF`). Not a sandbox: the
  * code runs as the user with the local `python3`, in the session cwd.
  *
- * - `intent` is required: approval modal title and collapsed row (not the call card).
+ * - `intent` is required: purpose shown in the collapsed row.
  * - Indentation is repaired before running (tabs, CRLF, fences, shared indent).
  * - The script goes in on stdin, so there is no shell quoting to get wrong.
- * - Approval overlay like sudo_run: Allow · Allow for this session · Deny.
- *   /yolo approves, /afk denies unless the session is already allowed.
+ * - No blanket approval: pix-gate checks audited filesystem paths at runtime.
  */
 
 import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -22,8 +21,6 @@ import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
-import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderFileContent } from "@xynogen/pix-pretty/renderers";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
@@ -31,21 +28,21 @@ import {
 	bodyLine,
 	dotJoin,
 	fillToolBackground,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	moreLines,
 	normalizeLineEndings,
+	renderRow,
+	renderTitle,
 	renderToolError,
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
-import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
+import { requestPathAccess } from "@xynogen/pix-runtime/path-access";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { normalizeCode, resolvePython, runPython } from "./lib.ts";
@@ -55,9 +52,8 @@ const TOOL = "python_run";
 const LABEL = "python";
 /** Code rows shown on the call card before `… +N lines` (expand shows all). */
 const PREVIEW_CODE_LINES = 16;
-const PROMPT_TIMEOUT_MS = 60_000;
 
-type Outcome = "awaiting-approval" | "running" | "success" | "error" | "denied" | "cancelled";
+type Outcome = "running" | "success" | "error" | "cancelled";
 
 export interface PythonResultDetails {
 	_type: "pythonResult";
@@ -150,9 +146,6 @@ export default function pixPython(pi: ExtensionAPI): void {
 }
 
 function register(pi: ExtensionAPI): void {
-	// Pi hands every new session a fresh `pi`, so this resets per session.
-	let sessionAllowed = false;
-
 	pi.registerTool({
 		name: TOOL,
 		...({ exposure: "deferred" } as const),
@@ -160,7 +153,7 @@ function register(pi: ExtensionAPI): void {
 		description:
 			"Run a Python 3 snippet on the local machine (not sandboxed, session cwd) and return stdout/stderr. " +
 			"Use it instead of `python3 -c` or `python3 - <<EOF` in bash. Write plain code: tabs, CRLF, " +
-			"markdown fences and a shared indent are repaired. print() what you need. The user approves each run. " +
+			"markdown fences and a shared indent are repaired. print() what you need. Runs as the current user without blanket approval; pix-gate checks audited filesystem paths at runtime (not subprocess/native access). " +
 			"Set `python` only when the project needs a specific interpreter (e.g. its `.venv`).",
 		promptSnippet: "Run a Python snippet locally",
 		promptGuidelines: [
@@ -207,65 +200,30 @@ function register(pi: ExtensionAPI): void {
 					isError: !cancelled,
 				}),
 				execute: async ({ update: publish }) => {
-					const update = (outcome: "awaiting-approval" | "running", text: string) =>
+					const update = (outcome: "running", text: string) =>
 						publish({
 							content: [{ type: "text", text }],
 							details: details(outcome),
 						});
-					const deny = (why: string, isError = false) => ({
+					const fail = (why: string) => ({
 						content: [{ type: "text" as const, text: `python_run not run: ${why}` }],
-						details: details(isError ? "error" : "denied"),
-						isError,
+						details: details("error"),
+						isError: true,
 					});
 
-					if (!code) return deny("empty code", true);
+					if (!code) return fail("empty code");
 					let interpreter: string;
 					try {
 						interpreter = resolvePython(python, ctx.cwd);
 					} catch (err) {
-						return deny(getErrorMessage(err), true);
-					}
-
-					const mode = getUnattendedMode(pi.events);
-					if (!sessionAllowed && mode !== "yolo" && mode !== "nuclear") {
-						if (mode === "afk")
-							return deny("AFK mode is active and python_run is not allowed this session.");
-						if (!ctx.hasUI) return deny("approval needs an interactive session.", true);
-						update("awaiting-approval", "Awaiting approval…");
-						const choice = await withAgentBlock(pi.events, TOOL, "Python approval required", () =>
-							showOverlay(ctx.ui, {
-								signal,
-								mode: "confirm",
-								icon: icon("process"),
-								title: intent,
-								accent: "warning",
-								timeoutMs: PROMPT_TIMEOUT_MS,
-								approveValue: ["yes", "session"],
-								body: [
-									`Cwd: ${ctx.cwd}`,
-									...(python ? [`Python: ${interpreter}`] : []),
-									"Review the code in the tool card below.",
-								],
-								choices: [
-									{ value: "yes", label: "Allow", description: "Run this snippet" },
-									{
-										value: "session",
-										label: "Allow for this session",
-										description: "Stop asking until /new",
-									},
-									{ value: "no", label: "Deny", description: "Do not run it" },
-								],
-							}),
-						);
-						signal?.throwIfAborted();
-						if (choice.action === "timeout") return deny("approval timed out.");
-						if (choice.action !== "approved") return deny("denied by user.");
-						if (choice.choice === "session") sessionAllowed = true;
+						return fail(getErrorMessage(err));
 					}
 
 					update("running", "Running…");
 					const startedAt = Date.now();
-					const run = await runPython(code, ctx.cwd, signal, interpreter);
+					const run = await runPython(code, ctx.cwd, signal, interpreter, undefined, (access) =>
+						requestPathAccess(pi.events, { ...access, context: ctx }),
+					);
 					const durationMs = Date.now() - startedAt;
 					const stdout = trimBlank(run.stdout);
 					const stderr = trimBlank(run.stderr);
@@ -306,7 +264,7 @@ function register(pi: ExtensionAPI): void {
 			if (hideCollapsedToolCall(rc.state as CollapseState, rc.expanded, (v) => text.setText(v)))
 				return text;
 			const py = args.python?.trim() ? ` ${theme.fg("muted", `(${args.python.trim()})`)}` : "";
-			const header = `${formatToolCallTitle(theme, LABEL, rc)}${py}`;
+			const header = `${renderTitle(theme, LABEL, rc)}${py}`;
 			// While the model streams `code`, show one stable row; render the viewer once at the end.
 			if (rc.argsComplete === false) {
 				const n = (args.code ?? "").split("\n").length;
@@ -348,7 +306,7 @@ function register(pi: ExtensionAPI): void {
 				return done(rc.isError);
 			}
 
-			if (d.outcome === "awaiting-approval" || d.outcome === "running") {
+			if (d.outcome === "running") {
 				text.setText(fillToolBackground(`${BODY_PAD}${theme.fg("muted", getTextContent(result))}`));
 				return text;
 			}
@@ -357,20 +315,15 @@ function register(pi: ExtensionAPI): void {
 			if (!isPartial && tickCollapse(TOOL, rc.state as CollapseState, rc.invalidate, rc.expanded)) {
 				const ms = Number(rc.durationMs ?? d.durationMs ?? 0);
 				const meta = dotJoin([
-					d.outcome === "denied" && "not run",
 					d.outcome === "cancelled" && "cancelled",
 					typeof d.exitCode === "number" && d.exitCode !== 0 && `exit ${d.exitCode}`,
 					d.exitCode === null && "killed",
 					!!d.lineCount && `${d.lineCount} ${d.lineCount === 1 ? "line" : "lines"}`,
 					ms > 0 && formatDuration(ms, "bash"),
 				]);
-				const status = ok
-					? "success"
-					: d.outcome === "denied" || d.outcome === "cancelled"
-						? "warning"
-						: "error";
+				const status = ok ? "success" : d.outcome === "cancelled" ? "warning" : "error";
 				return collapsedCommandRow(
-					formatCollapsedToolRow(theme, LABEL, "", meta, status).trimEnd(),
+					renderRow(theme, LABEL, "", meta, status).trimEnd(),
 					d.intent,
 					theme,
 				);
@@ -379,7 +332,7 @@ function register(pi: ExtensionAPI): void {
 			if (d.stdout === undefined) {
 				const msg = getTextContent(result) || "Error";
 				text.setText(
-					d.outcome === "denied" || d.outcome === "cancelled"
+					d.outcome === "cancelled"
 						? fillToolBackground(`${BODY_PAD}${theme.fg("warning", msg)}`)
 						: renderToolError(msg, theme),
 				);

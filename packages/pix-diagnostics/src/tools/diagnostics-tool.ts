@@ -16,10 +16,10 @@ import { truncateHead } from "@earendil-works/pi-coding-agent";
 import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import {
 	fadeRulePaint,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 	rule,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -171,7 +171,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { source?: string; paths?: string[] };
-			const title = formatToolCallTitle(t, "lsp_diagnostics", context);
+			const title = renderTitle(t, "lsp_diagnostics", context);
 			const src = t.fg("muted", a.source ?? "session");
 			const count = a.paths?.length ? t.fg("dim", `${a.paths.length} paths`) : "";
 			return new Text(`${title} ${src} ${count}`.trimEnd(), 0, 0);
@@ -194,7 +194,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						t,
 						"lsp_diagnostics",
 						`${details.files} files`,

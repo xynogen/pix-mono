@@ -14,13 +14,13 @@ import {
 	dotJoin,
 	expandHint,
 	formatJson,
-	formatToolCallTitle,
 	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
 	padIcon,
 	pluralize,
-	renderCollapsedToolRow,
+	renderCollapsed,
+	renderTitle,
 	termW,
 	unframeToolResult,
 	viewportTextConstructor,
@@ -183,7 +183,7 @@ export function renderCall(args: { code?: string }, theme: ThemeLike, ctx: Conte
 	const total = ctx.state.codemodeTotal;
 	return commandPreview(
 		dotJoin([
-			formatToolCallTitle(theme, "codemode", ctx),
+			renderTitle(theme, "codemode", ctx),
 			typeof total === "string" && total ? theme.fg("muted", total) : "",
 		]),
 		code,
@@ -298,7 +298,7 @@ export function renderResult(
 		for (const call of calls) counts.set(call.name, (counts.get(call.name) ?? 0) + 1);
 		const names = [...counts].map(([name, count]) => (count > 1 ? `${name} ×${count}` : name));
 		return new Text(
-			renderCollapsedToolRow(
+			renderCollapsed(
 				theme,
 				"codemode",
 				dotJoin(names),

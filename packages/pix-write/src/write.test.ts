@@ -9,7 +9,7 @@ import {
 	makeToolContext,
 } from "@xynogen/pix-pretty/test-utils";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-import { renderCollapsedToolRow } from "@xynogen/pix-pretty/utils";
+import { renderCollapsed } from "@xynogen/pix-pretty/utils";
 import { registerWriteTool } from "./write";
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
@@ -24,7 +24,7 @@ describe("registerWriteTool", () => {
 			tool.renderCall?.({ path: "package.json" }, theme, makeRenderCtx())?.render(120)[0] ?? "",
 		);
 		const collapsed = stripVTControlCharacters(
-			renderCollapsedToolRow(theme, "write", "package.json", "saved"),
+			renderCollapsed(theme, "write", "package.json", "saved"),
 		);
 		expect(call).toStartWith(icon("status.running"));
 		expect(visibleWidth(call.slice(0, call.indexOf("write")))).toBe(3);

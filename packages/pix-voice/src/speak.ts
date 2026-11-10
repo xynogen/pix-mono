@@ -6,7 +6,7 @@ import { basename, dirname, extname, join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { formatToolStatus } from "@xynogen/pix-pretty/tool-status";
-import { getErrorMessage, humanSize } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, humanSize, renderCall } from "@xynogen/pix-pretty/utils";
 import { playAudio } from "@xynogen/pix-runtime/audio";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
@@ -14,7 +14,7 @@ import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { voiceConfig, voiceModel } from "./config.ts";
 import { resolveProvider } from "./providers.ts";
-import { makeRenderCall, makeRenderResult } from "./render.ts";
+import { makeRenderResult } from "./render.ts";
 import { resolveOutputPath } from "./transcribe.ts";
 
 // ponytail: mp3 plays everywhere. Add a /pix → Voice format setting if a provider needs another.
@@ -72,7 +72,7 @@ export default function registerSpeak(pi: ExtensionAPI): void {
 		renderShell: "self",
 		description: "Text to speech: speak text aloud through the configured voice provider.",
 		promptSnippet: "speak(input, output_file?)",
-		renderCall: makeRenderCall("speak", (args) => String(args.input ?? "").slice(0, 60)),
+		renderCall: renderCall("speak", (args) => String(args.input ?? "").slice(0, 60)),
 		renderResult,
 		parameters: Type.Object({
 			input: Type.String({ description: "Text to speak" }),

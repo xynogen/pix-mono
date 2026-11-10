@@ -4,10 +4,10 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	COLLAPSED_TOOL_GLYPH,
 	dotJoin,
-	formatCollapsedToolRow,
 	frameToolResult,
 	getTextContent,
 	padIcon,
+	renderRow,
 } from "@xynogen/pix-pretty/utils";
 import {
 	formatMs,
@@ -313,7 +313,7 @@ export function renderAgentUtilityResult(
 
 	if (details._type === "agent-info") {
 		return new Text(
-			formatCollapsedToolRow(
+			renderRow(
 				theme,
 				SUBAGENT_TOOL_NAMES.CONTROL,
 				details.query ? `info ${details.kind} “${details.query}”` : `info ${details.kind}`,
@@ -342,7 +342,7 @@ export function renderAgentUtilityResult(
 						details.status === "stopped"
 					? "warning"
 					: "error";
-		const row = formatCollapsedToolRow(
+		const row = renderRow(
 			theme,
 			SUBAGENT_TOOL_NAMES.CONTROL,
 			`result ${details.agentId}`,
@@ -370,7 +370,7 @@ export function renderAgentUtilityResult(
 	} else if (details.outcome === "already-finished") meta = "already finished";
 	else if (details.outcome === "not-found") meta = "not found";
 	if (details.outcome === "stopped") {
-		const row = formatCollapsedToolRow(theme, tool, target, meta);
+		const row = renderRow(theme, tool, target, meta);
 		return new Text(
 			row.replace(
 				theme.fg("success", padIcon(COLLAPSED_TOOL_GLYPH.success)),
@@ -386,7 +386,7 @@ export function renderAgentUtilityResult(
 			: details.outcome === "queued" || details.outcome === "already-finished"
 				? "warning"
 				: "error";
-	return new Text(formatCollapsedToolRow(theme, tool, target, meta, status), 0, 0);
+	return new Text(renderRow(theme, tool, target, meta, status), 0, 0);
 }
 
 function buildStats(d: AgentDetails, theme: Theme): string {

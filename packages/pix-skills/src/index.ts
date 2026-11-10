@@ -19,14 +19,14 @@ import { Text } from "@earendil-works/pi-tui";
 import { type FadeTheme, fadeTextRow } from "@xynogen/pix-pretty/text";
 import {
 	dotJoin,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	humanSize,
 	moreLines,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
@@ -705,7 +705,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 				return component;
 			const label = formatSkillCallLabel(args as SkillCallArgs);
 			component.setText(
-				`${formatToolCallTitle(theme, "read_skills", renderCtx)} ${theme.fg("dim", label)}`,
+				`${renderTitle(theme, "read_skills", renderCtx)} ${theme.fg("dim", label)}`,
 			);
 			return component;
 		},
@@ -726,13 +726,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 				)
 			) {
 				component.setText(
-					formatCollapsedToolRow(
-						theme,
-						"read_skills",
-						text?.split("\n")[0] ?? "failed",
-						"",
-						"error",
-					),
+					renderRow(theme, "read_skills", text?.split("\n")[0] ?? "failed", "", "error"),
 				);
 				return component;
 			}
@@ -742,7 +736,7 @@ function registerSkillLoader(pi: ExtensionAPI): void {
 					// Collapsed row mirrors the call label: `<action> <target> · <meta>` so
 					// the summary reads the same way the call did (no action/target reorder).
 					const { target, meta } = collapsedSkillRow(details);
-					component.setText(formatCollapsedToolRow(theme, "read_skills", target, meta));
+					component.setText(renderRow(theme, "read_skills", target, meta));
 					return component;
 				}
 				if (details.mode === "search" && details.results) {

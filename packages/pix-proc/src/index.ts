@@ -20,11 +20,11 @@ import { type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 	rule,
 	widgetTitle,
 } from "@xynogen/pix-pretty/utils";
@@ -244,7 +244,7 @@ export default function registerRunner(pi: ExtensionAPI): void {
 			const a = args as { action?: string; command?: string; handle?: string };
 			const target = a.command ?? a.handle ?? "";
 			return commandPreview(
-				`${formatToolCallTitle(theme, "proc", context)} ${theme.fg("dim", a.action ?? "")}`,
+				renderTitle(theme, "proc", context, a.action),
 				target,
 				a.command ? "bash" : undefined,
 				theme as unknown as { fg: (key: string, text: string) => string },
@@ -272,7 +272,7 @@ export default function registerRunner(pi: ExtensionAPI): void {
 				tickCollapse("proc", context.state as CollapseState, context.invalidate, options.expanded)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						theme,
 						"proc",
 						body.replace(/\s+/g, " ").trim(),

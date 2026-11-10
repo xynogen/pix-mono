@@ -29,15 +29,15 @@ import {
 	appendNotices,
 	fadeRulePaint,
 	fillToolBackground,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	makeTextResult,
 	pluralize,
-	renderCollapsedToolRow,
+	renderCollapsed,
 	renderDimPreview,
+	renderTitle,
 	renderToolError,
 	setResultDetails,
 	unframeToolResult,
@@ -255,7 +255,7 @@ export function registerFindTool(
 				return text;
 			text.setText(
 				fillToolBackground(
-					`${formatToolCallTitle(theme, "find", renderCtx)} ${theme.fg("dim", pattern)}${path}`,
+					`${renderTitle(theme, "find", renderCtx)} ${theme.fg("dim", pattern)}${path}`,
 				),
 			);
 			return text;
@@ -289,7 +289,7 @@ export function registerFindTool(
 				const target = d?._type === "findResult" ? d.pattern : "";
 				const scope = d?._type === "findResult" && d.path ? ` in ${sp(d.path)}` : "";
 				text.setText(
-					renderCollapsedToolRow(
+					renderCollapsed(
 						theme,
 						"find",
 						`${target}${scope}`,

@@ -16,10 +16,10 @@ import { Text } from "@earendil-works/pi-tui";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
@@ -88,7 +88,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string; symbol?: string };
-			const title = formatToolCallTitle(t, "ast_read_symbol", context);
+			const title = renderTitle(t, "ast_read_symbol", context);
 			const sym = t.fg("dim", a.symbol ?? "");
 			const path = a.path ? t.fg("muted", ` · ${a.path}`) : "";
 			return new Text(`${title} ${sym}${path}`.trimEnd(), 0, 0);
@@ -109,7 +109,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 				)
 			)
 				return new Text(
-					formatCollapsedToolRow(
+					renderRow(
 						theme,
 						"ast_read_symbol",
 						"",

@@ -47,22 +47,22 @@ import {
 	dotJoin,
 	fadeRulePaint,
 	fillToolBackground,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	moreLines,
 	normalizeLineEndings,
-	renderCollapsedToolRow,
+	renderCollapsed,
+	renderRow,
+	renderTitle,
 	renderToolError,
 	ruleFrame,
 	termW,
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
-import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { requireTool } from "@xynogen/pix-runtime/binaries";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
@@ -225,11 +225,10 @@ export interface SshResultDetails {
 // Flat shape mirroring the single Type.Object schema. Conditional fields are
 // optional here and validated at runtime by normalizeOperation.
 type SshParams = {
-	action?: "command" | "file" | "info";
+	action?: "command" | "upload" | "download" | "info";
 	host?: string;
 	command?: string;
 	sudo?: boolean;
-	direction?: TransferDirection;
 	source?: string;
 	destination?: string;
 	recursive?: boolean;
@@ -249,15 +248,15 @@ interface SshOperation {
 }
 
 function normalizeOperation(params: SshParams): SshOperation {
-	if (params.action === "file") {
+	if (params.action === "upload" || params.action === "download") {
 		const source = (params.source ?? "").trim();
 		const destination = (params.destination ?? "").trim();
 		return {
 			action: "file",
-			command: `${params.direction ?? ""} ${source || "(empty source)"} → ${destination || "(empty destination)"}`,
+			command: `${params.action} ${source || "(empty source)"} → ${destination || "(empty destination)"}`,
 			sudo: false,
 			reason: params.reason,
-			direction: params.direction,
+			direction: params.action,
 			source,
 			destination,
 			recursive: params.recursive === true,
@@ -496,12 +495,12 @@ export default function (pi: ExtensionAPI): void {
 			"Operate on a REMOTE host over SSH (for the LOCAL machine use `bash`, or `sudo_run` for local root). " +
 			"Pick one `action`; each has its own parameters:\n" +
 			"- command: run a command. Required: host, command. Optional: sudo (remote POSIX root).\n" +
-			"- file: upload/download a file or directory (may overwrite the destination). Required: host, direction, source, destination. Optional: recursive.\n" +
+			"- upload/download: transfer a file or directory (may overwrite the destination). Required: host, source, destination. Optional: recursive.\n" +
 			"- info: read SSH config, no connection. Optional: host (omit = list aliases, set = effective config).\n" +
 			"Always set `reason`. Windows/PowerShell remotes are best-effort.",
 		promptSnippet: "Run a remote command, transfer files, or read SSH config over SSH",
 		promptGuidelines: [
-			'ssh_run: REMOTE host only — use `bash`/`sudo_run` locally. `action` is required: "command" (host, command, sudo?), "file" (host, direction, source, destination, recursive?), "info" (host? — no host = list aliases). `host` is `[user@]host[:port]`. Use "info" instead of reading `~/.ssh/config`. Always set `reason`.',
+			'ssh_run: REMOTE host only — use `bash`/`sudo_run` locally. `action` is required: "command" (host, command, sudo?), "upload" or "download" (host, source, destination, recursive?), "info" (host? — no host = list aliases). `host` is `[user@]host[:port]`. Use "info" instead of reading `~/.ssh/config`. Always set `reason`.',
 		],
 
 		renderShell: "self",
@@ -512,14 +511,22 @@ export default function (pi: ExtensionAPI): void {
 		// schema-required; per-action fields are tagged in their descriptions and
 		// validated at runtime via normalizeOperation.
 		parameters: Type.Object({
-			action: Type.Union([Type.Literal("command"), Type.Literal("file"), Type.Literal("info")], {
-				description:
-					'"command" runs a remote command, "file" transfers a file/directory, "info" reads SSH config (no connection).',
-			}),
+			action: Type.Union(
+				[
+					Type.Literal("command"),
+					Type.Literal("upload"),
+					Type.Literal("download"),
+					Type.Literal("info"),
+				],
+				{
+					description:
+						'"command" runs a remote command, "upload" copies local to remote, "download" copies remote to local, "info" reads SSH config (no connection).',
+				},
+			),
 			host: Type.Optional(
 				Type.String({
 					description:
-						"`[user@]host[:port]`, e.g. `deploy@10.0.0.5:2222`. REQUIRED for command and file. For info: omit to list aliases, set to resolve one host.",
+						"`[user@]host[:port]`, e.g. `deploy@10.0.0.5:2222`. REQUIRED for command, upload and download. For info: omit to list aliases, set to resolve one host.",
 				}),
 			),
 			// command
@@ -534,30 +541,27 @@ export default function (pi: ExtensionAPI): void {
 				}),
 			),
 			// file
-			direction: Type.Optional(
-				Type.Union([Type.Literal("upload"), Type.Literal("download")], {
-					description: "[file] REQUIRED. Transfer direction.",
-				}),
-			),
 			source: Type.Optional(
 				Type.String({
-					description: "[file] REQUIRED. Local path for upload, remote path for download.",
+					description:
+						"[upload|download] REQUIRED. Local path for upload, remote path for download.",
 				}),
 			),
 			destination: Type.Optional(
 				Type.String({
-					description: "[file] REQUIRED. Remote path for upload, local path for download.",
+					description:
+						"[upload|download] REQUIRED. Remote path for upload, local path for download.",
 				}),
 			),
 			recursive: Type.Optional(
 				Type.Boolean({
-					description: "[file] Optional, default false. Copy a directory recursively.",
+					description: "[upload|download] Optional, default false. Copy a directory recursively.",
 				}),
 			),
 			fresh: Type.Optional(
 				Type.Boolean({
 					description:
-						"[command|file] Optional, default false. Close the reused connection first so this call re-authenticates (e.g. to prove key login).",
+						"[command|upload|download] Optional, default false. Close the reused connection first so this call re-authenticates (e.g. to prove key login).",
 				}),
 			),
 			reason: Type.String({
@@ -679,44 +683,39 @@ export default function (pi: ExtensionAPI): void {
 			const handleHostKeyError = async (error: HostKeyError) => {
 				const reset = hostKeyReset(error.stderr);
 				const diagnostic = `${error.message}\n\nVerify the new fingerprint with the host owner or physical console. A reinstall can change it, but this can also indicate an attack. Do not enter a password until verified.`;
-				const decision = await withAgentBlock(
-					pi.events,
-					"ssh_run",
-					"SSH host key verification required",
-					() =>
-						showOverlay(ctx.ui, {
-							signal: sig,
-							mode: "confirm",
-							icon: icon("warn"),
-							accent: "error",
-							title: "SSH HOST KEY CHANGED — verify before resetting",
-							body: [
-								`Host: ${host}`,
-								...diagnostic.split("\n"),
-								...(reset
-									? [
-											`Reset target: ${reset.host}`,
-											`File: ${reset.file} (backup: ${reset.file}.old)`,
-											"Only reset if you independently verified the fingerprint above.",
-										]
-									: ["Automatic reset is unavailable. Resolve the host key error manually."]),
-							],
-							timeoutMs: PROMPT_TIMEOUT_MS,
-							approveValue: "reset",
-							choices: [
-								{ value: "cancel", label: "Cancel", description: "Keep known_hosts unchanged" },
-								...(reset
-									? [
-											{
-												value: "reset",
-												label: "Reset known host and reconnect",
-												description: "I verified the new fingerprint through a trusted source",
-											},
-										]
-									: []),
-							],
-						}),
-				);
+				const decision = await showOverlay(ctx.ui, {
+					state: { events: pi.events, source: "ssh_run" },
+					signal: sig,
+					mode: "confirm",
+					icon: icon("warn"),
+					accent: "error",
+					title: "SSH HOST KEY CHANGED — verify before resetting",
+					body: [
+						`Host: ${host}`,
+						...diagnostic.split("\n"),
+						...(reset
+							? [
+									`Reset target: ${reset.host}`,
+									`File: ${reset.file} (backup: ${reset.file}.old)`,
+									"Only reset if you independently verified the fingerprint above.",
+								]
+							: ["Automatic reset is unavailable. Resolve the host key error manually."]),
+					],
+					timeoutMs: PROMPT_TIMEOUT_MS,
+					approveValue: "reset",
+					choices: [
+						{ value: "cancel", label: "Cancel", description: "Keep known_hosts unchanged" },
+						...(reset
+							? [
+									{
+										value: "reset",
+										label: "Reset known host and reconnect",
+										description: "I verified the new fingerprint through a trusted source",
+									},
+								]
+							: []),
+					],
+				});
 				sig?.throwIfAborted();
 				let message = `${diagnostic}\n\nReset cancelled. known_hosts was not changed by pix-ssh.`;
 				if (decision.action === "approved" && decision.choice === "reset" && reset) {
@@ -845,70 +844,70 @@ export default function (pi: ExtensionAPI): void {
 				if ((transferDecision === "allow" || yolo || alreadyApproved) && promptFor.length === 0) {
 					return { action: "approved", password: "" };
 				}
-				return withAgentBlock(pi.events, "ssh_run", "SSH approval required", async () => {
-					// Confirm-only when no password is missing.
-					if (promptFor.length === 0) {
-						return showOverlay(ctx.ui, {
-							signal: sig,
-							mode: "confirm",
-							icon: action === "file" ? icon("warn") : icon("lock"),
-							title,
-							body,
-							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
-							timeoutMs: PROMPT_TIMEOUT_MS,
-							approveValue: ["yes", "session"],
-							choices: [
-								{
-									value: "yes",
-									label: "Allow",
-									description:
-										action === "file" ? "Copy to destination (may overwrite)" : "Run the command",
-								},
-								...sessionChoices,
-								{
-									value: "no",
-									label: "Deny",
-									description: action === "file" ? "Cancel transfer" : "Block the command",
-								},
-							],
-						});
-					}
-					// One masked prompt per missing password, in order.
-					let last: OverlayResult = { action: "approved", password: "" };
-					for (const stage of promptFor) {
-						const label = stage === "login" ? "SSH login password" : "Remote sudo password";
-						last = await showOverlay(ctx.ui, {
-							signal: sig,
-							mode: "sudo",
-							icon: action === "file" ? icon("warn") : icon("lock"),
-							title,
-							body: [...body, `Enter: ${label}`],
-							accent: sudo ? "error" : action === "file" ? "warning" : "accent",
-							timeoutMs: PROMPT_TIMEOUT_MS,
-							maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-							approveValue: ["yes", "session"],
-							passwordLabel: `${label}:`,
-							// Login stage: actually test the password against the host so a
-							// wrong one re-prompts (up to MAX_PASSWORD_ATTEMPTS), mirroring
-							// pix-sudo. Sudo stage can't be validated until login succeeds, so
-							// it keeps the non-empty check and surfaces failures on the run.
-							validatePassword: validatorFor(stage, spec, controlPath, sig),
-							choices: [
-								{
-									value: "yes",
-									label: "Allow",
-									description: `Enter ${label.toLowerCase()}`,
-								},
-								...sessionChoices,
-								{ value: "no", label: "Deny", description: "Block the command" },
-							],
-						});
-						if (last.action !== "approved" || !last.password?.trim()) return last;
-						if (stage === "login") collected.login = last.password;
-						else collected.sudo = last.password;
-					}
-					return last;
-				});
+				// Confirm-only when no password is missing.
+				if (promptFor.length === 0) {
+					return showOverlay(ctx.ui, {
+						state: { events: pi.events, source: "ssh_run" },
+						signal: sig,
+						mode: "confirm",
+						icon: action === "file" ? icon("warn") : icon("lock"),
+						title,
+						body,
+						accent: sudo ? "error" : action === "file" ? "warning" : "accent",
+						timeoutMs: PROMPT_TIMEOUT_MS,
+						approveValue: ["yes", "session"],
+						choices: [
+							{
+								value: "yes",
+								label: "Allow",
+								description:
+									action === "file" ? "Copy to destination (may overwrite)" : "Run the command",
+							},
+							...sessionChoices,
+							{
+								value: "no",
+								label: "Deny",
+								description: action === "file" ? "Cancel transfer" : "Block the command",
+							},
+						],
+					});
+				}
+				// One masked prompt per missing password, in order.
+				let last: OverlayResult = { action: "approved", password: "" };
+				for (const stage of promptFor) {
+					const label = stage === "login" ? "SSH login password" : "Remote sudo password";
+					last = await showOverlay(ctx.ui, {
+						state: { events: pi.events, source: "ssh_run" },
+						signal: sig,
+						mode: "sudo",
+						icon: action === "file" ? icon("warn") : icon("lock"),
+						title,
+						body: [...body, `Enter: ${label}`],
+						accent: sudo ? "error" : action === "file" ? "warning" : "accent",
+						timeoutMs: PROMPT_TIMEOUT_MS,
+						maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+						approveValue: ["yes", "session"],
+						passwordLabel: `${label}:`,
+						// Login stage: actually test the password against the host so a
+						// wrong one re-prompts (up to MAX_PASSWORD_ATTEMPTS), mirroring
+						// pix-sudo. Sudo stage can't be validated until login succeeds, so
+						// it keeps the non-empty check and surfaces failures on the run.
+						validatePassword: validatorFor(stage, spec, controlPath, sig),
+						choices: [
+							{
+								value: "yes",
+								label: "Allow",
+								description: `Enter ${label.toLowerCase()}`,
+							},
+							...sessionChoices,
+							{ value: "no", label: "Deny", description: "Block the command" },
+						],
+					});
+					if (last.action !== "approved" || !last.password?.trim()) return last;
+					if (stage === "login") collected.login = last.password;
+					else collected.sudo = last.password;
+				}
+				return last;
 			};
 
 			const overlayResult = await runOverlay();
@@ -1109,7 +1108,7 @@ export default function (pi: ExtensionAPI): void {
 			if (args.action === "info") {
 				text.setText(
 					fillToolBackground(
-						`${formatToolCallTitle(theme, "ssh info", renderCtx)} ${theme.fg("dim", host || "list aliases")}`,
+						`${renderTitle(theme, "ssh", renderCtx, "info")} ${theme.fg("dim", host || "list aliases")}`,
 					),
 				);
 				return text;
@@ -1118,8 +1117,10 @@ export default function (pi: ExtensionAPI): void {
 			const command = operation.command || "(empty command)";
 			const prefix = operation.sudo ? "sudo " : "";
 			return commandPreview(
-				`${formatToolCallTitle(theme, operation.action === "file" ? "ssh file" : "ssh", renderCtx)} ${theme.fg("dim", host)}`,
-				prefix + command,
+				`${renderTitle(theme, "ssh", renderCtx, operation.action === "file" ? operation.direction : undefined)} ${theme.fg("dim", host)}`,
+				operation.action === "file"
+					? `${operation.source} → ${operation.destination}`
+					: prefix + command,
 				"bash",
 				theme,
 				renderCtx.state,
@@ -1156,7 +1157,7 @@ export default function (pi: ExtensionAPI): void {
 				) {
 					const status = renderCtx.isError ? "error" : "success";
 					text.setText(
-						renderCollapsedToolRow(
+						renderCollapsed(
 							theme,
 							"ssh info",
 							info.host ?? "",
@@ -1192,13 +1193,7 @@ export default function (pi: ExtensionAPI): void {
 			) {
 				const status = details.outcome === "success" ? "success" : "error";
 				return collapsedCommandRow(
-					formatCollapsedToolRow(
-						theme,
-						"ssh",
-						details.host,
-						terminalMeta(details),
-						status,
-					).trimEnd(),
+					renderRow(theme, "ssh", details.host, terminalMeta(details), status).trimEnd(),
 					safeOneLine(details.command),
 					theme,
 				);

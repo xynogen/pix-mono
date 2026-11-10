@@ -37,20 +37,20 @@ import {
 	dotJoin,
 	fadeRulePaint,
 	fillToolBackground,
-	formatCollapsedToolRow,
-	formatToolCallTitle,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	moreLines,
 	normalizeLineEndings,
+	renderRow,
+	renderTitle,
 	renderToolError,
 	ruleFrame,
 	termW,
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
-import { getUnattendedMode, withAgentBlock } from "@xynogen/pix-runtime";
+import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
@@ -275,9 +275,10 @@ export default function (pi: ExtensionAPI): void {
 					const overlayResult: OverlayResult =
 						yolo && cached
 							? { action: "approved", password: "" }
-							: await withAgentBlock(pi.events, "sudo_run", "Root approval required", () => {
+							: await (async () => {
 									if (cached) {
 										return showOverlay(ctx.ui, {
+											state: { events: pi.events, source: "sudo_run" },
 											signal,
 											mode: "confirm",
 											icon: icon("lock"),
@@ -292,6 +293,7 @@ export default function (pi: ExtensionAPI): void {
 										});
 									}
 									return showOverlay(ctx.ui, {
+										state: { events: pi.events, source: "sudo_run" },
 										signal,
 										mode: "sudo",
 										icon: icon("lock"),
@@ -328,7 +330,7 @@ export default function (pi: ExtensionAPI): void {
 											},
 										],
 									});
-								});
+								})();
 
 					signal?.throwIfAborted();
 					// Checked before anything runs: a wrong password must never reach sudo.
@@ -466,7 +468,7 @@ export default function (pi: ExtensionAPI): void {
 				return text;
 
 			return commandPreview(
-				formatToolCallTitle(theme, "sudo", renderCtx),
+				renderTitle(theme, "sudo", renderCtx),
 				args.command || "(empty command)",
 				"bash",
 				theme,
@@ -513,7 +515,7 @@ export default function (pi: ExtensionAPI): void {
 			) {
 				const status = details.outcome === "success" ? "success" : "error";
 				return collapsedCommandRow(
-					formatCollapsedToolRow(theme, "sudo", "", terminalMeta(details), status).trimEnd(),
+					renderRow(theme, "sudo", "", terminalMeta(details), status).trimEnd(),
 					safeOneLine(details.command),
 					theme,
 				);
