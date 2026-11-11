@@ -1,0 +1,9 @@
+or {
+	`process.platform` as $hit where {
+		register_diagnostic(span=$hit, message="Use currentPlatform() from @xynogen/pix-runtime/platform instead of process.platform.")
+	},
+	`process.env.$name` as $hit where {
+		$name <: or { `HOME`, `USERPROFILE`, `TMPDIR`, `TEMP`, `TMP` },
+		register_diagnostic(span=$hit, message="Use homeDir() or tempDir() from @xynogen/pix-runtime/paths instead of raw home/temp env vars.")
+	}
+}

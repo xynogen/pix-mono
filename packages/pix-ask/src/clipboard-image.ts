@@ -34,7 +34,7 @@ function hostFor(platform: NodeJS.Platform, env: NodeJS.ProcessEnv): HostPlatfor
  */
 export function readClipboardImageToFile(
 	env: NodeJS.ProcessEnv = process.env,
-	platform: NodeJS.Platform = process.platform,
+	platform: NodeJS.Platform = currentPlatform().os,
 ): string | null {
 	return readViaRuntime({ env, host: hostFor(platform, env) });
 }

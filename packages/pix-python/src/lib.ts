@@ -12,6 +12,7 @@ import {
 	withPathAccess,
 } from "@xynogen/pix-runtime/path-access";
 import { expandHome, moduleFile, ownerDir, ownerRel } from "@xynogen/pix-runtime/paths";
+import { currentPlatform } from "@xynogen/pix-runtime/platform";
 
 const TAB = "    ";
 
@@ -71,7 +72,7 @@ export async function ensureVenv(
 	base: string,
 	packages: readonly string[],
 	signal?: AbortSignal,
-	win = process.platform === "win32",
+	win = currentPlatform().os === "win32",
 ): Promise<string> {
 	const bad = packages.find((p) => !p.trim() || p.trim().startsWith("-"));
 	if (bad !== undefined)
@@ -111,7 +112,7 @@ export async function ensureVenv(
 export function resolvePython(
 	python: string | undefined,
 	cwd: string,
-	win = process.platform === "win32",
+	win = currentPlatform().os === "win32",
 ): string {
 	const raw = python?.trim();
 	if (!raw) return venvPython(venvDir(cwd), win) ?? "python3";

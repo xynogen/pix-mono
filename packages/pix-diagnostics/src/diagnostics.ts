@@ -20,8 +20,9 @@ import {
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
 import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { config } from "@xynogen/pix-runtime/config";
-import { readFileSync, writeFileSync } from "@xynogen/pix-runtime/fs";
+import { readFileSync, realpathSync, statSync } from "@xynogen/pix-runtime/fs";
 import { type ExtensionAPI, truncateHead } from "@xynogen/pix-runtime/host";
 import { editSection } from "@xynogen/pix-runtime/sections";
 import { DispositionStore } from "./dispositions.ts";
@@ -189,7 +190,9 @@ export default function registerDiagnostics(
 					snapshots.flatMap((s) => [...s.diagnostics]),
 				);
 				if (added.length) {
-					writeFileSync(filePath, before.bytes);
+					// Atomic: a partial restore would lose the user's file. Keep its mode and symlink.
+					const target = realpathSync(filePath);
+					writeFileAtomicSync(target, before.bytes, statSync(target).mode & 0o777);
 					for (const snapshot of await manager.check({ paths: [filePath], severity: "all" }))
 						store.set(snapshot);
 					return {

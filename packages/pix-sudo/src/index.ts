@@ -52,6 +52,7 @@ import {
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { AgentToolUpdateCallback, ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { currentPlatform } from "@xynogen/pix-runtime/platform";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import {
@@ -161,7 +162,7 @@ function isTerminal(details: SudoResultDetails): boolean {
 export default function (pi: ExtensionAPI): void {
 	// sudo does not exist on Windows (catalog: UNIX only). Registering the tool
 	// there only offers the model a command that can never run.
-	if (process.platform === "win32") return;
+	if (currentPlatform().os === "win32") return;
 	pi.registerTool({
 		name: "sudo_run",
 		...({ exposure: "deferred" } as const),

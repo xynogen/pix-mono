@@ -1,8 +1,9 @@
-import { expect, jest, mock, test } from "bun:test";
+import { expect, jest, mock, spyOn, test } from "bun:test";
 import { createEventBus, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { OverlayUI } from "@xynogen/pix-pretty/gate-overlay";
 import { capturePi, makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
 import type { ToolResultLike } from "@xynogen/pix-pretty/types";
+import * as platform from "@xynogen/pix-runtime/platform";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 
@@ -34,12 +35,13 @@ const theme = roleTheme();
 
 function host() {
 	const { pi, tool } = capturePi();
-	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	const os = spyOn(platform, "currentPlatform").mockReturnValue(
+		platform.hostPlatform({ platform: "linux" }),
+	);
 	try {
-		Object.defineProperty(process, "platform", { value: "linux", configurable: true });
 		register({ ...pi, events: createEventBus() } as unknown as ExtensionAPI);
 	} finally {
-		if (platform) Object.defineProperty(process, "platform", platform);
+		os.mockRestore();
 	}
 	return tool;
 }

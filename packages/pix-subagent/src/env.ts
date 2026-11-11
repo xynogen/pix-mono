@@ -8,6 +8,7 @@
 
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { runGit } from "@xynogen/pix-runtime/os";
+import { currentPlatform } from "@xynogen/pix-runtime/platform";
 import type { EnvInfo } from "./types.ts";
 
 async function git(cwd: string, args: string[]): Promise<string | null> {
@@ -24,5 +25,5 @@ export async function detectEnv(_pi: ExtensionAPI, cwd: string): Promise<EnvInfo
 	const branch = isGitRepo
 		? ((await git(cwd, ["branch", "--show-current"]))?.trim() ?? "unknown")
 		: "";
-	return { isGitRepo, branch, platform: process.platform };
+	return { isGitRepo, branch, platform: currentPlatform().os };
 }

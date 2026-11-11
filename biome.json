@@ -122,7 +122,8 @@
 						}
 					}
 				}
-			}
+			},
+			"plugins": ["./biome/no-platform-env.grit"]
 		}
 	]
 }

@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
+import * as platform from "@xynogen/pix-runtime/platform";
 import {
 	detectAuthFailure,
 	filterSudoPrompt,
@@ -266,12 +267,13 @@ function makeHost(onState?: (state: string) => void) {
 			captured = def;
 		},
 	} as never;
-	const platform = Object.getOwnPropertyDescriptor(process, "platform");
+	const os = spyOn(platform, "currentPlatform").mockReturnValue(
+		platform.hostPlatform({ platform: "linux" }),
+	);
 	try {
-		Object.defineProperty(process, "platform", { value: "linux", configurable: true });
 		registerSudo(pi);
 	} finally {
-		if (platform) Object.defineProperty(process, "platform", platform);
+		os.mockRestore();
 	}
 	return {
 		events,
@@ -967,9 +969,9 @@ describe("sudo_run tool execute()", () => {
 
 describe("platform guard", () => {
 	test("registers sudo_run on POSIX and skips it on Windows", () => {
-		const original = Object.getOwnPropertyDescriptor(process, "platform");
-		const registered = (platform: string) => {
-			Object.defineProperty(process, "platform", { value: platform, configurable: true });
+		const os = spyOn(platform, "currentPlatform");
+		const registered = (name: NodeJS.Platform) => {
+			os.mockReturnValue(platform.hostPlatform({ platform: name }));
 			const names: string[] = [];
 			registerSudo({
 				events: createEventBus(),
@@ -982,7 +984,7 @@ describe("platform guard", () => {
 			expect(registered("darwin")).toEqual(["sudo_run"]);
 			expect(registered("win32")).toEqual([]);
 		} finally {
-			if (original) Object.defineProperty(process, "platform", original);
+			os.mockRestore();
 		}
 	});
 });

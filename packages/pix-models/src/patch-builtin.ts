@@ -26,12 +26,13 @@
  */
 
 import { join, sep } from "node:path";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import {
 	existsSync,
 	readdirSync,
 	readFileSync,
 	realpathSync,
-	writeFileSync,
+	statSync,
 } from "@xynogen/pix-runtime/fs";
 import { agentDir, homeDir, requireFrom } from "@xynogen/pix-runtime/paths";
 import { findExecutableSync } from "@xynogen/pix-runtime/which";
@@ -185,7 +186,9 @@ export function patchOutBuiltinModelCommand(): void {
 		const patched = stripBuiltinModelCommand(source);
 		if (patched === source) continue; // already patched, or host format is unknown
 		try {
-			writeFileSync(file, patched, "utf8");
+			// Atomic: a partial write would leave Pi unable to start. Keep the file's mode.
+			const target = realpathSync(file);
+			writeFileAtomicSync(target, patched, statSync(target).mode & 0o777);
 		} catch {
 			// Read-only install — leave /model in place rather than crash.
 		}
