@@ -1,13 +1,12 @@
+import { Text, type Theme, type TUI } from "@xynogen/pix-pretty/tui";
+import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getSessionContextUsage } from "@xynogen/pix-pretty/widget-format";
+import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
 import type {
 	AgentSession,
 	ExtensionAPI,
 	ExtensionCommandContext,
-	Theme,
-} from "@earendil-works/pi-coding-agent";
-import { Text, type TUI } from "@earendil-works/pi-tui";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { getSessionContextUsage } from "@xynogen/pix-pretty/widget-format";
-import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
+} from "@xynogen/pix-runtime/host";
 import { type BtwMessageDetails, registerBtwRenderer } from "./render.ts";
 import { BTW_CTX_TURNS, buildContextPreamble, runBtw, snapshotMainSettings } from "./session.ts";
 import { type BtwWidgetJob, hasVisibleJobs, renderBtwWidget } from "./widget.ts";

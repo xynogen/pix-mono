@@ -1,8 +1,3 @@
-import type {
-	ExtensionAPI,
-	ExtensionCommandContext,
-	ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	type SettingsRow,
@@ -13,6 +8,11 @@ import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { listMicrophones, type Microphone, startRecording } from "@xynogen/pix-runtime/audio";
+import type {
+	ExtensionAPI,
+	ExtensionCommandContext,
+	ExtensionContext,
+} from "@xynogen/pix-runtime/host";
 import { cleanupModel } from "./cleanup.ts";
 import { parseLanguage, saveConfig, voiceConfig } from "./config.ts";
 import { isConfigured, listProviders, type VoiceKind } from "./providers.ts";

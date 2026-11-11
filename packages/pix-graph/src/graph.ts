@@ -13,20 +13,10 @@
  * schema; kept minimal (single tool, two modes) per the token-budget rule.
  */
 
-import {
-	existsSync,
-	mkdirSync,
-	readFileSync,
-	renameSync,
-	statSync,
-	utimesSync,
-	writeFileSync,
-} from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text } from "@xynogen/pix-pretty/tui";
 import {
 	BODY_PAD,
 	dotJoin,
@@ -41,6 +31,16 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { formatDuration, SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	statSync,
+	utimesSync,
+	writeFileSync,
+} from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { openTarget } from "@xynogen/pix-runtime/os";
 import { ownerRel, projectPath } from "@xynogen/pix-runtime/paths";

@@ -7,13 +7,11 @@
  * matched text. Unsupported languages are skipped with a clear note.
  */
 
-import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { StringEnum } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { StringEnum } from "@xynogen/pix-data/ai";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text, type Theme } from "@xynogen/pix-pretty/tui";
 import {
 	frameToolResult,
 	hideCollapsedToolCall,
@@ -28,6 +26,8 @@ import {
 	parseWithGrammar,
 } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { readFileSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";

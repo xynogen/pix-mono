@@ -6,12 +6,10 @@
  * parses it, and lists the named declaration nodes with their line numbers.
  */
 
-import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text, type Theme } from "@xynogen/pix-pretty/tui";
 import {
 	frameToolResult,
 	hideCollapsedToolCall,
@@ -21,6 +19,8 @@ import {
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { readFileSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";

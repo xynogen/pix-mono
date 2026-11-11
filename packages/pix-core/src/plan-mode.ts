@@ -14,14 +14,17 @@
  * message — no hidden automation.
  */
 
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { CustomEditor, isToolCallEventType } from "@earendil-works/pi-coding-agent";
-import { Key, matchesKey } from "@earendil-works/pi-tui";
 import { chipTag } from "@xynogen/pix-pretty/chips";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+import { CustomEditor, Key, matchesKey } from "@xynogen/pix-pretty/tui";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "@xynogen/pix-runtime/fs";
+import {
+	type ExtensionAPI,
+	type ExtensionContext,
+	isToolCallEventType,
+} from "@xynogen/pix-runtime/host";
 import { projectRel } from "@xynogen/pix-runtime/paths";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { PlanModal, type PlanModalResult } from "./plan-modal.ts";

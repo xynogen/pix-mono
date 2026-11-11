@@ -14,15 +14,15 @@
  *
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { parseColor, type TextStyle, truncateToWidth } from "@earendil-works/pi-tui";
 import { confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { parseColor, type TextStyle, truncateToWidth } from "@xynogen/pix-pretty/tui";
 import { padIcon } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import { existsSync, readdirSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { runGit, username } from "@xynogen/pix-runtime/os";
 import { agentDir, homeDir } from "@xynogen/pix-runtime/paths";
 

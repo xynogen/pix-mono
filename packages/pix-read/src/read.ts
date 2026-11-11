@@ -1,16 +1,4 @@
-import { createHash } from "node:crypto";
-import { constants } from "node:fs";
-import { access, readdir, readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
-import type {
-	AgentToolUpdateCallback,
-	ExtensionContext,
-	ReadToolInput,
-} from "@earendil-works/pi-coding-agent";
-import {
-	detectSupportedImageMimeTypeFromFile,
-	type ReadToolOptions,
-} from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
@@ -55,7 +43,16 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { createHash } from "@xynogen/pix-runtime/crypto";
 import { DEFAULT_READ_LIMIT, readText } from "@xynogen/pix-runtime/files";
+import { access, constants, readdir, readFile } from "@xynogen/pix-runtime/fs";
+import {
+	type AgentToolUpdateCallback,
+	detectSupportedImageMimeTypeFromFile,
+	type ExtensionContext,
+	type ReadToolInput,
+	type ReadToolOptions,
+} from "@xynogen/pix-runtime/host";
 
 export { DEFAULT_READ_LIMIT } from "@xynogen/pix-runtime/files";
 

@@ -1,6 +1,5 @@
-import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { existsSync, mkdir, readFile, rename, rm, writeFile } from "@xynogen/pix-runtime/fs";
 import { cacheDir } from "@xynogen/pix-runtime/paths";
 
 const SKILLS_SH = "https://skills.sh";

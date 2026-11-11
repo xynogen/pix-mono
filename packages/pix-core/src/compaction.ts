@@ -26,12 +26,20 @@
  */
 
 import { resolve, sep } from "node:path";
-import { contentText, retryAssistantCall, type ThinkingLevel } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
-import type { ContextEditableContent, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
+import {
+	completeSimple,
+	contentText,
+	retryAssistantCall,
+	type ThinkingLevel,
+} from "@xynogen/pix-data/ai";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { config } from "@xynogen/pix-runtime/config";
+import {
+	type ContextEditableContent,
+	convertToLlm,
+	type ExtensionAPI,
+	serializeConversation,
+} from "@xynogen/pix-runtime/host";
 import { compactionSection } from "@xynogen/pix-runtime/sections";
 
 // ── Editable summary prompt ──────────────────────────────────────────────────

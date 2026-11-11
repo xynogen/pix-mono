@@ -1,7 +1,7 @@
-import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile } from "@xynogen/pix-runtime/ast";
+import { readdir, stat } from "@xynogen/pix-runtime/fs";
 
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
 

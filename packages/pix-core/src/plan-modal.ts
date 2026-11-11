@@ -5,14 +5,6 @@
  * The modal only returns a decision; plan-mode.ts performs it visibly.
  */
 
-import type { Theme } from "@earendil-works/pi-coding-agent";
-import {
-	type KeybindingsManager,
-	matchesKey,
-	type SelectItem,
-	SelectList,
-	type TUI,
-} from "@earendil-works/pi-tui";
 import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
@@ -21,6 +13,14 @@ import {
 	selectListTheme,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import {
+	type KeybindingsManager,
+	matchesKey,
+	type SelectItem,
+	SelectList,
+	type Theme,
+	type TUI,
+} from "@xynogen/pix-pretty/tui";
 import type { Plan } from "./plan-mode.ts";
 
 export type PlanModalResult =

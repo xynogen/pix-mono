@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import {
 	type ConsentFn,
@@ -7,6 +6,7 @@ import {
 	parseWithGrammar,
 	type SgNode,
 } from "@xynogen/pix-runtime/ast";
+import { readFileSync } from "@xynogen/pix-runtime/fs";
 import type { GraphLink, GraphNode } from "./analyzer.ts";
 
 /** Parser seam; tests swap in a fake grammar. */

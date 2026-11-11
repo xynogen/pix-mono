@@ -1,10 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type {
-	ExtensionContext,
-	GrepToolInput,
-	ToolRenderResultOptions,
-} from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
@@ -19,6 +13,7 @@ import {
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { fffFormatGrepText } from "@xynogen/pix-pretty/fff";
+import type { ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type {
 	GrepParams,
 	GrepResultDetails,
@@ -49,7 +44,9 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { readFile, stat } from "@xynogen/pix-runtime/fs";
 import { anchor, decodeLines, initHashline, type SourceLine } from "@xynogen/pix-runtime/hashline";
+import type { ExtensionContext, GrepToolInput } from "@xynogen/pix-runtime/host";
 
 export const DEFAULT_GREP_LIMIT = 30;
 

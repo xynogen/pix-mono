@@ -3,9 +3,9 @@
  * interpreter, then run the snippet (stdin script, so no shell quoting).
  */
 
-import { existsSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import { existsSync, statSync } from "@xynogen/pix-runtime/fs";
 import {
 	type PathAccess,
 	type PathDecision,

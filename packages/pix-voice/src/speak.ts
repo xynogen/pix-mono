@@ -1,13 +1,13 @@
 /** Text-to-speech tool. The provider comes from /pix → Voice; the result names the provider and model. */
 
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { formatToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { getErrorMessage, humanSize, renderCall } from "@xynogen/pix-pretty/utils";
 import { playAudio } from "@xynogen/pix-runtime/audio";
+import { randomUUID } from "@xynogen/pix-runtime/crypto";
+import { mkdir, writeFile } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";

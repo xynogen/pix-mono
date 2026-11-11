@@ -7,18 +7,8 @@
  * Sorted by benchlm rank when available (best first), then alphabetical.
  */
 
-import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import {
-	fuzzyFilter,
-	Input,
-	Key,
-	matchesKey,
-	type SelectItem,
-	SelectList,
-	visibleWidth,
-} from "@earendil-works/pi-tui";
 import { benchScoreColor, formatCost, lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
+import { getSupportedThinkingLevels } from "@xynogen/pix-data/ai";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	frameModal,
@@ -28,8 +18,18 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import {
+	fuzzyFilter,
+	Input,
+	Key,
+	matchesKey,
+	type SelectItem,
+	SelectList,
+	visibleWidth,
+} from "@xynogen/pix-pretty/tui";
 import { dotJoin } from "@xynogen/pix-pretty/utils";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { patchOutBuiltinModelCommand } from "./patch-builtin";
 import { registerProjectPrefs } from "./project-prefs";
 import { reasoningCatalog, withReasoningLevels } from "./thinking.ts";

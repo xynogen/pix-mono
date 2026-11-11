@@ -19,8 +19,8 @@
  *                                    (never for chained commands or the circuit breaker)
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { PATH_ACCESS, type PathDecision, type PathRequest } from "@xynogen/pix-runtime/path-access";
 import {
 	buildRules,

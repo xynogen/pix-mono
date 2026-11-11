@@ -22,13 +22,18 @@
  *      releases/<current-version>/node_modules/@earendil-works/pi-coding-agent`.
  *   3. `pi` binary via PATH → realpath → split at /dist/ to get the pkg root.
  *   4. Well-known global install locations (bun, npm).
- *   5. createRequire against the extension's own node_modules.
+ *   5. require resolution from the extension's own node_modules.
  */
 
-import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join, sep } from "node:path";
-import { agentDir, homeDir } from "@xynogen/pix-runtime/paths";
+import {
+	existsSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	writeFileSync,
+} from "@xynogen/pix-runtime/fs";
+import { agentDir, homeDir, requireFrom } from "@xynogen/pix-runtime/paths";
 import { findExecutableSync } from "@xynogen/pix-runtime/which";
 
 const PI_PACKAGE = ["@earendil-works", "pi-coding-agent"] as const;
@@ -114,9 +119,9 @@ function packageRoots(): string[] {
 		pushRoot(join(root, ...PI_PACKAGE));
 	}
 
-	// 5. Fallback: createRequire from this file (co-installed extension).
+	// 5. Fallback: require resolution from this file (co-installed extension).
 	try {
-		const require = createRequire(import.meta.url);
+		const require = requireFrom(import.meta.url);
 		pushRoot(rootBeforeDist(require.resolve("@earendil-works/pi-coding-agent")));
 	} catch {
 		// local resolution failed — skip

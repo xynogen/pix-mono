@@ -15,12 +15,10 @@
  * stays a placeholder until the gated injection — it does not scrub output.
  */
 
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { StringEnum } from "@earendil-works/pi-ai";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { StringEnum } from "@xynogen/pix-data/ai";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text } from "@xynogen/pix-pretty/tui";
 import {
 	BODY_PAD,
 	expandHint,
@@ -35,6 +33,8 @@ import {
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { existsSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { Type } from "typebox";

@@ -6,7 +6,7 @@
  * already surface the install hint.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { runGit } from "@xynogen/pix-runtime/os";
 import type { EnvInfo } from "./types.ts";
 

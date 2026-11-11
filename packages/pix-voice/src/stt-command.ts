@@ -4,8 +4,9 @@
  * and add the text to the prompt editor. A live widget shows the input level.
  */
 
-import { rm } from "node:fs/promises";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
+import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import {
 	isKeyRelease,
 	isKeyRepeat,
@@ -14,12 +15,11 @@ import {
 	matchesKey,
 	parseKey,
 	visibleWidth,
-} from "@earendil-works/pi-tui";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
-import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
+} from "@xynogen/pix-pretty/tui";
 import { getErrorMessage, rule, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { listMicrophones, type Recording, startRecording } from "@xynogen/pix-runtime/audio";
+import { rm } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { cleanTranscript, cleanupModel, hasSlip } from "./cleanup.ts";
 import { voiceConfig } from "./config.ts";
 import { transcribeAudioFile } from "./transcribe.ts";

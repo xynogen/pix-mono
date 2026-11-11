@@ -5,8 +5,8 @@
  * memory, isolation, worktree, joinMode, scheduling.
  */
 
-import type { ThinkingLevel } from "@earendil-works/pi-ai";
-import type { AgentSession } from "@earendil-works/pi-coding-agent";
+import type { ThinkingLevel } from "@xynogen/pix-data/ai";
+import type { AgentSession } from "@xynogen/pix-runtime/host";
 import type { LifetimeUsage } from "./usage.ts";
 
 export type { LifetimeUsage, ThinkingLevel };

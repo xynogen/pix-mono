@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { mkdirSync, readFileSync, writeFileSync } from "@xynogen/pix-runtime/fs";
 import { analyzeGraph, type GraphData, renderPatternReport } from "./analyzer.ts";
 
 interface CliOptions {

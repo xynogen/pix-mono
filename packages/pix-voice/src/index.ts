@@ -6,8 +6,8 @@
  * `@xynogen/pix-voice/providers`.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { pixRuntime } from "@xynogen/pix-runtime/config";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { registerBuiltinProviders } from "./builtin.ts";
 import registerVoiceCommand from "./command.ts";

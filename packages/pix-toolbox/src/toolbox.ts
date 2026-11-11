@@ -8,24 +8,6 @@
  *   disabled — not declared and blocked, even through tool_search or codemode
  */
 
-import { createHash } from "node:crypto";
-import type {
-	ExtensionAPI,
-	ExtensionContext,
-	Theme,
-	ToolInfo,
-} from "@earendil-works/pi-coding-agent";
-import {
-	fuzzyFilter,
-	Input,
-	Key,
-	type KeybindingsManager,
-	matchesKey,
-	type SelectItem,
-	SelectList,
-	type TUI,
-	visibleWidth,
-} from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	frameModal,
@@ -35,9 +17,23 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import {
+	fuzzyFilter,
+	Input,
+	Key,
+	type KeybindingsManager,
+	matchesKey,
+	type SelectItem,
+	SelectList,
+	type Theme,
+	type TUI,
+	visibleWidth,
+} from "@xynogen/pix-pretty/tui";
 import { padIcon } from "@xynogen/pix-pretty/utils";
 import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { config, pixRuntime, updateConfig } from "@xynogen/pix-runtime/config";
+import { createHash } from "@xynogen/pix-runtime/crypto";
+import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@xynogen/pix-runtime/host";
 import { toolboxSection } from "@xynogen/pix-runtime/sections";
 
 // ─── Constants ──────────────────────────────────────────────────────────────

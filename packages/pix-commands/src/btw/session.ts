@@ -1,4 +1,4 @@
-import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Model } from "@xynogen/pix-data/ai";
 import {
 	type AgentSession,
 	type AgentSessionEvent,
@@ -9,7 +9,7 @@ import {
 	type LoadExtensionsResult,
 	SessionManager,
 	SettingsManager,
-} from "@earendil-works/pi-coding-agent";
+} from "@xynogen/pix-runtime/host";
 import { agentDir as agentDirPath } from "@xynogen/pix-runtime/paths";
 
 type ThinkingLevel = ReturnType<ExtensionAPI["getThinkingLevel"]>;

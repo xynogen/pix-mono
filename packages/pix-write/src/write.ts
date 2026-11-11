@@ -1,10 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import type {
-	AgentToolUpdateCallback,
-	ExtensionContext,
-	ToolRenderResultOptions,
-	WriteToolInput,
-} from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { MAX_RENDER_LINES } from "@xynogen/pix-pretty/config";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
@@ -18,6 +11,7 @@ import {
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { lang } from "@xynogen/pix-pretty/lang";
 import { fadeRowsOf } from "@xynogen/pix-pretty/text";
+import type { ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type {
 	PiPrettyApi,
 	RenderContextLike,
@@ -45,6 +39,12 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { editPath, writeText } from "@xynogen/pix-runtime/files";
+import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
+import type {
+	AgentToolUpdateCallback,
+	ExtensionContext,
+	WriteToolInput,
+} from "@xynogen/pix-runtime/host";
 
 export function registerWriteTool(
 	pi: PiPrettyApi,

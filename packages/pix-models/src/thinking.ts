@@ -1,5 +1,5 @@
-import type { Api, Model } from "@earendil-works/pi-ai";
 import { CACHE_DIR, DataSource } from "@xynogen/pix-data";
+import type { Api, Model } from "@xynogen/pix-data/ai";
 
 type EffortEntry = { provider: string; id: string; levels: string[] };
 

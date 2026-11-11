@@ -13,7 +13,7 @@
  * the tool is callable now. Names only the one matching tool — no inventory.
  */
 
-import type { ExtensionAPI, ToolResultEvent } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ToolResultEvent } from "@xynogen/pix-runtime/host";
 import { currentPlatform, type HostOs } from "@xynogen/pix-runtime/platform";
 import { NUDGE_ENTRY, type NudgeCard } from "./card.ts";
 

@@ -18,10 +18,9 @@
  * rare case that needs them.
  */
 
-import { defineTool } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { lookupBenchmark } from "@xynogen/pix-data";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
+import { Text, truncateToWidth } from "@xynogen/pix-pretty/tui";
 import {
 	frameToolResult,
 	getErrorMessage,
@@ -32,6 +31,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { describeActivity, formatContext } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { agentDir, projectRel } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
 import { type AgentManager, DEFAULT_MAX_RETAINED } from "./agent-manager.ts";

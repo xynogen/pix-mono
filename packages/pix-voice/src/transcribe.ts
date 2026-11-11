@@ -3,10 +3,10 @@
  * `provider` argument; the result names the provider and model that ran.
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage, renderCall } from "@xynogen/pix-pretty/utils";
+import { mkdir, writeFile } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";

@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
+import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import ts from "typescript";
 
 /** Nearest `package.json` facts needed to resolve workspace imports. */

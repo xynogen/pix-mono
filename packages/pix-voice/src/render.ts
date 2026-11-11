@@ -10,13 +10,13 @@
  * the default pi renderer (undefined-safe via cast) when pi-tui is absent.
  */
 
-import type {
-	AgentToolResult,
-	Theme,
-	ToolRenderResultOptions,
-} from "@earendil-works/pi-coding-agent";
-import { type Component, Text } from "@earendil-works/pi-tui";
 import { fadeRowsOf } from "@xynogen/pix-pretty/text";
+import {
+	type Component,
+	Text,
+	type Theme,
+	type ToolRenderResultOptions,
+} from "@xynogen/pix-pretty/tui";
 import {
 	BODY_PAD,
 	bodyLine,
@@ -28,6 +28,7 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { AgentToolResult } from "@xynogen/pix-runtime/host";
 
 interface TextLike extends Component {
 	setText(text: string): void;

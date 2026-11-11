@@ -11,12 +11,9 @@
  * body on demand. This keeps baseline context flat as the skill set grows.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { copyFile, mkdir, readFile, realpath, rename, rm, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, win32 } from "node:path";
-import { type ExtensionAPI, stripFrontmatter } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { type FadeTheme, fadeTextRow } from "@xynogen/pix-pretty/text";
+import { Text } from "@xynogen/pix-pretty/tui";
 import {
 	dotJoin,
 	frameToolResult,
@@ -29,6 +26,19 @@ import {
 	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import {
+	copyFile,
+	existsSync,
+	mkdir,
+	readdirSync,
+	readFile,
+	readFileSync,
+	realpath,
+	rename,
+	rm,
+	stat,
+} from "@xynogen/pix-runtime/fs";
+import { type ExtensionAPI, stripFrontmatter } from "@xynogen/pix-runtime/host";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { once } from "@xynogen/pix-runtime/once";
 import { agentDir, moduleFile } from "@xynogen/pix-runtime/paths";

@@ -14,9 +14,9 @@
  * reported on session_start instead of stopping Pi from starting.
  */
 
-import { readFileSync } from "node:fs";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { readFileSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import registerCompaction from "./compaction.ts";
 import deferNonCoreTools from "./defer-tools.ts";

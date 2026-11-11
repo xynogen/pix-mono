@@ -8,9 +8,9 @@
  * Ported from tintinweb/pi-subagents (MIT), adapted for pix-mono.
  */
 
-import { visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { fadeLine, fadePaint } from "@xynogen/pix-pretty/text";
+import { visibleWidth } from "@xynogen/pix-pretty/tui";
 import {
 	COLLAPSED_TOOL_GLYPH,
 	dotJoin,

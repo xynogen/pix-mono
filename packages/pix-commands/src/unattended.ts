@@ -2,7 +2,6 @@
  * Session modes — /afk, /yolo, and /nuclear.
  */
 
-import type { EventBus, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { lookupBenchmark } from "@xynogen/pix-data";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
@@ -14,6 +13,7 @@ import {
 	setYoloConsent,
 	type UnattendedMode,
 } from "@xynogen/pix-runtime";
+import type { EventBus, ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 /** Minimum model score allowed to hold YOLO. Below this, red+root auto-approve is off-limits. */
 export const YOLO_MIN_SCORE = 75;

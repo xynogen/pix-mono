@@ -1,10 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
 import { extname, join } from "node:path";
-import type {
-	EventBus,
-	ExtensionAPI,
-	ExtensionCommandContext,
-} from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { type SettingsRow, showSettingsPicker } from "@xynogen/pix-pretty/provider-picker";
 import {
@@ -14,6 +8,8 @@ import {
 } from "@xynogen/pix-runtime";
 import { config, pixRuntime } from "@xynogen/pix-runtime/config";
 import { spawnTool } from "@xynogen/pix-runtime/exec";
+import { existsSync, readdirSync } from "@xynogen/pix-runtime/fs";
+import type { EventBus, ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { agentDir, expandHome } from "@xynogen/pix-runtime/paths";
 import { currentPlatform, type HostOs, type HostPlatform } from "@xynogen/pix-runtime/platform";

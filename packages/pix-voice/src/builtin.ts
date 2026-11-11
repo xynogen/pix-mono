@@ -8,8 +8,8 @@
  * (local-device). 9Router still reaches them as `9router` models.
  */
 
-import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
+import { readFile } from "@xynogen/pix-runtime/fs";
 import {
 	bearer,
 	bytes,

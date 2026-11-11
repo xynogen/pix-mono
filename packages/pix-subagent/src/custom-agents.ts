@@ -2,9 +2,9 @@
  * custom-agents.ts — Load user-defined agents from project (.pi/agents/) and global ($PI_CODING_AGENT_DIR/agents/, default ~/.pi/agent/agents/) locations.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
+import { existsSync, readdirSync, readFileSync } from "@xynogen/pix-runtime/fs";
+import { parseFrontmatter } from "@xynogen/pix-runtime/host";
 import { agentDir, projectPath } from "@xynogen/pix-runtime/paths";
 import { BUILTIN_TOOL_NAMES } from "./agent-types.ts";
 import type { AgentConfig } from "./types.ts";

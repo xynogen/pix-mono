@@ -2,9 +2,9 @@
  * Pure helpers for pix-gate — no Pi API deps, fully unit-testable.
  */
 
-import type { EventBus } from "@earendil-works/pi-coding-agent";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { config } from "@xynogen/pix-runtime/config";
+import type { EventBus } from "@xynogen/pix-runtime/host";
 import { type GateRuleConfig, gateSection } from "@xynogen/pix-runtime/sections";
 
 export type Severity = "critical" | "dangerous" | "risky";

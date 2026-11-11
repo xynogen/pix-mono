@@ -5,8 +5,7 @@
  * the bounded result preview and diagnostic retained in the message details.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "@xynogen/pix-pretty/tui";
 import { COLLAPSED_TOOL_GLYPH, clickToggle, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
 import {
 	formatContext,
@@ -15,6 +14,7 @@ import {
 	formatToolUses,
 	formatTurns,
 } from "@xynogen/pix-pretty/widget-format";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import type { NotificationDetails } from "../types.ts";
 
 type NotificationTheme = {

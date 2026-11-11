@@ -7,8 +7,8 @@
  * linger, overflow) for a consistent look across pix's concurrent-work UIs.
  */
 
-import { truncateToWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { truncateToWidth } from "@xynogen/pix-pretty/tui";
 import { dotJoin, rule, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/utils";
 import {
 	type ContextUsageLike,

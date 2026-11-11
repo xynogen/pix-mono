@@ -2,8 +2,8 @@
  * Model resolution: exact match ("provider/modelId") with fuzzy fallback.
  */
 
-import type { Api, Model } from "@earendil-works/pi-ai";
 import { formatCost, lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
+import type { Api, Model } from "@xynogen/pix-data/ai";
 import { dotJoin } from "@xynogen/pix-pretty/utils";
 
 export interface ModelEntry {

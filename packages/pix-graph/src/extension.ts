@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import registerGraph from "./graph.ts";
 
 export default function pixGraphExtension(pi: ExtensionAPI): void {

@@ -15,9 +15,9 @@
  * add what the host cannot.
  */
 
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { moduleFile } from "@xynogen/pix-runtime/paths";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 

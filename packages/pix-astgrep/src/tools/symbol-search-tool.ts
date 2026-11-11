@@ -10,11 +10,9 @@
  * locate a file. Upgrade to a real index only if ranking quality is too weak.
  */
 
-import { readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text, type Theme } from "@xynogen/pix-pretty/tui";
 import {
 	frameToolResult,
 	hideCollapsedToolCall,
@@ -23,6 +21,8 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 

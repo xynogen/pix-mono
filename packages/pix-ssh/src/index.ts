@@ -26,9 +26,6 @@
  *   - Output truncated to 50 KB / 2000 lines.
  */
 
-import { existsSync } from "node:fs";
-import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
@@ -40,6 +37,7 @@ import {
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import { fadeRowsOf } from "@xynogen/pix-pretty/text";
+import { Text } from "@xynogen/pix-pretty/tui";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
@@ -66,7 +64,9 @@ import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { requireTool } from "@xynogen/pix-runtime/binaries";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { editSchema, prepareEditArguments, readText } from "@xynogen/pix-runtime/files";
+import { existsSync } from "@xynogen/pix-runtime/fs";
 import { initHashline } from "@xynogen/pix-runtime/hashline";
+import type { AgentToolUpdateCallback, ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { sftpPath } from "@xynogen/pix-runtime/sftp";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";

@@ -11,17 +11,11 @@
  * - No blanket approval: pix-gate checks audited filesystem paths at runtime.
  */
 
-import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import {
-	DEFAULT_MAX_BYTES,
-	DEFAULT_MAX_LINES,
-	truncateTail,
-} from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { renderFileContent } from "@xynogen/pix-pretty/renderers";
+import { Text, truncateToWidth } from "@xynogen/pix-pretty/tui";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
@@ -41,6 +35,13 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import {
+	type AgentToolUpdateCallback,
+	DEFAULT_MAX_BYTES,
+	DEFAULT_MAX_LINES,
+	type ExtensionAPI,
+	truncateTail,
+} from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { requestPathAccess } from "@xynogen/pix-runtime/path-access";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";

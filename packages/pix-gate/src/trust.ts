@@ -8,15 +8,15 @@
  * "ask", and no-UI runs fall through to Pi unchanged ("undecided").
  */
 
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type {
-	ExtensionAPI,
-	ProjectTrustContext,
-	ProjectTrustEvent,
-	ProjectTrustEventResult,
-} from "@earendil-works/pi-coding-agent";
-import { ProjectTrustStore } from "@earendil-works/pi-coding-agent";
+import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
+import {
+	type ExtensionAPI,
+	type ProjectTrustContext,
+	type ProjectTrustEvent,
+	type ProjectTrustEventResult,
+	ProjectTrustStore,
+} from "@xynogen/pix-runtime/host";
 import { agentDir } from "@xynogen/pix-runtime/paths";
 
 export const TRUST_LABEL = "Trust";

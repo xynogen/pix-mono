@@ -14,8 +14,8 @@
  * it as a collapsed nudge card (card.ts), and never blocks: the user stays in charge.
  */
 
-import { createHash } from "node:crypto";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { createHash } from "@xynogen/pix-runtime/crypto";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { NUDGE_ENTRY, type NudgeCard } from "./card.ts";
 
 export const LOOP_THRESHOLD = 3;

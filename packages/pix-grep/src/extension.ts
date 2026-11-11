@@ -1,12 +1,3 @@
-import { mkdirSync } from "node:fs";
-import {
-	createGrepToolDefinition,
-	createGrepTool as createGrepToolFallback,
-	type ExtensionAPI,
-	type ExtensionContext,
-	type GrepToolInput,
-} from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import {
 	CursorStore,
 	fffDestroy,
@@ -15,12 +6,21 @@ import {
 	getPiPrettyFffDir,
 } from "@xynogen/pix-pretty/fff";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
+import { Text } from "@xynogen/pix-pretty/tui";
 import type { OptionalFffModule, PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
 import {
 	getErrorMessage,
 	linkedShortPath,
 	viewportTextConstructor,
 } from "@xynogen/pix-pretty/utils";
+import { mkdirSync } from "@xynogen/pix-runtime/fs";
+import {
+	createGrepToolDefinition,
+	createGrepTool as createGrepToolFallback,
+	type ExtensionAPI,
+	type ExtensionContext,
+	type GrepToolInput,
+} from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { homeDir } from "@xynogen/pix-runtime/paths";
 import { registerGrepTool } from "./grep.ts";

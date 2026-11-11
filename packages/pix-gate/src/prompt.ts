@@ -5,9 +5,9 @@
  * All dialog logic lives in @xynogen/pix-pretty/gate-overlay.
  */
 
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import type { UserPromptState } from "@xynogen/pix-pretty/user-prompt";
+import type { ExtensionContext } from "@xynogen/pix-runtime/host";
 import type { PathRule, Rule } from "./lib.ts";
 
 export interface GateDecision {

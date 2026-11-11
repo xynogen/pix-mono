@@ -1,6 +1,5 @@
-import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
-import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text, wrapTextWithAnsi } from "@xynogen/pix-pretty/tui";
 import {
 	COLLAPSED_TOOL_GLYPH,
 	dotJoin,
@@ -17,6 +16,7 @@ import {
 	SPINNER,
 } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { AgentToolResult } from "@xynogen/pix-runtime/host";
 import { SUBAGENT_TOOL_NAMES } from "./agent-runner.ts";
 import { getConfig } from "./agent-types.ts";
 import type {

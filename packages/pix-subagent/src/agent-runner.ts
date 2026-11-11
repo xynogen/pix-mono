@@ -3,18 +3,19 @@
  */
 
 import { basename, dirname, isAbsolute, resolve } from "node:path";
-import type { Api, AssistantMessage, Model, ToolCall } from "@earendil-works/pi-ai";
-import type { ExtensionContext, LoadExtensionsResult } from "@earendil-works/pi-coding-agent";
+import type { Api, AssistantMessage, Model, ToolCall } from "@xynogen/pix-data/ai";
+import { onAbort } from "@xynogen/pix-runtime/abort";
 import {
 	type AgentSession,
 	type AgentSessionEvent,
 	createAgentSession,
 	DefaultResourceLoader,
 	type ExtensionAPI,
+	type ExtensionContext,
+	type LoadExtensionsResult,
 	SessionManager,
 	SettingsManager,
-} from "@earendil-works/pi-coding-agent";
-import { onAbort } from "@xynogen/pix-runtime/abort";
+} from "@xynogen/pix-runtime/host";
 import { agentDir as agentDirPath, expandHome } from "@xynogen/pix-runtime/paths";
 import {
 	BUILTIN_TOOL_NAMES,

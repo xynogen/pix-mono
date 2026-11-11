@@ -8,7 +8,7 @@
  * extensions keep their declared exposure.
  */
 
-import type { ExtensionAPI, ToolInfo } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ToolInfo } from "@xynogen/pix-runtime/host";
 
 // Always-on tools. Keep in sync with pix-toolbox `ALWAYS_ON_TOOLS`.
 export const ALWAYS_ON_TOOLS: ReadonlySet<string> = new Set([

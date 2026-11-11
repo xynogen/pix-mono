@@ -11,10 +11,10 @@
  * custom ENTRY (no model context). Both render through `nudgeCard`.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text, wrapTextWithAnsi } from "@xynogen/pix-pretty/tui";
 import { bodyLine, clickToggle, padIcon } from "@xynogen/pix-pretty/utils";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 export const NUDGE_ENTRY = "pix-nudge";
 export const CAPABILITY_MESSAGE = "pix-capability-nudge";

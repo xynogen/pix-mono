@@ -1,9 +1,9 @@
-import { rm } from "node:fs/promises";
 import { isAbsolute, join, relative } from "node:path";
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { rm } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime/host";
 import { cacheDir, tempDir } from "@xynogen/pix-runtime/paths";
 
 /** Drop a target that sits inside another target: deleting the parent removes it. */

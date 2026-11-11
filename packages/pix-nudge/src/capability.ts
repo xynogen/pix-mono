@@ -16,13 +16,9 @@
  * `/toolbox` is a user slash command, not model-callable; never name it here.
  */
 
-import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type {
-	BuildSystemPromptOptions,
-	ExtensionAPI,
-	ToolInfo,
-} from "@earendil-works/pi-coding-agent";
+import { existsSync } from "@xynogen/pix-runtime/fs";
+import type { BuildSystemPromptOptions, ExtensionAPI, ToolInfo } from "@xynogen/pix-runtime/host";
 import { ownerRel } from "@xynogen/pix-runtime/paths";
 import { CAPABILITY_MESSAGE } from "./card.ts";
 import { registeredToolNames } from "./tools.ts";

@@ -64,6 +64,7 @@
       "version": "0.3.8",
       "dependencies": {
         "@ast-grep/napi": "^0.45.0",
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
@@ -207,6 +208,7 @@
       "name": "@xynogen/pix-env",
       "version": "0.4.7",
       "dependencies": {
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
@@ -599,6 +601,7 @@
       "name": "@xynogen/pix-voice",
       "version": "0.2.11",
       "dependencies": {
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },

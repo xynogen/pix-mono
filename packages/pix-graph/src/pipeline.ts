@@ -1,7 +1,13 @@
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { createHash } from "@xynogen/pix-runtime/crypto";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "@xynogen/pix-runtime/fs";
 import { godNodes, surprisingConnections } from "./analyze.ts";
 import { analyzeGraph, analyzeGraphProgress, type GraphData } from "./analyzer.ts";
 import { buildGraph } from "./build.ts";

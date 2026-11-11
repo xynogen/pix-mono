@@ -6,12 +6,12 @@
  * agents complete.
  */
 
-import { statSync } from "node:fs";
 import { isAbsolute } from "node:path";
-import type { Api, Model } from "@earendil-works/pi-ai";
-import type { AgentSession, ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { Api, Model } from "@xynogen/pix-data/ai";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { onAbort } from "@xynogen/pix-runtime/abort";
+import { statSync } from "@xynogen/pix-runtime/fs";
+import type { AgentSession, ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { uniqueLfid } from "@xynogen/pix-runtime/lfid";
 import {
 	resumeAgent as _resumeAgentReal,

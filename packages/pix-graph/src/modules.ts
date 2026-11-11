@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { createHash } from "@xynogen/pix-runtime/crypto";
+import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import type { GraphData, GraphNode } from "./analyzer.ts";
 import { sharePrefix, tokenize } from "./query.ts";
 import { boundaries } from "./report.ts";

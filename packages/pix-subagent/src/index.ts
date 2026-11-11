@@ -11,7 +11,7 @@
  *   - pix twist: model name ALWAYS visible in widget + notification
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { AgentManager } from "./agent-manager.ts";
 import { registerAgents } from "./agent-types.ts";
 import { loadCustomAgents } from "./custom-agents.ts";

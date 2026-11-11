@@ -1,8 +1,8 @@
-import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
-import { Box, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Box, getMarkdownTheme, Markdown, Spacer, Text } from "@xynogen/pix-pretty/tui";
 import { clickToggle, dotJoin } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 export interface BtwMessageDetails {
 	question: string;
@@ -16,9 +16,7 @@ export interface BtwMessageDetails {
 	error?: string;
 }
 
-export function registerBtwRenderer(
-	pi: Pick<import("@earendil-works/pi-coding-agent").ExtensionAPI, "registerEntryRenderer">,
-): void {
+export function registerBtwRenderer(pi: Pick<ExtensionAPI, "registerEntryRenderer">): void {
 	// A display-only CustomEntry (not a CustomMessageEntry): it never enters the
 	// main agent's LLM context and never steers the running turn, so the card can
 	// be appended the instant the side question finishes — even mid-stream.

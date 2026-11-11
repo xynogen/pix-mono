@@ -13,8 +13,8 @@
  * ponytail: upgrade path is a tool_result redactor that masks known values.
  */
 
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "@xynogen/pix-runtime/fs";
 import { expandHome } from "@xynogen/pix-runtime/paths";
 
 /** Default files scanned at the repo root, later entries override earlier. */

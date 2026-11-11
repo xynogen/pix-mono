@@ -8,7 +8,7 @@
  * Ported from tintinweb/pi-subagents (MIT). Trimmed: dropped memory tool helpers.
  */
 
-import { createCodingTools, createReadOnlyTools } from "@earendil-works/pi-coding-agent";
+import { createCodingTools, createReadOnlyTools } from "@xynogen/pix-runtime/host";
 import { DEFAULT_AGENTS } from "./default-agents.ts";
 import type { AgentConfig } from "./types.ts";
 

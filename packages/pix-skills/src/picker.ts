@@ -6,14 +6,20 @@
  * shows the loaded skill as a collapsible card, the same as `/skill:name`.
  */
 
-import { CustomEditor, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { fuzzyFilter, matchesKey, mixColors, type TUI } from "@earendil-works/pi-tui";
 import { chipTag, SKILL_TAG } from "@xynogen/pix-pretty/chips";
 import { frameLines, modalWidth } from "@xynogen/pix-pretty/modal-frame";
 import { fadeLine } from "@xynogen/pix-pretty/text";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
+import {
+	CustomEditor,
+	fuzzyFilter,
+	matchesKey,
+	mixColors,
+	type TUI,
+} from "@xynogen/pix-pretty/tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 const MAX_VISIBLE = 10;
 const SEARCH_DELAY_MS = 300;

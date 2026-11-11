@@ -5,7 +5,7 @@
  * process and loads no native addon. The addon loads on the first tool call.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { registerOutlineTool } from "./tools/outline-tool.ts";
 import { registerReadEnclosingTool } from "./tools/read-enclosing-tool.ts";
 import { registerReadSymbolTool } from "./tools/read-symbol-tool.ts";

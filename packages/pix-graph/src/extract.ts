@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, sep } from "node:path";
 import { runToolSync } from "@xynogen/pix-runtime/exec";
+import { existsSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import ts from "typescript";
 import type { GraphLink, GraphNode } from "./analyzer.ts";
 import { createGraphParseCache, type GraphParseCache } from "./parse-cache.ts";

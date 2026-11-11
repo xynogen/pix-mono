@@ -13,18 +13,14 @@
  *     entered once per session per host.
  */
 
-import { createHash } from "node:crypto";
-import { globSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve as resolvePath } from "node:path";
-import {
-	DEFAULT_MAX_BYTES,
-	DEFAULT_MAX_LINES,
-	truncateHead,
-} from "@earendil-works/pi-coding-agent";
 import type { UnattendedMode } from "@xynogen/pix-runtime";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { createHash } from "@xynogen/pix-runtime/crypto";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import { type EditInput, editText, readText, writeText } from "@xynogen/pix-runtime/files";
+import { globSync, mkdtempSync, readFileSync, rmSync, statSync } from "@xynogen/pix-runtime/fs";
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "@xynogen/pix-runtime/host";
 import { expandHome, homeDir, tempDir } from "@xynogen/pix-runtime/paths";
 import { runSftp, sftpPath, withSftp } from "@xynogen/pix-runtime/sftp";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";

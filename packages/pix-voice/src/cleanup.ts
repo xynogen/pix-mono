@@ -3,9 +3,8 @@
  * Opt-in (`sttCleanup`), the user picks the model, and each run reports model and tokens.
  */
 
-import type { Api, Model } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { type Api, completeSimple, type Model } from "@xynogen/pix-data/ai";
+import type { ExtensionContext } from "@xynogen/pix-runtime/host";
 
 export const CLEANUP_PROMPT = `You clean up dictated text before it goes into a prompt box. The speaker talked live, so the transcript has the normal slips of speech. Fix only these:
 
