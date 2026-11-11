@@ -1,6 +1,6 @@
 import { Box, CURSOR_MARKER, visibleWidth } from "@earendil-works/pi-tui";
 
-// Not re-exported from the pi-tui index; values are fixed in tui.ts (1.5.0).
+// Not re-exported from the pi-tui index; values are fixed in tui.ts (1.5.2).
 const FAKE_CURSOR_START = "\x1b_pi:fc\x07";
 const FAKE_CURSOR_END = "\x1b_pi:/fc\x07";
 
@@ -256,9 +256,9 @@ export function captureRows(
 export async function withUiFixture(
 	options: { icons?: "unicode" | "ascii"; hostTheme?: boolean } = {},
 ) {
-	// ponytail: checked structural adapter for host 1.5.0 only. Recheck host reads before supporting another version.
+	// ponytail: checked structural adapter for host 1.5.2 only. Recheck host reads before supporting another version.
 	const host = options.hostTheme ? await import("@earendil-works/pi-coding-agent") : undefined;
-	if (host && host.VERSION !== "1.5.0")
+	if (host && host.VERSION !== "1.5.2")
 		throw new Error(`Unsupported capture host version: ${host.VERSION}`);
 	const hostThemes = host
 		? [
