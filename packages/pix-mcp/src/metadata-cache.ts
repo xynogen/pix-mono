@@ -1,9 +1,9 @@
 // metadata-cache.ts - Persistent MCP metadata cache
 
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { createHash } from "@xynogen/pix-runtime/crypto";
+import { existsSync, mkdirSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import { getAgentPath } from "./agent-dir.ts";
 import { resourceNameToToolName } from "./resource-tools.ts";
 import type { McpResource, McpTool, ServerEntry, ToolMetadata } from "./types.ts";

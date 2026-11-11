@@ -74,13 +74,7 @@
 				"!**/test-utils.ts",
 				"!packages/pix-runtime/**",
 				"!packages/pix-pretty/**",
-				"!packages/pix-data/**",
-				"!packages/pix-aria2/**",
-				"!packages/pix-diagnostics/**",
-				"!packages/pix-mcp/**",
-				"!packages/pix-proc/**",
-				"!packages/pix-search/**",
-				"!packages/pix-web/**"
+				"!packages/pix-data/**"
 			],
 			"linter": {
 				"rules": {

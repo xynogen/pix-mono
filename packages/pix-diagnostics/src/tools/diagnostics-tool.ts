@@ -10,10 +10,8 @@
  */
 
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { StringEnum } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { truncateHead } from "@earendil-works/pi-coding-agent";
-import { Text, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { StringEnum } from "@xynogen/pix-data/ai";
+import { Text, type Theme, wrapTextWithAnsi } from "@xynogen/pix-pretty/tui";
 import {
 	fadeRulePaint,
 	frameToolResult,
@@ -23,6 +21,7 @@ import {
 	rule,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { type ExtensionAPI, truncateHead } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import type { DiagnosticRequest, LspManager } from "../lsp/manager.ts";
 import type { DiagnosticStore } from "../store.ts";

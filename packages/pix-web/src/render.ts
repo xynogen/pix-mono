@@ -1,13 +1,15 @@
 /** Render web results as Markdown in the transcript without changing model content. */
 
+import { fadeRowsOf } from "@xynogen/pix-pretty/text";
 import {
-	type AgentToolResult,
+	Box,
+	type Component,
 	getMarkdownTheme,
+	Markdown,
+	Text,
 	type Theme,
 	type ToolRenderResultOptions,
-} from "@earendil-works/pi-coding-agent";
-import { Box, type Component, Markdown, Text } from "@earendil-works/pi-tui";
-import { fadeRowsOf } from "@xynogen/pix-pretty/text";
+} from "@xynogen/pix-pretty/tui";
 import {
 	BODY_PAD,
 	bodyLine,
@@ -19,6 +21,7 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { AgentToolResult } from "@xynogen/pix-runtime/host";
 
 interface TextLike extends Component {
 	setText(text: string): void;

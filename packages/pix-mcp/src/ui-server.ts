@@ -1,9 +1,13 @@
-import { randomUUID } from "node:crypto";
-import fs from "node:fs/promises";
-import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import path from "node:path";
 import type { CallToolRequest, CallToolResult } from "@modelcontextprotocol/client";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { randomUUID } from "@xynogen/pix-runtime/crypto";
+import { readFile } from "@xynogen/pix-runtime/fs";
+import {
+	createHttpServer,
+	type IncomingMessage,
+	type ServerResponse,
+} from "@xynogen/pix-runtime/net";
 import type { ConsentManager } from "./consent-manager.ts";
 import { ServerError, wrapError } from "./errors.ts";
 import { applyCspMeta, buildCspMetaContent, buildHostHtmlTemplate } from "./host-html-template.ts";
@@ -302,7 +306,7 @@ export async function startUiServer(options: UiServerOptions): Promise<UiServerH
 			// Serve the pre-bundled AppBridge module.
 			const bundlePath = path.join(import.meta.dirname, "app-bridge.bundle.js");
 			try {
-				const content = await fs.readFile(bundlePath, "utf-8");
+				const content = await readFile(bundlePath, "utf-8");
 				res.writeHead(200, {
 					"Content-Type": "application/javascript",
 					"Cache-Control": "public, max-age=31536000",
@@ -459,7 +463,7 @@ export async function startUiServer(options: UiServerOptions): Promise<UiServerH
 			"/proxy/ui/complete": handleComplete,
 		};
 
-	const server = http.createServer(async (req, res) => {
+	const server = createHttpServer(async (req, res) => {
 		try {
 			const method = req.method || "GET";
 			const url = new URL(req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);

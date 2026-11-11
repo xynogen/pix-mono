@@ -12,10 +12,10 @@
  * real timers. Tests inject fakes and a fake clock.
  */
 
-import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
+import { readFile } from "@xynogen/pix-runtime/fs";
 import { projectRel } from "@xynogen/pix-runtime/paths";
 import type { DiagnosticSnapshot, PixDiagnostic } from "../types.ts";
 import {

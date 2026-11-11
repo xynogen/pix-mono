@@ -11,12 +11,10 @@
  * selects the first exact identifier match, rejecting ambiguous lines.
  */
 
-import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { StringEnum } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { StringEnum } from "@xynogen/pix-data/ai";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text, type Theme } from "@xynogen/pix-pretty/tui";
 import {
 	frameToolResult,
 	hideCollapsedToolCall,
@@ -24,6 +22,8 @@ import {
 	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { readFileSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import type {

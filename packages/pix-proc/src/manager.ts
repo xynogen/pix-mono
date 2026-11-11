@@ -16,21 +16,23 @@
  * ticks match (PID-reuse guard), then ask the user before killing.
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
+import { join } from "node:path";
+import { type ChildProcess, spawnShell } from "@xynogen/pix-runtime/exec";
 import {
 	closeSync,
 	existsSync,
 	mkdirSync,
+	open,
 	openSync,
+	readdir,
 	readdirSync,
+	readFile,
 	readFileSync,
 	rmSync,
 	statSync,
 	writeFileSync,
 	writeSync,
-} from "node:fs";
-import { open, readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+} from "@xynogen/pix-runtime/fs";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
 import { cacheDir } from "@xynogen/pix-runtime/paths";
 import { type LogView, logSince, MAX_LOG_LINES, type ProcMeta, tailLines } from "./format.ts";
@@ -190,9 +192,8 @@ export class ProcManager {
 		const fd = openSync(logPath, "w");
 		let child: ChildProcess;
 		try {
-			child = spawn(command, {
+			child = spawnShell(command, {
 				cwd,
-				shell: true,
 				detached: true,
 				stdio: ["ignore", "pipe", "pipe"],
 			});

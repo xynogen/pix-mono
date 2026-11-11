@@ -1,6 +1,3 @@
-import type { Api, AssistantMessage, Message, Model, TextContent } from "@earendil-works/pi-ai";
-import { complete } from "@earendil-works/pi-ai/compat";
-import type { EventBus, ExtensionUIContext, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type {
 	Client,
 	CreateMessageRequest,
@@ -9,7 +6,16 @@ import type {
 	SamplingMessage,
 	SamplingMessageContentBlock,
 } from "@modelcontextprotocol/client";
+import {
+	type Api,
+	type AssistantMessage,
+	complete,
+	type Message,
+	type Model,
+	type TextContent,
+} from "@xynogen/pix-data/ai";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
+import type { EventBus, ExtensionUIContext, ModelRegistry } from "@xynogen/pix-runtime/host";
 import { truncateAtWord } from "./utils.ts";
 
 export interface SamplingHandlerOptions {

@@ -167,6 +167,7 @@
       "name": "@xynogen/pix-diagnostics",
       "version": "0.4.11",
       "dependencies": {
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
         "vscode-jsonrpc": "^9.0.0",
@@ -322,6 +323,7 @@
       "dependencies": {
         "@modelcontextprotocol/client": "^2.3.1",
         "@modelcontextprotocol/ext-apps": "^1.2.2",
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
         "open": "^10.2.0",
@@ -616,6 +618,7 @@
       "name": "@xynogen/pix-web",
       "version": "0.2.14",
       "dependencies": {
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },

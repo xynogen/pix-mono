@@ -6,9 +6,10 @@
  * ranked by fuzzy score + git recency, with a live preview of the selection.
  */
 
-import { CustomEditor, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
+import { CustomEditor } from "@xynogen/pix-pretty/tui";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { attachPicker } from "./editor.ts";
 import { FilePicker } from "./picker.ts";
 import { withDirectories } from "./rank.ts";

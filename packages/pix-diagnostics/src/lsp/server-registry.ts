@@ -1,8 +1,7 @@
 /** Project-owned LSP server configuration and root detection. */
 
-import { readFileSync } from "node:fs";
-import { access } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
+import { access, readFileSync } from "@xynogen/pix-runtime/fs";
 import { homeDir, projectPath } from "@xynogen/pix-runtime/paths";
 import { findExecutable } from "@xynogen/pix-runtime/which";
 

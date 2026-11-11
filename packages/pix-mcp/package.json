@@ -52,7 +52,8 @@
 		"@xynogen/pix-runtime": "^0.20.0",
 		"open": "^10.2.0",
 		"recheck": "^4.5.0",
-		"zod": "^3.25.0 || ^4.0.0"
+		"zod": "^3.25.0 || ^4.0.0",
+		"@xynogen/pix-data": "^0.6.0"
 	},
 	"peerDependencies": {
 		"typebox": "*",

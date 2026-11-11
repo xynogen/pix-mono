@@ -1,8 +1,8 @@
-import { createRequire } from "node:module";
-import type { AgentToolResult, ToolInfo } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { getErrorMessage, padIcon } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
+import type { AgentToolResult, ToolInfo } from "@xynogen/pix-runtime/host";
+import { requireFrom } from "@xynogen/pix-runtime/paths";
 import { throwIfAborted } from "./abort.ts";
 import {
 	getFailureAgeSeconds,
@@ -27,8 +27,8 @@ import { maybeStartUiSession, type UiSessionRuntime } from "./ui-session.ts";
 import { formatAuthRequiredMessage, truncateAtWord } from "./utils.ts";
 
 // ponytail: recheck costs about 66 ms to load and only regex search uses it. Load it on
-// first use. createRequire keeps executeSearch sync (recheck is CommonJS).
-const requireLazy = createRequire(import.meta.url);
+// first use. A CommonJS require keeps executeSearch sync (recheck is CommonJS).
+const requireLazy = requireFrom(import.meta.url);
 let recheck: typeof import("recheck") | undefined;
 const checkSync: typeof import("recheck").checkSync = (...args) => {
 	recheck ??= requireLazy("recheck") as typeof import("recheck");

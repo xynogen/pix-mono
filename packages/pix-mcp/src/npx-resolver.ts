@@ -1,5 +1,8 @@
 // npx-resolver.ts - Resolve npx/npm exec binaries to avoid npm parent processes
 
+import { dirname, extname, join, resolve, sep } from "node:path";
+import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { runToolSync, spawnTool } from "@xynogen/pix-runtime/exec";
 import {
 	closeSync,
 	existsSync,
@@ -10,10 +13,7 @@ import {
 	readSync,
 	realpathSync,
 	statSync,
-} from "node:fs";
-import { dirname, extname, join, resolve, sep } from "node:path";
-import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { runToolSync, spawnTool } from "@xynogen/pix-runtime/exec";
+} from "@xynogen/pix-runtime/fs";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { getAgentPath } from "./agent-dir.ts";
 

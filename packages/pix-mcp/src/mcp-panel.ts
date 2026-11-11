@@ -1,4 +1,3 @@
-import { decodeKittyPrintable, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	frameModal,
@@ -7,6 +6,7 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { decodeKittyPrintable, matchesKey, visibleWidth } from "@xynogen/pix-pretty/tui";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import type { CachedTool, MetadataCache, ServerCacheEntry } from "./metadata-cache.ts";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";

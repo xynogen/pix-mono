@@ -1,11 +1,11 @@
-import { createHash } from "node:crypto";
+import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { abortable } from "@xynogen/pix-runtime/abort";
+import { createHash } from "@xynogen/pix-runtime/crypto";
 import type {
 	AgentToolResult,
 	AgentToolUpdateCallback,
 	ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { abortable } from "@xynogen/pix-runtime/abort";
+} from "@xynogen/pix-runtime/host";
 import { throwIfAborted } from "./abort.ts";
 import { getFailureAgeSeconds, lazyConnect } from "./init.ts";
 import { authenticate, supportsOAuth } from "./mcp-auth-flow.ts";

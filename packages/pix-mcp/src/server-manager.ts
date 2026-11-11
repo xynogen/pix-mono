@@ -1,4 +1,3 @@
-import { Readable } from "node:stream";
 import type {
 	Client,
 	ReadResourceResult,
@@ -7,6 +6,7 @@ import type {
 } from "@modelcontextprotocol/client";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
+import { Readable } from "@xynogen/pix-runtime/io";
 import { throwIfAborted } from "./abort.ts";
 import { resolveConfigRecord, resolveOAuthSecret } from "./config-value.ts";
 import {

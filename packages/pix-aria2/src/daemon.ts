@@ -14,31 +14,14 @@
  * pidfile-tracked shared daemon if multi-session sharing is ever wanted.
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { createServer } from "node:net";
 import { BinaryMissingError, ensureTool, type ToolStatus } from "@xynogen/pix-runtime/binaries";
+import { randomBytes } from "@xynogen/pix-runtime/crypto";
+import { type ChildProcess, spawnPath } from "@xynogen/pix-runtime/exec";
+import { freePort } from "@xynogen/pix-runtime/net";
 import { type Conn, createWebSocket, open } from "maria2/dist/index.js";
 
 /** aria2c is missing (message carries the per-OS install hint). */
 export const Aria2MissingError = BinaryMissingError;
-
-/** Ask the OS for a free loopback TCP port. Not held — see the ponytail note above. */
-function freePort(): Promise<number> {
-	return new Promise((resolve, reject) => {
-		const srv = createServer();
-		srv.once("error", reject);
-		srv.listen(0, "127.0.0.1", () => {
-			const addr = srv.address();
-			if (addr && typeof addr === "object") {
-				const port = addr.port;
-				srv.close(() => resolve(port));
-			} else {
-				srv.close(() => reject(new Error("could not resolve a free port")));
-			}
-		});
-	});
-}
 
 export interface DaemonHandle {
 	conn: Conn;
@@ -72,7 +55,7 @@ export async function startDaemon(options: StartDaemonOptions = {}): Promise<Dae
 
 	const secret = randomBytes(16).toString("hex");
 	const port = await freePort();
-	const proc = spawn(
+	const proc = spawnPath(
 		binary,
 		[
 			"--enable-rpc",

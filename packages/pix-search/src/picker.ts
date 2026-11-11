@@ -10,14 +10,14 @@
  * null on cancel) through the `done` callback.
  */
 
-import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { dirIcon, fileColor, fileIcon } from "@xynogen/pix-pretty/icons";
 import { lang } from "@xynogen/pix-pretty/lang";
 import { frameLines, joinColumns, modalWidth } from "@xynogen/pix-pretty/modal-frame";
+import { matchesKey, truncateToWidth } from "@xynogen/pix-pretty/tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
+import { readFileSync } from "@xynogen/pix-runtime/fs";
 import { rankFiles } from "./rank.ts";
 import type { RecencyMap } from "./recency.ts";
 

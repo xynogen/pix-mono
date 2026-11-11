@@ -1,4 +1,3 @@
-import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import type {
 	Client,
 	ElicitRequest,
@@ -8,6 +7,7 @@ import type {
 	JsonSchemaType,
 } from "@modelcontextprotocol/client";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import type { ExtensionUIContext } from "@xynogen/pix-runtime/host";
 import open from "open";
 import { loadAjv, loadSdk } from "./sdk.ts";
 

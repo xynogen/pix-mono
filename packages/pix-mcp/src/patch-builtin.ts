@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { existsSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import { agentDir } from "@xynogen/pix-runtime/paths";
 
 export function patchOutBuiltinMcp(path = `${agentDir()}/settings.json`): boolean {

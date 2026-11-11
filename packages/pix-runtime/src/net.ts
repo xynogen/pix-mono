@@ -1,8 +1,8 @@
 /** net.ts — network primitives for feature packages (IP checks, DNS, loopback servers). */
 
+import { promises as dns } from "node:dns";
 import { createServer } from "node:net";
 
-export { lookup as dnsLookup } from "node:dns/promises";
 export {
 	createServer as createHttpServer,
 	type IncomingMessage,
@@ -10,6 +10,10 @@ export {
 	type ServerResponse,
 } from "node:http";
 export { isIP } from "node:net";
+
+/** `dns.promises.lookup`, read at call time so tests can stub the Node object. */
+export const dnsLookup: typeof dns.lookup = ((...args: Parameters<typeof dns.lookup>) =>
+	dns.lookup(...args)) as typeof dns.lookup;
 
 /** Ask the OS for a free loopback TCP port. Not held: another process can take it before use. */
 export function freePort(): Promise<number> {

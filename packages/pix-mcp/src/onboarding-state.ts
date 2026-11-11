@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import { getAgentPath } from "./agent-dir.ts";
 
 export interface McpOnboardingState {

@@ -1,8 +1,8 @@
-import { randomBytes } from "node:crypto";
-import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { truncateHead } from "@earendil-works/pi-coding-agent";
 import { getErrorMessage, humanSize } from "@xynogen/pix-pretty/utils";
+import { randomBytes } from "@xynogen/pix-runtime/crypto";
+import { mkdtemp, writeFile } from "@xynogen/pix-runtime/fs";
+import { truncateHead } from "@xynogen/pix-runtime/host";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import type { ContentBlock, McpSettings } from "./types.ts";

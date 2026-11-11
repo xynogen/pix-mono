@@ -1,4 +1,3 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	type ProviderPickerOptions,
@@ -7,6 +6,7 @@ import {
 	showSettingsPicker,
 } from "@xynogen/pix-pretty/provider-picker";
 import { registerPackageSettings } from "@xynogen/pix-runtime";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { fetchConfig, saveFetchConfig } from "./config.ts";
 import { listAllFetchProviders } from "./providers.ts";
 import { saveSearchConfig, searchConfig } from "./search-config.ts";

@@ -8,11 +8,17 @@
  * otherwise <Pi agent dir>/mcp-oauth/sha256-<server-hash>/tokens.json
  */
 
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { createHash } from "@xynogen/pix-runtime/crypto";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "@xynogen/pix-runtime/fs";
 import { getAgentPath } from "./agent-dir.ts";
 import { logger } from "./logger.ts";
 

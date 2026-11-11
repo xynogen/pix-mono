@@ -1,8 +1,8 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import { getErrorMessage, padIcon } from "@xynogen/pix-pretty/utils";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import {
 	ensureCompatibilityImports,
 	getMcpDiscoverySummary,

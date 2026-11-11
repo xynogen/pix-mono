@@ -12,9 +12,8 @@
  * shared-daemon reuse yet — those are the named next steps.
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
+import { Text } from "@xynogen/pix-pretty/tui";
 import {
 	BODY_PAD,
 	expandHint,
@@ -26,6 +25,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
 import { aria2 } from "maria2/dist/index.js";
 import { Type } from "typebox";

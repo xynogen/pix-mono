@@ -5,7 +5,12 @@
  * Uses Node.js http module for compatibility.
  */
 
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import {
+	createHttpServer as createServer,
+	type IncomingMessage,
+	type HttpServer as Server,
+	type ServerResponse,
+} from "@xynogen/pix-runtime/net";
 import {
 	DEFAULT_OAUTH_CALLBACK_PATH,
 	getConfiguredOAuthCallbackPort,

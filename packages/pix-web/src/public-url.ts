@@ -1,6 +1,5 @@
-import { promises as dns } from "node:dns";
-import { isIP } from "node:net";
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
+import { dnsLookup, isIP } from "@xynogen/pix-runtime/net";
 
 function blockedIpv4(address: string): boolean {
 	const parts = address.split(".").map(Number);
@@ -77,7 +76,7 @@ async function assertPublicUrl(url: string): Promise<void> {
 	if (isIP(host)) return;
 	let addresses: { address: string; family: number }[];
 	try {
-		addresses = await dns.lookup(host, { all: true, verbatim: true });
+		addresses = await dnsLookup(host, { all: true, verbatim: true });
 	} catch (err) {
 		// Fail closed: an unverified host must not be fetched. fetch() would hit
 		// the same resolver, so this only blocks what could not be checked.

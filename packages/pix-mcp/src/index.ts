@@ -1,13 +1,13 @@
-import { StringEnum } from "@earendil-works/pi-ai";
+import { StringEnum } from "@xynogen/pix-data/ai";
+import { showTransientError, showTransientMessage } from "@xynogen/pix-pretty/transient-error";
+import { getErrorMessage, pluralize } from "@xynogen/pix-pretty/utils";
+import { registerPackageSettings } from "@xynogen/pix-runtime";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionAPI,
 	ExtensionContext,
 	ToolInfo,
-} from "@earendil-works/pi-coding-agent";
-import { showTransientError, showTransientMessage } from "@xynogen/pix-pretty/transient-error";
-import { getErrorMessage, pluralize } from "@xynogen/pix-pretty/utils";
-import { registerPackageSettings } from "@xynogen/pix-runtime";
+} from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import {
 	logoutServer,

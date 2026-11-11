@@ -5,9 +5,9 @@
  * Respects .gitignore, hidden-file exclusions, and abort signals.
  */
 
-import { spawn } from "node:child_process";
 import { basename } from "node:path";
 import { resolveTool } from "@xynogen/pix-runtime/binaries";
+import { spawnPath } from "@xynogen/pix-runtime/exec";
 
 /**
  * rg resolution: pix-runtime (binary.json → <agentDir>/bin, where Pi downloads
@@ -38,7 +38,7 @@ function spawnRg(args: string[], cwd: string, signal: AbortSignal): Promise<stri
 		}
 
 		// --no-config: RIPGREP_CONFIG_PATH must not change what the picker lists (pi #11203).
-		const child = spawn(rgBinary(), ["--no-config", ...args], {
+		const child = spawnPath(rgBinary(), ["--no-config", ...args], {
 			cwd,
 			stdio: ["ignore", "pipe", "ignore"],
 			// ponytail: no env filtering — inherits .gitignore respect from rg defaults
@@ -63,8 +63,8 @@ function spawnRg(args: string[], cwd: string, signal: AbortSignal): Promise<stri
 		};
 		signal.addEventListener("abort", onAbort, { once: true });
 
-		child.stdout.setEncoding("utf-8");
-		child.stdout.on("data", (chunk: string) => {
+		child.stdout?.setEncoding("utf-8");
+		child.stdout?.on("data", (chunk: string) => {
 			stdout += chunk;
 		});
 		child.on("error", () => finish([]));

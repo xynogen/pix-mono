@@ -1,4 +1,3 @@
-import { matchesKey } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	frameModal,
@@ -8,6 +7,7 @@ import {
 	terminalModalHeight,
 	wrapTextWithAnsi,
 } from "@xynogen/pix-pretty/modal-frame";
+import { matchesKey } from "@xynogen/pix-pretty/tui";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { projectRel } from "@xynogen/pix-runtime/paths";
 import type { ConfigWritePreview, McpDiscoverySummary } from "./config.ts";

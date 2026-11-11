@@ -1,7 +1,7 @@
 /** Add the @ picker to an editor without replacing its paste state or rendering. */
-import type { CustomEditor } from "@earendil-works/pi-coding-agent";
-import type { TUI } from "@earendil-works/pi-tui";
+
 import { chipTag } from "@xynogen/pix-pretty/chips";
+import type { CustomEditor, TUI } from "@xynogen/pix-pretty/tui";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 
 /** Picked paths use the shared `<path>` chip tag. pix-display renders it as a chip. */

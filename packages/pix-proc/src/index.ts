@@ -12,18 +12,16 @@
  * pix-gate for command gating on proc, same as bash.
  */
 
-import { type FSWatcher, watch } from "node:fs";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { commandPreview } from "@xynogen/pix-pretty/command-preview";
+import { type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
 	stripTerminalSequences,
 	Text,
 	truncateToWidth,
 	visibleWidth,
-} from "@earendil-works/pi-tui";
-import { commandPreview } from "@xynogen/pix-pretty/command-preview";
-import { type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+} from "@xynogen/pix-pretty/tui";
 import {
 	BODY_PAD,
 	expandHint,
@@ -38,6 +36,8 @@ import {
 	widgetTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { type FSWatcher, watch } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine, statusWord } from "./format.ts";
 import { PROC_DIR, ProcManager } from "./manager.ts";

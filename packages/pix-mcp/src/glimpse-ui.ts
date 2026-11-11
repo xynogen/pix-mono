@@ -1,8 +1,8 @@
-import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
-import { platform } from "node:os";
 import { dirname, join } from "node:path";
 import { runToolSync } from "@xynogen/pix-runtime/exec";
+import { existsSync } from "@xynogen/pix-runtime/fs";
+import { requireFrom } from "@xynogen/pix-runtime/paths";
+import { currentPlatform } from "@xynogen/pix-runtime/platform";
 
 let glimpseAvailable: boolean | null = null;
 let resolvedBinaryPath: string | null = null;
@@ -10,7 +10,7 @@ let resolvedBinaryPath: string | null = null;
 export function isGlimpseAvailable(): boolean {
 	if (glimpseAvailable !== null) return glimpseAvailable;
 
-	if (platform() !== "darwin") {
+	if (currentPlatform().os !== "darwin") {
 		glimpseAvailable = false;
 		return false;
 	}
@@ -27,7 +27,7 @@ function getGlimpseBinaryPath(): string | null {
 
 	// Local node_modules
 	try {
-		const require = createRequire(import.meta.url);
+		const require = requireFrom(import.meta.url);
 		const glimpseuiPath = require.resolve("glimpseui");
 		const binaryPath = join(dirname(glimpseuiPath), "glimpse");
 		if (existsSync(binaryPath)) return binaryPath;

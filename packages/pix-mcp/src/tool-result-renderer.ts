@@ -1,8 +1,7 @@
-import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { type FadeTheme, fadeRowsOf } from "@xynogen/pix-pretty/text";
+import { Text, type ToolRenderResultOptions, truncateToWidth } from "@xynogen/pix-pretty/tui";
 import {
 	BODY_PAD,
 	expandHint,
@@ -14,6 +13,7 @@ import {
 	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { AgentToolResult } from "@xynogen/pix-runtime/host";
 
 type McpToolResultDetails = Record<string, unknown> & { error?: unknown };
 type McpToolContentBlock = AgentToolResult<McpToolResultDetails>["content"][number];

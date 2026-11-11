@@ -1,6 +1,6 @@
-import { StringEnum } from "@earendil-works/pi-ai";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { StringEnum } from "@xynogen/pix-data/ai";
 import { renderCall } from "@xynogen/pix-pretty/utils";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { fetchConfig } from "./config.ts";

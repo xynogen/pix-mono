@@ -1,7 +1,11 @@
-import type { Theme } from "@earendil-works/pi-coding-agent";
-import { mixColors, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { fadeLine, fadeText } from "@xynogen/pix-pretty/text";
+import {
+	mixColors,
+	stripTerminalSequences,
+	type Theme,
+	visibleWidth,
+} from "@xynogen/pix-pretty/tui";
 import { humanUptime, type ProcMeta, procLabel, statusWord } from "./format.ts";
 
 export function processRow(m: ProcMeta, now: number, width: number, theme: Theme): string {

@@ -1,11 +1,11 @@
 // types.ts - Core type definitions
 
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import type {
 	SSEClientTransport,
 	StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client";
 import type { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import type { ImageContent, TextContent } from "@xynogen/pix-data/ai";
 import type { UiStreamMode } from "./ui-stream-types.ts";
 
 // Transport type (stdio + HTTP)

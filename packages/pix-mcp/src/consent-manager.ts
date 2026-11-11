@@ -1,5 +1,5 @@
-import type { EventBus } from "@earendil-works/pi-coding-agent";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
+import type { EventBus } from "@xynogen/pix-runtime/host";
 import { ConsentError } from "./errors.ts";
 import { logger } from "./logger.ts";
 

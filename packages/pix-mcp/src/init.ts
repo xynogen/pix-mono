@@ -1,7 +1,7 @@
-import { existsSync } from "node:fs";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { existsSync } from "@xynogen/pix-runtime/fs";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 import { throwIfAborted } from "./abort.ts";
 import { loadMcpConfig } from "./config.ts";

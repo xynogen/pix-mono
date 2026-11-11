@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
 import type { CallToolResult } from "@modelcontextprotocol/client";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { randomUUID } from "@xynogen/pix-runtime/crypto";
 import { isGlimpseAvailable, openGlimpseWindow } from "./glimpse-ui.ts";
 import { logger } from "./logger.ts";
 import { isUrlElicitationRequired } from "./sdk.ts";

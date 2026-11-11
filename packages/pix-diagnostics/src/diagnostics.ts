@@ -10,15 +10,19 @@
  * session lifecycle. Successful `write`/`edit` results include a fresh LSP check.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { truncateHead } from "@earendil-works/pi-coding-agent";
-import { mixColors, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { fadeLine } from "@xynogen/pix-pretty/text";
+import {
+	mixColors,
+	stripTerminalSequences,
+	type Theme,
+	visibleWidth,
+} from "@xynogen/pix-pretty/tui";
 import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { config } from "@xynogen/pix-runtime/config";
+import { readFileSync, writeFileSync } from "@xynogen/pix-runtime/fs";
+import { type ExtensionAPI, truncateHead } from "@xynogen/pix-runtime/host";
 import { editSection } from "@xynogen/pix-runtime/sections";
 import { DispositionStore } from "./dispositions.ts";
 import { createManager, type LspManager } from "./lsp/manager.ts";

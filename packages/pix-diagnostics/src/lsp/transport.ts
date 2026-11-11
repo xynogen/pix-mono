@@ -13,8 +13,8 @@
  * It advertises UTF-16 only and fails when a server picks another encoding.
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { type ChildProcess, spawnPath } from "@xynogen/pix-runtime/exec";
 import {
 	CancellationTokenSource,
 	createMessageConnection,
@@ -201,7 +201,7 @@ export class LspTransport {
 	) {}
 
 	static async start(options: StartOptions): Promise<LspTransport> {
-		const child = spawn(options.command, [...options.args], {
+		const child = spawnPath(options.command, options.args, {
 			cwd: options.cwd,
 			stdio: ["pipe", "pipe", "pipe"],
 			env: options.env ?? process.env,

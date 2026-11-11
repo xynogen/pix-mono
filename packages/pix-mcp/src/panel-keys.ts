@@ -1,4 +1,4 @@
-import { Key, matchesKey } from "@earendil-works/pi-tui";
+import { Key, matchesKey } from "@xynogen/pix-pretty/tui";
 
 /** The `tui.select.*` keybinding ids the adapter panels resolve. */
 export type PanelSelectKeybinding =
