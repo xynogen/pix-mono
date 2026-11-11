@@ -1,13 +1,11 @@
 import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
 import { Text } from "@xynogen/pix-pretty/tui";
-import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
 import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { initHashline } from "@xynogen/pix-runtime/hashline";
 import {
 	createReadToolDefinition,
 	createReadTool as createReadToolFallback,
 	type ExtensionAPI,
-	type ReadToolInput,
 } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { homeDir } from "@xynogen/pix-runtime/paths";
@@ -15,16 +13,14 @@ import { registerReadTool } from "./read.ts";
 
 export default async function pixReadExtension(pi: ExtensionAPI): Promise<void> {
 	await initHashline();
-	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-read", () => {
-		const createReadTool = (createReadToolDefinition ??
-			createReadToolFallback) as unknown as ToolFactory<ReadToolInput>;
+		const createReadTool = createReadToolDefinition ?? createReadToolFallback;
 		if (!createReadTool) return;
 
 		const cwd = process.cwd();
 		const home = homeDir();
 
-		registerReadTool(prettyPi, createReadTool, {
+		registerReadTool(pi, createReadTool, {
 			cwd,
 			sp: (p: string) => linkedShortPath(cwd, home, p),
 			TextComponent: viewportTextConstructor(Text),

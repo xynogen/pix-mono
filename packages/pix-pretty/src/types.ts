@@ -83,20 +83,19 @@ type SessionContextLike = ExtensionContext;
 
 export type CommandContextLike = ExtensionCommandContext;
 
-type ToolExecutor<TParams, TDetails = unknown> = (
-	toolCallId: string,
-	params: TParams,
-	signal?: AbortSignal,
-	onUpdate?: AgentToolUpdateCallback<TDetails | undefined>,
-	ctx?: ExtensionContext,
-) => Promise<ToolResultLike<TDetails>>;
-
 export type ToolFactory<TParams, TDetails = unknown> = (cwd: string) => {
 	name?: string;
 	description?: string;
 	label?: string;
 	parameters?: unknown;
-	execute: ToolExecutor<TParams, TDetails>;
+	// Method syntax: Pi's execute requires the narrower ExtensionToolContext; params stay bivariant.
+	execute(
+		toolCallId: string,
+		params: TParams,
+		signal?: AbortSignal,
+		onUpdate?: AgentToolUpdateCallback<TDetails | undefined>,
+		ctx?: ExtensionContext,
+	): Promise<ToolResultLike<TDetails>>;
 };
 
 export type PiPrettySdk = {
@@ -117,19 +116,20 @@ export type PiPrettySdk = {
 	getAgentDir?: () => string;
 };
 
+// Method syntax keeps params bivariant, so Pi's generic/overloaded ExtensionAPI is assignable.
 export type PiPrettyApi = {
-	registerTool: (tool: unknown) => void;
-	registerCommand: (
+	registerTool(tool: unknown): void;
+	registerCommand(
 		name: string,
 		command: {
 			description?: string;
 			handler: (args: string, ctx: CommandContextLike) => Promise<void> | void;
 		},
-	) => void;
-	on: (
+	): void;
+	on(
 		event: string,
 		handler: (event: unknown, ctx: SessionContextLike) => Promise<void> | void,
-	) => void;
+	): void;
 };
 
 export type OptionalFffModule = { FileFinder: typeof FileFinder };

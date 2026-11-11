@@ -1,13 +1,11 @@
 import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
 import { attachResizeListener, trackInvalidator } from "@xynogen/pix-pretty/resize";
 import { Text } from "@xynogen/pix-pretty/tui";
-import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
 import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { initHashline } from "@xynogen/pix-runtime/hashline";
 import {
 	createEditToolDefinition,
 	createEditTool as createEditToolFallback,
-	type EditToolInput,
 	type ExtensionAPI,
 } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
@@ -16,10 +14,8 @@ import { registerEditTool } from "./edit.ts";
 
 export default async function pixEditExtension(pi: ExtensionAPI): Promise<void> {
 	await initHashline();
-	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-edit", () => {
-		const createEditTool = (createEditToolDefinition ??
-			createEditToolFallback) as unknown as ToolFactory<EditToolInput>;
+		const createEditTool = createEditToolDefinition ?? createEditToolFallback;
 		if (!createEditTool) return;
 
 		const cwd = process.cwd();
@@ -28,7 +24,7 @@ export default async function pixEditExtension(pi: ExtensionAPI): Promise<void> 
 		attachResizeListener();
 
 		registerEditTool(
-			prettyPi,
+			pi,
 			createEditTool,
 			{
 				cwd,

@@ -7,7 +7,7 @@ import {
 } from "@xynogen/pix-pretty/fff";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { Text } from "@xynogen/pix-pretty/tui";
-import type { OptionalFffModule, PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
+import type { OptionalFffModule } from "@xynogen/pix-pretty/types";
 import {
 	getErrorMessage,
 	linkedShortPath,
@@ -19,17 +19,14 @@ import {
 	createGrepTool as createGrepToolFallback,
 	type ExtensionAPI,
 	type ExtensionContext,
-	type GrepToolInput,
 } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { homeDir } from "@xynogen/pix-runtime/paths";
 import { registerGrepTool } from "./grep.ts";
 
 export default function pixGrepExtension(pi: ExtensionAPI): void {
-	const prettyPi = pi as unknown as PiPrettyApi;
 	once(pi, "pix-grep", () => {
-		const createGrepTool = (createGrepToolDefinition ??
-			createGrepToolFallback) as unknown as ToolFactory<GrepToolInput>;
+		const createGrepTool = createGrepToolDefinition ?? createGrepToolFallback;
 		if (!createGrepTool) return;
 
 		const cwd = process.cwd();
@@ -88,7 +85,7 @@ export default function pixGrepExtension(pi: ExtensionAPI): void {
 			fffDestroy();
 		});
 
-		registerGrepTool(prettyPi, createGrepTool, {
+		registerGrepTool(pi, createGrepTool, {
 			cwd,
 			sp: (p: string) => linkedShortPath(cwd, home, p),
 			TextComponent: viewportTextConstructor(Text),

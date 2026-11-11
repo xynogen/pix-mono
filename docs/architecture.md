@@ -121,7 +121,7 @@ export default function pixLsExtension(pi: ExtensionAPI): void {
 	once(pi, "pix-ls", () => {
 		const cwd = process.cwd();
 		const home = homeDir();                               // pix-runtime/paths
-		registerLsTool(pi as unknown as PiPrettyApi, createLsToolDefinition, {
+		registerLsTool(pi, createLsToolDefinition, {
 			cwd,
 			sp: (p) => shortPath(cwd, home, p),               // pix-pretty/utils
 			TextComponent: viewportTextConstructor(Text),

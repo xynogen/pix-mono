@@ -16,7 +16,6 @@ import { clearHighlightCache } from "./highlight.ts";
 import { initIconMode } from "./icon-persist.ts";
 import { installOrderedWidgets } from "./ordered-widgets.ts";
 import { installOverlayImages } from "./overlay-images.ts";
-import type { PiPrettyApi } from "./types.ts";
 
 export default function piPrettyExtension(pi: ExtensionAPI): void {
 	installOverlayImages();
@@ -30,7 +29,6 @@ export default function piPrettyExtension(pi: ExtensionAPI): void {
 			restore = undefined;
 		});
 	});
-	const prettyPi = pi as unknown as PiPrettyApi;
 	clearHighlightCache();
 
 	// ── Icon mode ───────────────────────────────────────────
@@ -41,5 +39,5 @@ export default function piPrettyExtension(pi: ExtensionAPI): void {
 	// ── FFF slash commands ──────────────────────────────────────────────
 	// fffState is a module-level singleton shared with pix-grep/pix-find.
 	// Commands become available once pix-grep initialises the finder.
-	registerFffCommands(prettyPi, fffState);
+	registerFffCommands(pi, fffState);
 }

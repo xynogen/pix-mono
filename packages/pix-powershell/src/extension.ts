@@ -1,6 +1,6 @@
 import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
 import { Text } from "@xynogen/pix-pretty/tui";
-import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
+import type { ToolFactory } from "@xynogen/pix-pretty/types";
 import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import {
 	type BashToolInput,
@@ -18,13 +18,13 @@ import { registerPowerShellTool } from "./powershell.ts";
 /** Pi's PowerShell tool with plain-text output and a 5.1 `&&`/`||` shim. */
 function defaultCreateTool(): ToolFactory<BashToolInput> | undefined {
 	if (!createPowerShellToolDefinition || !createLocalPowerShellOperations) return undefined;
-	return ((cwd: string) =>
+	return (cwd: string) =>
 		createPowerShellToolDefinition(cwd, {
 			operations: createPixPowerShellOperations(
 				createLocalPowerShellOperations(),
 				() => getPowerShellConfig?.().shell,
 			),
-		})) as unknown as ToolFactory<BashToolInput>;
+		});
 }
 
 export interface PixPowerShellOptions {
@@ -46,7 +46,7 @@ export function createPixPowerShellExtension(options: PixPowerShellOptions = {})
 		once(pi, "pix-powershell", () => {
 			const cwd = process.cwd();
 			const home = homeDir();
-			registerPowerShellTool(pi as unknown as PiPrettyApi, createTool, {
+			registerPowerShellTool(pi, createTool, {
 				cwd,
 				sp: (p: string) => linkedShortPath(cwd, home, p),
 				TextComponent: viewportTextConstructor(Text),
