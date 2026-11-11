@@ -184,13 +184,16 @@ test.each(["tui", "rpc"] as const)("lifecycle in %s mode chains a previous facto
 	type Factory = NonNullable<ReturnType<ExtensionContext["ui"]["getEditorComponent"]>>;
 	const handlers = new Map<string, (event: unknown, ctx: ExtensionContext) => void>();
 	let transformer: ((md: string, ctx: { messageType: string }) => string) | undefined;
+	let transformerOptions: unknown;
 	registerChips({
 		on: (name: string, fn: (event: unknown, ctx: ExtensionContext) => void) =>
 			handlers.set(name, fn),
-		registerMarkdownTransformer: (fn: typeof transformer) => {
+		registerMarkdownTransformer: (fn: typeof transformer, options: unknown) => {
 			transformer = fn;
+			transformerOptions = options;
 		},
 	} as unknown as ExtensionAPI);
+	expect(transformerOptions).toEqual({ messageTypes: ["user"] });
 	expect(transformer!("<path>a.ts</path>", { messageType: "user" })).toContain("@a.ts");
 	expect(transformer!("<path>a.ts</path>", { messageType: "assistant" })).toBe("<path>a.ts</path>");
 	const foreign = { render: () => ["foreign"] } as unknown as EditorComponent;

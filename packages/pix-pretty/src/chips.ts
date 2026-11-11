@@ -283,14 +283,11 @@ export function installChips(editor: CustomEditor): void {
 
 /** Activate chips: sent-message transformer + editor patch. pix-display calls this. */
 export function registerChips(pi: ExtensionAPI): void {
-	// ponytail: local Pi 0.82 types predate the runtime Markdown transformer hook.
-	const markdownPi = pi as ExtensionAPI & {
-		registerMarkdownTransformer?: (
-			transformer: (markdown: string, context: { messageType: string }) => string,
-		) => void;
-	};
-	markdownPi.registerMarkdownTransformer?.((markdown, { messageType }) =>
-		messageType === "user" ? renderHistoryChips(markdown) : markdown,
+	// `messageTypes` skips Pi's assistant stream; `?.` and the `user` check cover older Pi runtimes (peer `*`).
+	pi.registerMarkdownTransformer?.(
+		(markdown, { messageType }) =>
+			messageType === "user" ? renderHistoryChips(markdown) : markdown,
+		{ messageTypes: ["user"] },
 	);
 
 	pi.on("session_start", (_event, ctx) => {
