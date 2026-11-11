@@ -32,6 +32,7 @@ import {
 	isSshCommand,
 	isSudoCommand,
 	loadUserConfig,
+	type PathRule,
 	unattendedGateDecision,
 } from "./lib.ts";
 import {
@@ -71,6 +72,14 @@ export default function (pi: ExtensionAPI): void {
 		{ match: isSshCommand, tool: "ssh_run", label: "ssh" },
 	] as const;
 
+	// A path with a dedicated tool (`.env` → read_env) is hard-blocked toward it, like
+	// AUTH_REDIRECTS: the tool gates disclosure per variable, so prompting for the whole
+	// file only invites a timeout. Without that tool the normal path prompt applies.
+	const toolRedirect = (hit: PathRule, path: string): string | undefined =>
+		hit.tool && isRegistered(hit.tool)
+			? `[PATH:${hit.severity.toUpperCase()}] ${hit.reason} — ${path}. Use the ${hit.tool} tool instead; it reveals only the variables the user approves.`
+			: undefined;
+
 	// ── Path protection (file tools — shell tools handled below) ───
 	// grep/find/ls take a directory, so `~/.ssh` also tests as `~/.ssh/`.
 	const PATH_TOOLS: Record<string, "read" | "write"> = {
@@ -99,6 +108,8 @@ export default function (pi: ExtensionAPI): void {
 		if (!top) return { approved: true, reason: "No protected path" };
 		const { p: path, h: hit } = top;
 
+		const redirect = toolRedirect(hit, path);
+		if (redirect) return { approved: false, reason: redirect };
 		if (hit.severity === "info") {
 			ctx.ui.notify(`${PATH_SEVERITY_ICON.info} ${hit.reason}: ${path}`, "info");
 			return { approved: true, reason: hit.reason };
@@ -212,6 +223,8 @@ export default function (pi: ExtensionAPI): void {
 		for (const p of candidates) {
 			const hit = classifyPath(p, opFor(p), pathRules);
 			if (!hit) continue;
+			const redirect = toolRedirect(hit, p);
+			if (redirect) return { block: true, reason: redirect };
 			if (hit.severity === "info") {
 				ctx.ui.notify(`${PATH_SEVERITY_ICON.info} ${hit.reason}: ${p}`, "info");
 				continue;

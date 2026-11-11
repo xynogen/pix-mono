@@ -88,6 +88,23 @@ describe("gate flow", () => {
 		expect([result, dialogs]).toEqual([undefined, 0]);
 	});
 
+	test(".env reads redirect to read_env without a dialog when it is installed", async () => {
+		for (const [tool, input] of [
+			["read", { paths: ["a.ts", ".env"] }],
+			["bash", { command: "cat .env" }],
+		] as const) {
+			const { result, dialogs } = await run(tool, input, { tools: ["read_env"] });
+			expect([result?.block, dialogs]).toEqual([true, 0]);
+			expect(result?.reason).toContain("read_env");
+		}
+	});
+
+	test(".env reads keep the approval dialog without read_env", async () => {
+		const { result, dialogs } = await run("read", { path: ".env" });
+		expect([result?.block, dialogs]).toEqual([true, 1]);
+		expect(result?.reason).not.toContain("read_env");
+	});
+
 	test("quoted sudo is not redirected", async () => {
 		const { result, dialogs } = await run(
 			"bash",

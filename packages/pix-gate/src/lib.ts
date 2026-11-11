@@ -360,6 +360,8 @@ export interface PathRule {
 	reason: string;
 	/** Which ops to intercept: "read" | "write" | both (default both) */
 	ops?: ("read" | "write")[];
+	/** Dedicated tool for this path. When it is registered, the gate blocks and names it instead of prompting. */
+	tool?: string;
 }
 
 /**
@@ -412,6 +414,7 @@ export const DEFAULT_PATH_RULES: PathRule[] = [
 		pattern: /(^|\/)\.env(?:$|\.(?!example|sample|template|dist)[A-Za-z0-9_-]+)/i,
 		severity: "block",
 		reason: ".env file (live secrets)",
+		tool: "read_env",
 	},
 
 	// Windows secret stores (paths normalized to `/` in classifyPath)
