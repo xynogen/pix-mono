@@ -1,6 +1,8 @@
 import { config } from "./runtime.ts";
 import { ioSection } from "./sections/io.ts";
 
+export { Readable } from "node:stream";
+
 export function ioTimeoutMs(): number {
 	return config(ioSection).timeoutSec * 1000;
 }

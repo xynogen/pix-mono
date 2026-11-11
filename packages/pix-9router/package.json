@@ -44,7 +44,7 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-data": "^0.5.13",
+		"@xynogen/pix-data": "^0.6.0",
 		"@xynogen/pix-runtime": "^0.20.0"
 	}
 }

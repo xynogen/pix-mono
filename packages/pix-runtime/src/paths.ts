@@ -9,6 +9,7 @@
  * which silently turned `HOME ?? ""` paths into cwd-relative ones.
  */
 
+import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -106,6 +107,11 @@ export function tempDir(
  */
 export function moduleFile(moduleUrl: string, ...segments: string[]): string {
 	return resolve(dirname(fileURLToPath(moduleUrl)), ...segments);
+}
+
+/** CommonJS `require` that resolves from a module's own location: `requireFrom(import.meta.url)`. */
+export function requireFrom(moduleUrl: string): NodeJS.Require {
+	return createRequire(moduleUrl);
 }
 
 /** Pi cache root: `$XDG_CACHE_HOME/pi` or `~/.cache/pi`. */

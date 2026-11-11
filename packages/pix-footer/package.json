@@ -43,8 +43,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-data": "^0.5.13",
-		"@xynogen/pix-pretty": "^2.0.3",
+		"@xynogen/pix-data": "^0.6.0",
+		"@xynogen/pix-pretty": "^2.1.0",
 		"@xynogen/pix-runtime": "^0.20.0"
 	},
 	"peerDependencies": {

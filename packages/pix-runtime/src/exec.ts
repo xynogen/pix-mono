@@ -31,6 +31,8 @@ import { type EnsureOptions, ensureTool, type ToolStatus } from "./binaries/ensu
 import { type LookupOptions, type ResolvedTool, requireTool } from "./binaries/resolve.ts";
 import { currentPlatform, type HostPlatform } from "./platform.ts";
 
+export type { ChildProcess } from "node:child_process";
+
 // ── Windows shim quoting ────────────────────────────────────────────────────
 // Ported from cross-spawn (MIT): arguments are quoted for the program's
 // CommandLineToArgvW parsing, then cmd.exe metacharacters are caret-escaped.
@@ -191,16 +193,32 @@ export function spawnTool(
 	args: readonly string[] = [],
 	options: SpawnOptions & HostOpt = {},
 ): ChildProcess {
+	const tool = requireTool(name, { env: options.env ?? process.env, host: options.host });
+	return spawnPath(tool.path, args, options);
+}
+
+/**
+ * Start an already-resolved executable with Node's spawn options. Windows batch
+ * files run through `cmd.exe` with {@link commandLine} quoting; others pass through.
+ * Lifetime (detached group, stdio, kill path) stays with the caller's options.
+ */
+export function spawnPath(
+	path: string,
+	args: readonly string[] = [],
+	options: SpawnOptions & HostOpt = {},
+): ChildProcess {
 	const { host: hostOpt, ...spawnOpts } = options;
-	const host = hostOpt ?? currentPlatform();
-	const env = spawnOpts.env ?? process.env;
-	const tool = requireTool(name, { env, host });
-	const line = commandLine(tool.path, args, host, env);
+	const line = commandLine(path, args, hostOpt ?? currentPlatform(), spawnOpts.env ?? process.env);
 	return spawn(line.command, line.args, {
 		windowsHide: true,
 		...spawnOpts,
 		windowsVerbatimArguments: line.windowsVerbatimArguments ?? spawnOpts.windowsVerbatimArguments,
 	});
+}
+
+/** Start a shell command line (`/bin/sh -c` on POSIX, `cmd.exe /d /s /c` on Windows). */
+export function spawnShell(command: string, options: SpawnOptions = {}): ChildProcess {
+	return spawn(command, { ...options, shell: true });
 }
 
 /** Run a resolved child to completion, collecting output. */

@@ -21,7 +21,7 @@
       "name": "@xynogen/pix-9router",
       "version": "0.8.12",
       "dependencies": {
-        "@xynogen/pix-data": "^0.5.13",
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -34,7 +34,7 @@
       "name": "@xynogen/pix-aria2",
       "version": "0.2.10",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
         "maria2": "^0.4.1",
       },
@@ -48,7 +48,7 @@
       "name": "@xynogen/pix-ask",
       "version": "0.3.11",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -63,7 +63,7 @@
       "version": "0.3.8",
       "dependencies": {
         "@ast-grep/napi": "^0.45.0",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -77,7 +77,7 @@
       "name": "@xynogen/pix-bash",
       "version": "0.2.18",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -89,7 +89,7 @@
       "name": "@xynogen/pix-codemode",
       "version": "0.0.12",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -101,8 +101,8 @@
       "name": "@xynogen/pix-commands",
       "version": "0.6.18",
       "dependencies": {
-        "@xynogen/pix-data": "^0.5.13",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-data": "^0.6.0",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -118,7 +118,7 @@
         "@xynogen/pix-ask": "^0.3.11",
         "@xynogen/pix-bash": "^0.2.18",
         "@xynogen/pix-commands": "^0.6.18",
-        "@xynogen/pix-data": "^0.5.13",
+        "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-diagnostics": "^0.4.11",
         "@xynogen/pix-display": "^0.3.9",
         "@xynogen/pix-edit": "^0.2.18",
@@ -132,7 +132,7 @@
         "@xynogen/pix-nudge": "^0.3.15",
         "@xynogen/pix-optimizer": "^1.3.13",
         "@xynogen/pix-powershell": "^0.1.10",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-prompts": "^0.5.18",
         "@xynogen/pix-read": "^0.4.12",
         "@xynogen/pix-runtime": "^0.20.0",
@@ -151,11 +151,12 @@
     },
     "packages/pix-data": {
       "name": "@xynogen/pix-data",
-      "version": "0.5.13",
+      "version": "0.6.0",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
+        "@earendil-works/pi-ai": "*",
         "@earendil-works/pi-coding-agent": "*",
         "@earendil-works/pi-tui": "*",
       },
@@ -164,7 +165,7 @@
       "name": "@xynogen/pix-diagnostics",
       "version": "0.4.11",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
         "vscode-jsonrpc": "^9.0.0",
       },
@@ -179,7 +180,7 @@
       "name": "@xynogen/pix-display",
       "version": "0.3.9",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -191,7 +192,7 @@
       "name": "@xynogen/pix-edit",
       "version": "0.2.18",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -205,7 +206,7 @@
       "name": "@xynogen/pix-env",
       "version": "0.4.7",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -219,7 +220,7 @@
       "name": "@xynogen/pix-find",
       "version": "0.3.12",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -230,8 +231,8 @@
       "name": "@xynogen/pix-footer",
       "version": "0.2.20",
       "dependencies": {
-        "@xynogen/pix-data": "^0.5.13",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-data": "^0.6.0",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -243,7 +244,7 @@
       "name": "@xynogen/pix-gate",
       "version": "0.4.11",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -259,7 +260,7 @@
       },
       "dependencies": {
         "@ast-grep/napi": "^0.45.0",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
         "typescript": "^5.7.0",
       },
@@ -273,7 +274,7 @@
       "name": "@xynogen/pix-grep",
       "version": "0.3.13",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -288,7 +289,7 @@
       "name": "@xynogen/pix-hunk",
       "version": "0.2.8",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -301,7 +302,7 @@
       "name": "@xynogen/pix-ls",
       "version": "0.3.12",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -318,7 +319,7 @@
       "dependencies": {
         "@modelcontextprotocol/client": "^2.3.1",
         "@modelcontextprotocol/ext-apps": "^1.2.2",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
         "open": "^10.2.0",
         "recheck": "^4.5.0",
@@ -342,8 +343,8 @@
       "name": "@xynogen/pix-models",
       "version": "0.4.12",
       "dependencies": {
-        "@xynogen/pix-data": "^0.5.13",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-data": "^0.6.0",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -356,7 +357,7 @@
       "name": "@xynogen/pix-notify",
       "version": "0.1.4",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -368,7 +369,7 @@
       "name": "@xynogen/pix-nudge",
       "version": "0.3.15",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -380,7 +381,7 @@
       "name": "@xynogen/pix-optimizer",
       "version": "1.3.13",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -392,7 +393,7 @@
       "name": "@xynogen/pix-powershell",
       "version": "0.1.10",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -402,7 +403,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "2.0.3",
+      "version": "2.1.0",
       "dependencies": {
         "@ff-labs/fff-node": "^0.10.6",
         "@xynogen/pix-runtime": "^0.20.0",
@@ -419,7 +420,7 @@
       "name": "@xynogen/pix-proc",
       "version": "0.2.14",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -442,7 +443,7 @@
       "name": "@xynogen/pix-python",
       "version": "0.4.0",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -455,7 +456,7 @@
       "name": "@xynogen/pix-read",
       "version": "0.4.12",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -489,7 +490,7 @@
       "version": "0.3.12",
       "dependencies": {
         "@vscode/ripgrep": "^1.18.0",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -502,7 +503,7 @@
       "version": "0.10.11",
       "dependencies": {
         "@xynogen/pix-gate": "^0.4.11",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -514,7 +515,7 @@
       "name": "@xynogen/pix-ssh",
       "version": "0.7.2",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -527,8 +528,8 @@
       "name": "@xynogen/pix-subagent",
       "version": "0.10.19",
       "dependencies": {
-        "@xynogen/pix-data": "^0.5.13",
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-data": "^0.6.0",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -542,7 +543,7 @@
       "name": "@xynogen/pix-sudo",
       "version": "0.4.10",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -559,7 +560,7 @@
       "name": "@xynogen/pix-todo",
       "version": "0.4.16",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -572,7 +573,7 @@
       "name": "@xynogen/pix-toolbox",
       "version": "0.2.12",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -584,7 +585,7 @@
       "name": "@xynogen/pix-update",
       "version": "0.2.14",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -596,7 +597,7 @@
       "name": "@xynogen/pix-voice",
       "version": "0.2.11",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -610,7 +611,7 @@
       "name": "@xynogen/pix-web",
       "version": "0.2.14",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -624,7 +625,7 @@
       "name": "@xynogen/pix-welcome",
       "version": "0.2.18",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {
@@ -636,7 +637,7 @@
       "name": "@xynogen/pix-write",
       "version": "0.2.17",
       "dependencies": {
-        "@xynogen/pix-pretty": "^2.0.3",
+        "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
       },
       "peerDependencies": {

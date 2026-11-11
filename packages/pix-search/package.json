@@ -49,7 +49,7 @@
 	},
 	"dependencies": {
 		"@vscode/ripgrep": "^1.18.0",
-		"@xynogen/pix-pretty": "^2.0.3",
+		"@xynogen/pix-pretty": "^2.1.0",
 		"@xynogen/pix-runtime": "^0.20.0"
 	}
 }

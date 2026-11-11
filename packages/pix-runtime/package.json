@@ -46,7 +46,11 @@
 		"./safe-path": "./src/safe-path.ts",
 		"./path-access": "./src/path-access.ts",
 		"./which": "./src/which.ts",
-		"./ast": "./src/ast/index.ts"
+		"./ast": "./src/ast/index.ts",
+		"./host": "./src/host.ts",
+		"./fs": "./src/fs.ts",
+		"./crypto": "./src/crypto.ts",
+		"./net": "./src/net.ts"
 	},
 	"keywords": [
 		"pi",
