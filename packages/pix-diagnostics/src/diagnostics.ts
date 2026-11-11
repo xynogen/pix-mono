@@ -23,8 +23,9 @@ import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { config } from "@xynogen/pix-runtime/config";
 import { readFileSync, realpathSync, statSync } from "@xynogen/pix-runtime/fs";
-import { type ExtensionAPI, truncateHead } from "@xynogen/pix-runtime/host";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { editSection } from "@xynogen/pix-runtime/sections";
+import { truncateOutput } from "@xynogen/pix-runtime/utf8";
 import { DispositionStore } from "./dispositions.ts";
 import { createManager, type LspManager } from "./lsp/manager.ts";
 import { DiagnosticStore } from "./store.ts";
@@ -220,7 +221,7 @@ export default function registerDiagnostics(
 				...(event.content ?? []),
 				{
 					type: "text" as const,
-					text: `LSP after ${event.toolName}:\n${truncateHead(report).content}`,
+					text: `LSP after ${event.toolName}:\n${truncateOutput(report).text}`,
 				},
 			],
 			structuredContent: event.structuredContent,

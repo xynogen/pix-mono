@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { truncateStringToBytes } from "./utf8.ts";
+import { truncateOutput, truncateStringToBytes } from "./utf8.ts";
 
 test("keeps the longest complete UTF-8 prefix for every byte boundary", () => {
 	for (const text of ["", "ascii\n ", "café", "日本語", "a😀é中", "a\uFFFDz", "\uFEFFé\r\n"]) {
@@ -26,4 +26,11 @@ test("rejects invalid byte budgets", () => {
 	]) {
 		expect(() => truncateStringToBytes("hello", budget)).toThrow(RangeError);
 	}
+});
+
+test("truncateOutput keeps a byte-capped prefix when the first line exceeds the cap", () => {
+	expect(truncateOutput("a\nb")).toEqual({ text: "a\nb", truncated: false });
+	expect(truncateOutput("a\nb\nc", 2)).toEqual({ text: "a\nb", truncated: true });
+	// truncateHead alone returns "" here.
+	expect(truncateOutput("é".repeat(10), 2000, 5)).toEqual({ text: "éé", truncated: true });
 });

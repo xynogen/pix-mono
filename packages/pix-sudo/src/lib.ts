@@ -4,26 +4,13 @@
  */
 
 import { runTool } from "@xynogen/pix-runtime/exec";
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "@xynogen/pix-runtime/host";
-import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@xynogen/pix-runtime/host";
+
+export { truncateOutput as truncate } from "@xynogen/pix-runtime/utf8";
 
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.
 export const MAX_OUTPUT_BYTES = DEFAULT_MAX_BYTES;
 export const MAX_OUTPUT_LINES = DEFAULT_MAX_LINES;
-
-// ── Output truncation ────────────────────────────────────────────────────────
-
-export function truncate(
-	text: string,
-	maxLines = MAX_OUTPUT_LINES,
-	maxBytes = MAX_OUTPUT_BYTES,
-): { text: string; truncated: boolean } {
-	const r = truncateHead(text, { maxLines, maxBytes });
-	if (!r.firstLineExceedsLimit) return { text: r.content, truncated: r.truncated };
-	// One line over the byte cap (minified JSON, a base64 blob): truncateHead keeps
-	// nothing. Keep its first maxBytes instead, cut on a UTF-8 boundary.
-	return { text: truncateStringToBytes(text, maxBytes), truncated: true };
-}
 
 // ── sudo stderr filter ───────────────────────────────────────────────────────
 

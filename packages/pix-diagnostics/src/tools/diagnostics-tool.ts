@@ -21,7 +21,8 @@ import {
 	rule,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { type ExtensionAPI, truncateHead } from "@xynogen/pix-runtime/host";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { truncateOutput } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import type { DiagnosticRequest, LspManager } from "../lsp/manager.ts";
 import type { DiagnosticStore } from "../store.ts";
@@ -254,9 +255,9 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			let text = [rows.length > 0 ? rows.join("\n") : summarize(snapshots), ...incomplete].join(
 				"\n",
 			);
-			const capped = truncateHead(text);
+			const capped = truncateOutput(text);
 			if (capped.truncated) truncated = true;
-			text = capped.content;
+			text = capped.text;
 
 			const details: DiagnosticsDetails = {
 				_type: "pixDiagnostics",
