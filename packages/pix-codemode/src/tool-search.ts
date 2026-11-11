@@ -1,7 +1,12 @@
-import type { AgentToolResult, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
-import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import {
+	Text,
+	type ToolRenderResultOptions,
+	truncateToWidth,
+	visibleWidth,
+	wrapTextWithAnsi,
+} from "@xynogen/pix-pretty/tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
@@ -15,6 +20,7 @@ import {
 	renderTitle,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { AgentToolResult } from "@xynogen/pix-runtime/host";
 
 type Args = { query?: string; limit?: number };
 type Context = {

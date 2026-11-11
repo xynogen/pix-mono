@@ -5,7 +5,7 @@
  * called by index.ts alongside rtk(pi).
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import {
 	createMode,
 	resolveLevel as resolveLevelGeneric,

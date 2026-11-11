@@ -1,4 +1,4 @@
-import { validateToolArguments } from "@earendil-works/pi-ai";
+import { validateToolArguments } from "@xynogen/pix-data/ai";
 import { MAX_HEADER_LENGTH, MAX_LABEL_LENGTH, type Params, ParamsSchema } from "./schema.ts";
 
 const FIX = "Fix: resend the call with only these fields corrected.";

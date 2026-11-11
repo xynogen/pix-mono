@@ -1,9 +1,10 @@
 import {
 	AssistantMessageComponent,
-	type ExtensionAPI,
 	type Theme,
-} from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+	truncateToWidth,
+	visibleWidth,
+} from "@xynogen/pix-pretty/tui";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 const OPENING_FENCE_RE = /^```([^`]*)$/;
 const CLOSING_FENCE_RE = /^```\s*$/;

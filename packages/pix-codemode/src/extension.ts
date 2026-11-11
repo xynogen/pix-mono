@@ -1,5 +1,9 @@
-import type { AgentToolResult, ExtensionAPI, ToolRenderers } from "@earendil-works/pi-coding-agent";
-import * as host from "@earendil-works/pi-coding-agent";
+import type { ToolRenderers } from "@xynogen/pix-pretty/tui";
+import {
+	type AgentToolResult,
+	codemodeExtension,
+	type ExtensionAPI,
+} from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { renderCall, renderResult } from "./codemode.ts";
 import { renderToolSearchCall, renderToolSearchResult } from "./tool-search.ts";
@@ -60,7 +64,8 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 			);
 			return;
 		}
-		if (typeof host.createCodemodeExtension !== "function") {
+		const createCodemode = codemodeExtension();
+		if (!createCodemode) {
 			pi.on("session_start", (_event, ctx) => {
 				ctx.ui.notify("pix-codemode requires a Pi host with createCodemodeExtension.", "warning");
 			});
@@ -88,7 +93,7 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 		// ponytail: older hosts lack the renderer hook. Keep their existing tool wrapper.
 		pi.on("session_start", () => {
 			const tools = pi.getAllTools();
-			if (tools.some((tool) => tool.name === "codemode")) host.createCodemodeExtension()(proxy);
+			if (tools.some((tool) => tool.name === "codemode")) createCodemode()(proxy);
 		});
 	});
 }

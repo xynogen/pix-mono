@@ -9,7 +9,7 @@
  * don't accidentally clip real output that happens to contain these strings.
  */
 
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
+import type { ImageContent, TextContent } from "@xynogen/pix-data/ai";
 
 export type ToolContent = TextContent | ImageContent;
 

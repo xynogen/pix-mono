@@ -1,4 +1,10 @@
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import {
+	frameModal,
+	joinColumns,
+	MIN_MODAL_HEIGHT,
+	ModalPager,
+	terminalModalHeight,
+} from "@xynogen/pix-pretty/modal-frame";
 import {
 	Container,
 	decodeKittyPrintable,
@@ -7,17 +13,11 @@ import {
 	type KeybindingsManager,
 	Markdown,
 	matchesKey,
+	type Theme,
 	type TUI,
 	truncateToWidth,
 	wrapTextWithAnsi,
-} from "@earendil-works/pi-tui";
-import {
-	frameModal,
-	joinColumns,
-	MIN_MODAL_HEIGHT,
-	ModalPager,
-	terminalModalHeight,
-} from "@xynogen/pix-pretty/modal-frame";
+} from "@xynogen/pix-pretty/tui";
 import { ChipEditor } from "./chip-editor.ts";
 import { checkboxGlyphs, selectionGlyph } from "./glyphs.ts";
 import { safeMarkdownTheme, sentinelsFor } from "./helpers.ts";

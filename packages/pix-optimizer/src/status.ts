@@ -8,12 +8,9 @@
  * disabled. The cell is never empty.
  */
 
-import type {
-	ExtensionCommandContext,
-	ExtensionContext,
-	ThemeColor,
-} from "@earendil-works/pi-coding-agent";
 import { type IconKey, icon, onIconModeChange } from "@xynogen/pix-pretty/icon-catalog";
+import type { ThemeColor } from "@xynogen/pix-pretty/tui";
+import type { ExtensionCommandContext, ExtensionContext } from "@xynogen/pix-runtime/host";
 
 /**
  * Each optimizer tool (caveman/rtk/ponytail) exposes a handle so the single

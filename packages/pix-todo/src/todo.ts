@@ -9,9 +9,8 @@
  * checklist is seeded by the model via the tool's `set` action.
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { Text } from "@xynogen/pix-pretty/tui";
 import {
 	dotJoin,
 	frameToolResult,
@@ -21,6 +20,7 @@ import {
 	termW,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
 import { renderTodoWidget } from "./widget.ts";

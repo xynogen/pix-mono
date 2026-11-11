@@ -1,6 +1,5 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { reportToolStatus, type ToolStatusUI } from "@xynogen/pix-pretty/tool-status";
+import { Text } from "@xynogen/pix-pretty/tui";
 import {
 	dotJoin,
 	frameToolResult,
@@ -10,6 +9,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import {
 	buildHunkArgs,

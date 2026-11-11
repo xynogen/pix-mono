@@ -1,14 +1,14 @@
+import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
+import { Text } from "@xynogen/pix-pretty/tui";
+import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
+import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import {
 	type BashToolInput,
 	createLocalPowerShellOperations,
 	createPowerShellToolDefinition,
 	type ExtensionAPI,
 	getPowerShellConfig,
-} from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
-import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
-import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
-import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { homeDir } from "@xynogen/pix-runtime/paths";
 import { currentPlatform } from "@xynogen/pix-runtime/platform";

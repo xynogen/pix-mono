@@ -10,8 +10,8 @@
  *   code-blocks.ts   Framed, syntax-highlighted code fences in LLM output
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerChips } from "@xynogen/pix-pretty/chips";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 
 import codeBlocksExtension from "./code-blocks.ts";

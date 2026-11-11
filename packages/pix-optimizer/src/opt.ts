@@ -14,8 +14,6 @@
  * shared status cell. There is no text-arg form — the overlay is the only UI.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { type KeybindingsManager, matchesKey } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	frameModal,
@@ -24,7 +22,9 @@ import {
 	modalOverlayOptions,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { type KeybindingsManager, matchesKey } from "@xynogen/pix-pretty/tui";
 import { registerPackageSettings } from "@xynogen/pix-runtime";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import type { OptimizerHandle, OptimizerStatus, OptimizerTool } from "./status.ts";
 import { toolIcon } from "./status.ts";
 

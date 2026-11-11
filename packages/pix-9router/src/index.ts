@@ -11,7 +11,7 @@
  *   ROUTER_API_BASE / ROUTER_API_KEY — legacy aliases
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import registerProvider from "./provider.ts";
 
 export default async function (pi: ExtensionAPI): Promise<void> {

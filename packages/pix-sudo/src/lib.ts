@@ -3,12 +3,8 @@
  * unit-tested without spawning real sudo or loading the Pi extension host.
  */
 
-import {
-	DEFAULT_MAX_BYTES,
-	DEFAULT_MAX_LINES,
-	truncateHead,
-} from "@earendil-works/pi-coding-agent";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "@xynogen/pix-runtime/host";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.

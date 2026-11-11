@@ -1,11 +1,11 @@
 import { stripVTControlCharacters } from "node:util";
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { openProgress, type ProgressHandle, type ProgressUI } from "@xynogen/pix-pretty/progress";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { runTool } from "@xynogen/pix-runtime/exec";
+import type { ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime/host";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
 

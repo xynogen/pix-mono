@@ -37,7 +37,7 @@
  * To add a new tag variant, append to TAG_NAMES below.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 // Reasoning tag names to render. Add new variants here.
 const TAG_NAMES = ["think", "thinking"] as const;

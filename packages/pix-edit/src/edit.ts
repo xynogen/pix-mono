@@ -1,9 +1,3 @@
-import type {
-	AgentToolUpdateCallback,
-	EditToolInput,
-	ExtensionContext,
-	ToolRenderResultOptions,
-} from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { MAX_RENDER_LINES } from "@xynogen/pix-pretty/config";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
@@ -16,6 +10,7 @@ import {
 	summarize,
 } from "@xynogen/pix-pretty/diff-render";
 import { lang } from "@xynogen/pix-pretty/lang";
+import type { ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type {
 	EditOperation,
 	EditParams,
@@ -51,6 +46,11 @@ import {
 	type HashParams,
 	prepareEditArguments,
 } from "@xynogen/pix-runtime/files";
+import type {
+	AgentToolUpdateCallback,
+	EditToolInput,
+	ExtensionContext,
+} from "@xynogen/pix-runtime/host";
 
 export {
 	editPath,

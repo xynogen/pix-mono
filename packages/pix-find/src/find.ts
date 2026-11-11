@@ -1,8 +1,3 @@
-import type {
-	ExtensionContext,
-	FindToolInput,
-	ToolRenderResultOptions,
-} from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
@@ -16,6 +11,7 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import type { ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type {
 	FindParams,
 	FindResultDetails,
@@ -43,6 +39,7 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { ExtensionContext, FindToolInput } from "@xynogen/pix-runtime/host";
 
 export const DEFAULT_FIND_LIMIT = 200;
 

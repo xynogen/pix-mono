@@ -12,7 +12,7 @@
  * lifecycle hooks via each module, then registers the overlay command.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { caveman } from "./caveman.ts";
 import { registerOptCommand } from "./opt.ts";
 import { ponytail } from "./ponytail.ts";

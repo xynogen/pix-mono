@@ -1,6 +1,5 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { createOverlayLifecycle } from "@xynogen/pix-pretty/overlay-lifecycle";
+import { Text } from "@xynogen/pix-pretty/tui";
 import { withUserPrompt } from "@xynogen/pix-pretty/user-prompt";
 import {
 	dotJoin,
@@ -13,6 +12,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { onAbort } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { prepareAskArguments } from "./args.ts";
 import { buildResponseText } from "./helpers.ts";

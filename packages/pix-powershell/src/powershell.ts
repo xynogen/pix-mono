@@ -1,8 +1,8 @@
-import type { BashToolInput } from "@earendil-works/pi-coding-agent";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { registerShellTool } from "@xynogen/pix-pretty/shell-tool";
 import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
 import { dotJoin } from "@xynogen/pix-pretty/utils";
+import type { BashToolInput } from "@xynogen/pix-runtime/host";
 
 /** Script-shaped first statements: assignments and control-flow blocks. */
 const SCRIPT_START_RE =

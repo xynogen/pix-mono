@@ -6,15 +6,15 @@
  * 3. Falls back gracefully if rtk binary is missing
  */
 
-import type {
-	ExtensionAPI,
-	ExtensionCommandContext,
-	ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { showTransientError } from "@xynogen/pix-pretty/transient-error";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { ensureTool, type ResolvedTool, resolveTool } from "@xynogen/pix-runtime/binaries";
+import type {
+	ExtensionAPI,
+	ExtensionCommandContext,
+	ExtensionContext,
+} from "@xynogen/pix-runtime/host";
 import { loadOptValue, saveOptValue } from "./persist.ts";
 import type { OptimizerHandle, OptimizerStatus } from "./status.ts";
 

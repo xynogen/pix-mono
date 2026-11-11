@@ -1,4 +1,4 @@
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@xynogen/pix-pretty/tui";
 
 const CHECKBOX_CHECKED = "▣";
 const CHECKBOX_UNCHECKED = "☐";

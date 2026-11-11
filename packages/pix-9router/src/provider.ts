@@ -10,6 +10,7 @@
  */
 
 import {
+	builtinProviders,
 	type ClassifierApi,
 	type ClassifierContext,
 	type ClassifierModel,
@@ -17,8 +18,8 @@ import {
 	type ClassifierResult,
 	formatUserAgent,
 	type RefreshModelsContext,
-} from "@earendil-works/pi-ai";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+} from "@xynogen/pix-data/ai";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 import type { RouterModel } from "./data.ts";
 import { routerBaseUrl, routerModels } from "./data.ts";
@@ -163,15 +164,13 @@ export default async function registerProvider(pi: ExtensionAPI): Promise<void> 
  * 9router serves TypeSafe's System One protocol at `<base>/systemone`. Delegate to pi-ai's
  * built-in TypeSafe classifier (bool->noul, strict answers, retries, usage, client identity).
  * It dispatches on the model it is given, so 9router's baseUrl and id are kept.
- * `/providers/all` is one of the extension loader's aliased pi-ai entrypoints.
  */
 export async function classifySystemOne(
 	model: ClassifierModel<ClassifierApi>,
 	context: ClassifierContext,
 	options?: ClassifierOptions,
 ): Promise<ClassifierResult> {
-	const { builtinProviders } = await import("@earendil-works/pi-ai/providers/all");
-	const typesafe = builtinProviders().find((provider) => provider.id === "typesafe");
+	const typesafe = (await builtinProviders()).find((provider) => provider.id === "typesafe");
 	if (!typesafe?.classify) {
 		return {
 			api: model.api,

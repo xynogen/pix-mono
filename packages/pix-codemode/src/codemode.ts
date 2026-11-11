@@ -1,14 +1,9 @@
-import type {
-	AgentToolResult,
-	ToolDefinition,
-	ToolRenderResultOptions,
-} from "@earendil-works/pi-coding-agent";
-import { Text, visibleWidth } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { type FadeTheme, fadePaint, fadeRowsOf, fadeText } from "@xynogen/pix-pretty/text";
+import { Text, type ToolRenderResultOptions, visibleWidth } from "@xynogen/pix-pretty/tui";
 import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
@@ -27,6 +22,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { formatMs } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { AgentToolResult, ToolDefinition } from "@xynogen/pix-runtime/host";
 
 type Call = {
 	id: string;

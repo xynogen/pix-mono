@@ -9,7 +9,7 @@
  * skill. We inject it as a system-prompt fragment — no external hooks/files.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import {
 	createMode,
 	resolveLevel as resolveLevelGeneric,

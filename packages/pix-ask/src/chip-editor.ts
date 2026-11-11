@@ -22,6 +22,8 @@
  * adding a cross-package dependency (repo policy prefers duplication).
  */
 
+import { BOLD, FG_BLUE, FG_DIM, FG_GREEN, RST } from "@xynogen/pix-pretty/ansi";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	Editor,
 	type EditorTheme,
@@ -29,9 +31,7 @@ import {
 	type TUI,
 	truncateToWidth,
 	visibleWidth,
-} from "@earendil-works/pi-tui";
-import { BOLD, FG_BLUE, FG_DIM, FG_GREEN, RST } from "@xynogen/pix-pretty/ansi";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
+} from "@xynogen/pix-pretty/tui";
 import { readClipboardImageToFile } from "./clipboard-image.ts";
 
 // ─── Constants ──────────────────────────────────────────────────────────────

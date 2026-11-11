@@ -1,9 +1,9 @@
-import type { BashToolInput } from "@earendil-works/pi-coding-agent";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { registerShellTool } from "@xynogen/pix-pretty/shell-tool";
 import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
 import { dotJoin } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
+import type { BashToolInput } from "@xynogen/pix-runtime/host";
 
 // Re-exported for existing importers; canonical home is pix-pretty/shell-tool.
 export { collapseProgressFrames } from "@xynogen/pix-pretty/shell-tool";

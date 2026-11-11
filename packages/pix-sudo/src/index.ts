@@ -21,8 +21,6 @@
  *   - Output truncated to 50 KB / 2000 lines.
  */
 
-import type { AgentToolUpdateCallback, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
@@ -30,6 +28,7 @@ import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overla
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
 import { fadeRowsOf } from "@xynogen/pix-pretty/text";
+import { Text } from "@xynogen/pix-pretty/tui";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
@@ -52,6 +51,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type { AgentToolUpdateCallback, ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import {

@@ -1,8 +1,3 @@
-import type {
-	AgentToolUpdateCallback,
-	ExtensionContext,
-	LsToolInput,
-} from "@earendil-works/pi-coding-agent";
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
@@ -41,6 +36,11 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import type {
+	AgentToolUpdateCallback,
+	ExtensionContext,
+	LsToolInput,
+} from "@xynogen/pix-runtime/host";
 
 export const DEFAULT_LS_LIMIT = 200;
 

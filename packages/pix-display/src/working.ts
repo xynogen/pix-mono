@@ -1,5 +1,5 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
+import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 
 export default function workingExtension(pi: ExtensionAPI): void {
 	let timer: ReturnType<typeof setInterval> | undefined;

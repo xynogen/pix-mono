@@ -14,20 +14,20 @@
 
 import { basename } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import type { AssistantMessage, AssistantMessageEvent } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ReadonlyFooterDataProvider } from "@earendil-works/pi-coding-agent";
+import { benchScoreColor, lookupBenchmark, resolveModelsDev } from "@xynogen/pix-data";
+import type { AssistantMessage, AssistantMessageEvent } from "@xynogen/pix-data/ai";
+import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { fadePaint, fadeText } from "@xynogen/pix-pretty/text";
+import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
 import {
 	type mixColors,
 	sliceByColumn,
 	visibleWidth,
 	wrapTextWithAnsi,
-} from "@earendil-works/pi-tui";
-import { benchScoreColor, lookupBenchmark, resolveModelsDev } from "@xynogen/pix-data";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { fadePaint, fadeText } from "@xynogen/pix-pretty/text";
-import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
+} from "@xynogen/pix-pretty/tui";
 import { fmtTokenCount } from "@xynogen/pix-pretty/widget-format";
 import { config, onConfigChange } from "@xynogen/pix-runtime/config";
+import type { ExtensionAPI, ReadonlyFooterDataProvider } from "@xynogen/pix-runtime/host";
 import { runGit } from "@xynogen/pix-runtime/os";
 import { prettySection } from "@xynogen/pix-runtime/sections";
 import { readSystemStats, type SystemStats } from "@xynogen/pix-runtime/sysstat";

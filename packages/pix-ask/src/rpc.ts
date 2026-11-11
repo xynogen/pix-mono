@@ -1,4 +1,4 @@
-import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionUIContext } from "@xynogen/pix-runtime/host";
 import type { Params } from "./schema.ts";
 import { SENTINEL_FREEFORM } from "./schema.ts";
 import type { QuestionAnswer, QuestionnaireResult } from "./types.ts";

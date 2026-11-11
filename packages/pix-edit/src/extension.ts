@@ -1,15 +1,15 @@
+import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
+import { attachResizeListener, trackInvalidator } from "@xynogen/pix-pretty/resize";
+import { Text } from "@xynogen/pix-pretty/tui";
+import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
+import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
+import { initHashline } from "@xynogen/pix-runtime/hashline";
 import {
 	createEditToolDefinition,
 	createEditTool as createEditToolFallback,
 	type EditToolInput,
 	type ExtensionAPI,
-} from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
-import { CursorStore, fffState } from "@xynogen/pix-pretty/fff";
-import { attachResizeListener, trackInvalidator } from "@xynogen/pix-pretty/resize";
-import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
-import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
-import { initHashline } from "@xynogen/pix-runtime/hashline";
+} from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { homeDir } from "@xynogen/pix-runtime/paths";
 import { registerEditTool } from "./edit.ts";
