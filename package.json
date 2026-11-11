@@ -8,7 +8,6 @@
 		"packages/*"
 	],
 	"scripts": {
-		"prepare": "bun scripts/install-hooks.ts",
 		"test": "bun test --isolate",
 		"typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/pix-mcp/tsconfig.json && tsc --noEmit -p packages/pix-mcp/tsconfig.tests.json",
 		"check": "biome check",

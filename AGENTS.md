@@ -18,7 +18,6 @@
 - Cancelling a caller does not stop a shared daemon, remote operation or started background job.
 - `runToolExecution` turns an abort after success into a failure. Do not use it where a late cancel must keep a started job or result.
 - Minor/major bumps need user approval; an unpublished bump needs no second bump. Shared API changes must update consumer ranges.
-- Never bypass the pre-commit hook (`--no-verify`).
 
 ## Read before
 
