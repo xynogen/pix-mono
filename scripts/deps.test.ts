@@ -217,6 +217,53 @@ describe("dependency architecture", () => {
 	});
 });
 
+describe("feature package shape", () => {
+	// The shape most feature packages already share; shared layers and the pix-core aggregator own theirs.
+	const SHARED = new Set(["pix-runtime", "pix-pretty", "pix-data", "pix-core"]);
+	const features = pkgs.filter(({ dir, pkg }) => !SHARED.has(dir) && pkg.pi?.extensions);
+	const REQUIRED_FILES = ["src", "!src/**/*.test.*", "README.md", "LICENSE"];
+	const ENTRIES = ["src/index.ts", "src/extension.ts"];
+
+	test("every entry registers through once(pi, <package dir>)", () => {
+		const violations = features
+			.filter(
+				({ dir }) =>
+					!sourceFiles(join(packagesDir, dir, "src"))
+						.filter((file) => !/\.test\.[cm]?[jt]sx?$/.test(file))
+						.some((file) => readFileSync(file, "utf8").includes(`once(pi, "${dir}"`)),
+			)
+			.map(({ name, dir }) => `${name}: no once(pi, "${dir}", …) load guard`);
+		expect(violations).toEqual([]);
+	});
+
+	test("manifests match the shared shape", () => {
+		const violations: string[] = [];
+		for (const { name, dir, pkg } of features) {
+			const manifest = pkg as PkgJson & { files?: string[]; type?: string };
+			for (const entry of REQUIRED_FILES)
+				if (!manifest.files?.includes(entry)) violations.push(`${name}: files lacks ${entry}`);
+			if (manifest.type !== "module") violations.push(`${name}: type must be module`);
+			if (pkg.main !== "src/index.ts") violations.push(`${name}: main must be src/index.ts`);
+			const entries = pkg.pi?.extensions ?? [];
+			if (entries.length !== 1 || !ENTRIES.includes(entries[0] ?? ""))
+				violations.push(`${name}: pi.extensions must be one of ${ENTRIES.join(", ")}`);
+			for (const key of Object.keys(pkg.exports ?? {}))
+				if (key.includes("*"))
+					violations.push(`${name}: wildcard export ${key} exposes src internals`);
+			for (const file of ["README.md", "LICENSE"])
+				if (!existsSync(join(packagesDir, dir, file))) violations.push(`${name}: missing ${file}`);
+			for (const [peer, range] of Object.entries(pkg.peerDependencies ?? {}))
+				if (peer.startsWith("@earendil-works/") && range !== "*")
+					violations.push(`${name}: host peer ${peer} must be "*"`);
+			for (const field of DEP_FIELDS)
+				for (const dep of Object.keys(pkg[field] ?? {}))
+					if (dep.startsWith("@earendil-works/"))
+						violations.push(`${name}: host package ${dep} must be a peer, not ${field}`);
+		}
+		expect(violations).toEqual([]);
+	});
+});
+
 describe("dependency hygiene", () => {
 	test("extension packages use the host typebox copy", () => {
 		const violations = pkgs

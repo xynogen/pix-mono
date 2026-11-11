@@ -7,8 +7,7 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./lib": "./src/lib.ts",
-		"./prompt": "./src/prompt.ts",
-		"./src/*": "./src/*"
+		"./prompt": "./src/prompt.ts"
 	},
 	"scripts": {
 		"test": "bun test"

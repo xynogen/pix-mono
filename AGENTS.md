@@ -26,6 +26,14 @@
 - Cancellation of a foreground caller does not imply termination of a shared daemon, remote operation, or established background job. Preserve the owner's stop and cleanup semantics.
 - Use `bun run test`, not bare `bun test`: the root script enables isolation and the configured preload sandboxes user state. Reuse the shared config and renderer test fixtures.
 
+## Feature package shape
+
+- Follow the shape the feature packages already share: `main: src/index.ts`, one Pi entry (`src/index.ts`, or `src/extension.ts` re-exported as `./extension`), colocated `src/*.test.ts` with `*.render.test.ts` for UI, `README.md` and `LICENSE`. Tool cards use `tickCollapse` and pretty framing. Look at neighbouring packages before adding a new pattern.
+- Import Pi only via `pix-runtime/host`, `pix-pretty/tui`, `pix-data/ai`; side-effect Node (`fs`, `child_process`, `net`, `crypto`, …) only via runtime. Lint enforces this.
+- Platform-specific work goes through runtime: `exec` for processes, `binaries` for executables, `paths` for home/temp/project dirs, `atomic-write` for files. No `process.platform` branches.
+- Wrap every entry in `once(pi, "<package dir>", …)`. `scripts/deps.test.ts` enforces it and the manifest shape.
+- `runToolExecution` is optional. It reports an abort after success as a failure, so do not use it where a late cancel must keep a started job or result.
+
 ## Gates and deeper context
 
 - Keep package versions independent. Minor/major bumps need user approval; an unpublished bump needs no second bump. Shared API changes must also account for consumer ranges and bundled dependencies.
