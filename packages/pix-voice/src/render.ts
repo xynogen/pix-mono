@@ -62,7 +62,7 @@ const MAX_PREVIEW_LINES = 32;
 function getText(lastComponent: Component | undefined): TextLike {
 	if (lastComponent && "setText" in lastComponent)
 		return unframeToolResult(lastComponent as TextLike);
-	return new Text("", 0, 0) as unknown as TextLike;
+	return new Text("", 0, 0);
 }
 
 function dimBody(body: string, theme: Theme, ctx: RenderCtx, expanded: boolean): string {

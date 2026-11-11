@@ -464,7 +464,7 @@ export default function (pi: ExtensionAPI) {
 			usage?: { output?: number };
 		};
 		// SAFETY: Assistant messages expose stable runtime id/usage fields missing from published types.
-		const msg = event.message as unknown as RuntimeMsg;
+		const msg = event.message as RuntimeMsg;
 		if (activeStreams.size === 0) liveTps = null;
 		activeStreams.set(msg.id, {
 			start: Date.now(),
@@ -486,7 +486,7 @@ export default function (pi: ExtensionAPI) {
 			usage?: { output?: number };
 		};
 		// SAFETY: Assistant messages expose stable runtime id/usage fields missing from published types.
-		const msg = event.message as unknown as RuntimeMsg;
+		const msg = event.message as RuntimeMsg;
 		const id = msg.id;
 		const s = activeStreams.get(id);
 		if (!s) return;
@@ -504,7 +504,7 @@ export default function (pi: ExtensionAPI) {
 			usage?: { output?: number };
 		};
 		// SAFETY: Assistant messages expose stable runtime id/usage fields missing from published types.
-		const msg = event.message as unknown as RuntimeMsg;
+		const msg = event.message as RuntimeMsg;
 		const id = msg.id;
 		const s = activeStreams.get(id);
 		const finalOut = msg.usage?.output ?? 0;

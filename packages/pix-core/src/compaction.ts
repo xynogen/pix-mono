@@ -494,9 +494,8 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 		const edits: typeof event.entries = [];
 		let saved = 0;
 		const masked = new Set<string>();
-		for (const { id, path } of staleReads(
-			event.context.contextEntries as unknown as MaskEntry[],
-			(p) => resolve(ctx.cwd, p).split(sep).join("/"),
+		for (const { id, path } of staleReads(event.context.contextEntries, (p) =>
+			resolve(ctx.cwd, p).split(sep).join("/"),
 		)) {
 			masked.add(id);
 			edits.push({
@@ -507,11 +506,7 @@ export default function registerCompaction(pi: ExtensionAPI): void {
 		}
 		// ponytail: chars/4 token estimate, like the trim notice below. Use a tokenizer if the
 		// maskMinTokens gate needs to be exact for a provider.
-		const windowed = windowedMasks(
-			event.context.contextEntries as unknown as MaskEntry[],
-			maskKeep,
-			masked,
-		);
+		const windowed = windowedMasks(event.context.contextEntries, maskKeep, masked);
 		const windowSaved = windowed.reduce((sum, w) => sum + w.saved, 0);
 		const windowCount = windowSaved / 4 >= maskMinTokens ? windowed.length : 0;
 		for (const w of windowed.slice(0, windowCount)) {

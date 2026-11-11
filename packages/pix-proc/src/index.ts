@@ -277,7 +277,7 @@ function register(pi: ExtensionAPI): void {
 				renderTitle(theme, "proc", context, a.action),
 				target,
 				a.command ? "bash" : undefined,
-				theme as unknown as { fg: (key: string, text: string) => string },
+				theme,
 				context.state,
 				context.invalidate,
 				context.expanded,

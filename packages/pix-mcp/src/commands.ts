@@ -1,6 +1,7 @@
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+import type { FgTheme } from "@xynogen/pix-pretty/types";
 import { getErrorMessage, padIcon } from "@xynogen/pix-pretty/utils";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import {
@@ -41,8 +42,6 @@ import type {
 	ServerEntry,
 } from "./types.ts";
 import { openPath } from "./utils.ts";
-
-type FgTheme = { fg: (key: string, text: string) => string };
 
 /**
  * Colorize a unified-diff string per line — additions success, deletions error,
@@ -609,8 +608,7 @@ export async function openMcpPanel(
 		}
 		const preview = previewRemoveServerEntry(prov.path, wantsDelete);
 		const th = ctx.ui.theme;
-		// SAFETY: Theme.fg and FgTheme share the same runtime signature; only key variance differs.
-		const diffBody = colorizeConfigDiff(preview.diffText, th as unknown as FgTheme);
+		const diffBody = colorizeConfigDiff(preview.diffText, th);
 		const result = await showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
 			mode: "confirm",
 			icon: icon("mcp"),

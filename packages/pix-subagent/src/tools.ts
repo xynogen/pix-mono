@@ -420,7 +420,7 @@ export function createAgentTool(
 				header,
 				input.prompt,
 				undefined,
-				theme as unknown as { fg: (key: string, text: string) => string },
+				theme,
 				renderCtx.state,
 				renderCtx.invalidate,
 				renderCtx.expanded,

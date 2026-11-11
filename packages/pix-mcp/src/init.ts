@@ -82,7 +82,8 @@ export async function initializeMcp(
 		completedUiSessions: [],
 		openBrowser: (url: string) => openUrl(pi, url, process.env.BROWSER),
 		ui,
-		// SAFETY: McpExtensionState narrows Pi's accepted custom-message payload.
+		// ponytail: pix-mcp sends `display` as a label string; Pi types it as boolean and only
+		// stores it. Retype McpExtensionState.sendMessage to Pi's payload to drop this cast.
 		sendMessage: (message, options) =>
 			pi.sendMessage(message as unknown as Parameters<typeof pi.sendMessage>[0], options),
 	};

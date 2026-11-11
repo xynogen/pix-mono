@@ -504,7 +504,7 @@ export default function (pi: ExtensionAPI) {
 			return {
 				render: (width: number) => {
 					// SAFETY: Host theme implements the smaller local foreground-only Theme contract.
-					const t = theme as unknown as Theme;
+					const t = theme;
 					// Re-read modelId each render so /model changes show live.
 					// Clamp to width so an over-wide logo line never crashes Pi's TUI.
 					return dismissed ? [] : renderWelcome(t, modelId, cwd, CHECKS, width, user, pixVersion);

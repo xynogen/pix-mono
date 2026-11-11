@@ -49,22 +49,8 @@ export default function pixGrepExtension(pi: ExtensionAPI): void {
 		}
 
 		pi.on("session_start", async (_event: unknown, ctx: ExtensionContext) => {
-			if (!fffState.module) {
-				try {
-					// require avoids static type dep — fff-node is optional
-					fffState.module = require("@ff-labs/fff-node") as OptionalFffModule;
-				} catch {
-					/* fff-node not installed — no-op */
-				}
-			}
+			// Load-time init above is the only attempt; fffDestroy() keeps module and dbDir.
 			if (!fffState.module) return;
-
-			if (!fffState.dbDir) {
-				fffState.dbDir = getPiPrettyFffDir();
-				try {
-					mkdirSync(fffState.dbDir, { recursive: true });
-				} catch {}
-			}
 
 			try {
 				await fffEnsureFinder(ctx.cwd);

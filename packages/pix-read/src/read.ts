@@ -395,7 +395,7 @@ export function registerReadTool(
 					);
 				} else if (d?._type === "readBatch") {
 					// SAFETY: _type discriminant is "readBatch", set only where we build ReadBatchDetails.
-					const batch = d as unknown as ReadBatchDetails;
+					const batch = d as ReadBatchDetails;
 					text.setText(
 						renderCollapsed(
 							theme,
@@ -431,7 +431,7 @@ export function registerReadTool(
 
 			if (d?._type === "readBatch") {
 				// SAFETY: _type discriminant is "readBatch", set only where we build ReadBatchDetails.
-				const batch = d as unknown as ReadBatchDetails;
+				const batch = d as ReadBatchDetails;
 				const key = JSON.stringify([
 					batch,
 					renderCtx.expanded,
