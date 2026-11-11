@@ -32,9 +32,10 @@ export type BgTheme = {
 };
 
 export type FgTheme = {
-	fg: (key: string, text: string) => string;
+	// Method syntax: Pi's Theme takes a narrower ThemeColor key, and method params are bivariant.
+	fg(key: string, text: string): string;
 	// Optional raw-ANSI accessor exposed by Pi's theme for semantic foregrounds.
-	getFgAnsi?: (key: string) => string;
+	getFgAnsi?(key: string): string;
 };
 
 export type ImageProtocol = "iterm2" | "kitty" | "none";

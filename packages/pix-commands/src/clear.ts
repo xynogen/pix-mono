@@ -1,5 +1,5 @@
 import { isAbsolute, join, relative } from "node:path";
-import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
+import { confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { rm } from "@xynogen/pix-runtime/fs";
@@ -21,9 +21,7 @@ async function clearCache(_pi: ExtensionAPI, ctx: ExtensionCommandContext) {
 	// With TMPDIR=~/.cache/pi the jiti dir is inside cacheDir(), so list it once.
 	const targets = outermost([cacheDir(), join(tempDir(), "jiti")]);
 	if (ctx.hasUI) {
-		// SAFETY: ctx.ui structurally provides the ConfirmUI surface (custom/theme);
-		// the host's UI type is wider, so we narrow to the subset confirmOverlay uses.
-		const ok = await confirmOverlay(ctx.ui as unknown as ConfirmUI, {
+		const ok = await confirmOverlay(ctx.ui, {
 			icon: icon("status.warn"),
 			title: "Clear the Pi cache?",
 			body: ["This deletes:", ...targets.map((t) => `  ${t}`), "Run /reload after to apply."],

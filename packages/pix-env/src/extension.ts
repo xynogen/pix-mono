@@ -192,7 +192,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 						} else {
 							const text = getTextContent(result) || "No env variables loaded.";
 							rows.push(
-								renderDimPreview(text, theme as unknown as Parameters<typeof renderDimPreview>[1], {
+								renderDimPreview(text, theme, {
 									maxLines: _options.expanded || renderCtx.isError ? Number.MAX_SAFE_INTEGER : 8,
 									ctx: renderCtx,
 								}),

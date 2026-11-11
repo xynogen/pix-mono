@@ -13,7 +13,7 @@
  */
 
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
-import { type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import {
@@ -194,7 +194,7 @@ function register(pi: ExtensionAPI): void {
 		const choice =
 			typeof ctx.ui.custom === "function"
 				? (
-						await showOverlay(ctx.ui as unknown as OverlayUI, {
+						await showOverlay(ctx.ui, {
 							mode: "confirm",
 							icon: icon("process"),
 							title,
@@ -339,14 +339,10 @@ function register(pi: ExtensionAPI): void {
 							: (details?.lines ?? fallback.split("\n")));
 					if (output.length)
 						rows.push(
-							renderDimPreview(
-								output.join("\n"),
-								theme as unknown as Parameters<typeof renderDimPreview>[1],
-								{
-									maxLines: options.expanded ? output.length : 8,
-									ctx: context,
-								},
-							),
+							renderDimPreview(output.join("\n"), theme, {
+								maxLines: options.expanded ? output.length : 8,
+								ctx: context,
+							}),
 						);
 					if (processes.length > shown.length)
 						rows.push(

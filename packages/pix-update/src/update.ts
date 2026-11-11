@@ -1,7 +1,7 @@
 import { stripVTControlCharacters } from "node:util";
-import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
+import { confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { openProgress, type ProgressHandle, type ProgressUI } from "@xynogen/pix-pretty/progress";
+import { openProgress, type ProgressHandle } from "@xynogen/pix-pretty/progress";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { runTool } from "@xynogen/pix-runtime/exec";
@@ -235,9 +235,7 @@ async function updatePackages(ctx: ExtensionCommandContext, progress?: ProgressH
 
 async function updateAll(ctx: ExtensionCommandContext) {
 	if (ctx.hasUI) {
-		// SAFETY: ctx.ui structurally provides the ConfirmUI surface (custom/theme);
-		// the host's UI type is wider, so we narrow to the subset confirmOverlay uses.
-		const ok = await confirmOverlay(ctx.ui as unknown as ConfirmUI, {
+		const ok = await confirmOverlay(ctx.ui, {
 			icon: icon("update"),
 			title: "Update Pi & Extensions?",
 			body: ["Pi will close when the update finishes — relaunch to apply."],
@@ -250,11 +248,7 @@ async function updateAll(ctx: ExtensionCommandContext) {
 	// A focused progress overlay owns input for the whole update, so keystrokes
 	// are swallowed instead of echoing out of order while the heavy install
 	// subprocesses compete with the TUI. Steps run serially.
-	// SAFETY: ctx.ui structurally provides the ProgressUI surface; the host UI
-	// type is wider, so we narrow to the subset openProgress uses.
-	const progress = ctx.hasUI
-		? openProgress(ctx.ui as unknown as ProgressUI, "Updating Pi & extensions")
-		: undefined;
+	const progress = ctx.hasUI ? openProgress(ctx.ui, "Updating Pi & extensions") : undefined;
 	try {
 		await updatePi(ctx, progress);
 		await updatePackages(ctx, progress);

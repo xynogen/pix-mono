@@ -101,10 +101,7 @@ class DownloadManager {
 		if (!this.daemon || !this.ui) return;
 		let active: DlStatus[];
 		try {
-			// SAFETY: maria2 types tellActive as Partial<Aria2DownloadStatus>[]; an *active*
-			// download always carries gid + length + speed fields at runtime, which is the
-			// subset DlStatus reads. Numeric fields are further guarded via Number() in format.ts.
-			active = (await aria2.tellActive(this.daemon.conn)) as unknown as DlStatus[];
+			active = await aria2.tellActive(this.daemon.conn);
 		} catch {
 			return; // daemon hiccup; try again next tick
 		}
@@ -216,8 +213,7 @@ async function handleAdd(
 }
 
 async function handleList(mgr: DownloadManager, daemon: DaemonHandle): Promise<DlResultDetails> {
-	// SAFETY: see DownloadManager.tick() — active downloads always carry the DlStatus subset at runtime.
-	const active = (await aria2.tellActive(daemon.conn)) as unknown as DlStatus[];
+	const active = await aria2.tellActive(daemon.conn);
 	const downloads = active.map((status) => ({ handle: mgr.handleFor(status.gid), status }));
 	return {
 		...ok(
@@ -349,7 +345,7 @@ function register(pi: ExtensionAPI): void {
 					} else {
 						const count = body.split("\n").length;
 						rows.push(
-							renderDimPreview(body, theme as unknown as Parameters<typeof renderDimPreview>[1], {
+							renderDimPreview(body, theme, {
 								maxLines: options.expanded || failed ? count : 8,
 								ctx: context,
 							}),
