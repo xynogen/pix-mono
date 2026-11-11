@@ -10,13 +10,18 @@ import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { CustomEditor } from "@xynogen/pix-pretty/tui";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { attachPicker } from "./editor.ts";
 import { FilePicker } from "./picker.ts";
 import { withDirectories } from "./rank.ts";
 import { loadRecency, type RecencyMap } from "./recency.ts";
 import { rgFiles } from "./rg.ts";
 
-export default function (pi: ExtensionAPI): void {
+export default function pixSearch(pi: ExtensionAPI): void {
+	once(pi, "pix-search", () => register(pi));
+}
+
+function register(pi: ExtensionAPI): void {
 	pi.on("session_start", async (_event, ctx) => {
 		if (ctx.mode !== "tui") return;
 		const cwd = ctx.cwd;

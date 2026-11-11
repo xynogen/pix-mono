@@ -34,6 +34,7 @@ import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { config, pixRuntime, updateConfig } from "@xynogen/pix-runtime/config";
 import { createHash } from "@xynogen/pix-runtime/crypto";
 import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { toolboxSection } from "@xynogen/pix-runtime/sections";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -357,6 +358,10 @@ function createState(pi: ExtensionAPI) {
 // ─── Registration ───────────────────────────────────────────────────────────
 
 export default function registerToolbox(pi: ExtensionAPI): void {
+	once(pi, "pix-toolbox", () => register(pi));
+}
+
+function register(pi: ExtensionAPI): void {
 	const state = createState(pi);
 
 	// Defer init until tools are registered — session_start fires after all extensions load.

@@ -38,6 +38,7 @@ import {
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { type FSWatcher, watch } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
 import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine, statusWord } from "./format.ts";
 import { PROC_DIR, ProcManager } from "./manager.ts";
@@ -92,6 +93,10 @@ const fail = (action: string, error: string): ProcResultDetails => ({
 });
 
 export default function registerRunner(pi: ExtensionAPI): void {
+	once(pi, "pix-proc", () => register(pi));
+}
+
+function register(pi: ExtensionAPI): void {
 	const mgr = new ProcManager();
 	let ui: ExtensionContext["ui"] | undefined;
 	let pollTimer: ReturnType<typeof setInterval> | undefined;

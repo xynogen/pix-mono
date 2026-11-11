@@ -67,6 +67,7 @@ import { editSchema, prepareEditArguments, readText } from "@xynogen/pix-runtime
 import { existsSync } from "@xynogen/pix-runtime/fs";
 import { initHashline } from "@xynogen/pix-runtime/hashline";
 import type { AgentToolUpdateCallback, ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { sftpPath } from "@xynogen/pix-runtime/sftp";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
@@ -581,7 +582,11 @@ const SESSION_CHOICE: OverlayChoice[] = [
 	{ value: "session", label: "Allow for this session", description: "Host, until /new; sudo asks" },
 ];
 
-export default function (pi: ExtensionAPI): void {
+export default function pixSsh(pi: ExtensionAPI): void {
+	once(pi, "pix-ssh", () => register(pi));
+}
+
+function register(pi: ExtensionAPI): void {
 	// "Allow for this session" hosts. Lives in the factory: Pi hands each new session a fresh `pi`,
 	// so this resets on /new. Privileged commands never use it (see `privileged` below).
 	const sessionHosts = new Set<string>();

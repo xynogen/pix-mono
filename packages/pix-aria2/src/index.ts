@@ -27,6 +27,7 @@ import { abortable } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
+import { once } from "@xynogen/pix-runtime/once";
 import { aria2 } from "maria2/dist/index.js";
 import { Type } from "typebox";
 import { Aria2MissingError, type DaemonHandle, startDaemon } from "./daemon.ts";
@@ -247,6 +248,10 @@ async function handleGidOp(
 }
 
 export default function registerDownload(pi: ExtensionAPI): void {
+	once(pi, "pix-aria2", () => register(pi));
+}
+
+function register(pi: ExtensionAPI): void {
 	const mgr = new DownloadManager();
 
 	pi.on("session_start", (_event, ctx) => {

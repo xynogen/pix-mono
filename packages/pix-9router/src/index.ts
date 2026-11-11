@@ -12,8 +12,13 @@
  */
 
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import registerProvider from "./provider.ts";
 
-export default async function (pi: ExtensionAPI): Promise<void> {
-	await registerProvider(pi);
+export default async function pix9Router(pi: ExtensionAPI): Promise<void> {
+	let run: Promise<void> | undefined;
+	once(pi, "pix-9router", () => {
+		run = registerProvider(pi);
+	});
+	await run;
 }

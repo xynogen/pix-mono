@@ -52,6 +52,7 @@ import {
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { AgentToolUpdateCallback, ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { currentPlatform } from "@xynogen/pix-runtime/platform";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
@@ -159,7 +160,11 @@ function isTerminal(details: SudoResultDetails): boolean {
 
 // ── Extension entry point ─────────────────────────────────────────────────────
 
-export default function (pi: ExtensionAPI): void {
+export default function pixSudo(pi: ExtensionAPI): void {
+	once(pi, "pix-sudo", () => register(pi));
+}
+
+function register(pi: ExtensionAPI): void {
 	// sudo does not exist on Windows (catalog: UNIX only). Registering the tool
 	// there only offers the model a command that can never run.
 	if (currentPlatform().os === "win32") return;

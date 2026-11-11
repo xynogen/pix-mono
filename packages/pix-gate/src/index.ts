@@ -21,6 +21,7 @@
 
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { PATH_ACCESS, type PathDecision, type PathRequest } from "@xynogen/pix-runtime/path-access";
 import {
 	buildRules,
@@ -46,7 +47,11 @@ import {
 } from "./prompt.ts";
 import { registerProjectTrust } from "./trust.ts";
 
-export default function (pi: ExtensionAPI): void {
+export default function pixGate(pi: ExtensionAPI): void {
+	once(pi, "pix-gate", () => register(pi));
+}
+
+function register(pi: ExtensionAPI): void {
 	// Two-choice project-trust prompt (Trust / Do not trust) replacing Pi's five.
 	registerProjectTrust(pi);
 

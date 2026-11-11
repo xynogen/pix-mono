@@ -8,6 +8,7 @@ import type {
 	ExtensionContext,
 	ToolInfo,
 } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
 import {
 	logoutServer,
@@ -56,6 +57,10 @@ import type { DirectToolSpec } from "./types.ts";
 import { getConfigPathFromArgv, normalizeDirectToolInputSchema, truncateAtWord } from "./utils.ts";
 
 export default function mcpAdapter(pi: ExtensionAPI) {
+	once(pi, "pix-mcp", () => register(pi));
+}
+
+function register(pi: ExtensionAPI) {
 	// The current load already replaced built-in MCP through the /mcp command.
 	// Keep the same choice in settings for the next load without changing Pi's files.
 	try {

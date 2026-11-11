@@ -10,6 +10,7 @@ import {
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
 import {
 	buildHunkArgs,
@@ -444,6 +445,10 @@ function renderExpanded(details: HunkResultDetails, theme: HunkTheme): string {
 }
 
 export default function registerHunk(pi: ExtensionAPI, runner: HunkRunner = runHunk): void {
+	once(pi, "pix-hunk", () => register(pi, runner));
+}
+
+function register(pi: ExtensionAPI, runner: HunkRunner = runHunk): void {
 	pi.registerTool({
 		name: "hunk",
 		...({ exposure: "deferred" } as const),

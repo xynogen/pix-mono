@@ -13,6 +13,7 @@
  */
 
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { once } from "@xynogen/pix-runtime/once";
 import { caveman } from "./caveman.ts";
 import { registerOptCommand } from "./opt.ts";
 import { ponytail } from "./ponytail.ts";
@@ -21,6 +22,10 @@ import { type OptimizerHandle, OptimizerStatus, type OptimizerTool } from "./sta
 import { filterModelWarnings } from "./tool-result-filter.ts";
 
 export default function optimizer(pi: ExtensionAPI) {
+	once(pi, "pix-optimizer", () => register(pi));
+}
+
+function register(pi: ExtensionAPI) {
 	// Icons follow the global pix-pretty mode (set via /pix); no local state.
 	const status = new OptimizerStatus();
 
