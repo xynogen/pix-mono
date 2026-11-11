@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerGraph, { impactRows } from "./graph.ts";
@@ -177,7 +177,17 @@ describe("graph tool", () => {
 		expect(res.isError).toBeFalsy();
 		const text = res.content.map((c) => c.text).join("");
 		expect(text).toContain("Graph built");
-		expect(text).toContain(".pi/graph/");
+		expect(text).toContain(".pi/pix-graph/");
+	});
+
+	test("moves a pre-owner .pi/graph dir to .pi/pix-graph, keeping summaries", async () => {
+		const root = fixture();
+		mkdirSync(join(root, ".pi", "graph"), { recursive: true });
+		writeFileSync(join(root, ".pi", "graph", "summaries.json"), "{}");
+		await run({ action: "build" }, root);
+		expect(existsSync(join(root, ".pi", "graph"))).toBe(false);
+		expect(existsSync(join(root, ".pi", "pix-graph", "summaries.json"))).toBe(true);
+		expect(existsSync(join(root, ".pi", "pix-graph", "graph.json"))).toBe(true);
 	});
 
 	test("a repeated build reports a cache hit", async () => {
@@ -292,7 +302,7 @@ describe("graph tool", () => {
 		);
 		const earlier = new Date(Date.now() - 60_000);
 		for (const name of ["graph.json", "graph.cleaned.json"]) {
-			utimesSync(join(root, ".pi/graph", name), earlier, earlier);
+			utimesSync(join(root, ".pi/pix-graph", name), earlier, earlier);
 		}
 		const res = await run({ action: "impact", question: "greet" }, root);
 		const text = res.content[0]?.text ?? "";

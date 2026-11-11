@@ -11,7 +11,7 @@ import {
 	type PathDecision,
 	withPathAccess,
 } from "@xynogen/pix-runtime/path-access";
-import { expandHome, moduleFile } from "@xynogen/pix-runtime/paths";
+import { expandHome, moduleFile, ownerDir, ownerRel } from "@xynogen/pix-runtime/paths";
 
 const TAB = "    ";
 
@@ -56,9 +56,52 @@ function venvPython(dir: string, win: boolean): string | undefined {
 	return candidates.find((p) => existsSync(p));
 }
 
+/** Managed venv that `packages` installs into: `<cwd>/.pi/pix-python/venv`. */
+export const venvDir = (cwd: string) => ownerDir(cwd, "pix-python", "venv");
+/** {@link venvDir} as shown to the model and user. */
+export const VENV_REL = ownerRel("pix-python", "venv");
+
+/**
+ * Create the managed venv from `base` when missing, pip-install `packages`
+ * into it, and return its interpreter. Entries are names/specifiers only:
+ * a leading `-` would let the caller pass pip options (`--index-url`, `-r`).
+ */
+export async function ensureVenv(
+	cwd: string,
+	base: string,
+	packages: readonly string[],
+	signal?: AbortSignal,
+	win = process.platform === "win32",
+): Promise<string> {
+	const bad = packages.find((p) => !p.trim() || p.trim().startsWith("-"));
+	if (bad !== undefined)
+		throw new Error(`invalid package "${bad}": names or specifiers only, no pip options`);
+	const dir = venvDir(cwd);
+	const check = (step: string, r: { code: number | null; stdout: string; stderr: string }) => {
+		if (r.code === 0) return;
+		const tail = (r.stderr || r.stdout).trim().split("\n").slice(-8).join("\n");
+		throw new Error(`${step} failed (exit ${r.code}):\n${tail}`);
+	};
+	if (!venvPython(dir, win))
+		check("venv creation", await runTool(base, ["-m", "venv", dir], { cwd, signal }));
+	const py = venvPython(dir, win);
+	if (!py) throw new Error(`no Python interpreter in ${dir} after venv creation`);
+	if (packages.length)
+		check(
+			"pip install",
+			await runTool(
+				py,
+				["-m", "pip", "install", "--disable-pip-version-check", ...packages.map((p) => p.trim())],
+				{ cwd, signal },
+			),
+		);
+	return py;
+}
+
 /**
  * Resolve the `python` parameter to what runTool should start:
- * - omitted → `python3` (binary.json → PATH, the catalog lookup)
+ * - omitted → the managed venv ({@link venvDir}) when it exists, else `python3`
+ *   (binary.json → PATH, the catalog lookup)
  * - a folder (`.venv`, `~/envs/x`, conda prefix) → its interpreter
  * - a file path (`.venv/bin/python`, `/usr/bin/python3.12`) → that file
  * - a bare name (`python3.12`, `pypy3`) → PATH lookup, unless it is a folder in cwd
@@ -71,7 +114,7 @@ export function resolvePython(
 	win = process.platform === "win32",
 ): string {
 	const raw = python?.trim();
-	if (!raw) return "python3";
+	if (!raw) return venvPython(venvDir(cwd), win) ?? "python3";
 	const isPath = isAbsolute(raw) || /[\\/]/.test(raw) || raw.startsWith("~") || raw.startsWith(".");
 	const full = resolve(cwd, expandHome(raw));
 	// A bare `venv` / `env` folder in cwd is a venv, not a PATH name.

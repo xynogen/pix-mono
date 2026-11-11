@@ -45,7 +45,7 @@ import { once } from "@xynogen/pix-runtime/once";
 import { requestPathAccess } from "@xynogen/pix-runtime/path-access";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
-import { normalizeCode, resolvePython, runPython } from "./lib.ts";
+import { ensureVenv, normalizeCode, resolvePython, runPython, VENV_REL } from "./lib.ts";
 
 const TOOL = "python_run";
 /** Card title. The tool id stays `python_run`; users read the language. */
@@ -154,7 +154,8 @@ function register(pi: ExtensionAPI): void {
 			"Run a Python 3 snippet on the local machine (not sandboxed, session cwd) and return stdout/stderr. " +
 			"Use it instead of `python3 -c` or `python3 - <<EOF` in bash. Write plain code: tabs, CRLF, " +
 			"markdown fences and a shared indent are repaired. print() what you need. Runs as the current user without blanket approval; pix-gate checks audited filesystem paths at runtime (not subprocess/native access). " +
-			"Set `python` only when the project needs a specific interpreter (e.g. its `.venv`).",
+			"Set `python` only when the project needs a specific interpreter (e.g. its `.venv`). " +
+			`Set \`packages\` to pip-install third-party modules into a managed venv at \`${VENV_REL}\` (created on first use, reused when \`python\` is omitted).`,
 		promptSnippet: "Run a Python snippet locally",
 		promptGuidelines: [
 			"python_run: Python computation/data work instead of `python -c`/heredoc in bash. Set `intent` to a short why.",
@@ -165,8 +166,12 @@ function register(pi: ExtensionAPI): void {
 			code: Type.String({ description: "Python 3 source. Runs as a script; print() results." }),
 			python: Type.Optional(
 				Type.String({
-					description:
-						"Interpreter. Omit for python3 on PATH. A venv/conda folder ('.venv'), an interpreter path, or a name ('python3.12'). Relative to cwd.",
+					description: `Interpreter. Omit for the managed ${VENV_REL} if it exists, else python3 on PATH. A venv/conda folder ('.venv'), an interpreter path, or a name ('python3.12'). Relative to cwd.`,
+				}),
+			),
+			packages: Type.Optional(
+				Type.Array(Type.String(), {
+					description: `pip packages the code needs (e.g. ['numpy', 'requests==2.32.3']). Installed into ${VENV_REL}, which then runs the code; \`python\` becomes the base interpreter for creating it.`,
 				}),
 			),
 		}),
@@ -175,6 +180,7 @@ function register(pi: ExtensionAPI): void {
 			const intent = oneLine(params.intent) || "(no intent)";
 			const code = normalizeCode(params.code);
 			const python = params.python?.trim() || undefined;
+			const packages = params.packages ?? [];
 			const details = (outcome: Outcome, extra: Partial<PythonResultDetails> = {}) =>
 				({
 					_type: "pythonResult",
@@ -215,7 +221,17 @@ function register(pi: ExtensionAPI): void {
 					let interpreter: string;
 					try {
 						interpreter = resolvePython(python, ctx.cwd);
+						if (packages.length) {
+							update("running", `Installing ${packages.join(", ")}…`);
+							interpreter = await ensureVenv(
+								ctx.cwd,
+								python ? interpreter : "python3",
+								packages,
+								signal,
+							);
+						}
 					} catch (err) {
+						signal?.throwIfAborted();
 						return fail(getErrorMessage(err));
 					}
 

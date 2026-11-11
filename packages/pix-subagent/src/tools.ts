@@ -32,7 +32,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { describeActivity, formatContext } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { agentDir } from "@xynogen/pix-runtime/paths";
+import { agentDir, projectRel } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
 import { type AgentManager, DEFAULT_MAX_RETAINED } from "./agent-manager.ts";
 import {
@@ -110,7 +110,7 @@ export function buildAgentToolDescription(): string {
 }
 
 export function agentTypeGuidance(): string {
-	return `Pass one type name to agent.type. Custom agents: .pi/agents/*.md or ${agentDir()}/agents/*.md (project overrides global).`;
+	return `Pass one type name to agent.type. Custom agents: ${projectRel("agents")}/*.md or ${agentDir()}/agents/*.md (project overrides global).`;
 }
 
 function normalizeQuery(query: unknown): string {

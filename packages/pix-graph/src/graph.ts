@@ -3,7 +3,7 @@
  *
  * Two modes:
  *   build — extract TS/JS with the TypeScript compiler API, cluster into
- *           communities, write graphify-out/{graph,graph.cleaned}.json +
+ *           communities, write .pi/pix-graph/{graph,graph.cleaned}.json +
  *           GRAPH_REPORT.md. Rebuilds from scratch (also serves "update").
  *   query — traverse an existing graph.json to answer a codebase question
  *           (BFS for broad context, DFS to trace a path).
@@ -13,7 +13,15 @@
  * schema; kept minimal (single tool, two modes) per the token-budget rule.
  */
 
-import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	statSync,
+	utimesSync,
+	writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
@@ -35,7 +43,7 @@ import { formatDuration, SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { once } from "@xynogen/pix-runtime/once";
 import { openTarget } from "@xynogen/pix-runtime/os";
-import { projectDir } from "@xynogen/pix-runtime/paths";
+import { ownerRel, projectPath } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
 import type { GraphData } from "./analyzer.ts";
 import { renderGraphHtml } from "./html.ts";
@@ -57,9 +65,21 @@ import {
 	tokenize,
 } from "./query.ts";
 
-const OUT_DIR = `${projectDir()}/graph`; // "/" so prompt text reads the same on Windows
+const OUT_DIR = ownerRel("pix-graph");
 // Also read graphs left by the CLI's old default / external graphify.
 const LEGACY_DIRS = ["graphify-out"];
+
+/** Move a graph from the pre-owner `.pi/graph/` once, so stored summaries survive. */
+function migrateGraphDir(cwd: string): void {
+	const legacy = projectPath(cwd, "graph");
+	const current = resolve(cwd, OUT_DIR);
+	if (!existsSync(legacy) || existsSync(current)) return;
+	try {
+		renameSync(legacy, current);
+	} catch {
+		// Locked on Windows or a cross-device link: the next build writes the new dir.
+	}
+}
 const BAR_WIDTH = 20;
 
 /** Solid/empty progress bar, e.g. `██████░░░░░░`. */
@@ -360,6 +380,7 @@ function plain(rows: QueryHitRow[]): string {
 export default function registerGraph(pi: ExtensionAPI): void {
 	once(pi, "pix-graph", () => {
 		const cwd = process.cwd();
+		migrateGraphDir(cwd);
 		const parseCache = createGraphParseCache();
 		let cacheTimer: ReturnType<typeof setTimeout> | undefined;
 		let activeCalls = 0;
@@ -379,7 +400,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 							ctx.ui.notify('No graph yet. Ask the agent to run graph(action:"build").', "warning");
 							return;
 						}
-						// A legacy graphify-out graph has no .pi/graph/ dir yet.
+						// A legacy graphify-out graph has no output dir yet.
 						mkdirSync(dirname(html), { recursive: true });
 						writeFileSync(html, renderGraphHtml(graph));
 					}

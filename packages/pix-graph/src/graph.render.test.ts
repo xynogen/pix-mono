@@ -59,7 +59,7 @@ test("captures actual graph calls, progress, trees and terminal result states", 
 		const build = { _type: "graphResult", action: "build", outcome: "success" };
 		const failure = { ...build, outcome: "error" };
 		const text =
-			"Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/ (view: /graph) · parsed 3 · reused 0";
+			"Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/pix-graph/ (view: /graph) · parsed 3 · reused 0";
 		await result("built", text, build);
 		await result("error", "Build failed: Operation aborted", failure);
 		await result("partial", "Extracting 3 files…", build, { isPartial: true });

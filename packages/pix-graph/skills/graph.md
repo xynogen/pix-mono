@@ -14,7 +14,7 @@ are visible.
 
 Two ways to drive it — a **model-callable tool** (preferred inside Pi) and a
 **CLI** (scripts, CI, or when the tool isn't loaded). Both read and write the
-same `.pi/graph/graph.json`.
+same `.pi/pix-graph/graph.json`.
 
 ## The `graph` tool (preferred)
 
@@ -30,7 +30,7 @@ graph(action:"summarize")                      # list modules that need a summar
 graph(action:"summarize", module:"@x/auth", summary:"…")  # store one
 ```
 
-- **build** extracts, cleans, and clusters, then writes `.pi/graph/{graph.json, graph.cleaned.json, GRAPH_REPORT.md, graph.html}`. A live progress widget streams scan → parse → analyze → cluster → write. Re-run after edits to refresh (this is the "update" path).
+- **build** extracts, cleans, and clusters, then writes `.pi/pix-graph/{graph.json, graph.cleaned.json, GRAPH_REPORT.md, graph.html}`. A live progress widget streams scan → parse → analyze → cluster → write. Re-run after edits to refresh (this is the "update" path).
 - **query** is lexical. Pass identifiers or name fragments, not prose. It returns a ranked tree of matching nodes with the relation each was reached by. Add `dfs:true` to trace a single path.
 - **query `scope:"global"`** ranks modules (workspace packages) and returns each module's summary plus its evidence card: entry files, APIs other modules call, dependencies, and users.
 - **summarize** with no arguments lists up to 5 modules whose summary is missing or stale, with their cards and a token estimate. With `module` + `summary`, it stores a summary written by you. Write 2-5 sentences grounded only in that card (purpose, entry points, key APIs, dependencies). The summary must name the module or something from its card, or it is rejected. Run it only when the user asks for summaries or a global answer needs them; it costs your tokens.
@@ -40,11 +40,11 @@ graph(action:"summarize", module:"@x/auth", summary:"…")  # store one
 - "where is X / what calls Y / trace the flow" → `graph(action:"query", …)` **before** reading files.
 - "what are the main parts / how do A and B interact" → `graph(action:"query", scope:"global", …)`, or read the **Package Boundaries** section of `GRAPH_REPORT.md`.
 - After you change code and expect to query again → `graph(action:"build")` to refresh.
-- `pix-nudge` reminds you automatically when `.pi/graph/graph.json` exists.
+- `pix-nudge` reminds you automatically when `.pi/pix-graph/graph.json` exists.
 
 ## Fast path — a graph already exists
 
-If `.pi/graph/graph.json` (or a legacy `graphify-out/graph.json`) is present
+If `.pi/pix-graph/graph.json` (or a legacy `graphify-out/graph.json`) is present
 and the request is a natural-language question about the codebase, go straight
 to `graph(action:"query", question)`. Do not rebuild first unless the code changed
 materially since the last build.
@@ -52,23 +52,23 @@ materially since the last build.
 ## CLI (outside Pi, or when the tool isn't loaded)
 
 ```bash
-bun packages/pix-graph/src/cli.ts build [path]                  # → .pi/graph/
+bun packages/pix-graph/src/cli.ts build [path]                  # → .pi/pix-graph/
 bun packages/pix-graph/src/cli.ts query "<question>" [--dfs] [--depth N]
 bun packages/pix-graph/src/cli.ts path "<from>" "<to>"          # shortest path between two nodes
 ```
 
 `--graph <file>` points query/path at a specific graph (default
-`.pi/graph/graph.cleaned.json`, falling back to `graph.json`).
+`.pi/pix-graph/graph.cleaned.json`, falling back to `graph.json`).
 
 ## Outputs
 
 | File | Contents |
 |---|---|
-| `.pi/graph/graph.json` | Full graph — nodes (with `package`), links, community assignments |
-| `.pi/graph/graph.cleaned.json` | Graph that query reads, after validation; communities are computed on it |
-| `.pi/graph/GRAPH_REPORT.md` | Named communities, package boundaries with `file:line` evidence, unresolved internal imports, god nodes, surprising connections |
-| `.pi/graph/graph.html` | Interactive view for the user. The user opens it with `/graph`. Do not read it into context. |
-| `.pi/graph/summaries.json` | Module summaries with evidence hash, model, and prompt version |
+| `.pi/pix-graph/graph.json` | Full graph — nodes (with `package`), links, community assignments |
+| `.pi/pix-graph/graph.cleaned.json` | Graph that query reads, after validation; communities are computed on it |
+| `.pi/pix-graph/GRAPH_REPORT.md` | Named communities, package boundaries with `file:line` evidence, unresolved internal imports, god nodes, surprising connections |
+| `.pi/pix-graph/graph.html` | Interactive view for the user. The user opens it with `/graph`. Do not read it into context. |
+| `.pi/pix-graph/summaries.json` | Module summaries with evidence hash, model, and prompt version |
 
 The `.pi/` directory is gitignored, so the graph never gets committed.
 

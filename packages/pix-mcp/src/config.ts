@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { homeDir, projectDir } from "@xynogen/pix-runtime/paths";
+import { homeDir, projectDir, projectRel } from "@xynogen/pix-runtime/paths";
 import { getAgentPath } from "./agent-dir.ts";
 import { logger } from "./logger.ts";
 import type {
@@ -19,7 +19,7 @@ import { getToolExposure, normalizeExposure } from "./types.ts";
 
 const GENERIC_GLOBAL_CONFIG_PATH = join(homeDir(), ".config", "mcp", "mcp.json");
 const PROJECT_CONFIG_NAME = ".mcp.json";
-const PROJECT_PI_CONFIG_NAME = `${projectDir()}/mcp.json`;
+const PROJECT_PI_CONFIG_NAME = projectRel("mcp.json");
 const REPOPROMPT_BINARY_CANDIDATES = [
 	join(homeDir(), "RepoPrompt", "repoprompt_cli"),
 	"/Applications/Repo Prompt.app/Contents/MacOS/repoprompt-mcp",

@@ -22,20 +22,20 @@ import { Key, matchesKey } from "@earendil-works/pi-tui";
 import { chipTag } from "@xynogen/pix-pretty/chips";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
-import { projectDir } from "@xynogen/pix-runtime/paths";
+import { projectRel } from "@xynogen/pix-runtime/paths";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { PlanModal, type PlanModalResult } from "./plan-modal.ts";
 
 // ponytail: only edit/write paths are guarded here. Other tools are not sandboxed.
 // PLAN_GUIDE asks for read-only use. Use pix-gate for command restrictions.
-const PLAN_DIR = `${projectDir()}/plans`; // "/" so prompts and hints read the same on Windows
+const PLAN_DIR = projectRel("plans");
 const STATE_ENTRY = "pix-plan-mode";
 
 // Visible guide: /plan → "+ New plan" pastes this into the prompt bar as a chip for the user
 // to read, edit, and send. Nothing is injected into the system prompt.
 export const PLAN_GUIDE = `[PLAN MODE] Write an implementation plan. Do not change project code.
 Use any available tool to explore without changing project files. Never use tools to edit project code, install, commit, or delete.
-Save ONE plan with \`write\` to \`.pi/plans/YYYY-MM-DD-<feature-name>.md\`. Use \`edit\` or \`write\` to revise it. Both tools are restricted to this project's \`.pi/plans/\`.
+Save ONE plan with \`write\` to \`${PLAN_DIR}/YYYY-MM-DD-<feature-name>.md\`. Use \`edit\` or \`write\` to revise it. Both tools are restricted to this project's \`${PLAN_DIR}/\`.
 
 Format:
 ---
@@ -147,7 +147,7 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 		if (changed) {
 			ctx.ui.notify(
 				on
-					? "Plan mode on: all tools available. Edit/write only inside this project's .pi/plans/."
+					? `Plan mode on: all tools available. Edit/write only inside this project's ${PLAN_DIR}/.`
 					: "Plan mode off: edit/write restrictions removed.",
 			);
 		}
@@ -204,7 +204,7 @@ export default function registerPlanMode(pi: ExtensionAPI): void {
 	}
 
 	pi.registerCommand("plan", {
-		description: "Manage saved plans (.pi/plans): new, execute, edit, delete, toggle plan mode",
+		description: `Manage saved plans (${PLAN_DIR}): new, execute, edit, delete, toggle plan mode`,
 		handler: async (_args, ctx) => openModal(ctx),
 	});
 

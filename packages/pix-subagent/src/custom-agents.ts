@@ -5,7 +5,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseFrontmatter } from "@earendil-works/pi-coding-agent";
-import { agentDir, projectDir } from "@xynogen/pix-runtime/paths";
+import { agentDir, projectPath } from "@xynogen/pix-runtime/paths";
 import { BUILTIN_TOOL_NAMES } from "./agent-types.ts";
 import type { AgentConfig } from "./types.ts";
 
@@ -39,7 +39,7 @@ function thinkingLevel(val: unknown): (typeof THINKING_LEVELS)[number] | undefin
  */
 export function loadCustomAgents(cwd: string): Map<string, AgentConfig> {
 	const globalDir = join(agentDir(), "agents");
-	const projectAgents = join(projectDir(cwd), "agents");
+	const projectAgents = projectPath(cwd, "agents");
 
 	const agents = new Map<string, AgentConfig>();
 	loadFromDir(globalDir, agents, "global"); // lower priority

@@ -12,7 +12,7 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   ],
   "built": [
     "",
-    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/     ",
+    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/pix-graph/ ",
     "(view: /graph) · parsed 3 · reused 0                                            ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
@@ -42,7 +42,7 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   ],
   "expanded": [
     "",
-    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/     ",
+    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/pix-graph/ ",
     "(view: /graph) · parsed 3 · reused 0                                            ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
@@ -107,7 +107,7 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   ],
   "wide": [
     "",
-    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/graph/ (view: /graph) · parsed 3 · reused 0        ",
+    "<success>●︎</success> Graph built in 2s: 3 files → 8 nodes, 7 links, 2 communities → .pi/pix-graph/ (view: /graph) · parsed 3 · reused 0    ",
     "<success>────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</success>",
   ],
 }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { projectDir } from "@xynogen/pix-runtime/paths";
+import { ownerDir } from "@xynogen/pix-runtime/paths";
 import registerCapabilityNudge, {
 	buildOrientation,
 	CAPABILITY_REMINDER,
@@ -322,13 +322,13 @@ describe("graphifyHint", () => {
 		expect(graphifyHint(tmpDir)).toBeUndefined();
 	});
 
-	test("returns hint for the graph output dir (.pi/graph)", () => {
+	test("returns hint for the graph output dir (.pi/pix-graph)", () => {
 		try {
-			mkdirSync(join(projectDir(tmpDir), "graph"), { recursive: true });
-			writeFileSync(join(tmpDir, ".pi/graph", "graph.json"), "{}");
+			mkdirSync(ownerDir(tmpDir, "pix-graph"), { recursive: true });
+			writeFileSync(ownerDir(tmpDir, "pix-graph", "graph.json"), "{}");
 			const hint = graphifyHint(tmpDir);
 			expect(hint).toBeTypeOf("string");
-			expect(hint).toContain(".pi/graph/graph.json");
+			expect(hint).toContain(".pi/pix-graph/graph.json");
 			expect(hint).toContain('graph(action:"query"');
 		} finally {
 			rmSync(tmpDir, { recursive: true, force: true });

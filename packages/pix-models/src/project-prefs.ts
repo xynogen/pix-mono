@@ -16,7 +16,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { agentDir, projectDir } from "@xynogen/pix-runtime/paths";
+import { agentDir, projectDir, projectPath, projectRel } from "@xynogen/pix-runtime/paths";
 
 export type ModelPrefs = {
 	defaultProvider?: string;
@@ -35,7 +35,7 @@ export function prefsTarget(cwd: string, trusted: boolean, agent = agentDir()): 
 	if (!trusted || resolve(project) === resolve(dirname(agent))) {
 		return { path: userFile, scope: "user" };
 	}
-	return { path: join(project, "settings.json"), scope: "project" };
+	return { path: projectPath(resolve(cwd), "settings.json"), scope: "project" };
 }
 
 /** Merge `prefs` into the JSON settings file at `path`. Returns true if it changed. */
@@ -70,7 +70,7 @@ export function savePrefs(
 	const target = prefsTarget(ctx.cwd, ctx.isProjectTrusted());
 	try {
 		if (writePrefs(target.path, prefs) && ctx.hasUI) {
-			const where = target.scope === "project" ? ".pi/settings.json" : "user settings.json";
+			const where = target.scope === "project" ? projectRel("settings.json") : "user settings.json";
 			showTransientMessage(ctx.ui, `${label} saved to ${where}`, "info");
 		}
 		return target;

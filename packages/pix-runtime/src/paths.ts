@@ -46,13 +46,41 @@ export function binDir(env: NodeJS.ProcessEnv = process.env): string {
 	return join(agentDir(env), "bin");
 }
 
+const PROJECT_DIR_NAME = ".pi";
+
 /**
- * Project config dir: `<cwd>/.pi` (Pi's project `settings.json`, `mcp.json`,
- * `agents/`, `plans/`, `lsp.json`). With no `cwd` it returns the relative `.pi`,
- * for paths that resolve against the process cwd or show in text.
+ * Project dir: `<cwd>/.pi` (project level; the global `~/.pi/agent` is
+ * {@link agentDir}). With no `cwd` it returns the relative `.pi`. Layout:
+ * - user config and content at the root under fixed names: `settings.json`,
+ *   `mcp.json`, `lsp.json`, `agents/`, `plans/` ({@link projectPath})
+ * - generated state in one folder per owner, `.pi/<owner>/` ({@link ownerDir}).
+ *   It can be rebuilt and deleted. pix-welcome offers to gitignore all of `.pi/`.
  */
 export function projectDir(cwd = "."): string {
-	return join(cwd, ".pi");
+	return join(cwd, PROJECT_DIR_NAME);
+}
+
+/** `<cwd>/.pi/...segments` with the OS separator, for the filesystem. */
+export function projectPath(cwd: string, ...segments: string[]): string {
+	return join(projectDir(cwd), ...segments);
+}
+
+/**
+ * `.pi/...segments` with `/` on every OS, for prompts and messages. Also a
+ * valid cwd-relative path (`resolve` accepts `/` on Windows).
+ */
+export function projectRel(...segments: string[]): string {
+	return [PROJECT_DIR_NAME, ...segments].join("/");
+}
+
+/** Generated state of one owner (package name, e.g. `pix-graph`): `<cwd>/.pi/<owner>/...rest`. */
+export function ownerDir(cwd: string, owner: string, ...rest: string[]): string {
+	return projectPath(cwd, owner, ...rest);
+}
+
+/** {@link ownerDir} for display: `.pi/<owner>/...rest` with `/`. */
+export function ownerRel(owner: string, ...rest: string[]): string {
+	return projectRel(owner, ...rest);
 }
 
 /**

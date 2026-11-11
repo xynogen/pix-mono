@@ -23,7 +23,7 @@ import type {
 	ExtensionAPI,
 	ToolInfo,
 } from "@earendil-works/pi-coding-agent";
-import { projectDir } from "@xynogen/pix-runtime/paths";
+import { ownerRel } from "@xynogen/pix-runtime/paths";
 import { CAPABILITY_MESSAGE } from "./card.ts";
 import { registeredToolNames } from "./tools.ts";
 
@@ -73,10 +73,10 @@ export function capabilityLabels(tools: ToolInfo[] | undefined): string[] {
 /**
  * Build the optional graph hint line.
  * Returns a string if a built graph.json exists in cwd (the pix-graph tool writes
- * `.pi/graph/`, external graphify / older CLI wrote `graphify-out/`), else undefined.
+ * `.pi/pix-graph/`, external graphify / older CLI wrote `graphify-out/`), else undefined.
  */
 export function graphifyHint(cwd: string): string | undefined {
-	const dir = [`${projectDir()}/graph`, "graphify-out"].find((d) =>
+	const dir = [ownerRel("pix-graph"), "graphify-out"].find((d) =>
 		existsSync(join(cwd, d, "graph.json")),
 	);
 	if (dir) {

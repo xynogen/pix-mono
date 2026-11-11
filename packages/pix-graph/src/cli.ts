@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
-import { projectDir } from "@xynogen/pix-runtime/paths";
+import { ownerRel } from "@xynogen/pix-runtime/paths";
 import type { GraphData } from "./analyzer.ts";
 import { buildCodeGraph } from "./pipeline.ts";
 import { query, shortestPath } from "./query.ts";
@@ -54,7 +54,7 @@ function main(argv: string[]): void {
 	if (command === "build") {
 		const input = positionals[0] ?? ".";
 		const root = resolve(values.root ?? process.cwd());
-		const out = resolve(values.out ?? `${projectDir()}/graph`);
+		const out = resolve(values.out ?? ownerRel("pix-graph"));
 		const result = buildCodeGraph(input, root, out);
 		process.stdout.write(
 			`Graph: ${result.nodes} nodes, ${result.links} links, ${result.communities} communities → ${result.outputDir}\n`,
@@ -62,7 +62,7 @@ function main(argv: string[]): void {
 		return;
 	}
 
-	const graphPath = values.graph ?? `${projectDir()}/graph/graph.cleaned.json`;
+	const graphPath = values.graph ?? ownerRel("pix-graph", "graph.cleaned.json");
 
 	if (command === "query") {
 		const question = positionals[0];

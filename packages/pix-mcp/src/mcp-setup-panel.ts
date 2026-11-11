@@ -9,6 +9,7 @@ import {
 	wrapTextWithAnsi,
 } from "@xynogen/pix-pretty/modal-frame";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { projectRel } from "@xynogen/pix-runtime/paths";
 import type { ConfigWritePreview, McpDiscoverySummary } from "./config.ts";
 import type { McpOnboardingState } from "./onboarding-state.ts";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
@@ -635,7 +636,7 @@ export class McpSetupPanel {
 					"1. ~/.config/mcp/mcp.json",
 					"2. <Pi agent dir>/mcp.json",
 					"3. .mcp.json",
-					"4. .pi/mcp.json",
+					`4. ${projectRel("mcp.json")}`,
 					"Pi writes compatibility imports and adapter-only overrides to Pi-owned files.",
 				]);
 			case "open-paths":

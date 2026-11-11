@@ -16,6 +16,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
+import { projectRel } from "@xynogen/pix-runtime/paths";
 import type { DiagnosticSnapshot, PixDiagnostic } from "../types.ts";
 import {
 	createResolver,
@@ -23,6 +24,8 @@ import {
 	resolveServer as realResolveServer,
 } from "./server-registry.ts";
 import { type LspDiagnostic, LspTransport } from "./transport.ts";
+
+const LSP_JSON = projectRel("lsp.json");
 
 export interface DiagnosticRequest {
 	paths: readonly string[];
@@ -138,8 +141,8 @@ export type ResolveResult =
 
 function unavailableReason(result: Exclude<ResolveResult, { kind: "ok" }>): string {
 	return result.kind === "no-server"
-		? "No language server configured for this file type. Add your chosen server under servers in .pi/lsp.json (command, args, extensions, languageId, rootMarkers); installing its executable alone is not enough."
-		: `Configured language server executable not found: ${result.commands.join(", ")}. Install it or set its executable path in .pi/lsp.json.`;
+		? `No language server configured for this file type. Add your chosen server under servers in ${LSP_JSON} (command, args, extensions, languageId, rootMarkers); installing its executable alone is not enough.`
+		: `Configured language server executable not found: ${result.commands.join(", ")}. Install it or set its executable path in ${LSP_JSON}.`;
 }
 
 /**
@@ -351,7 +354,7 @@ class LazyLspManager implements LspManager {
 			const servers = [...this.live.values()];
 			if (servers.length === 0) {
 				throw new Error(
-					"No active language servers. Configure .pi/lsp.json and run a file navigation or source=lsp diagnostics check first.",
+					`No active language servers. Configure ${LSP_JSON} and run a file navigation or source=lsp diagnostics check first.`,
 				);
 			}
 			const results: NavigationResult[] = [];

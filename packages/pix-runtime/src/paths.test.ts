@@ -9,7 +9,11 @@ import {
 	expandHome,
 	homeDir,
 	moduleFile,
+	ownerDir,
+	ownerRel,
 	projectDir,
+	projectPath,
+	projectRel,
 	tempDir,
 } from "./paths.ts";
 
@@ -41,6 +45,14 @@ describe("paths", () => {
 	test("projectDir is <cwd>/.pi, relative .pi without cwd", () => {
 		expect(projectDir(join("/", "repo"))).toBe(join("/", "repo", ".pi"));
 		expect(projectDir()).toBe(".pi");
+	});
+
+	test("projectPath/ownerDir join with the OS separator; *Rel always uses /", () => {
+		const repo = join("/", "repo");
+		expect(projectPath(repo, "lsp.json")).toBe(join(repo, ".pi", "lsp.json"));
+		expect(ownerDir(repo, "pix-python", "venv")).toBe(join(repo, ".pi", "pix-python", "venv"));
+		expect(projectRel("plans")).toBe(".pi/plans");
+		expect(ownerRel("pix-graph", "graph.json")).toBe(".pi/pix-graph/graph.json");
 	});
 
 	test("tempDir reads the platform temp variable, else os.tmpdir()", () => {

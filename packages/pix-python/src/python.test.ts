@@ -7,7 +7,7 @@ import type { ToolResultLike } from "@xynogen/pix-pretty/types";
 import { setUnattendedMode } from "@xynogen/pix-runtime";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
-import { normalizeCode, resolvePython } from "./lib.ts";
+import { ensureVenv, normalizeCode, resolvePython, venvDir } from "./lib.ts";
 
 describe("normalizeCode", () => {
 	test("dedents, expands tabs, drops fences, CRLF and edge blank lines", () => {
@@ -50,6 +50,23 @@ describe("resolvePython", () => {
 	test("missing path or folder without an interpreter throws a clear error", () => {
 		expect(() => resolvePython("./nope", root)).toThrow(/python path not found: .*nope/);
 		expect(() => resolvePython("winenv", root, false)).toThrow(/no Python interpreter in .*winenv/);
+	});
+
+	test("omitted python prefers the managed venv when it exists", () => {
+		const proj = mkdtempSync(join(tempDir(), "pix-python-"));
+		touch(join(venvDir(proj), "bin", "python3"));
+		expect(resolvePython(undefined, proj, false)).toBe(
+			join(proj, ".pi", "pix-python", "venv", "bin", "python3"),
+		);
+		touch(join(venvDir(proj), "Scripts", "python.exe"));
+		expect(resolvePython(undefined, proj, true)).toBe(join(venvDir(proj), "Scripts", "python.exe"));
+	});
+
+	test("ensureVenv rejects pip options and blank entries before running anything", async () => {
+		await expect(ensureVenv(root, "python3", ["-r", "x.txt"])).rejects.toThrow(
+			/invalid package "-r"/,
+		);
+		await expect(ensureVenv(root, "python3", [" "])).rejects.toThrow(/invalid package/);
 	});
 });
 

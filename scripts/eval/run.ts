@@ -27,7 +27,7 @@ import {
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { runTool } from "@xynogen/pix-runtime/exec";
-import { agentDir, projectDir, tempDir } from "@xynogen/pix-runtime/paths";
+import { agentDir, ownerDir, tempDir } from "@xynogen/pix-runtime/paths";
 import { cacheRatio, collectMetrics, parseJsonl, type RunMetrics } from "./metrics.ts";
 import { FIXTURE, TASKS } from "./tasks.ts";
 
@@ -295,7 +295,7 @@ async function main(): Promise<void> {
 		results: [],
 	};
 	const stamp = file.date.replace(/[:.]/g, "-").slice(0, 19);
-	const outDir = join(projectDir(root), "eval");
+	const outDir = ownerDir(root, "eval");
 	const logRoot = join(outDir, `${stamp}-${values.label}`);
 	for (const model of models) {
 		for (const task of tasks) {

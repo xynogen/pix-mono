@@ -423,7 +423,7 @@ describe("query", () => {
 describe("buildCodeGraph", () => {
 	test("reuses unchanged output and rebuilds after a same-size edit or missing output", async () => {
 		const root = fixture();
-		const out = join(root, ".pi/graph");
+		const out = join(root, ".pi/pix-graph");
 		const input = join(root, "packages/a/src/lonely.ts");
 		const progress = () => {};
 		const first = await buildCodeGraphProgress(root, root, out, progress);
@@ -442,7 +442,7 @@ describe("buildCodeGraph", () => {
 
 	test("reuses parsed source files on a changed build", async () => {
 		const root = fixture();
-		const out = join(root, ".pi/graph");
+		const out = join(root, ".pi/pix-graph");
 		const cache = createGraphParseCache();
 		const progress = () => {};
 		await buildCodeGraphProgress(root, root, out, progress, undefined, cache);
