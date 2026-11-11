@@ -28,6 +28,7 @@ import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { generateLfid } from "@xynogen/pix-runtime/lfid";
 import { once } from "@xynogen/pix-runtime/once";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { aria2 } from "maria2/dist/index.js";
 import { Type } from "typebox";
 import { Aria2MissingError, type DaemonHandle, startDaemon } from "./daemon.ts";
@@ -364,18 +365,20 @@ function register(pi: ExtensionAPI): void {
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			signal?.throwIfAborted();
 			const p = params as { action: string; url?: string; handle?: string; dir?: string };
-			try {
-				const daemon = await abortable(mgr.connect(ctx), signal);
-				signal?.throwIfAborted();
-				if (p.action === "add") return textResult(await handleAdd(mgr, daemon, p));
-				if (p.action === "list") return textResult(await handleList(mgr, daemon));
-				if (p.action === "pause" || p.action === "resume" || p.action === "rm") {
-					return textResult(await handleGidOp(mgr, daemon, p.action, p.handle));
-				}
-				return textResult(fail(p.action, `unknown action ${p.action}`));
-			} catch (err) {
-				return textResult(fail(p.action, errMessage(err)));
-			}
+			return runToolExecution({
+				signal,
+				onError: (err) => textResult(fail(p.action, errMessage(err))),
+				execute: async () => {
+					const daemon = await abortable(mgr.connect(ctx), signal);
+					signal?.throwIfAborted();
+					if (p.action === "add") return textResult(await handleAdd(mgr, daemon, p));
+					if (p.action === "list") return textResult(await handleList(mgr, daemon));
+					if (p.action === "pause" || p.action === "resume" || p.action === "rm") {
+						return textResult(await handleGidOp(mgr, daemon, p.action, p.handle));
+					}
+					return textResult(fail(p.action, `unknown action ${p.action}`));
+				},
+			});
 		},
 	});
 }
