@@ -39,6 +39,7 @@ import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-
 import { type FSWatcher, watch } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
+import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine, statusWord } from "./format.ts";
 import { PROC_DIR, ProcManager } from "./manager.ts";
@@ -369,16 +370,18 @@ function register(pi: ExtensionAPI): void {
 				tail?: number;
 			};
 			ui ??= ctx.ui;
-			try {
-				if (p.action === "start") return textResult(await doStart(p, ctx));
-				if (p.action === "list") return textResult(doList());
-				if (p.action === "logs") return textResult(await doLogs(p));
-				if (p.action === "stop") return textResult(await doStop(p));
-				if (p.action === "rm") return textResult(doRm(p));
-				return textResult(fail(p.action, `unknown action ${p.action}`));
-			} catch (err) {
-				return textResult(fail(p.action, getErrorMessage(err)));
-			}
+			return runToolExecution({
+				signal,
+				onError: (err) => textResult(fail(p.action, getErrorMessage(err))),
+				execute: async () => {
+					if (p.action === "start") return textResult(await doStart(p, ctx));
+					if (p.action === "list") return textResult(doList());
+					if (p.action === "logs") return textResult(await doLogs(p));
+					if (p.action === "stop") return textResult(await doStop(p));
+					if (p.action === "rm") return textResult(doRm(p));
+					return textResult(fail(p.action, `unknown action ${p.action}`));
+				},
+			});
 		},
 	});
 
