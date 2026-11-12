@@ -4,9 +4,17 @@
  * `~/.pi/agent` (Windows `os.homedir()` follows USERPROFILE, not HOME).
  * Tests that set their own HOME/agent dir still override this.
  */
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+// Windows CI sets TEMP to an 8.3 short path (C:\Users\RUNNER~1). Code that resolves real
+// paths returns the long name, so tests comparing the two would differ. Use the long form.
+if (process.platform === "win32") {
+	const temp = realpathSync.native(tmpdir());
+	process.env.TEMP = temp;
+	process.env.TMP = temp;
+}
 
 const home = mkdtempSync(join(tmpdir(), "pix-test-home-"));
 process.env.HOME = home;
