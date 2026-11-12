@@ -147,7 +147,7 @@ function commandResult(params: SudoParams, result: SudoResult): SudoToolResult {
 	if (detectAuthFailure(result.code, result.stderr)) {
 		return fail(
 			params,
-			`sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`,
+			"sudo authentication failed — sudo rejected the credentials when running the command.",
 			{
 				outcome: "error",
 				exitCode: result.code,
@@ -246,9 +246,9 @@ async function runSudo(
 		});
 
 	updatePresentation(update, command, reason, "running");
-	// Password validation refreshes sudo's PAM ticket with `sudo -v`; the
-	// requested command always runs afterward, outside the checking overlay.
-	return commandResult(params, await runWithSudo(command, "", signal));
+	// Password validation (`sudo -v`) only gates the overlay; its ticket may not
+	// carry over to a new process, so the command gets the password again.
+	return commandResult(params, await runWithSudo(command, overlayResult.password ?? "", signal));
 }
 
 export default function pixSudo(pi: ExtensionAPI): void {

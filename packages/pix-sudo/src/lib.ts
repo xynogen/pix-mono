@@ -66,17 +66,20 @@ export async function hasValidTicket(signal?: AbortSignal): Promise<boolean> {
 }
 
 /**
- * Run `command` via `sudo -S -- sh -c <command>`, piping `password` to stdin.
- * Drops `-k` so sudo's PAM timestamp cache persists across calls — a valid
- * ticket means an empty `password` still succeeds without a prompt. Returns
- * stdout, stderr (prompt lines stripped), and exit code.
+ * Run `command` via `sudo -S -- sh -c <command>`. With a `password`, `-k`
+ * makes sudo ignore any cached ticket and always read the password from stdin,
+ * so it never leaks into the command's stdin and never depends on the ticket
+ * `sudo -v` left behind (tickets are per-tty/ppid and may not carry over).
+ * An empty `password` relies on a cached ticket. Returns stdout, stderr
+ * (prompt lines stripped), and exit code.
  */
 export function runWithSudo(
 	command: string,
 	password: string,
 	signal?: AbortSignal,
 ): Promise<SudoResult> {
-	return spawnSudo(["-S", "--", "sh", "-c", command], password, signal);
+	const flags = password ? ["-k", "-S"] : ["-S"];
+	return spawnSudo([...flags, "--", "sh", "-c", command], password, signal);
 }
 
 async function spawnSudo(

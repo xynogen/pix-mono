@@ -596,7 +596,7 @@ describe("sudo_run tool execute()", () => {
 			undefined,
 			makeCtx({ overlayResult: { action: "approved", password: "secret" } }),
 		);
-		expect(events).toEqual(["validate:secret", "run:slow-command:"]);
+		expect(events).toEqual(["validate:secret", "run:slow-command:secret"]);
 		expect(text(result)).toContain("done");
 	});
 
