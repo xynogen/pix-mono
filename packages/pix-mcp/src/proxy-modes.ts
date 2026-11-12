@@ -3,6 +3,7 @@ import { getErrorMessage, padIcon } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
 import type { AgentToolResult, ToolInfo } from "@xynogen/pix-runtime/host";
 import { requireFrom } from "@xynogen/pix-runtime/paths";
+import { currentPlatform } from "@xynogen/pix-runtime/platform";
 import { throwIfAborted } from "./abort.ts";
 import {
 	getFailureAgeSeconds,
@@ -31,6 +32,12 @@ import { formatAuthRequiredMessage, truncateAtWord } from "./utils.ts";
 const requireLazy = requireFrom(import.meta.url);
 let recheck: typeof import("recheck") | undefined;
 const checkSync: typeof import("recheck").checkSync = (...args) => {
+	if (!recheck && currentPlatform().os === "win32") {
+		// recheck 4.5.0 builds its native/jar paths with a "/package.json" replace that misses
+		// Windows backslashes, so "auto" spawns `java -jar ...\package.json` (stderr noise) before
+		// falling back to pure JS. Go straight to pure JS; a user-set backend still wins.
+		process.env.RECHECK_BACKEND ??= "pure";
+	}
 	recheck ??= requireLazy("recheck") as typeof import("recheck");
 	return recheck.checkSync(...args);
 };
