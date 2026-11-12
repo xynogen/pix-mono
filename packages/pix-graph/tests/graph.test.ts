@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { BinaryMissingError } from "@xynogen/pix-runtime/binaries";
+import * as os from "@xynogen/pix-runtime/os";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import registerGraph, { impactRows } from "../src/graph.ts";
 import * as parseCache from "../src/parse-cache.ts";
@@ -271,6 +273,26 @@ describe("graph tool", () => {
 		expect(text).toMatch(/^\d+ dependent\(s\) in \d+ file\(s\)\.$/m);
 		const miss = await run({ action: "impact", question: "nope" }, root);
 		expect(miss.isError).toBe(true);
+	});
+
+	test("analyze without a repo or a git binary still lists untested files", async () => {
+		const root = fixture();
+		await run({ action: "build" }, root);
+		const noRepo = await run({ action: "analyze" }, root);
+		expect(noRepo.isError).toBeFalsy();
+		expect(noRepo.content[0]?.text).toMatch(/^No git history \(not a repo, or git failed\)/);
+		const git = spyOn(os, "runGit").mockRejectedValue(
+			new BinaryMissingError("git", "missing", "apt install git"),
+		);
+		try {
+			const res = await run({ action: "analyze" }, root);
+			const text = res.content[0]?.text ?? "";
+			expect(res.isError).toBeFalsy();
+			expect(text).toMatch(/^No git history \(git not found.*install: apt install git\)/);
+			expect(text).toContain("Untested (depended on, no test touches it directly):");
+		} finally {
+			git.mockRestore();
+		}
 	});
 
 	test("impact on a name with more than 5 nodes asks for path instead of walking", async () => {

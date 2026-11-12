@@ -42,9 +42,10 @@ import {
 } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
-import { openTarget } from "@xynogen/pix-runtime/os";
+import { openTarget, runGit } from "@xynogen/pix-runtime/os";
 import { ownerRel, projectPath } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";
+import { type CodeHealth, codeHealth, parseGitLog } from "./analyze.ts";
 import type { GraphData } from "./analyzer.ts";
 import { renderGraphHtml } from "./html.ts";
 import {
@@ -98,7 +99,7 @@ interface QueryHitRow {
 
 interface GraphResultDetails {
 	_type: "graphResult";
-	action: "build" | "query" | "impact" | "summarize";
+	action: "build" | "query" | "impact" | "summarize" | "analyze";
 	outcome: "success" | "error" | "running";
 	/** Set while a build is in flight, for the progress-bar render. */
 	progress?: BuildProgress;
@@ -297,6 +298,55 @@ function runImpact(graph: GraphData, question?: string, inFile?: string) {
 	return { content: [{ type: "text" as const, text: impactText(r, rows) }], details };
 }
 
+/** Commits of history that analyze reads; older ones rarely predict today's risk. */
+const HISTORY_COMMITS = 1000;
+
+/** Run action=analyze: graph structure joined with git history. */
+async function runAnalyze(
+	graph: GraphData,
+	cwd: string,
+	refreshed: string,
+	signal?: AbortSignal,
+): Promise<string> {
+	// --relative keeps paths relative to cwd, the root graph source_file paths use.
+	const args = ["log", "--no-merges", "--relative", "--name-only", "--format=%x00"];
+	let log: string | null;
+	let why = "not a repo, or git failed";
+	try {
+		log = await runGit([...args, `-n${HISTORY_COMMITS}`], { cwd, signal, timeoutMs: 15_000 });
+	} catch (error) {
+		// runGit rethrows only a missing git binary; untested files need no history.
+		log = null;
+		why = getErrorMessage(error);
+	}
+	const commits = log ? parseGitLog(log) : [];
+	const note = log
+		? `Last ${commits.length} commits.`
+		: `No git history (${why}): hotspots and coupling skipped.`;
+	return `${note}\n\n${healthText(codeHealth(graph, commits))}${refreshed}`;
+}
+
+function healthText(h: CodeHealth): string {
+	const section = (title: string, rows: string[]) =>
+		[title, ...(rows.length ? rows : ["  none"])].join("\n");
+	return [
+		section(
+			"Hotspots (commits × dependent files; change with care):",
+			h.hotspots.map((x) => `  ${x.file} — ${x.commits} commits, ${x.dependents} dependents`),
+		),
+		section(
+			"Hidden coupling (change together, no dependency edge):",
+			h.coupling.map(
+				(c) => `  ${c.a} ↔ ${c.b} — ${c.shared} shared commits (${Math.round(c.ratio * 100)}%)`,
+			),
+		),
+		section(
+			"Untested (depended on, no test touches it directly):",
+			h.untested.map((u) => `  ${u.file} — ${u.dependents} dependents`),
+		),
+	].join("\n\n");
+}
+
 /** Above this many dependents, the tree shows direct dependents only; deeper ones fold. */
 const IMPACT_TREE_MAX = 25;
 
@@ -423,21 +473,22 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				'their neighbors. Pass identifiers or name fragments ("authenticate token"), not prose. ' +
 				'scope:"global" ranks whole modules (packages) with their summary, entry files, APIs and ' +
 				"dependencies, for architecture questions. action=impact lists who calls or imports a " +
-				"symbol or file (question), transitively, with affected files and tests. " +
-				"action=summarize lists modules whose summary " +
-				"is missing or stale with their evidence; call it again with module+summary to store one.",
+				"symbol or file (question), transitively, with affected files and tests. action=summarize " +
+				"lists modules whose summary is missing or stale with their evidence; call it again with " +
+				"module+summary to store one. action=analyze joins the graph with git history: hotspots, " +
+				"hidden coupling (co-changed, no dependency) and untested central files.",
 			promptSnippet:
-				'graph(action, path?, question?, scope?, dfs?, module?, summary?) — build|query|impact|summarize. query "<keywords>" matches names and traverses; scope:"global" ranks modules for architecture questions; impact "<symbol or file>" lists dependents.',
+				'graph(action, path?, question?, scope?, dfs?, module?, summary?) — build|query|impact|summarize|analyze. query "<keywords>" matches names and traverses; scope:"global" ranks modules for architecture questions; impact "<symbol or file>" lists dependents; analyze finds risky code.',
 			promptGuidelines: [
 				`To locate TS/JS code, if ${OUT_DIR}/graph.json exists, call graph(action:"query", question:"<identifier keywords>") before reading files. It matches names, not meaning; on no match, fall back to grep.`,
 				'Before changing a function, type, or file signature, call graph(action:"impact", question:"<name>") and update every listed caller and test in the same change.',
 				'After changing code, graph(action:"build") refreshes the graph so later queries stay accurate.',
 			],
 			parameters: Type.Object({
-				action: Type.Enum(["build", "query", "impact", "summarize"] as const, {
+				action: Type.Enum(["build", "query", "impact", "summarize", "analyze"] as const, {
 					type: "string",
 					description:
-						'"build" (re)builds the graph; "query" answers from it; "impact" lists dependents of a symbol/file; "summarize" lists or stores module summaries.',
+						'"build" (re)builds the graph; "query" answers from it; "impact" lists dependents of a symbol/file; "summarize" lists or stores module summaries; "analyze" reports hotspots, hidden coupling and untested files.',
 				}),
 				path: Type.Optional(
 					Type.String({
@@ -610,7 +661,7 @@ export default function registerGraph(pi: ExtensionAPI): void {
 				clearTimeout(cacheTimer);
 				activeCalls++;
 				try {
-					const action = params.action as "build" | "query" | "impact" | "summarize";
+					const action = params.action as "build" | "query" | "impact" | "summarize" | "analyze";
 					const details = (outcome: "success" | "error"): GraphResultDetails => ({
 						_type: "graphResult",
 						action,
@@ -764,6 +815,8 @@ export default function registerGraph(pi: ExtensionAPI): void {
 							},
 						};
 					}
+
+					if (action === "analyze") return ok(await runAnalyze(graph, cwd, refreshed, signal));
 
 					if (action === "impact") {
 						const out = runImpact(

@@ -256,7 +256,7 @@ export interface ImpactResult {
 	truncated: boolean;
 }
 
-const TEST_FILE = /(\.(test|spec)\.[cm]?[jt]sx?$)|(^|\/)(__tests__|tests?)\//;
+export const TEST_FILE = /(\.(test|spec)\.[cm]?[jt]sx?$)|(^|\/)(__tests__|tests?)\//;
 const bare = (label: string): string => label.replace(/\(\)$/, "");
 
 /**
