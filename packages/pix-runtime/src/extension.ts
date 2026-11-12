@@ -77,6 +77,7 @@ function surfaceDiagnostics(pi: ExtensionAPI, runtime: ReturnType<typeof pixRunt
 }
 
 function notifyWarning(pi: ExtensionAPI, msg: string): void {
+	// SAFETY: some Pi hosts expose ui on the API object; it is optional and probed before use.
 	const ui = (pi as unknown as { ui?: { notify?(m: string, t?: string): void } }).ui;
 	ui?.notify?.(msg, "warning");
 }

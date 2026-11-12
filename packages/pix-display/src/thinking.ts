@@ -249,6 +249,7 @@ export default function thinkingExtension(pi: ExtensionAPI) {
 		// dim+italic rendering via the `thinkingText` theme token.
 		if (changed) {
 			msg.content = content;
+			// SAFETY: msg is the event's own assistant message, mutated in place; Msg is a local subset of Pi's type.
 			return { message: msg as unknown as never };
 		}
 	});

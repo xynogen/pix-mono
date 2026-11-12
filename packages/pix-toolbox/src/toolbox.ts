@@ -398,22 +398,7 @@ function register(pi: ExtensionAPI): void {
 
 	const ops: ToggleOps = { stateOf: state.stateOf, setState: state.setState };
 
-	async function showPicker(ctx: {
-		ui: {
-			custom: <T>(
-				f: unknown,
-				opts?: {
-					overlay?: boolean;
-					overlayOptions?: {
-						anchor?: string;
-						maxHeight?: number | string;
-						width?: number | string;
-					};
-				},
-			) => Promise<T>;
-			notify: (m: string, t?: "info" | "warning" | "error") => void;
-		};
-	}): Promise<void> {
+	async function showPicker(ctx: Pick<ExtensionContext, "ui">): Promise<void> {
 		await ctx.ui.custom<null>(
 			(tui: TUI, theme: Theme, keybindings: KeybindingsManager, done: (r: null) => void) => {
 				const accent = "accent";
@@ -659,7 +644,7 @@ function register(pi: ExtensionAPI): void {
 		id: "pix-toolbox",
 		label: "Tools",
 		open: async (ctx) => {
-			await showPicker(ctx as unknown as Parameters<typeof showPicker>[0]);
+			await showPicker(ctx);
 		},
 	});
 }

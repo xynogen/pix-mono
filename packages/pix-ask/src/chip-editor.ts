@@ -210,12 +210,14 @@ export class ChipEditor extends Editor {
 	 * indistinguishable wall; the boundary gives the model an explicit start/end
 	 * per blob — text and image path alike.
 	 */
+	// SAFETY: pastes/expandPasteMarkers are TS-private on Editor but public at runtime; patched per instance.
 	private patchExpandPasteMarkers(): void {
 		const internals = this as unknown as EditorInternals;
 		const self = this as unknown as { expandPasteMarkers(text: string): string };
 		self.expandPasteMarkers = (text: string): string => expandPasteMarkers(text, internals.pastes);
 	}
 
+	// SAFETY: EditorInternals reads TS-private Editor fields that exist at runtime.
 	override insertTextAtCursor(text: string): void {
 		const internals = this as unknown as EditorInternals;
 		const replaced = replaceImagePaths(text, internals, this.imageIds);
@@ -223,6 +225,7 @@ export class ChipEditor extends Editor {
 		super.insertTextAtCursor(endsWithMarker(replaced) ? `${replaced} ` : replaced);
 	}
 
+	// SAFETY: handlePaste is TS-private on Editor but public at runtime; patched per instance.
 	private patchHandlePaste(): void {
 		const self = this as unknown as { handlePaste(text: string): void };
 		const base = self.handlePaste.bind(self);
@@ -236,6 +239,7 @@ export class ChipEditor extends Editor {
 		};
 	}
 
+	// SAFETY: submitValue is TS-private on Editor but public at runtime; patched per instance.
 	private patchSubmitValue(): void {
 		const self = this as unknown as { submitValue(): void };
 		const base = self.submitValue.bind(self);

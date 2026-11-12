@@ -314,7 +314,7 @@ class RuntimeImpl implements PixRuntime {
 		const out: string[] = [];
 		for (const section of this.registry.all()) {
 			const handle = { key: section.key, defaults: section.defaults, __section: section };
-			out.push(...diffPaths(section.key, prev.get(handle as never), next.get(handle as never)));
+			out.push(...diffPaths(section.key, prev.get(handle), next.get(handle)));
 		}
 		return out;
 	}

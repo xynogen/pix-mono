@@ -423,6 +423,7 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 						leavePanel = undefined;
 						const panel = panels.find((entry) => entry.label === tab);
 						if (!panel) return;
+						// SAFETY: spreads the real command context and only overrides ui.custom, so the full shape is kept.
 						const panelContext = {
 							...ctx,
 							ui: {

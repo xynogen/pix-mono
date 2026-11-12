@@ -271,6 +271,7 @@ function register(pi: ExtensionAPI): void {
 			});
 		},
 
+		// SAFETY: pix-pretty renderers take ThemeLike/RenderContextLike, structural subsets of Pi's Theme/ToolRenderContext.
 		renderCall: ((
 			args: { intent?: string; code?: string; python?: string },
 			theme: ThemeLike,
@@ -301,6 +302,7 @@ function register(pi: ExtensionAPI): void {
 			);
 		}) as never,
 
+		// SAFETY: pix-pretty renderers take ThemeLike/RenderContextLike, structural subsets of Pi's Theme/ToolRenderContext.
 		renderResult: ((
 			result: ToolResultLike,
 			opt: unknown,

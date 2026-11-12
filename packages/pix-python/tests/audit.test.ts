@@ -17,6 +17,19 @@ afterEach(() => {
 	for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
+// Windows without Developer Mode refuses symlinks (EPERM); those tests cannot run there.
+const canSymlink = (() => {
+	const dir = mkdtempSync(join(tempDir(), "pix-python-symlink-"));
+	try {
+		symlinkSync(dir, join(dir, "probe"), "dir");
+		return true;
+	} catch {
+		return false;
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+})();
+
 function fixture(opts: { approved?: boolean; hasUI?: boolean; mode?: "afk" | "nuclear" } = {}) {
 	const root = mkdtempSync(join(tempDir(), "pix-python-audit-"));
 	roots.push(root);
@@ -42,11 +55,14 @@ function fixture(opts: { approved?: boolean; hasUI?: boolean; mode?: "afk" | "nu
 		},
 	} as unknown as ExtensionContext;
 	const accesses: PathAccess[] = [];
-	const run = (code: string) =>
-		runPython(code, root, undefined, "python3", 10_000, (access) => {
+	const run = async (code: string) => {
+		const r = await runPython(code, root, undefined, "python3", 10_000, (access) => {
 			accesses.push(access);
 			return requestPathAccess(events, { ...access, context });
 		});
+		// Python text-mode stdout writes CRLF on Windows.
+		return { ...r, stdout: r.stdout.replaceAll("\r\n", "\n") };
+	};
 	return {
 		root,
 		run,
@@ -58,16 +74,19 @@ function fixture(opts: { approved?: boolean; hasUI?: boolean; mode?: "afk" | "nu
 }
 
 describe("runtime Python path gate", () => {
-	test("symlink plus parent traversal checks the actual resolved path", async () => {
-		const f = fixture();
-		mkdirSync(join(f.root, "private", "child"), { recursive: true });
-		writeFileSync(join(f.root, "private", ".env"), "other-secret");
-		symlinkSync(join(f.root, "private", "child"), join(f.root, "link"), "dir");
-		const r = await f.run('print(open("link/../.env").read())');
-		expect(r.code).not.toBe(0);
-		expect(r.stdout).toBe("");
-		expect(f.accesses.some((a) => a.paths.includes(join(f.root, "private", ".env")))).toBe(true);
-	});
+	test.skipIf(!canSymlink)(
+		"symlink plus parent traversal checks the actual resolved path",
+		async () => {
+			const f = fixture();
+			mkdirSync(join(f.root, "private", "child"), { recursive: true });
+			writeFileSync(join(f.root, "private", ".env"), "other-secret");
+			symlinkSync(join(f.root, "private", "child"), join(f.root, "link"), "dir");
+			const r = await f.run('print(open("link/../.env").read())');
+			expect(r.code).not.toBe(0);
+			expect(r.stdout).toBe("");
+			expect(f.accesses.some((a) => a.paths.includes(join(f.root, "private", ".env")))).toBe(true);
+		},
+	);
 
 	test("directory listings and bytes paths use the same rules", async () => {
 		const f = fixture();
@@ -177,7 +196,7 @@ describe("runtime Python path gate", () => {
 		expect(f.dialogs()).toBe(0);
 	});
 
-	test("symlink targets are checked, not only the harmless alias", async () => {
+	test.skipIf(!canSymlink)("symlink targets are checked, not only the harmless alias", async () => {
 		const f = fixture();
 		symlinkSync(join(f.root, ".env"), join(f.root, "alias"));
 		const r = await f.run('print(open("alias").read())');

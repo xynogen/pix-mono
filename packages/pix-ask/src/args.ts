@@ -68,6 +68,7 @@ function validateAskArguments(args: Record<string, unknown>): Params {
 	try {
 		validateToolArguments(
 			{ name: "ask_user", description: "", parameters: ParamsSchema },
+			// SAFETY: args is a plain JSON object from the tool call; Pi types arguments as JsonObject.
 			{ type: "toolCall", id: "", name: "ask_user", arguments: args as never },
 		);
 		return args as Params;

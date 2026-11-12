@@ -147,6 +147,7 @@ export type DeepPartial<T> = T extends (infer U)[]
  * `undefined` values are rejected (skipped). Returns a new object.
  */
 export function deepMerge<T>(base: T, patch: DeepPartial<T>): T {
+	// SAFETY: a non-object patch replaces base wholesale; DeepPartial<T> of a leaf is T.
 	if (!isObj(base) || !isObj(patch)) return (patch as unknown as T) ?? base;
 	const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
 	for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {

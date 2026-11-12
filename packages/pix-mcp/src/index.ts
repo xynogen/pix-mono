@@ -183,7 +183,7 @@ function register(pi: ExtensionAPI) {
 							...(spec.serverInstructions ? { instructions: spec.serverInstructions } : {}),
 						}
 					: undefined,
-				parameters: Type.Unsafe(normalizeDirectToolInputSchema(spec.inputSchema) as never),
+				parameters: Type.Unsafe(normalizeDirectToolInputSchema(spec.inputSchema)),
 				async execute(...args: Parameters<typeof execute>) {
 					if (generation !== lifecycleGeneration)
 						throw new Error(`MCP tool "${name}" belongs to a stale session`);

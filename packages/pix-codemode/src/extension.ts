@@ -80,6 +80,7 @@ export default function pixCodemodeExtension(pi: ExtensionAPI): void {
 							...(tool.name !== "codemode"
 								? {}
 								: {
+										// SAFETY: pix-pretty renderers take ThemeLike/RenderContextLike, structural subsets of Pi's Theme/ToolRenderContext.
 										renderCall: renderCall as unknown as NonNullable<typeof tool.renderCall>,
 										renderResult: renderResult as unknown as NonNullable<typeof tool.renderResult>,
 										renderShell: "self" as const,

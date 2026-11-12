@@ -84,6 +84,7 @@ export async function initializeMcp(
 		ui,
 		// ponytail: pix-mcp sends `display` as a label string; Pi types it as boolean and only
 		// stores it. Retype McpExtensionState.sendMessage to Pi's payload to drop this cast.
+		// SAFETY: see ponytail note above: only `display` differs, and Pi stores it without reading it.
 		sendMessage: (message, options) =>
 			pi.sendMessage(message as unknown as Parameters<typeof pi.sendMessage>[0], options),
 	};

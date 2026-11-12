@@ -207,6 +207,7 @@ function checkArgs(
 	try {
 		validateToolArguments(
 			{ name: tool, description: "", parameters: schema },
+			// SAFETY: args is a plain JSON object from the tool call; Pi types arguments as JsonObject.
 			{ type: "toolCall", id: "", name: tool, arguments: args as never },
 		);
 		return;
