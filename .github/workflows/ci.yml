@@ -52,3 +52,23 @@ jobs:
       # One suite run: the ratchet runs `bun test --coverage` and fails on test failures too.
       - name: Test + coverage (ratchet)
         run: bun scripts/coverage-ratchet.ts
+
+  # Windows catches path, CRLF and symlink bugs the Linux job cannot. Tests only: lint, typecheck
+  # and the tarball smoke are OS-independent, and coverage is ratcheted once, on Linux.
+  # ponytail: no extra test binaries here; tests that need them skip. Add a setup step to widen coverage.
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun run test

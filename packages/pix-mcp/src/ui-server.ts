@@ -15,7 +15,6 @@ import { logger } from "./logger.ts";
 import type { McpServerManager } from "./server-manager.ts";
 import {
 	extractUiPromptText,
-	getVisualizationStreamEnvelope,
 	type UiDisplayMode,
 	type UiDisplayModeRequest,
 	type UiDisplayModeResult,
@@ -30,11 +29,11 @@ import {
 	type UiStreamSummary,
 } from "./types.ts";
 import { buildAllowAttribute } from "./ui-app-bridge-helpers.ts";
+import { createEventLog } from "./ui-event-log.ts";
 
 const MAX_BODY_SIZE = 2 * 1024 * 1024;
 const ABANDONED_GRACE_MS = 60_000;
 const WATCHDOG_INTERVAL_MS = 5_000;
-const MAX_EVENT_LOG = 128;
 
 export interface UiServerOptions {
 	serverName: string;
@@ -80,14 +79,10 @@ export async function startUiServer(options: UiServerOptions): Promise<UiServerH
 
 	log.debug("Starting UI server");
 
-	const sseClients = new Set<ServerResponse>();
 	let completed = false;
 	let lastHeartbeatAt = Date.now();
 	let watchdog: NodeJS.Timeout | null = null;
 	let currentDisplayMode: UiDisplayMode = options.hostContext?.displayMode ?? "inline";
-	let nextEventId = 1;
-	const eventLog: Array<{ id: number; name: string; payload: unknown }> = [];
-	let streamSummary: UiStreamSummary | undefined;
 
 	// Track messages from UI for retrieval
 	const sessionMessages: UiSessionMessages = {
@@ -105,117 +100,16 @@ export async function startUiServer(options: UiServerOptions): Promise<UiServerH
 		// The App validates toolInfo.tool.inputSchema as required object
 	};
 
-	const initialStreamContext = hostContext["pi-mcp-adapter/stream"];
-	if (initialStreamContext && typeof initialStreamContext === "object") {
-		const streamId = (initialStreamContext as { streamId?: unknown }).streamId;
-		const mode = (initialStreamContext as { mode?: unknown }).mode;
-		if (typeof streamId === "string" && (mode === "eager" || mode === "stream-first")) {
-			streamSummary = {
-				streamId,
-				mode,
-				frames: 0,
-				phases: [],
-			};
-		}
-	}
+	const events = createEventLog(hostContext);
+	const sseClients = events.clients;
+	const pushEvent = (name: string, payload: unknown) => {
+		if (!completed) events.push(name, payload);
+	};
+	const replayEvents = events.replay;
+	const closeSse = events.closeAll;
 
 	const touchHeartbeat = () => {
 		lastHeartbeatAt = Date.now();
-	};
-
-	const updateStreamSummary = (payload: unknown) => {
-		const envelope = getVisualizationStreamEnvelope(
-			(payload as { structuredContent?: unknown } | null)?.structuredContent,
-		);
-		if (!envelope) return;
-		if (!streamSummary) {
-			streamSummary = {
-				streamId: envelope.streamId,
-				mode: "eager",
-				frames: 0,
-				phases: [],
-			};
-		}
-		streamSummary.frames += 1;
-		if (!streamSummary.phases.includes(envelope.phase)) {
-			streamSummary.phases.push(envelope.phase);
-		}
-		streamSummary.finalStatus = envelope.status;
-		streamSummary.lastMessage = envelope.message;
-	};
-
-	const serializeEvent = (eventId: number, name: string, payload: unknown): string => {
-		return `id: ${eventId}\nevent: ${name}\ndata: ${JSON.stringify(payload)}\n\n`;
-	};
-
-	const getLatestCheckpointIndex = () => {
-		for (let index = eventLog.length - 1; index >= 0; index -= 1) {
-			const entry = eventLog[index];
-			const envelope = getVisualizationStreamEnvelope(
-				(entry?.payload as { structuredContent?: unknown } | null | undefined)?.structuredContent,
-			);
-			if (envelope?.frameType === "checkpoint" || envelope?.frameType === "final") {
-				return index;
-			}
-		}
-		return -1;
-	};
-
-	const pruneEventLog = () => {
-		if (eventLog.length <= MAX_EVENT_LOG) return;
-		const latestCheckpointIndex = getLatestCheckpointIndex();
-
-		if (latestCheckpointIndex > 0) {
-			eventLog.splice(0, latestCheckpointIndex);
-		}
-
-		if (eventLog.length > MAX_EVENT_LOG) {
-			eventLog.splice(0, eventLog.length - MAX_EVENT_LOG);
-		}
-	};
-
-	const pushEvent = (name: string, payload: unknown) => {
-		if (completed) return;
-		const eventId = nextEventId++;
-		eventLog.push({ id: eventId, name, payload });
-		updateStreamSummary(payload);
-		pruneEventLog();
-		const chunk = serializeEvent(eventId, name, payload);
-		for (const client of sseClients) {
-			try {
-				client.write(chunk);
-			} catch {
-				sseClients.delete(client);
-			}
-		}
-	};
-
-	const replayEvents = (res: ServerResponse, lastEventIdHeader?: string | null) => {
-		const parsedLastId = lastEventIdHeader ? Number(lastEventIdHeader) : Number.NaN;
-		const eventsToReplay = Number.isFinite(parsedLastId)
-			? eventLog.filter((entry) => entry.id > parsedLastId)
-			: (() => {
-					const latestCheckpointIndex = getLatestCheckpointIndex();
-					return latestCheckpointIndex >= 0 ? eventLog.slice(latestCheckpointIndex) : eventLog;
-				})();
-
-		for (const entry of eventsToReplay) {
-			try {
-				res.write(serializeEvent(entry.id, entry.name, entry.payload));
-			} catch {
-				sseClients.delete(res);
-				return;
-			}
-		}
-	};
-
-	const closeSse = () => {
-		for (const client of sseClients) {
-			try {
-				client.end();
-			} catch {}
-		}
-		sseClients.clear();
 	};
 
 	const stopWatchdog = () => {
@@ -572,8 +466,7 @@ export async function startUiServer(options: UiServerOptions): Promise<UiServerH
 					pushEvent("host-context", context);
 				},
 				getSessionMessages: () => ({ ...sessionMessages }),
-				getStreamSummary: () =>
-					streamSummary ? { ...streamSummary, phases: [...streamSummary.phases] } : undefined,
+				getStreamSummary: events.summary,
 			};
 
 			resolve(handle);
