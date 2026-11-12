@@ -34,6 +34,7 @@
 		"./shell-tool": "./src/shell-tool.ts",
 		"./command-preview": "./src/command-preview.ts",
 		"./tool-status": "./src/tool-status.ts",
+		"./tool-card": "./src/tool-card.ts",
 		"./test-utils": "./src/test-utils.ts",
 		"./transient-error": "./src/transient-error.ts",
 		"./chips": "./src/chips.ts",

@@ -1,4 +1,3 @@
-import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
 	type BatchSection,
@@ -11,13 +10,11 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
-import type { ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
+import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	FindParams,
 	FindResultDetails,
 	PiPrettyApi,
-	RenderContextLike,
-	ThemeLike,
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
@@ -25,20 +22,14 @@ import {
 	appendNotices,
 	fadeRulePaint,
 	fillToolBackground,
-	frameToolResult,
 	getErrorMessage,
 	getTextContent,
-	hideCollapsedToolCall,
 	makeTextResult,
 	pluralize,
-	renderCollapsed,
 	renderDimPreview,
 	renderTitle,
-	renderToolError,
 	setResultDetails,
-	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,
@@ -239,85 +230,41 @@ export function registerFindTool(
 			});
 		},
 
-		renderCall(args: FindBatchParams, theme: ThemeLike, renderCtx: RenderContextLike) {
-			resolveBaseBackground(theme);
+		renderCall: toolCallRenderer<FindBatchParams>(TextComponent, (args, theme, renderCtx) => {
 			const batchPatterns = resolveBatchStrings(args.pattern, args.patterns);
 			const pattern =
 				batchPatterns.length > 1
 					? formatCallTargets(batchPatterns, 3, "patterns")
 					: (args.pattern ?? "");
 			const path = args.path ? ` ${theme.fg("muted", `in ${sp(args.path)}`)}` : "";
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
-			if (
-				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
-			text.setText(
-				fillToolBackground(
-					`${renderTitle(theme, "find", renderCtx)} ${theme.fg("dim", pattern)}${path}`,
-				),
+			return fillToolBackground(
+				`${renderTitle(theme, "find", renderCtx)} ${theme.fg("dim", pattern)}${path}`,
 			);
-			return text;
-		},
+		}),
 
-		renderResult(
-			result: ToolResultLike<FindResultDetails>,
-			_opt: ToolRenderResultOptions,
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) {
-			resolveBaseBackground(theme);
-			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
-			const d = result.details;
-			const isPartial = _opt?.isPartial === true;
-			const completed = () => frameToolResult(text, theme, renderCtx.isError);
-			const structuredError = renderCtx.isError && d?._type === "findResult";
-
-			if (renderCtx.isError && (!structuredError || isPartial)) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return isPartial ? text : completed();
-			}
-
-			// Auto-collapse: show summary line after delay
-			const cs = renderCtx.state as CollapseState;
-			if (!isPartial && tickCollapse("find", cs, renderCtx.invalidate, renderCtx.expanded)) {
-				const summary =
+		renderResult: toolCardRenderer<FindResultDetails>(TextComponent, {
+			name: "find",
+			owns: (d) => d?._type === "findResult",
+			collapsed: (d) => ({
+				summary:
 					d?._type === "findResult" && d.matchCount != null
 						? pluralize(d.matchCount, "file")
-						: "found";
-				const target = d?._type === "findResult" ? d.pattern : "";
-				const scope = d?._type === "findResult" && d.path ? ` in ${sp(d.path)}` : "";
+						: "found",
+				target: d?._type === "findResult" ? `${d.pattern}${d.path ? ` in ${sp(d.path)}` : ""}` : "",
+			}),
+			body({ d, result, text, theme, ctx: renderCtx, isPartial }) {
+				// One framed shape; rules follow status color. Count lives in the collapsed row.
 				text.setText(
-					renderCollapsed(
-						theme,
-						"find",
-						`${target}${scope}`,
-						renderCtx.isError ? "failed" : summary,
-						renderCtx.isError ? "error" : "success",
-					),
+					renderDimPreview(getTextContent(result) || "found", theme, {
+						frame: !isPartial,
+						ctx: renderCtx,
+						paint: fadeRulePaint(theme, "success"),
+						highlight:
+							d?._type === "findResult" && !d.patterns ? globHighlight(d.pattern) : undefined,
+					}),
 				);
-				return text;
-			}
-
-			if (renderCtx.isError) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return completed();
-			}
-
-			const output = getTextContent(result) || "found";
-			// One framed shape; rules follow status color. Count lives in the collapsed row.
-			text.setText(
-				renderDimPreview(output, theme, {
-					frame: !isPartial,
-					ctx: renderCtx,
-					paint: fadeRulePaint(theme, renderCtx.isError ? "error" : "success"),
-					highlight:
-						d?._type === "findResult" && !d.patterns ? globHighlight(d.pattern) : undefined,
-				}),
-			);
-			return text;
-		},
+				return "framed";
+			},
+		}),
 	});
 }

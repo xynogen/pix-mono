@@ -13,7 +13,6 @@ import {
 	fillToolBackground,
 	getErrorMessage,
 	humanSize,
-	renderCollapsed,
 	renderDimPreview,
 	renderToolError,
 	ruleFrame,
@@ -56,28 +55,19 @@ const SYNTAX_ROLES = [
 const imageMeta = (d: ReadImageDetails) =>
 	dotJoin([d.mimeType ?? "image", humanSize(Math.ceil((d.data.length * 3) / 4))]);
 
-/** One-line summary row shown once the card auto-collapses. */
-export function collapsedRow(
+/** Target and summary of the row shown once the card auto-collapses. */
+export function collapsedParts(
 	d: ReadDetails | undefined,
-	isError: boolean,
-	theme: ThemeLike,
 	sp: ToolContext["sp"],
-): string {
-	if (isError) {
-		const path = d && "filePath" in d ? d.filePath : "";
-		return renderCollapsed(theme, "read", sp(path), "failed", "error");
-	}
+): { target: string; summary: string } {
 	if (d?._type === "readBatch")
-		return renderCollapsed(
-			theme,
-			"read",
-			formatCallTargets(d.items.map((item) => sp(item.filePath))),
-			`${d.items.length} files`,
-		);
-	if (d?._type === "readFile")
-		return renderCollapsed(theme, "read", sp(d.filePath), `${d.lineCount} lines`);
-	if (d?._type === "readImage") return renderCollapsed(theme, "read", sp(d.filePath), imageMeta(d));
-	return renderCollapsed(theme, "read", "", "done");
+		return {
+			target: formatCallTargets(d.items.map((item) => sp(item.filePath))),
+			summary: `${d.items.length} files`,
+		};
+	if (d?._type === "readFile") return { target: sp(d.filePath), summary: `${d.lineCount} lines` };
+	if (d?._type === "readImage") return { target: sp(d.filePath), summary: imageMeta(d) };
+	return { target: "", summary: "done" };
 }
 
 /** Batch body: index line, then one highlighted section per file (async, cached in state). */

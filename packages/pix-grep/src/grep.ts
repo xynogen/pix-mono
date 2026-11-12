@@ -1,5 +1,4 @@
 import { join, resolve } from "node:path";
-import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
 	type BatchSection,
@@ -13,13 +12,11 @@ import {
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { fffFormatGrepText } from "@xynogen/pix-pretty/fff";
-import type { ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
+import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	GrepParams,
 	GrepResultDetails,
 	PiPrettyApi,
-	RenderContextLike,
-	ThemeLike,
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
@@ -28,22 +25,16 @@ import {
 	countRipgrepMatches,
 	fadeRulePaint,
 	fillToolBackground,
-	frameToolResult,
 	getErrorMessage,
 	getTextContent,
-	hideCollapsedToolCall,
 	isTextContent,
 	makeTextResult,
 	normalizeLineEndings,
 	pluralize,
-	renderCollapsed,
 	renderDimPreview,
 	renderTitle,
-	renderToolError,
 	setResultDetails,
-	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFile, stat } from "@xynogen/pix-runtime/fs";
 import { anchor, decodeLines, initHashline, type SourceLine } from "@xynogen/pix-runtime/hashline";
 import type {
@@ -328,8 +319,7 @@ export function registerGrepTool(
 			});
 		},
 
-		renderCall(args: GrepBatchParams, theme: ThemeLike, renderCtx: RenderContextLike) {
-			resolveBaseBackground(theme);
+		renderCall: toolCallRenderer<GrepBatchParams>(TextComponent, (args, theme, renderCtx) => {
 			const batchPatterns = resolveBatchStrings(args.pattern, args.patterns);
 			const pattern =
 				batchPatterns.length > 1
@@ -337,74 +327,32 @@ export function registerGrepTool(
 					: (args.pattern ?? "");
 			const path = args.path ? ` ${theme.fg("muted", `in ${sp(args.path)}`)}` : "";
 			const glob = args.glob ? ` ${theme.fg("muted", `(${args.glob})`)}` : "";
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
-			if (
-				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
-			text.setText(
-				fillToolBackground(
-					`${renderTitle(theme, "grep", renderCtx)} ${theme.fg("dim", pattern)}${path}${glob}`,
-				),
+			return fillToolBackground(
+				`${renderTitle(theme, "grep", renderCtx)} ${theme.fg("dim", pattern)}${path}${glob}`,
 			);
-			return text;
-		},
+		}),
 
-		renderResult(
-			result: ToolResultLike<GrepResultDetails>,
-			_opt: ToolRenderResultOptions,
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) {
-			resolveBaseBackground(theme);
-			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
-			const d = result.details;
-			const isPartial = _opt?.isPartial === true;
-			const completed = () => frameToolResult(text, theme, renderCtx.isError);
-			const structuredError = renderCtx.isError && d?._type === "grepResult";
-
-			if (renderCtx.isError && (!structuredError || isPartial)) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return isPartial ? text : completed();
-			}
-
-			// Auto-collapse: show summary line after delay
-			const cs = renderCtx.state as CollapseState;
-			if (!isPartial && tickCollapse("grep", cs, renderCtx.invalidate, renderCtx.expanded)) {
-				const summary =
-					d?._type === "grepResult" ? pluralize(d.matchCount, "match", "matches") : "searched";
-				const target = d?._type === "grepResult" ? `“${d.pattern}”` : "";
-				const scope = d?._type === "grepResult" && d.path ? ` in ${sp(d.path)}` : "";
+		renderResult: toolCardRenderer<GrepResultDetails>(TextComponent, {
+			name: "grep",
+			owns: (d) => d?._type === "grepResult",
+			collapsed: (d) => ({
+				summary:
+					d?._type === "grepResult" ? pluralize(d.matchCount, "match", "matches") : "searched",
+				target:
+					d?._type === "grepResult" ? `“${d.pattern}”${d.path ? ` in ${sp(d.path)}` : ""}` : "",
+			}),
+			body({ d, result, text, theme, ctx: renderCtx, isPartial }) {
+				// One framed shape; rules follow status color. Count lives in the collapsed row.
 				text.setText(
-					renderCollapsed(
-						theme,
-						"grep",
-						`${target}${scope}`,
-						renderCtx.isError ? "failed" : summary,
-						renderCtx.isError ? "error" : "success",
-					),
+					renderDimPreview(stripGrepAnchors(getTextContent(result)) || "searched", theme, {
+						frame: !isPartial,
+						ctx: renderCtx,
+						paint: fadeRulePaint(theme, "success"),
+						highlight: d?._type === "grepResult" && !d.patterns ? grepHighlight(d) : undefined,
+					}),
 				);
-				return text;
-			}
-
-			if (renderCtx.isError) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return completed();
-			}
-
-			const output = stripGrepAnchors(getTextContent(result)) || "searched";
-			// One framed shape; rules follow status color. Count lives in the collapsed row.
-			text.setText(
-				renderDimPreview(output, theme, {
-					frame: !isPartial,
-					ctx: renderCtx,
-					paint: fadeRulePaint(theme, renderCtx.isError ? "error" : "success"),
-					highlight: d?._type === "grepResult" && !d.patterns ? grepHighlight(d) : undefined,
-				}),
-			);
-			return text;
-		},
+				return "framed";
+			},
+		}),
 	});
 }

@@ -1,5 +1,4 @@
 import { basename, dirname, resolve } from "node:path";
-import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
 	type BatchSection,
@@ -10,30 +9,24 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	PiPrettyApi,
 	ReadParams,
-	RenderContextLike,
-	ThemeLike,
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
 	fillToolBackground,
-	frameToolResult,
 	getErrorMessage,
 	getTextContent,
-	hideCollapsedToolCall,
 	isImageContent,
 	isTextContent,
 	normalizeLineEndings,
 	renderTitle,
-	renderToolError,
 	setResultDetails,
-	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { DEFAULT_READ_LIMIT, readText } from "@xynogen/pix-runtime/files";
 import { access, constants, readdir, readFile } from "@xynogen/pix-runtime/fs";
 import {
@@ -44,7 +37,7 @@ import {
 	type ReadToolOptions,
 } from "@xynogen/pix-runtime/host";
 import {
-	collapsedRow,
+	collapsedParts,
 	type ReadBatchDetails,
 	type ReadImageDetails,
 	type ReadItem,
@@ -327,79 +320,41 @@ export function registerReadTool(
 			};
 		},
 
-		renderCall(args: ReadBatchParams, theme: ThemeLike, renderCtx: RenderContextLike) {
-			resolveBaseBackground(theme);
+		renderCall: toolCallRenderer<ReadBatchParams>(TextComponent, (args, theme, renderCtx) => {
 			const batchTargets = resolveBatchStrings(args.path, args.paths);
 			const fp =
 				batchTargets.length > 1 ? formatCallTargets(batchTargets.map(sp)) : (args.path ?? "");
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
-			if (
-				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
 			const offset = args.offset ? ` ${theme.fg("muted", `from line ${args.offset}`)}` : "";
 			const limit = args.limit ? ` ${theme.fg("muted", `(${args.limit} lines)`)}` : "";
-			text.setText(
-				fillToolBackground(
-					`${renderTitle(theme, "read", renderCtx)} ${theme.fg("dim", sp(fp))}${offset}${limit}`,
-				),
+			return fillToolBackground(
+				`${renderTitle(theme, "read", renderCtx)} ${theme.fg("dim", sp(fp))}${offset}${limit}`,
 			);
-			return text;
-		},
+		}),
 
-		renderResult(
-			result: ToolResultLike,
-			_opt: unknown,
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) {
-			resolveBaseBackground(theme);
-			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
-			const d = result.details as Record<string, unknown> | undefined;
-			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
-			const completed = () => frameToolResult(text, theme, renderCtx.isError);
-			const structuredError =
-				renderCtx.isError && (d?._type === "readFile" || d?._type === "readImage");
-
-			if (renderCtx.isError && (!structuredError || isPartial)) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return isPartial ? text : completed();
-			}
-
-			// Auto-collapse: show summary line after delay
-			const details = d as ReadDetails | undefined;
-			const cs = renderCtx.state as CollapseState;
-			if (!isPartial && tickCollapse("read", cs, renderCtx.invalidate, renderCtx.expanded)) {
-				text.setText(collapsedRow(details, renderCtx.isError, theme, sp));
-				return text;
-			}
-
-			if (renderCtx.isError) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return completed();
-			}
-
-			if (details?._type === "readBatch") {
-				renderBatch(details, text, theme, renderCtx, isPartial);
-				return isPartial ? text : completed();
-			}
-			if (details?._type === "readImage") {
-				renderImage(details, text, theme);
-				return isPartial ? text : completed();
-			}
-			if (details?._type === "readFile" && details.content) {
-				renderFile(details, text, theme, renderCtx, isPartial);
-				return text;
-			}
-
-			const fallback = result.content?.[0];
-			const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "read";
-			text.setText(
-				fillToolBackground(`${BODY_PAD}${theme.fg("dim", String(fallbackText).slice(0, 120))}`),
-			);
-			return isPartial ? text : completed();
-		},
+		renderResult: toolCardRenderer<ReadDetails>(TextComponent, {
+			name: "read",
+			owns: (d) => d?._type === "readFile" || d?._type === "readImage",
+			collapsed: (d) => collapsedParts(d, sp),
+			body({ d, result, text, theme, ctx: renderCtx, isPartial }) {
+				if (d?._type === "readBatch") {
+					renderBatch(d, text, theme, renderCtx, isPartial);
+					return undefined;
+				}
+				if (d?._type === "readImage") {
+					renderImage(d, text, theme);
+					return undefined;
+				}
+				if (d?._type === "readFile" && d.content) {
+					renderFile(d, text, theme, renderCtx, isPartial);
+					return "framed";
+				}
+				const fallback = result.content?.[0];
+				const fallbackText = fallback && isTextContent(fallback) ? fallback.text : "read";
+				text.setText(
+					fillToolBackground(`${BODY_PAD}${theme.fg("dim", String(fallbackText).slice(0, 120))}`),
+				);
+				return undefined;
+			},
+		}),
 	});
 }

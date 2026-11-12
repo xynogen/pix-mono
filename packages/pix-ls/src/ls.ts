@@ -1,4 +1,3 @@
-import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import {
 	BATCH_MAX_BYTES,
 	type BatchSection,
@@ -12,30 +11,18 @@ import {
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
 import { renderTree } from "@xynogen/pix-pretty/renderers";
-import type {
-	LsParams,
-	PiPrettyApi,
-	RenderContextLike,
-	ThemeLike,
-	ToolFactory,
-	ToolResultLike,
-} from "@xynogen/pix-pretty/types";
+import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
+import type { LsParams, PiPrettyApi, ToolFactory, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
 	fadeRulePaint,
 	fillToolBackground,
-	frameToolResult,
 	getErrorMessage,
 	getTextContent,
-	hideCollapsedToolCall,
-	renderCollapsed,
 	renderTitle,
-	renderToolError,
 	ruleFrame,
 	setResultDetails,
-	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,
@@ -163,96 +150,48 @@ export function registerLsTool(
 			};
 		},
 
-		renderCall(args: LsBatchParams, theme: ThemeLike, renderCtx: RenderContextLike) {
-			resolveBaseBackground(theme);
+		renderCall: toolCallRenderer<LsBatchParams>(TextComponent, (args, theme, renderCtx) => {
 			const batchPaths = resolveBatchStrings(args.path, args.paths);
 			const fp =
 				batchPaths.length > 1
 					? formatCallTargets(batchPaths.map(sp), 3, "dirs")
 					: (args.path ?? ".");
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
-			if (
-				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
-			text.setText(
-				fillToolBackground(`${renderTitle(theme, "ls", renderCtx)} ${theme.fg("dim", sp(fp))}`),
+			return fillToolBackground(
+				`${renderTitle(theme, "ls", renderCtx)} ${theme.fg("dim", sp(fp))}`,
 			);
-			return text;
-		},
+		}),
 
-		renderResult(
-			result: ToolResultLike,
-			_opt: unknown,
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) {
-			resolveBaseBackground(theme);
-			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
-			const d = result.details as Record<string, unknown> | undefined;
-			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
-			const completed = () => frameToolResult(text, theme, renderCtx.isError);
-			const structuredError = renderCtx.isError && d?._type === "lsResult";
-
-			if (renderCtx.isError && (!structuredError || isPartial)) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return isPartial ? text : completed();
-			}
-
-			// Auto-collapse: show summary line after delay
-			const cs = renderCtx.state as CollapseState;
-			if (!isPartial && tickCollapse("ls", cs, renderCtx.invalidate, renderCtx.expanded)) {
-				const isBatch = d?._type === "lsResult" && Array.isArray(d.paths);
-				const summary = d?._type === "lsResult" ? `${d.entryCount} entries` : "listed";
-				const target =
-					isBatch && Array.isArray(d?.paths)
+		renderResult: toolCardRenderer<Record<string, unknown>>(TextComponent, {
+			name: "ls",
+			owns: (d) => d?._type === "lsResult",
+			collapsed: (d) => ({
+				summary: d?._type === "lsResult" ? `${d.entryCount} entries` : "listed",
+				target:
+					d?._type === "lsResult" && Array.isArray(d.paths)
 						? formatCallTargets((d.paths as string[]).map(sp), 3, "dirs")
 						: d?._type === "lsResult"
 							? sp(String(d.path ?? "."))
-							: ".";
-				text.setText(
-					renderCollapsed(
-						theme,
-						"ls",
-						target,
-						renderCtx.isError ? "failed" : summary,
-						renderCtx.isError ? "error" : "success",
-					),
-				);
-				return text;
-			}
-
-			if (renderCtx.isError) {
-				text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				return completed();
-			}
-			if (d?._type === "lsResult" && Array.isArray(d.paths)) {
-				// Batch: text is already `===== dir =====` section blocks, not a single
-				// tree — render as a dim framed block, no per-tree icon layout.
-				const paint = fadeRulePaint(theme, renderCtx.isError ? "error" : "success");
-				const lines = String(d.text ?? d.path).split("\n");
-				const out = isPartial ? lines : ruleFrame(lines, [], undefined, paint);
-				text.setText(fillToolBackground(out.join("\n")));
-				return text;
-			}
-			if (d?._type === "lsResult" && d.text) {
-				// One shape regardless of entry count: a single framed box, no floating
-				// "N entries" header (the collapsed row already carries the count).
-				// Rules follow status color like bash — green ok, red error. Color can
-				// encode status but not the count, so the count stays in the collapsed row.
-				const tree = renderTree(d.text as string, d.path as string, theme, renderCtx);
-				const paint = fadeRulePaint(theme, renderCtx.isError ? "error" : "success");
-				const lines = tree.split("\n");
-				const out = isPartial ? lines : ruleFrame(lines, [], undefined, paint);
-				text.setText(fillToolBackground(out.join("\n")));
-				return text;
-			}
-
-			const output = getTextContent(result) || "listed";
-			text.setText(fillToolBackground(`${BODY_PAD}${theme.fg("dim", output.slice(0, 120))}`));
-			return isPartial ? text : completed();
-		},
+							: ".",
+			}),
+			body({ d, result, text, theme, ctx: renderCtx, isPartial }) {
+				const framed = (lines: string[]) => {
+					// One framed box, rules in status color; the count stays in the collapsed row.
+					const paint = fadeRulePaint(theme, "success");
+					const out = isPartial ? lines : ruleFrame(lines, [], undefined, paint);
+					text.setText(fillToolBackground(out.join("\n")));
+					return "framed" as const;
+				};
+				// Batch text is already `===== dir =====` sections, not one tree: a dim block.
+				if (d?._type === "lsResult" && Array.isArray(d.paths))
+					return framed(String(d.text ?? d.path).split("\n"));
+				if (d?._type === "lsResult" && d.text)
+					return framed(
+						renderTree(d.text as string, d.path as string, theme, renderCtx).split("\n"),
+					);
+				const output = getTextContent(result) || "listed";
+				text.setText(fillToolBackground(`${BODY_PAD}${theme.fg("dim", output.slice(0, 120))}`));
+				return undefined;
+			},
+		}),
 	});
 }
