@@ -30,6 +30,22 @@ function askFix(path: string, problem: string, value: unknown): string {
 	return problem;
 }
 
+// "All …" next to "Only …" in a single-select means the model pre-bundled a subset pick.
+const BUNDLE_ALL = /^(all|both)\b/i;
+const BUNDLE_ONLY = /^only\b/i;
+
+function bundledSubsetRows(params: Params): string[] {
+	return params.questions.flatMap((question, i) => {
+		if (question.multiSelect) return [];
+		const labels = question.options.map((option) => option.label.trim());
+		if (!labels.some((l) => BUNDLE_ALL.test(l)) || !labels.some((l) => BUNDLE_ONLY.test(l)))
+			return [];
+		return [
+			`- questions[${i}].options: single-select bundles subsets ("All" / "Only …"); set multiSelect: true with one option per item`,
+		];
+	});
+}
+
 /**
  * Normalize JSON-string payloads, then check with the host validator. A bad call
  * fails with a few lines that name the field, its length and limit, and the fix.
@@ -42,6 +58,13 @@ export function prepareAskArguments(input: unknown): Params {
 		args.questions = parseJson(args.questions);
 		if (Array.isArray(args.questions)) args.questions = args.questions.map(parseJson);
 	}
+	const params = validateAskArguments(args);
+	const bundled = bundledSubsetRows(params);
+	if (bundled.length) throw new Error(["ask_user: bad arguments", ...bundled, FIX].join("\n"));
+	return params;
+}
+
+function validateAskArguments(args: Record<string, unknown>): Params {
 	try {
 		validateToolArguments(
 			{ name: "ask_user", description: "", parameters: ParamsSchema },

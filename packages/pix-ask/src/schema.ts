@@ -48,7 +48,8 @@ export const QuestionSchema = Type.Object({
 	multiSelect: Type.Optional(
 		Type.Boolean({
 			default: false,
-			description: "Allow multiple selections. Suppresses 'Type something.' row.",
+			description:
+				"Allow multiple selections (checkboxes). Use for choosing a subset of items, one option per item. Suppresses 'Type something.' row.",
 		}),
 	),
 });

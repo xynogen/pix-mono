@@ -43,6 +43,12 @@ const cases: Array<[string, unknown, string, RegExp]> = [
 		"questions[0]",
 		/\{question, header, options, multiSelect\?\}/,
 	],
+	[
+		"single-select bundles subsets",
+		{ questions: [q({ options: [option("All containers"), option("Only the stopped ones")] })] },
+		"questions[0].options",
+		/set multiSelect: true with one option per item/,
+	],
 ];
 
 describe("ask_user argument errors", () => {
@@ -61,5 +67,15 @@ describe("ask_user argument errors", () => {
 		expect(prepareAskArguments({ questions: [JSON.stringify(questions[0])] })).toEqual({
 			questions,
 		});
+	});
+
+	it("accepts subset labels in multiSelect and look-alike single-select labels", () => {
+		const subsets = [option("All"), option("Only api")];
+		for (const question of [
+			q({ options: subsets, multiSelect: true }),
+			q({ options: [option("Allow"), option("Only once")] }),
+			q({ options: [option("All files"), option("Changed files")] }),
+		])
+			expect(prepareAskArguments({ questions: [question] })).toEqual({ questions: [question] });
 	});
 });

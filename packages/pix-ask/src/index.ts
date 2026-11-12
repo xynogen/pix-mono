@@ -50,6 +50,7 @@ export default function registerAsk(pi: ExtensionAPI): void {
 			promptGuidelines: [
 				"Do not stack multiple ask_user calls back-to-back — group all clarifying questions into one invocation.",
 				"When the user must pick, ask with ask_user instead of a text list: single-select for one answer, multiSelect for several, preview for side-by-side comparison. Skip it when the user asks for a written list or the options are informational only.",
+				"When the user picks which items to act on (files, containers, branches, targets), use multiSelect with one option per item. Never pre-bundle combinations such as 'All', 'Only X' or 'Only the stopped ones' as single-select options.",
 			],
 			executionMode: "sequential",
 			parameters: ParamsSchema,
