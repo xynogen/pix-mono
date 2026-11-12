@@ -2,9 +2,8 @@ import { join } from "node:path";
 import { getErrorMessage, humanSize } from "@xynogen/pix-pretty/utils";
 import { randomBytes } from "@xynogen/pix-runtime/crypto";
 import { mkdtemp, writeFile } from "@xynogen/pix-runtime/fs";
-import { truncateHead } from "@xynogen/pix-runtime/host";
+import { truncateOutput } from "@xynogen/pix-runtime/output";
 import { tempDir } from "@xynogen/pix-runtime/paths";
-import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import type { ContentBlock, McpSettings } from "./types.ts";
 
 export const DEFAULT_MCP_OUTPUT_MAX_BYTES = 50 * 1024;
@@ -133,12 +132,8 @@ export async function guardMcpOutput(
 			composedOutput,
 		);
 		const notice = formatTruncationNotice(stats, fullOutputPath, writeError);
-		const previewBudget = reserveBudget(maxBytes, maxLines, notice);
-		const preview = truncateHead(composedOutput, previewBudget);
-		// One line over the byte cap: truncateHead keeps nothing, so keep its head.
-		const head = preview.firstLineExceedsLimit
-			? truncateStringToBytes(composedOutput.split("\n")[0] ?? "", previewBudget.maxBytes)
-			: preview.content;
+		const budget = reserveBudget(maxBytes, maxLines, notice);
+		const head = truncateOutput(composedOutput, budget.maxLines, budget.maxBytes).text;
 		const finalText = `${head}\n\n${notice}`;
 		const finalStats = textStats(finalText);
 

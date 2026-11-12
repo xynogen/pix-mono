@@ -24,53 +24,39 @@
  *   - File transfers are warning-level and show their overwrite risk in the UI.
  *   - No UI (RPC / JSON mode) = blocked immediately.
  *   - Output truncated to 50 KB / 2000 lines.
+ *
+ * Layout: operation.ts (params → operation), auth.ts (credentials, probes),
+ * result.ts (details), info.ts (info action), render.ts (tool card), this file
+ * (registration and the approval → run pipeline).
  */
 
-import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
-import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
-import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import {
 	type OverlayChoice,
 	type OverlayResult,
+	type OverlayUI,
 	showOverlay,
 } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
-import { fadeRowsOf } from "@xynogen/pix-pretty/text";
-import { Text } from "@xynogen/pix-pretty/tui";
-import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	bodyLine,
-	dotJoin,
-	fadeRulePaint,
-	fillToolBackground,
-	frameToolResult,
-	getErrorMessage,
-	getTextContent,
-	hideCollapsedToolCall,
-	moreLines,
-	normalizeLineEndings,
-	renderCollapsed,
-	renderRow,
-	renderTitle,
-	renderToolError,
-	ruleFrame,
-	termW,
-	unframeToolResult,
-} from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, normalizeLineEndings } from "@xynogen/pix-pretty/utils";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
-import { getUnattendedMode } from "@xynogen/pix-runtime";
-import { requireTool } from "@xynogen/pix-runtime/binaries";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { editSchema, prepareEditArguments, readText } from "@xynogen/pix-runtime/files";
-import { existsSync } from "@xynogen/pix-runtime/fs";
-import { initHashline } from "@xynogen/pix-runtime/hashline";
-import type { AgentToolUpdateCallback, ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { getUnattendedMode, type UnattendedMode } from "@xynogen/pix-runtime";
+import { editSchema } from "@xynogen/pix-runtime/files";
+import type { AgentToolUpdateCallback, EventBus, ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
-import { sftpPath } from "@xynogen/pix-runtime/sftp";
+import { truncateOutput } from "@xynogen/pix-runtime/output";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
+import {
+	authVia,
+	cacheKey,
+	credCache,
+	type HostCreds,
+	keyRecheckAt,
+	prepareConnection,
+	probeConnection,
+	validatorFor,
+} from "./auth.ts";
+import { infoResult } from "./info.ts";
 import {
 	closeMaster,
 	commandEscalatesPrivilege,
@@ -78,8 +64,6 @@ import {
 	detectHostKeyFailure,
 	detectSshFailure,
 	detectSudoFailure,
-	type HostAlias,
-	type HostInfo,
 	HostKeyError,
 	type HostSpec,
 	hostKeyReset,
@@ -87,500 +71,658 @@ import {
 	MAX_OUTPUT_BYTES,
 	MAX_OUTPUT_LINES,
 	parseHost,
-	probeKeyAuth,
-	probePasswordAuth,
-	probeSftp,
+	type probeKeyAuth,
 	probeSudoNoPassword,
-	readSshConfigAliases,
 	resetKnownHost,
-	resolveHostInfo,
 	resolveSshHost,
 	runFile,
 	runSsh,
 	runTransfer,
-	type TransferDirection,
+	type SshResult,
 	transferApprovalDecision,
-	truncate,
 } from "./lib.ts";
+import {
+	approvalBody,
+	approvalTitle,
+	isFileAction,
+	missingSshTools,
+	normalizeOperation,
+	type SshOperation,
+	type SshParams,
+	validateFile,
+} from "./operation.ts";
+import { renderSshCall, renderSshResult } from "./render.ts";
+import {
+	cancelResult,
+	makeDetails,
+	outputLineCount,
+	type SshDetailFields,
+	type SshResultDetails,
+	updatePresentation,
+} from "./result.ts";
+
+export { validatorFor } from "./auth.ts";
+export { missingSshTools } from "./operation.ts";
+export type { SshResultDetails } from "./result.ts";
 
 const PROMPT_TIMEOUT_MS = 60_000;
 const MAX_PASSWORD_ATTEMPTS = 3;
 const SPINNER_INTERVAL_MS = 120;
-/** Min gap between key re-checks on a host whose login password is cached.
- * Each failed probe is one auth failure in the server log (fail2ban counts it). */
-const KEY_RECHECK_MS = 60_000;
-
-// In-memory per-host credential cache (session-scoped, never persisted).
-// Key = canonical "user@host:port". Cleared on process exit.
-interface HostCreds {
-	loginPassword?: string;
-	sudoPassword?: string;
-}
-const credCache = new Map<string, HostCreds>();
-// Per-host epoch ms before which the cached-password key re-check is skipped.
-const keyRecheckAt = new Map<string, number>();
-
-function cacheKey(spec: HostSpec): string {
-	return `${spec.user ?? ""}@${spec.host}:${spec.port ?? 22}`;
-}
-
-/** Pre-run connection prep: honor `fresh`, re-check the key, and report
- * whether the run will reuse a live master. Checked before the auth probes,
- * which open a master themselves. */
-async function prepareConnection(
-	spec: HostSpec,
-	controlPath: string,
-	key: string,
-	creds: HostCreds,
-	fresh: boolean | undefined,
-	sig?: AbortSignal,
-	files = false,
-): Promise<{ creds: HostCreds; connection: "new" | "reused" }> {
-	if (fresh === true) await closeMaster(spec, controlPath, sig);
-	const next = await recheckKey(spec, controlPath, key, creds, fresh === true, sig, files);
-	if (files) return { creds: next, connection: "new" };
-	return { creds: next, connection: existsSync(controlPath) ? "reused" : "new" };
-}
-
-function authVia(loginPassword: string | undefined, connection: "new" | "reused") {
-	return { auth: loginPassword ? "password" : "key", connection } as const;
-}
-
-/**
- * A cached login password means the live master is likely password-authed, so a
- * normal probe would ride it and never test the key. Re-check the key with
- * multiplexing off (rate-limited by KEY_RECHECK_MS unless `force`); on success
- * drop the password and its master so this call and later ones use the key.
- */
-async function recheckKey(
-	spec: HostSpec,
-	controlPath: string,
-	key: string,
-	creds: HostCreds,
-	force: boolean,
-	sig?: AbortSignal,
-	files = false,
-): Promise<HostCreds> {
-	if (!creds.loginPassword) return creds;
-	if (!force && (keyRecheckAt.get(key) ?? 0) > Date.now()) return creds;
-	if ((await probeConnection(spec, "none", sig, files)) !== "ok") {
-		keyRecheckAt.set(key, Date.now() + KEY_RECHECK_MS);
-		return creds;
-	}
-	const next = creds.sudoPassword ? { sudoPassword: creds.sudoPassword } : {};
-	credCache.set(key, next);
-	keyRecheckAt.delete(key);
-	await closeMaster(spec, controlPath, sig);
-	return next;
-}
-
-/**
- * Overlay password validator for a prompt stage. The login stage tests the
- * password against the host (wrong one re-prompts up to MAX_PASSWORD_ATTEMPTS);
- * the sudo stage can't be probed before login, so it only rejects a blank entry
- * and surfaces a real failure on the run.
- */
-export function validatorFor(
-	stage: "login" | "sudo",
-	spec: HostSpec,
-	controlPath: string,
-	sig?: AbortSignal,
-	files = false,
-): (pw: string, validationSignal?: AbortSignal) => Promise<boolean> {
-	if (stage !== "login") return (pw) => Promise.resolve(pw.trim().length > 0);
-	if (files)
-		return async (pw, validationSignal) =>
-			Boolean(pw.trim()) && (await probeSftp(spec, "none", validationSignal ?? sig, pw)) !== "auth";
-	return (pw, validationSignal) =>
-		pw.trim().length === 0
-			? Promise.resolve(false)
-			: probePasswordAuth(spec, controlPath, pw, validationSignal ?? sig);
-}
-
-type SshOutcome =
-	| "awaiting-approval"
-	| "running"
-	| "success"
-	| "denied"
-	| "timed-out"
-	| "cancelled"
-	| "error";
-
-type SshCancellationKind = "denied" | "timeout" | "missing-password" | "aborted";
-type SshErrorKind =
-	| "no-ui"
-	| "auth-ssh"
-	| "auth-sudo"
-	| "host-key"
-	| "execution"
-	| "no-result"
-	| "exit-code";
-
-export interface SshResultDetails {
-	_type: "sshResult";
-	command: string;
-	host: string;
-	sudo?: boolean;
-	reason?: string;
-	outcome: SshOutcome;
-	exitCode?: number;
-	lineCount?: number;
-	truncated?: boolean;
-	cancellationKind?: SshCancellationKind;
-	errorKind?: SshErrorKind;
-	/** How this call authenticated: SSH key/agent, or a login password. */
-	auth?: "key" | "password";
-	/** Whether this call opened a new connection or reused a live master. */
-	connection?: "new" | "reused";
-	_render?: string;
-}
-
-// Flat shape mirroring the single Type.Object schema. Conditional fields are
-// optional here and validated at runtime by normalizeOperation.
-type SshParams = {
-	action?: "command" | "upload" | "download" | "info" | "read" | "write" | "edit";
-	host?: string;
-	command?: string;
-	path?: string;
-	content?: string;
-	offset?: number;
-	limit?: number;
-	edits?: unknown;
-	sudo?: boolean;
-	source?: string;
-	destination?: string;
-	recursive?: boolean;
-	reason?: string;
-	fresh?: boolean;
-};
-
-interface SshOperation {
-	action: "command" | "file" | "read" | "write" | "edit";
-	command: string;
-	sudo: boolean;
-	reason?: string;
-	direction?: TransferDirection;
-	source: string;
-	destination: string;
-	recursive: boolean;
-}
-
-function isFileAction(action: SshParams["action"]): action is "read" | "write" | "edit" {
-	return action === "read" || action === "write" || action === "edit";
-}
-
-function probeConnection(
-	spec: HostSpec,
-	controlPath: string,
-	sig: AbortSignal | undefined,
-	files: boolean,
-) {
-	return files ? probeSftp(spec, "none", sig) : probeKeyAuth(spec, controlPath, sig);
-}
-
-async function validateFile(params: SshParams) {
-	if (!isFileAction(params.action)) return;
-	if (params.sudo) throw new Error("SFTP file actions do not support sudo");
-	params.path = sftpPath(params.path ?? "");
-	if (params.action === "write" && typeof params.content !== "string")
-		throw new Error("content is required for write");
-	if (params.action === "edit")
-		params.edits = (
-			prepareEditArguments({ path: params.path, edits: params.edits }) as { edits: unknown }
-		).edits;
-	await initHashline();
-	if (params.action === "read") readText(Buffer.alloc(0), params.offset, params.limit);
-}
-function normalizeOperation(params: SshParams): SshOperation {
-	if (params.action === "read" || params.action === "write" || params.action === "edit") {
-		return {
-			action: params.action,
-			command: `${params.action} ${params.path ?? "(empty path)"}`,
-			sudo: false,
-			reason: params.reason,
-			source: params.path ?? "",
-			destination: "",
-			recursive: false,
-		};
-	}
-	if (params.action === "upload" || params.action === "download") {
-		const source = (params.source ?? "").trim();
-		const destination = (params.destination ?? "").trim();
-		return {
-			action: "file",
-			command: `${params.action} ${source || "(empty source)"} → ${destination || "(empty destination)"}`,
-			sudo: false,
-			reason: params.reason,
-			direction: params.action,
-			source,
-			destination,
-			recursive: params.recursive === true,
-		};
-	}
-	return {
-		action: "command",
-		command: params.command ?? "",
-		sudo: params.sudo === true,
-		reason: params.reason,
-		source: "",
-		destination: "",
-		recursive: false,
-	};
-}
-
-/** The model's reason heads the modal; the action name is only the fallback. */
-function approvalTitle({ action, direction, reason }: SshOperation): string {
-	if (reason?.trim()) return reason.trim();
-	if (action === "read" || action === "write" || action === "edit") return `SSH ${action}`;
-	if (action !== "file") return "SSH Command Request";
-	return `SSH ${direction === "download" ? "Download" : "Upload"}`;
-}
-
-function approvalBody(operation: SshOperation, host: string, port?: number): string[] {
-	const { action, destination, direction, reason, recursive, source } = operation;
-	return [
-		...(reason?.trim() ? [] : ["No reason provided by AI"]),
-		`Host: ${host}${port ? ` (port ${port})` : ""}`,
-		...(action !== "file"
-			? [
-					action === "command"
-						? "Review the command in the tool card below."
-						: `${action.toUpperCase()} ${source}`,
-					...(action === "write" ? ["Warning: replaces the entire file"] : []),
-				]
-			: [
-					`Direction: ${direction === "download" ? "Download" : "Upload"}`,
-					`From: ${source}`,
-					`To: ${destination}`,
-					`Mode: ${recursive ? "Recursive copy" : "Single item"}`,
-					"Warning: existing destination may be overwritten",
-				]),
-	];
-}
-
-function safeOneLine(value: string): string {
-	return value
-		.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
-}
-
-function makeDetails(
-	command: string,
-	host: string,
-	sudo: boolean,
-	reason: string | undefined,
-	fields: Omit<SshResultDetails, "_type" | "command" | "host" | "sudo" | "reason">,
-): SshResultDetails {
-	return {
-		_type: "sshResult",
-		command,
-		host,
-		sudo,
-		...(reason?.trim() ? { reason: reason.trim() } : {}),
-		...fields,
-	};
-}
-
-function outputLineCount(output: string): number {
-	const normalized = normalizeLineEndings(output).replace(/^\n+|\n+$/g, "");
-	return normalized ? normalized.split("\n").length : 0;
-}
-
-function updatePresentation(
-	onUpdate: AgentToolUpdateCallback<SshResultDetails> | undefined,
-	command: string,
-	host: string,
-	sudo: boolean,
-	reason: string | undefined,
-	outcome: "awaiting-approval" | "running",
-	message?: string,
-): void {
-	onUpdate?.({
-		content: [
-			{
-				type: "text",
-				text:
-					message ??
-					(outcome === "awaiting-approval" ? "Awaiting approval…" : `Running on ${host}…`),
-			},
-		],
-		details: makeDetails(command, host, sudo, reason, { outcome }),
-	});
-}
-
-function terminalMeta(details: SshResultDetails): string {
-	if (details.outcome === "denied") return "denied";
-	if (details.outcome === "timed-out") return "timed out";
-	if (details.outcome === "cancelled") return "cancelled";
-	if (details.errorKind === "no-ui") return "interactive session required";
-	if (details.errorKind === "auth-ssh") return "ssh auth failed";
-	if (details.errorKind === "host-key") return "host key verification failed";
-	if (details.errorKind === "auth-sudo") return "sudo auth failed";
-	if (details.errorKind === "execution" || details.errorKind === "no-result") return "failed";
-
-	const hasLines = typeof details.lineCount === "number" && details.lineCount > 0;
-	return dotJoin([
-		typeof details.exitCode === "number" && `exit ${details.exitCode}`,
-		details.auth && `${details.auth} auth`,
-		details.connection && `${details.connection} connection`,
-		hasLines && `${details.lineCount} ${details.lineCount === 1 ? "line" : "lines"}`,
-		details.truncated && "truncated",
-	]);
-}
-
-function isTerminal(details: SshResultDetails): boolean {
-	return details.outcome !== "awaiting-approval" && details.outcome !== "running";
-}
-
-function cancelResult(
-	command: string,
-	host: string,
-	sudo: boolean,
-	reason: string | undefined,
-	action: OverlayResult["action"],
-): { content: { type: "text"; text: string }[]; details: SshResultDetails } {
-	const cancellationKind: SshCancellationKind =
-		action === "timeout" ? "timeout" : action === "denied" ? "denied" : "missing-password";
-	const outcome: SshOutcome =
-		cancellationKind === "timeout"
-			? "timed-out"
-			: cancellationKind === "denied"
-				? "denied"
-				: "cancelled";
-	const msg =
-		outcome === "timed-out"
-			? "Timed out — auto-denied."
-			: outcome === "denied"
-				? "Denied by user."
-				: "Cancelled — no password entered.";
-	return {
-		content: [{ type: "text", text: `Cancelled — ${msg}` }],
-		details: makeDetails(command, host, sudo, reason, { outcome, cancellationKind }),
-	};
-}
-
-function formatHostInfo(host: string, info: HostInfo): string {
-	const rows = [
-		["HostName", info.hostname],
-		["User", info.user],
-		["Port", info.port],
-		["ProxyJump", info.proxyJump && info.proxyJump !== "none" ? info.proxyJump : undefined],
-		["IdentityFile", info.identityFile],
-	].filter((r): r is [string, string] => Boolean(r[1]));
-	if (rows.length === 0) return `No SSH config found for ${host}.`;
-	return [`Effective SSH config for ${host}:`, ...rows.map(([k, v]) => `${k} ${v}`)].join("\n");
-}
-
-function renderHostInfo(
-	info: { host?: string; info?: HostInfo; aliases?: HostAlias[] },
-	body: string,
-	theme: ThemeLike,
-): string {
-	const rows = [renderRow(theme, "ssh · info", info.host ?? "", "read-only")];
-	if (info.info) {
-		for (const [label, value] of [
-			["Host", info.info.hostname],
-			["User", info.info.user],
-			["Port", info.info.port],
-			["Via", info.info.proxyJump === "none" ? undefined : info.info.proxyJump],
-			["Identity", info.info.identityFile],
-		] as const) {
-			if (value)
-				rows.push(
-					`${BODY_PAD}${theme.fg("muted", label.padEnd(9))}${theme.fg("accent", safeOneLine(value))}`,
-				);
-		}
-	} else if (info.aliases?.length) {
-		const seen = new Set<string>();
-		for (const alias of info.aliases) {
-			if (seen.has(alias.alias)) continue;
-			seen.add(alias.alias);
-			const endpoint = `${alias.user ? `${alias.user}@` : ""}${alias.hostname ?? alias.alias}${alias.port ? `:${alias.port}` : ""}`;
-			rows.push(
-				`${BODY_PAD}${theme.fg("accent", safeOneLine(alias.alias))}${theme.fg("muted", " · ")}${theme.fg("dim", safeOneLine(endpoint))}${alias.proxyJump && alias.proxyJump !== "none" ? theme.fg("muted", ` · via ${safeOneLine(alias.proxyJump)}`) : ""}`,
-			);
-		}
-	} else rows.push(`${BODY_PAD}${theme.fg("muted", body)}`);
-	return fillToolBackground(rows.join("\n"));
-}
-
-function formatAliasList(aliases: HostAlias[]): string {
-	if (aliases.length === 0) {
-		return "No SSH host aliases found in ~/.ssh/config.";
-	}
-	// De-dupe by alias, first block wins (OpenSSH semantics).
-	const seen = new Set<string>();
-	const lines: string[] = [];
-	for (const a of aliases) {
-		if (seen.has(a.alias)) continue;
-		seen.add(a.alias);
-		let target = "";
-		if (a.hostname) {
-			const userPart = a.user ? `${a.user}@` : "";
-			const portPart = a.port ? `:${a.port}` : "";
-			target = `${userPart}${a.hostname}${portPart}`;
-		}
-		const via = a.proxyJump && a.proxyJump !== "none" ? ` via ${a.proxyJump}` : "";
-		lines.push(`${a.alias}${target ? ` → ${target}` : ""}${via}`);
-	}
-	return [`SSH host aliases (${lines.length}):`, ...lines].join("\n");
-}
-
-/** Build the info-action result: per-host effective config when `host` is
- * given, otherwise the alias inventory from ~/.ssh/config. Read-only.
- * Details carry `_type: "sshInfo"` + `host` for the collapsed row. */
-/**
- * The pix-runtime lookup message for the first missing binary this action
- * needs (ssh, plus scp for file transfers), or undefined when all resolve.
- * sshpass is checked lazily: it only matters when a login password is used.
- */
-export function missingSshTools(action: SshOperation["action"]): string | undefined {
-	for (const name of action === "file"
-		? ["ssh", "scp"]
-		: action === "command"
-			? ["ssh"]
-			: ["ssh", "sftp"]) {
-		try {
-			requireTool(name);
-		} catch (err) {
-			return getErrorMessage(err);
-		}
-	}
-	return undefined;
-}
-
-async function infoResult(host: string | undefined, sig?: AbortSignal) {
-	const details = { _type: "sshInfo" as const, host: host?.trim() || "aliases" };
-	if (host?.trim()) {
-		let spec: HostSpec;
-		try {
-			spec = parseHost(host);
-		} catch (err) {
-			const msg = getErrorMessage(err);
-			return {
-				content: [{ type: "text" as const, text: `ssh_run failed: ${msg}` }],
-				details,
-				isError: true,
-			};
-		}
-		const info = await resolveHostInfo(spec, sig);
-		const text = formatHostInfo(hostTarget(spec), info);
-		return { content: [{ type: "text" as const, text }], details: { ...details, info } };
-	}
-	const aliases = readSshConfigAliases();
-	return {
-		content: [{ type: "text" as const, text: formatAliasList(aliases) }],
-		details: { ...details, aliases },
-	};
-}
-
-// ── Extension entry point ─────────────────────────────────────────────────────
 
 /** "Allow for this session" choice. Offered only for non-privileged commands. */
 const SESSION_CHOICE: OverlayChoice[] = [
 	{ value: "session", label: "Allow for this session", description: "Host, until /new; sudo asks" },
 ];
+
+type ToolText = { type: "text"; text: string };
+type SshToolResult = {
+	content: ToolText[];
+	details: SshResultDetails | undefined;
+	isError?: boolean;
+	structuredContent?: string;
+};
+
+/** Per-call state shared by the approval and run steps. */
+interface Call {
+	params: SshParams;
+	operation: SshOperation;
+	fileAction: boolean;
+	spec: HostSpec;
+	host: string;
+	controlPath: string;
+	key: string;
+	creds: HostCreds;
+	mode: UnattendedMode;
+	ui: OverlayUI & { notify(message: string, type?: "info" | "warning" | "error"): void };
+	events: EventBus;
+	sessionHosts: Set<string>;
+	sig?: AbortSignal;
+}
+
+function fail(
+	call: Pick<SshOperation, "command" | "sudo" | "reason">,
+	host: string,
+	text: string,
+	fields: SshDetailFields = { outcome: "error", errorKind: "execution" },
+): SshToolResult {
+	return {
+		content: [{ type: "text", text }],
+		details: makeDetails(call.command, host, call.sudo, call.reason, fields),
+		...(fields.outcome === "error" ? { isError: true } : {}),
+	};
+}
+
+/** Input checks that need no connection. Returns a failure, or undefined to continue. */
+async function validateInput(
+	params: SshParams,
+	operation: SshOperation,
+): Promise<SshToolResult | undefined> {
+	const host = params.host ?? "";
+	if (operation.action === "file" && (!operation.source || !operation.destination))
+		return fail(
+			{ ...operation, sudo: false },
+			host,
+			"ssh_run failed: source and destination are required",
+		);
+	if (operation.action === "command" && !operation.command.trim())
+		return fail(operation, host, "ssh_run failed: command is required");
+	// Fail up front with pix's install hint: the probes below treat a spawn
+	// error as "unreachable", which would hide a missing ssh/scp.
+	const missingTool = missingSshTools(operation.action);
+	if (missingTool) return fail(operation, host, `ssh_run failed: ${missingTool}`);
+	return undefined;
+}
+
+/** Show the host-key-changed modal; reset known_hosts only after explicit verification. */
+async function handleHostKeyError(
+	call: Call,
+	error: HostKeyError,
+): Promise<SshToolResult | undefined> {
+	const { spec, host, controlPath, key, sig } = call;
+	const reset = hostKeyReset(error.stderr);
+	const diagnostic = `${error.message}\n\nVerify the new fingerprint with the host owner or physical console. A reinstall can change it, but this can also indicate an attack. Do not enter a password until verified.`;
+	const decision = await showOverlay(call.ui, {
+		state: { events: call.events, source: "ssh_run" },
+		signal: sig,
+		mode: "confirm",
+		icon: icon("warn"),
+		accent: "error",
+		title: "SSH HOST KEY CHANGED — verify before resetting",
+		body: [
+			`Host: ${host}`,
+			...diagnostic.split("\n"),
+			...(reset
+				? [
+						`Reset target: ${reset.host}`,
+						`File: ${reset.file} (backup: ${reset.file}.old)`,
+						"Only reset if you independently verified the fingerprint above.",
+					]
+				: ["Automatic reset is unavailable. Resolve the host key error manually."]),
+		],
+		timeoutMs: PROMPT_TIMEOUT_MS,
+		approveValue: "reset",
+		choices: [
+			{ value: "cancel", label: "Cancel", description: "Keep known_hosts unchanged" },
+			...(reset
+				? [
+						{
+							value: "reset",
+							label: "Reset known host and reconnect",
+							description: "I verified the new fingerprint through a trusted source",
+						},
+					]
+				: []),
+		],
+	});
+	sig?.throwIfAborted();
+	let message = `${diagnostic}\n\nReset cancelled. known_hosts was not changed by pix-ssh.`;
+	if (decision.action === "approved" && decision.choice === "reset" && reset) {
+		try {
+			await resetKnownHost(spec, reset, sig);
+			await closeMaster(spec, controlPath, sig);
+			credCache.delete(key);
+			keyRecheckAt.delete(key);
+			call.sessionHosts.delete(key);
+			call.creds = {};
+			call.ui.notify(`ssh_run: verified host key reset for ${host}`, "info");
+			return undefined;
+		} catch (resetError) {
+			sig?.throwIfAborted();
+			message = `${diagnostic}\n\nHost key reset failed: ${getErrorMessage(resetError)}`;
+		}
+	}
+	return fail(call.operation, host, message, { outcome: "error", errorKind: "host-key" });
+}
+
+type Probe = Awaited<ReturnType<typeof probeKeyAuth>>;
+
+/** Honor `fresh`, re-check the key, then probe auth. A changed host key gets one reset-and-retry. */
+async function connect(
+	call: Call,
+): Promise<SshToolResult | { probe: Probe; connection: "new" | "reused" }> {
+	const { spec, controlPath, sig, fileAction } = call;
+	try {
+		const prep = await prepareConnection(
+			spec,
+			controlPath,
+			call.key,
+			call.creds,
+			call.params.fresh,
+			sig,
+			fileAction,
+		);
+		call.creds = prep.creds;
+		// Cached passwords still need an identity check when their master has expired.
+		const probe = await probeConnection(spec, controlPath, sig, fileAction);
+		return { probe, connection: prep.connection };
+	} catch (error) {
+		if (!(error instanceof HostKeyError)) throw error;
+		const failure = await handleHostKeyError(call, error);
+		if (failure) return failure;
+		try {
+			return {
+				probe: await probeConnection(spec, controlPath, sig, fileAction),
+				connection: "new",
+			};
+		} catch (retryError) {
+			if (!(retryError instanceof HostKeyError)) throw retryError;
+			return fail(call.operation, call.host, retryError.message, {
+				outcome: "error",
+				errorKind: "host-key",
+			});
+		}
+	}
+}
+
+interface Approval {
+	/** Passwords the overlay must still collect, login first. */
+	promptFor: ("login" | "sudo")[];
+	transferDecision: "ask" | "allow" | "deny";
+	alreadyApproved: boolean;
+	privileged: boolean;
+	keyOk: boolean;
+}
+
+/** Decide which prompts this call needs. */
+async function planApproval(call: Call, probe: Probe): Promise<Approval> {
+	const { operation, creds } = call;
+	const { action, sudo, command } = operation;
+	// Only prompt for a login password when the host is reachable but rejects
+	// key auth ("auth"). If it's unreachable (timeout/DNS/refused) a password
+	// can't help — skip the prompt and let runSsh surface the real error.
+	const keyOk = probe === "ok";
+	const needLogin = probe === "auth" && !creds.loginPassword;
+	// Remote sudo password only when NOT already cached, NOT NOPASSWD, and
+	// the SSH connection is passwordless (so the probe can open its own
+	// channel without prompting). When login still needs a password we
+	// can't probe yet, so fall back to prompting for the sudo password.
+	const sudoNoPassword =
+		sudo && !creds.sudoPassword && !needLogin && (keyOk || Boolean(creds.loginPassword))
+			? await probeSudoNoPassword(call.spec, call.controlPath, call.sig)
+			: false;
+	const needSudo = sudo && !creds.sudoPassword && !sudoNoPassword;
+	// Session allow-memory: host already approved + no password missing → skip
+	// the confirm overlay entirely (visible notify). Privileged commands
+	// (sudo:true, or a sudo/su/doas/pkexec token in the command text) are never
+	// auto-approved — they always re-confirm.
+	const promptFor: Approval["promptFor"] = [
+		...(needLogin ? (["login"] as const) : []),
+		...(needSudo ? (["sudo"] as const) : []),
+	];
+	const privileged = action === "command" && (sudo || commandEscalatesPrivilege(command));
+	return {
+		promptFor,
+		transferDecision: action === "file" ? transferApprovalDecision(call.mode, needLogin) : "ask",
+		alreadyApproved:
+			action === "command" &&
+			!privileged &&
+			call.sessionHosts.has(call.key) &&
+			promptFor.length === 0,
+		privileged,
+		keyOk,
+	};
+}
+
+/** Run the confirm and password overlays. Collected passwords land in `collected`. */
+async function runOverlay(
+	call: Call,
+	approval: Approval,
+	collected: { login?: string; sudo?: string },
+): Promise<OverlayResult> {
+	const { operation, host, spec, sig } = call;
+	const { action, sudo } = operation;
+	const { promptFor, transferDecision, alreadyApproved, privileged } = approval;
+	const yolo = call.mode === "yolo" || call.mode === "nuclear";
+	if ((transferDecision === "allow" || yolo || alreadyApproved) && promptFor.length === 0) {
+		return { action: "approved", password: "" };
+	}
+	const title = approvalTitle(operation);
+	const body = [
+		...approvalBody(operation, host, spec.port),
+		...(approval.keyOk && !call.creds.loginPassword ? ["Auth: SSH key (no password)"] : []),
+	];
+	const sessionChoices = action === "command" && !privileged ? SESSION_CHOICE : [];
+	const common = {
+		state: { events: call.events, source: "ssh_run" },
+		signal: sig,
+		icon: action === "file" ? icon("warn") : icon("lock"),
+		title,
+		accent: sudo ? "error" : action === "file" ? "warning" : "accent",
+		timeoutMs: PROMPT_TIMEOUT_MS,
+		approveValue: ["yes", "session"],
+	} as const;
+	// Confirm-only when no password is missing.
+	if (promptFor.length === 0) {
+		return showOverlay(call.ui, {
+			...common,
+			mode: "confirm",
+			body,
+			choices: [
+				{
+					value: "yes",
+					label: "Allow",
+					description:
+						action === "file" ? "Copy to destination (may overwrite)" : "Run the command",
+				},
+				...sessionChoices,
+				{
+					value: "no",
+					label: "Deny",
+					description: action === "file" ? "Cancel transfer" : "Block the command",
+				},
+			],
+		});
+	}
+	// One masked prompt per missing password, in order.
+	let last: OverlayResult = { action: "approved", password: "" };
+	for (const stage of promptFor) {
+		const label = stage === "login" ? "SSH login password" : "Remote sudo password";
+		last = await showOverlay(call.ui, {
+			...common,
+			mode: "sudo",
+			body: [...body, `Enter: ${label}`],
+			maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+			passwordLabel: `${label}:`,
+			// Login stage: actually test the password against the host so a
+			// wrong one re-prompts (up to MAX_PASSWORD_ATTEMPTS), mirroring
+			// pix-sudo. Sudo stage can't be validated until login succeeds, so
+			// it keeps the non-empty check and surfaces failures on the run.
+			validatePassword: validatorFor(stage, spec, call.controlPath, sig, call.fileAction),
+			choices: [
+				{ value: "yes", label: "Allow", description: `Enter ${label.toLowerCase()}` },
+				...sessionChoices,
+				{ value: "no", label: "Deny", description: "Block the command" },
+			],
+		});
+		if (last.action !== "approved" || !last.password?.trim()) return last;
+		if (stage === "login") collected.login = last.password;
+		else collected.sudo = last.password;
+	}
+	return last;
+}
+
+/** Map a finished command or transfer to its tool result. */
+function commandResult(
+	call: Call,
+	result: SshResult,
+	via: ReturnType<typeof authVia>,
+	loginPassword: string | undefined,
+): SshToolResult {
+	const { operation, host, key } = call;
+	const { sudo } = operation;
+	// SSH auth failure → drop the bad login password from the cache so the next call re-prompts.
+	if (detectSshFailure(result.code, result.stderr)) {
+		credCache.delete(key);
+		return fail(operation, host, `SSH authentication failed:\n${result.stderr}`, {
+			outcome: "error",
+			exitCode: result.code,
+			lineCount: outputLineCount(result.stderr),
+			errorKind: "auth-ssh",
+			_render: normalizeLineEndings(result.stderr),
+		});
+	}
+	// Remote sudo password failure → drop the bad sudo password.
+	if (sudo && detectSudoFailure(result.stderr)) {
+		credCache.set(key, loginPassword ? { loginPassword } : {});
+		return fail(operation, host, `Remote sudo authentication failed:\n${result.stderr}`, {
+			outcome: "error",
+			exitCode: result.code,
+			...via,
+			lineCount: outputLineCount(result.stderr),
+			errorKind: "auth-sudo",
+			_render: normalizeLineEndings(result.stderr),
+		});
+	}
+
+	const combined = [result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)";
+	const { text: truncatedText, truncated } = truncateOutput(combined);
+	const suffix = truncated
+		? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
+		: "";
+	const rendered = normalizeLineEndings(combined)
+		.replace(/\n{3,}/g, "\n\n")
+		.replace(/^\n+|\n+$/g, "");
+	return {
+		content: [
+			{
+				type: "text",
+				text: `Exit code: ${result.code} (auth: ${via.auth}, ${via.connection} connection)\n\n${truncatedText}${suffix}`,
+			},
+		],
+		details: makeDetails(operation.command, host, sudo, operation.reason, {
+			outcome: result.code === 0 ? "success" : "error",
+			exitCode: result.code,
+			...via,
+			lineCount: outputLineCount(rendered),
+			truncated,
+			...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
+			_render: rendered,
+		}),
+		isError: result.code !== 0,
+	};
+}
+
+/** Approved: run the operation with progress updates and map its result. */
+function runApproved(
+	call: Call,
+	connection: "new" | "reused",
+	onUpdate: AgentToolUpdateCallback<SshResultDetails> | undefined,
+) {
+	const { operation, host, spec, controlPath, sig, params } = call;
+	const { action, command, sudo, reason, direction, source, destination, recursive } = operation;
+	const loginPassword = call.creds.loginPassword;
+	const sudoPassword = call.creds.sudoPassword;
+	const via = authVia(loginPassword, connection);
+	const hasUpdates = Boolean(onUpdate);
+	return runToolExecution({
+		signal: sig,
+		onUpdate,
+		onError: (error, cancelled) => ({
+			content: [
+				{
+					type: "text" as const,
+					text: cancelled ? "ssh_run cancelled." : `ssh_run failed: ${getErrorMessage(error)}`,
+				},
+			],
+			details: makeDetails(
+				command,
+				host,
+				sudo,
+				reason,
+				cancelled
+					? { outcome: "cancelled", cancellationKind: "aborted" }
+					: { outcome: "error", errorKind: "execution" },
+			),
+			isError: !cancelled,
+		}),
+		execute: async ({ update, onCleanup }): Promise<SshToolResult> => {
+			let spinnerFrame = 0;
+			const updateTransferPresentation = () => {
+				const verb = direction === "download" ? "Downloading from" : "Uploading to";
+				updatePresentation(
+					update,
+					command,
+					host,
+					sudo,
+					reason,
+					"running",
+					`${SPINNER[spinnerFrame] ?? ""} ${verb} ${host}…`,
+				);
+			};
+			if (action === "file") updateTransferPresentation();
+			else updatePresentation(update, command, host, sudo, reason, "running");
+			// ponytail: spinner shows liveness only; SCP has no stable byte-progress API.
+			// Use an SFTP client with byte callbacks if percentage progress is needed.
+			const spinnerTimer =
+				action === "file" && hasUpdates
+					? setInterval(() => {
+							spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
+							updateTransferPresentation();
+						}, SPINNER_INTERVAL_MS)
+					: undefined;
+			onCleanup(() => clearInterval(spinnerTimer));
+
+			if (call.fileAction) {
+				const result = await runFile(
+					spec,
+					action as "read" | "write" | "edit",
+					{
+						path: params.path!,
+						content: params.content,
+						edits: params.edits,
+						offset: params.offset,
+						limit: params.limit,
+					},
+					{ controlPath, loginPassword, signal: sig },
+				);
+				return {
+					content: [{ type: "text", text: result.stdout }],
+					structuredContent: result.stdout,
+					details: makeDetails(command, host, false, reason, {
+						outcome: "success",
+						exitCode: 0,
+						...via,
+						lineCount: outputLineCount(result.stdout),
+						_render: result.stdout,
+					}),
+				};
+			}
+			const result =
+				action === "file"
+					? await runTransfer(spec, direction ?? "upload", source, destination, recursive, {
+							controlPath,
+							...(loginPassword ? { loginPassword } : {}),
+							...(sig ? { signal: sig } : {}),
+						})
+					: await runSsh(spec, command, {
+							controlPath,
+							...(loginPassword ? { loginPassword } : {}),
+							sudo,
+							...(sudo ? { sudoPassword: sudoPassword ?? "" } : {}),
+							...(sig ? { signal: sig } : {}),
+						});
+
+			if (result.code !== 0 && detectHostKeyFailure(result.stderr)) {
+				const failure = await handleHostKeyError(call, new HostKeyError(result.stderr));
+				return (
+					failure ?? {
+						content: [
+							{
+								type: "text",
+								text: "Host key reset. Retry the SSH operation; the command or transfer was not rerun.",
+							},
+						],
+						details: makeDetails(command, host, sudo, reason, { outcome: "cancelled" }),
+					}
+				);
+			}
+			return commandResult(call, result, via, loginPassword);
+		},
+	});
+}
+
+async function execute(
+	params: SshParams,
+	sig: AbortSignal | undefined,
+	onUpdate: AgentToolUpdateCallback<SshResultDetails> | undefined,
+	ctx: { hasUI: boolean; ui: Call["ui"] },
+	events: EventBus,
+	sessionHosts: Set<string>,
+) {
+	sig?.throwIfAborted();
+	// info: read-only SSH config report (no connection, no approval).
+	if (params.action === "info") return infoResult(params.host, sig);
+
+	if (!params.host?.trim())
+		return fail(
+			{ command: "", sudo: false, reason: params.reason },
+			"",
+			"ssh_run failed: host is required",
+		);
+	const fileAction = isFileAction(params.action);
+	if (fileAction) {
+		try {
+			await validateFile(params);
+		} catch (error) {
+			return {
+				content: [{ type: "text" as const, text: `ssh_run failed: ${getErrorMessage(error)}` }],
+				isError: true,
+				details: undefined,
+			};
+		}
+	}
+	const operation = normalizeOperation(params);
+	const invalid = await validateInput(params, operation);
+	if (invalid) return invalid;
+
+	let spec: HostSpec;
+	try {
+		spec = parseHost(params.host);
+	} catch (err) {
+		return fail(operation, params.host, `ssh_run failed: ${getErrorMessage(err)}`);
+	}
+	// ponytail: let OpenSSH own config parsing; `ssh -G` handles aliases,
+	// Include, and Match rules without duplicating its config grammar.
+	const effectiveSpec = await resolveSshHost(spec, sig);
+	const host = hostTarget(effectiveSpec);
+	const key = cacheKey(effectiveSpec);
+	const mode = getUnattendedMode(events);
+	if ((operation.action === "command" || fileAction) && mode === "afk")
+		return fail(operation, host, "ssh_run denied immediately — AFK mode is active.", {
+			outcome: "denied",
+			cancellationKind: "denied",
+		});
+	if (!ctx.hasUI)
+		return fail(operation, host, "ssh_run requires an interactive session (no UI available).", {
+			outcome: "error",
+			errorKind: "no-ui",
+		});
+
+	updatePresentation(
+		onUpdate,
+		operation.command,
+		host,
+		operation.sudo,
+		operation.reason,
+		"awaiting-approval",
+	);
+	// Keep original target for execution so alias-specific IdentityFile,
+	// ProxyJump, and other SSH config options still apply.
+	const call: Call = {
+		params,
+		operation,
+		fileAction,
+		spec,
+		host,
+		controlPath: controlPathFor(effectiveSpec),
+		key,
+		creds: credCache.get(key) ?? {},
+		mode,
+		ui: ctx.ui,
+		events,
+		sessionHosts,
+		sig,
+	};
+
+	const connected = await connect(call);
+	if ("content" in connected) return connected;
+	const approval = await planApproval(call, connected.probe);
+	if (approval.transferDecision === "deny")
+		return fail(
+			{ ...operation, sudo: false },
+			host,
+			"ssh_run file transfer denied — unattended mode cannot enter a missing SSH login password.",
+			{ outcome: "denied", cancellationKind: "denied" },
+		);
+	if (approval.alreadyApproved)
+		ctx.ui.notify(`ssh_run: reused session approval for ${host}`, "info");
+	else if (approval.transferDecision === "allow")
+		ctx.ui.notify(
+			`⚠ ssh_run file transfer auto-approved — ${mode.toUpperCase()} warning policy`,
+			"warning",
+		);
+
+	const collected: { login?: string; sudo?: string } = {};
+	const overlayResult = await runOverlay(call, approval, collected);
+	sig?.throwIfAborted();
+	if (overlayResult.passwordAttemptsExhausted)
+		return fail(
+			operation,
+			host,
+			`SSH authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`,
+			{ outcome: "error", errorKind: "auth-ssh" },
+		);
+	const needLogin = approval.promptFor.includes("login");
+	const needSudo = approval.promptFor.includes("sudo");
+	const missing =
+		overlayResult.action === "approved" &&
+		((needLogin && !collected.login) || (needSudo && !collected.sudo));
+	if (overlayResult.action !== "approved" || missing)
+		return cancelResult(
+			operation.command,
+			host,
+			operation.sudo,
+			operation.reason,
+			overlayResult.action,
+		);
+
+	// Plain "Allow" approves this call only. "session" (offered only for
+	// non-privileged commands) is the sole way to skip later prompts.
+	if (overlayResult.choice === "session") {
+		sessionHosts.add(key);
+		ctx.ui.notify(`ssh_run: ${host} allowed for this session (sudo still asks)`, "info");
+	}
+
+	// Persist newly-entered passwords in the session cache.
+	const loginPassword = call.creds.loginPassword ?? collected.login;
+	const sudoPassword = call.creds.sudoPassword ?? collected.sudo;
+	call.creds = {
+		...(loginPassword ? { loginPassword } : {}),
+		...(sudoPassword ? { sudoPassword } : {}),
+	};
+	credCache.set(key, call.creds);
+	return runApproved(call, connected.connection, onUpdate);
+}
 
 export default function pixSsh(pi: ExtensionAPI): void {
 	once(pi, "pix-ssh", () => register(pi));
@@ -588,9 +730,8 @@ export default function pixSsh(pi: ExtensionAPI): void {
 
 function register(pi: ExtensionAPI): void {
 	// "Allow for this session" hosts. Lives in the factory: Pi hands each new session a fresh `pi`,
-	// so this resets on /new. Privileged commands never use it (see `privileged` below).
+	// so this resets on /new. Privileged commands never use it (see planApproval).
 	const sessionHosts = new Set<string>();
-	const approved = (key: string) => sessionHosts.has(key);
 	pi.registerTool({
 		name: "ssh_run",
 		...({ exposure: "deferred" } as const),
@@ -703,738 +844,9 @@ function register(pi: ExtensionAPI): void {
 			}),
 		}),
 
-		async execute(_toolCallId, params, sig, onUpdate, ctx) {
-			sig?.throwIfAborted();
-			// info: read-only SSH config report (no connection, no approval).
-			if (params.action === "info") {
-				return infoResult(params.host, sig);
-			}
-
-			if (!params.host?.trim()) {
-				return {
-					content: [{ type: "text", text: "ssh_run failed: host is required" }],
-					details: makeDetails("", "", false, params.reason, {
-						outcome: "error",
-						errorKind: "execution",
-					}),
-					isError: true,
-				};
-			}
-			const fileAction = isFileAction(params.action);
-			if (fileAction) {
-				try {
-					await validateFile(params);
-				} catch (error) {
-					return {
-						content: [{ type: "text", text: `ssh_run failed: ${getErrorMessage(error)}` }],
-						isError: true,
-						details: undefined,
-					};
-				}
-			}
-			const operation = normalizeOperation(params);
-			const { action, command, destination, direction, reason, recursive, source, sudo } =
-				operation;
-
-			if (action === "file" && (!source || !destination)) {
-				return {
-					content: [{ type: "text", text: "ssh_run failed: source and destination are required" }],
-					details: makeDetails(command, params.host, false, reason, {
-						outcome: "error",
-						errorKind: "execution",
-					}),
-					isError: true,
-				};
-			}
-
-			if (action === "command" && !command.trim()) {
-				return {
-					content: [{ type: "text", text: "ssh_run failed: command is required" }],
-					details: makeDetails(command, params.host, sudo, reason, {
-						outcome: "error",
-						errorKind: "execution",
-					}),
-					isError: true,
-				};
-			}
-
-			// Fail up front with pix's install hint: the probes below treat a spawn
-			// error as "unreachable", which would hide a missing ssh/scp.
-			const missingTool = missingSshTools(action);
-			if (missingTool) {
-				return {
-					content: [{ type: "text", text: `ssh_run failed: ${missingTool}` }],
-					details: makeDetails(command, params.host, sudo, reason, {
-						outcome: "error",
-						errorKind: "execution",
-					}),
-					isError: true,
-				};
-			}
-
-			let spec: HostSpec;
-			try {
-				spec = parseHost(params.host);
-			} catch (err) {
-				const msg = getErrorMessage(err);
-				return {
-					content: [{ type: "text", text: `ssh_run failed: ${msg}` }],
-					details: makeDetails(command, params.host, sudo, reason, {
-						outcome: "error",
-						errorKind: "execution",
-					}),
-					isError: true,
-				};
-			}
-			// ponytail: let OpenSSH own config parsing; `ssh -G` handles aliases,
-			// Include, and Match rules without duplicating its config grammar.
-			const effectiveSpec = await resolveSshHost(spec, sig);
-			const host = hostTarget(effectiveSpec);
-			// Keep original target for execution so alias-specific IdentityFile,
-			// ProxyJump, and other SSH config options still apply.
-			const controlPath = controlPathFor(effectiveSpec);
-			const key = cacheKey(effectiveSpec);
-			let creds = credCache.get(key) ?? {};
-
-			const mode = getUnattendedMode(pi.events);
-			const yolo = mode === "yolo" || mode === "nuclear";
-			if ((action === "command" || fileAction) && mode === "afk") {
-				return {
-					content: [{ type: "text", text: "ssh_run denied immediately — AFK mode is active." }],
-					details: makeDetails(command, host, sudo, reason, {
-						outcome: "denied",
-						cancellationKind: "denied",
-					}),
-				};
-			}
-
-			if (!ctx.hasUI) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: "ssh_run requires an interactive session (no UI available).",
-						},
-					],
-					details: makeDetails(command, host, sudo, reason, {
-						outcome: "error",
-						errorKind: "no-ui",
-					}),
-					isError: true,
-				};
-			}
-
-			updatePresentation(onUpdate, command, host, sudo, reason, "awaiting-approval");
-
-			const handleHostKeyError = async (error: HostKeyError) => {
-				const reset = hostKeyReset(error.stderr);
-				const diagnostic = `${error.message}\n\nVerify the new fingerprint with the host owner or physical console. A reinstall can change it, but this can also indicate an attack. Do not enter a password until verified.`;
-				const decision = await showOverlay(ctx.ui, {
-					state: { events: pi.events, source: "ssh_run" },
-					signal: sig,
-					mode: "confirm",
-					icon: icon("warn"),
-					accent: "error",
-					title: "SSH HOST KEY CHANGED — verify before resetting",
-					body: [
-						`Host: ${host}`,
-						...diagnostic.split("\n"),
-						...(reset
-							? [
-									`Reset target: ${reset.host}`,
-									`File: ${reset.file} (backup: ${reset.file}.old)`,
-									"Only reset if you independently verified the fingerprint above.",
-								]
-							: ["Automatic reset is unavailable. Resolve the host key error manually."]),
-					],
-					timeoutMs: PROMPT_TIMEOUT_MS,
-					approveValue: "reset",
-					choices: [
-						{ value: "cancel", label: "Cancel", description: "Keep known_hosts unchanged" },
-						...(reset
-							? [
-									{
-										value: "reset",
-										label: "Reset known host and reconnect",
-										description: "I verified the new fingerprint through a trusted source",
-									},
-								]
-							: []),
-					],
-				});
-				sig?.throwIfAborted();
-				let message = `${diagnostic}\n\nReset cancelled. known_hosts was not changed by pix-ssh.`;
-				if (decision.action === "approved" && decision.choice === "reset" && reset) {
-					try {
-						await resetKnownHost(spec, reset, sig);
-						await closeMaster(spec, controlPath, sig);
-						credCache.delete(key);
-						keyRecheckAt.delete(key);
-						sessionHosts.delete(key);
-						creds = {};
-						ctx.ui.notify(`ssh_run: verified host key reset for ${host}`, "info");
-						return undefined;
-					} catch (resetError) {
-						sig?.throwIfAborted();
-						message = `${diagnostic}\n\nHost key reset failed: ${getErrorMessage(resetError)}`;
-					}
-				}
-				return {
-					content: [{ type: "text" as const, text: message }],
-					details: makeDetails(command, host, sudo, reason, {
-						outcome: "error",
-						errorKind: "host-key",
-					}),
-					isError: true,
-				};
-			};
-
-			let prep: Awaited<ReturnType<typeof prepareConnection>>;
-			let probe: Awaited<ReturnType<typeof probeKeyAuth>>;
-			try {
-				prep = await prepareConnection(
-					spec,
-					controlPath,
-					key,
-					creds,
-					params.fresh,
-					sig,
-					fileAction,
-				);
-				creds = prep.creds;
-				// Cached passwords still need an identity check when their master has expired.
-				probe = await probeConnection(spec, controlPath, sig, fileAction);
-			} catch (error) {
-				if (!(error instanceof HostKeyError)) throw error;
-				const failure = await handleHostKeyError(error);
-				if (failure) return failure;
-				prep = { creds, connection: "new" as const };
-				try {
-					probe = await probeConnection(spec, controlPath, sig, fileAction);
-				} catch (retryError) {
-					if (!(retryError instanceof HostKeyError)) throw retryError;
-					return {
-						content: [{ type: "text" as const, text: retryError.message }],
-						details: makeDetails(command, host, sudo, reason, {
-							outcome: "error",
-							errorKind: "host-key",
-						}),
-						isError: true,
-					};
-				}
-			}
-			const connection = prep.connection;
-
-			// Probe key/agent/existing-master auth (no password needed on success).
-			// Only prompt for a login password when the host is reachable but rejects
-			// key auth ("auth"). If it's unreachable (timeout/DNS/refused) a password
-			// can't help — skip the prompt and let runSsh surface the real error.
-			const keyOk = probe === "ok";
-			// Which passwords must the overlay collect this call?
-			const needLogin = probe === "auth" && !creds.loginPassword;
-			// Remote sudo password only when NOT already cached, NOT NOPASSWD, and
-			// the SSH connection is passwordless (so the probe can open its own
-			// channel without prompting). When login still needs a password we
-			// can't probe yet, so fall back to prompting for the sudo password.
-			const sudoNoPassword =
-				sudo && !creds.sudoPassword && !needLogin && (keyOk || Boolean(creds.loginPassword))
-					? await probeSudoNoPassword(spec, controlPath, sig)
-					: false;
-			const needSudo = sudo && !creds.sudoPassword && !sudoNoPassword;
-			// The overlay stage pipeline: any password we still need is prompted
-			// (login first, then sudo). Confirm-only when nothing is missing.
-			const promptFor: ("login" | "sudo")[] = [
-				...(needLogin ? (["login"] as const) : []),
-				...(needSudo ? (["sudo"] as const) : []),
-			];
-			const transferDecision =
-				action === "file" ? transferApprovalDecision(mode, needLogin) : "ask";
-			if (transferDecision === "deny") {
-				return {
-					content: [
-						{
-							type: "text",
-							text: "ssh_run file transfer denied — unattended mode cannot enter a missing SSH login password.",
-						},
-					],
-					details: makeDetails(command, host, false, reason, {
-						outcome: "denied",
-						cancellationKind: "denied",
-					}),
-				};
-			}
-
-			const title = approvalTitle(operation);
-			const body = [
-				...approvalBody(operation, host, spec.port),
-				...(keyOk && !creds.loginPassword ? ["Auth: SSH key (no password)"] : []),
-			];
-
-			const collected: { login?: string; sudo?: string } = {};
-
-			// Collect each still-missing password through the same overlay pattern
-			// pix-sudo uses (masked input, N attempts). We can't validate remote
-			// passwords without connecting, so validatePassword just accepts a
-			// non-empty entry; a wrong password surfaces as an auth error after run.
-			// Session allow-memory: host already approved + no password missing → skip
-			// the confirm overlay entirely (visible notify below). Privileged commands
-			// (sudo:true, or a sudo/su/doas/pkexec token in the command text) are never
-			// auto-approved — they always re-confirm.
-			const privileged = action === "command" && (sudo || commandEscalatesPrivilege(command));
-			const alreadyApproved =
-				action === "command" && !privileged && approved(key) && promptFor.length === 0;
-			if (alreadyApproved) {
-				ctx.ui.notify(`ssh_run: reused session approval for ${host}`, "info");
-			} else if (transferDecision === "allow") {
-				ctx.ui.notify(
-					`⚠ ssh_run file transfer auto-approved — ${mode.toUpperCase()} warning policy`,
-					"warning",
-				);
-			}
-
-			const sessionChoices = action === "command" && !privileged ? SESSION_CHOICE : [];
-
-			const runOverlay = async (): Promise<OverlayResult> => {
-				if ((transferDecision === "allow" || yolo || alreadyApproved) && promptFor.length === 0) {
-					return { action: "approved", password: "" };
-				}
-				// Confirm-only when no password is missing.
-				if (promptFor.length === 0) {
-					return showOverlay(ctx.ui, {
-						state: { events: pi.events, source: "ssh_run" },
-						signal: sig,
-						mode: "confirm",
-						icon: action === "file" ? icon("warn") : icon("lock"),
-						title,
-						body,
-						accent: sudo ? "error" : action === "file" ? "warning" : "accent",
-						timeoutMs: PROMPT_TIMEOUT_MS,
-						approveValue: ["yes", "session"],
-						choices: [
-							{
-								value: "yes",
-								label: "Allow",
-								description:
-									action === "file" ? "Copy to destination (may overwrite)" : "Run the command",
-							},
-							...sessionChoices,
-							{
-								value: "no",
-								label: "Deny",
-								description: action === "file" ? "Cancel transfer" : "Block the command",
-							},
-						],
-					});
-				}
-				// One masked prompt per missing password, in order.
-				let last: OverlayResult = { action: "approved", password: "" };
-				for (const stage of promptFor) {
-					const label = stage === "login" ? "SSH login password" : "Remote sudo password";
-					last = await showOverlay(ctx.ui, {
-						state: { events: pi.events, source: "ssh_run" },
-						signal: sig,
-						mode: "sudo",
-						icon: action === "file" ? icon("warn") : icon("lock"),
-						title,
-						body: [...body, `Enter: ${label}`],
-						accent: sudo ? "error" : action === "file" ? "warning" : "accent",
-						timeoutMs: PROMPT_TIMEOUT_MS,
-						maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-						approveValue: ["yes", "session"],
-						passwordLabel: `${label}:`,
-						// Login stage: actually test the password against the host so a
-						// wrong one re-prompts (up to MAX_PASSWORD_ATTEMPTS), mirroring
-						// pix-sudo. Sudo stage can't be validated until login succeeds, so
-						// it keeps the non-empty check and surfaces failures on the run.
-						validatePassword: validatorFor(stage, spec, controlPath, sig, fileAction),
-						choices: [
-							{
-								value: "yes",
-								label: "Allow",
-								description: `Enter ${label.toLowerCase()}`,
-							},
-							...sessionChoices,
-							{ value: "no", label: "Deny", description: "Block the command" },
-						],
-					});
-					if (last.action !== "approved" || !last.password?.trim()) return last;
-					if (stage === "login") collected.login = last.password;
-					else collected.sudo = last.password;
-				}
-				return last;
-			};
-
-			const overlayResult = await runOverlay();
-			sig?.throwIfAborted();
-			if (overlayResult.passwordAttemptsExhausted) {
-				const text = `SSH authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
-				return {
-					content: [{ type: "text", text }],
-					details: makeDetails(command, host, sudo, reason, {
-						outcome: "error",
-						errorKind: "auth-ssh",
-					}),
-					isError: true,
-				};
-			}
-			const missing =
-				overlayResult.action === "approved" &&
-				((needLogin && !collected.login) || (needSudo && !collected.sudo));
-			if (overlayResult.action !== "approved" || missing) {
-				const r = cancelResult(command, host, sudo, reason, overlayResult.action);
-				return r;
-			}
-
-			// Plain "Allow" approves this call only. "session" (offered only for
-			// non-privileged commands) is the sole way to skip later prompts.
-			if (overlayResult.choice === "session") {
-				sessionHosts.add(key);
-				ctx.ui.notify(`ssh_run: ${host} allowed for this session (sudo still asks)`, "info");
-			}
-
-			// Persist newly-entered passwords in the session cache.
-			const loginPassword = creds.loginPassword ?? collected.login;
-			const via = authVia(loginPassword, connection);
-			const sudoPassword = creds.sudoPassword ?? collected.sudo;
-			credCache.set(key, {
-				...(loginPassword ? { loginPassword } : {}),
-				...(sudoPassword ? { sudoPassword } : {}),
-			});
-
-			const hasUpdates = Boolean(onUpdate);
-			return runToolExecution({
-				signal: sig,
-				onUpdate,
-				onError: (error, cancelled) => ({
-					content: [
-						{
-							type: "text" as const,
-							text: cancelled ? "ssh_run cancelled." : `ssh_run failed: ${getErrorMessage(error)}`,
-						},
-					],
-					details: makeDetails(
-						command,
-						host,
-						sudo,
-						reason,
-						cancelled
-							? { outcome: "cancelled", cancellationKind: "aborted" }
-							: { outcome: "error", errorKind: "execution" },
-					),
-					isError: !cancelled,
-				}),
-				execute: async ({ update: onUpdate, onCleanup }) => {
-					let spinnerFrame = 0;
-					const updateTransferPresentation = () => {
-						const verb = direction === "download" ? "Downloading from" : "Uploading to";
-						updatePresentation(
-							onUpdate,
-							command,
-							host,
-							sudo,
-							reason,
-							"running",
-							`${SPINNER[spinnerFrame] ?? ""} ${verb} ${host}…`,
-						);
-					};
-					if (action === "file") updateTransferPresentation();
-					else updatePresentation(onUpdate, command, host, sudo, reason, "running");
-					// ponytail: spinner shows liveness only; SCP has no stable byte-progress API.
-					// Use an SFTP client with byte callbacks if percentage progress is needed.
-					const spinnerTimer =
-						action === "file" && hasUpdates
-							? setInterval(() => {
-									spinnerFrame = (spinnerFrame + 1) % SPINNER.length;
-									updateTransferPresentation();
-								}, SPINNER_INTERVAL_MS)
-							: undefined;
-
-					onCleanup(() => clearInterval(spinnerTimer));
-					if (fileAction) {
-						const result = await runFile(
-							spec,
-							action as "read" | "write" | "edit",
-							{
-								path: params.path!,
-								content: params.content,
-								edits: params.edits,
-								offset: params.offset,
-								limit: params.limit,
-							},
-							{ controlPath, loginPassword, signal: sig },
-						);
-						return {
-							content: [{ type: "text", text: result.stdout }],
-							structuredContent: result.stdout,
-							details: makeDetails(command, host, false, reason, {
-								outcome: "success",
-								exitCode: 0,
-								...via,
-								lineCount: outputLineCount(result.stdout),
-								_render: result.stdout,
-							}),
-						};
-					}
-					const result =
-						action === "file"
-							? await runTransfer(spec, direction ?? "upload", source, destination, recursive, {
-									controlPath,
-									...(loginPassword ? { loginPassword } : {}),
-									...(sig ? { signal: sig } : {}),
-								})
-							: await runSsh(spec, command, {
-									controlPath,
-									...(loginPassword ? { loginPassword } : {}),
-									sudo,
-									...(sudo ? { sudoPassword: sudoPassword ?? "" } : {}),
-									...(sig ? { signal: sig } : {}),
-								});
-
-					if (result.code !== 0 && detectHostKeyFailure(result.stderr)) {
-						const failure = await handleHostKeyError(new HostKeyError(result.stderr));
-						return (
-							failure ?? {
-								content: [
-									{
-										type: "text",
-										text: "Host key reset. Retry the SSH operation; the command or transfer was not rerun.",
-									},
-								],
-								details: makeDetails(command, host, sudo, reason, { outcome: "cancelled" }),
-							}
-						);
-					}
-
-					// SSH auth failure → drop the bad login password from the cache so the
-					// next call re-prompts.
-					if (detectSshFailure(result.code, result.stderr)) {
-						credCache.delete(key);
-						return {
-							content: [{ type: "text", text: `SSH authentication failed:\n${result.stderr}` }],
-							details: makeDetails(command, host, sudo, reason, {
-								outcome: "error",
-								exitCode: result.code,
-								lineCount: outputLineCount(result.stderr),
-								errorKind: "auth-ssh",
-								_render: normalizeLineEndings(result.stderr),
-							}),
-							isError: true,
-						};
-					}
-
-					// Remote sudo password failure → drop the bad sudo password.
-					if (sudo && detectSudoFailure(result.stderr)) {
-						credCache.set(key, loginPassword ? { loginPassword } : {});
-						return {
-							content: [
-								{ type: "text", text: `Remote sudo authentication failed:\n${result.stderr}` },
-							],
-							details: makeDetails(command, host, sudo, reason, {
-								outcome: "error",
-								exitCode: result.code,
-								...via,
-								lineCount: outputLineCount(result.stderr),
-								errorKind: "auth-sudo",
-								_render: normalizeLineEndings(result.stderr),
-							}),
-							isError: true,
-						};
-					}
-
-					const combined =
-						[result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)";
-					const { text: truncatedText, truncated } = truncate(combined);
-					const suffix = truncated
-						? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
-						: "";
-					const rendered = normalizeLineEndings(combined)
-						.replace(/\n{3,}/g, "\n\n")
-						.replace(/^\n+|\n+$/g, "");
-
-					return {
-						content: [
-							{
-								type: "text",
-								text: `Exit code: ${result.code} (auth: ${via.auth}, ${via.connection} connection)\n\n${truncatedText}${suffix}`,
-							},
-						],
-						details: makeDetails(command, host, sudo, reason, {
-							outcome: result.code === 0 ? "success" : "error",
-							exitCode: result.code,
-							...via,
-							lineCount: outputLineCount(rendered),
-							truncated,
-							...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
-							_render: rendered,
-						}),
-						isError: result.code !== 0,
-					};
-				},
-			});
-		},
-
-		renderCall: ((args: SshParams, theme: ThemeLike, renderCtx: RenderContextLike) => {
-			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new Text("", 0, 0);
-			if (
-				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
-
-			const host = safeOneLine(args.host ?? "");
-			if (args.action === "info") {
-				text.setText(
-					fillToolBackground(
-						`${renderTitle(theme, "ssh", renderCtx, "info")} ${theme.fg("dim", host || "list aliases")}`,
-					),
-				);
-				return text;
-			}
-			if (args.action === "read" || args.action === "write" || args.action === "edit") {
-				text.setText(
-					fillToolBackground(
-						`${renderTitle(theme, "ssh", renderCtx, args.action)} ${theme.fg("dim", `${host} ${safeOneLine(args.path ?? "")}`)}`,
-					),
-				);
-				return text;
-			}
-			const operation = normalizeOperation(args);
-			const command = operation.command || "(empty command)";
-			const prefix = operation.sudo ? "sudo " : "";
-			return commandPreview(
-				`${renderTitle(theme, "ssh", renderCtx, operation.action === "file" ? operation.direction : undefined)} ${theme.fg("dim", host)}`,
-				operation.action === "file"
-					? `${operation.source} → ${operation.destination}`
-					: prefix + command,
-				"bash",
-				theme,
-				renderCtx.state,
-				renderCtx.invalidate,
-				renderCtx.expanded,
-				3,
-				renderCtx,
-			);
-		}) as never,
-
-		renderResult: ((
-			result: ToolResultLike,
-			_opt: unknown,
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) => {
-			resolveBaseBackground(theme);
-			const text = unframeToolResult(renderCtx.lastComponent ?? new Text("", 0, 0));
-			const details = result.details as SshResultDetails | undefined;
-			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
-			const completed = (isError: boolean) => frameToolResult(text, theme, isError);
-
-			if (details?._type !== "sshResult") {
-				const info =
-					(result.details as
-						| { _type?: string; host?: string; info?: HostInfo; aliases?: HostAlias[] }
-						| undefined) ?? {};
-				if (
-					!isPartial &&
-					info._type === "sshInfo" &&
-					tickCollapse(
-						"ssh",
-						renderCtx.state as CollapseState,
-						renderCtx.invalidate,
-						renderCtx.expanded,
-					)
-				) {
-					const status = renderCtx.isError ? "error" : "success";
-					text.setText(
-						renderCollapsed(
-							theme,
-							"ssh · info",
-							info.host ?? "",
-							renderCtx.isError ? "failed" : "",
-							status,
-						),
-					);
-					return text;
-				}
-				const body = getTextContent(result) || "done";
-				if (info._type === "sshInfo" && !renderCtx.isError) {
-					text.setText(renderHostInfo(info, body, theme));
-					return isPartial ? text : completed(false);
-				}
-				text.setText(
-					renderCtx.isError
-						? renderToolError(body, theme)
-						: fillToolBackground(
-								body
-									.split("\n")
-									.map((line) => `${BODY_PAD}${theme.fg("muted", line)}`)
-									.join("\n"),
-							),
-				);
-				return isPartial ? text : completed(renderCtx.isError);
-			}
-
-			if (
-				!isPartial &&
-				isTerminal(details) &&
-				tickCollapse(
-					"ssh",
-					renderCtx.state as CollapseState,
-					renderCtx.invalidate,
-					renderCtx.expanded,
-				)
-			) {
-				const status = details.outcome === "success" ? "success" : "error";
-				return collapsedCommandRow(
-					renderRow(theme, "ssh", details.host, terminalMeta(details), status).trimEnd(),
-					safeOneLine(details.command),
-					theme,
-				);
-			}
-
-			if (details.outcome === "awaiting-approval" || details.outcome === "running") {
-				text.setText(
-					fillToolBackground(
-						`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "working")}`,
-					),
-				);
-				return text;
-			}
-
-			if (details.outcome !== "success" && details.errorKind !== "exit-code") {
-				const diagnostic = getTextContent(result) || "Error";
-				text.setText(
-					details.outcome === "error"
-						? renderToolError(diagnostic, theme)
-						: fillToolBackground(`${BODY_PAD}${theme.fg("warning", diagnostic)}`),
-				);
-				return isPartial ? text : completed(true);
-			}
-
-			const code = typeof details.exitCode === "number" ? details.exitCode : null;
-			const rendered = typeof details._render === "string" ? details._render : "";
-			const { summary } = renderBashOutput(rendered, code, theme);
-			const lines = rendered ? rendered.split("\n") : [];
-			const lineCount = lines.length;
-
-			if (!rendered) {
-				text.setText(fillToolBackground(`${BODY_PAD}${summary}`));
-				return isPartial ? text : completed(details.outcome !== "success");
-			}
-
-			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme, renderCtx)] : [];
-			const statusKey = details.outcome === "success" ? "success" : "error";
-			const paint = fadeRulePaint(theme, statusKey);
-			const body = fadeRowsOf(
-				lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
-				theme,
-				maxShow,
-			);
-			const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
-			text.setText(fillToolBackground(out.join("\n")));
-			return text;
-		}) as never,
+		execute: (_toolCallId, params, sig, onUpdate, ctx) =>
+			execute(params, sig, onUpdate, ctx, pi.events, sessionHosts),
+		renderCall: renderSshCall as never,
+		renderResult: renderSshResult as never,
 	});
 }

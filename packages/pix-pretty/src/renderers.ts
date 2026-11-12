@@ -49,6 +49,9 @@ export async function renderFileContent(
 	const show = lines.slice(0, maxLines);
 	const lg = lang(filePath);
 	const hl = await hlBlock(show.join("\n"), lg, theme);
+	// A cut preview fades its last code rows. Only the code fades; the gutter stays solid.
+	const codeRows = show.map((line, i) => hl[i] ?? line);
+	const body = theme && total > maxLines ? fadeTail(codeRows, theme) : codeRows;
 
 	const tw = options.width ?? termW();
 	const startLine = offset;
@@ -60,9 +63,9 @@ export async function renderFileContent(
 	const out: string[] = [];
 	out.push(rule(tw));
 
-	for (let i = 0; i < hl.length; i++) {
+	for (let i = 0; i < body.length; i++) {
 		const ln = startLine + i;
-		const code = hl[i] ?? show[i] ?? "";
+		const code = body[i] ?? "";
 		if (options.wrapLongLines && visibleWidth(code) > cw) {
 			// Expanded view: no tail is hidden. First row carries the line number,
 			// continuation rows indent under the gutter so the code column aligns.
@@ -78,8 +81,6 @@ export async function renderFileContent(
 		out.push(`${lnum(ln, nw)} ${FG_RULE}│${RST} ${display}${RST}`);
 	}
 
-	// A cut preview fades its last code rows (rule row 0 stays as is).
-	if (theme && total > maxLines) out.splice(1, Infinity, ...fadeTail(out.slice(1), theme));
 	out.push(rule(tw));
 	if (total > maxLines) {
 		const more = `${BODY_PAD}… ${pluralize(total - maxLines, "more line")} (${total} total) `;
@@ -151,21 +152,19 @@ function renderLsTree(
 	const max = ctx?.expanded ? total : MAX_PREVIEW_LINES;
 	const show = lines.slice(0, max);
 
-	for (let i = 0; i < show.length; i++) {
-		const entry = (show[i] ?? "").trim();
-		const isLast = i === show.length - 1 && total <= max;
-		const prefix = isLast ? "└── " : "├── ";
-		const connector = `${FG_RULE}${prefix}${RST}`;
-
+	const names = show.map((line) => {
+		const entry = line.trim();
 		const isDir = entry.endsWith("/");
 		const name = isDir ? entry.slice(0, -1) : entry;
 		const icon = isDir ? dirIcon(theme) : fileIcon(name, theme);
-		const displayName = entryColor(isDir, name, theme);
-
-		out.push(`${connector}${icon}${displayName}`);
-	}
-
-	if (theme && total > max) out.splice(0, Infinity, ...fadeTail(out, theme));
+		return `${icon}${entryColor(isDir, name, theme)}`;
+	});
+	// A cut preview fades its last entries. Only the names fade; the tree connectors stay solid.
+	const body = theme && total > max ? fadeTail(names, theme) : names;
+	body.forEach((name, i) => {
+		const isLast = i === show.length - 1 && total <= max;
+		out.push(`${FG_RULE}${isLast ? "└── " : "├── "}${RST}${name}`);
+	});
 	if (total > max) {
 		out.push(
 			`${FG_RULE}└── ${RST}${FG_DIM}… ${pluralize(total - max, "more entry", "more entries")} ${RST}${theme ? expandHint(theme, ctx) : ""}`,

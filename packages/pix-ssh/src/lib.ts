@@ -386,8 +386,6 @@ export function filterSudoPrompt(raw: string): string {
 		.join("\n");
 }
 
-export { truncateOutput as truncate } from "@xynogen/pix-runtime/utf8";
-
 // ── Runners ──────────────────────────────────────────────────────────────────
 
 /** A host identity failure must never be treated as a bad login password. */

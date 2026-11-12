@@ -450,7 +450,7 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				};
 			}
 
-			const result = await showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
+			const result = await showOverlay(ctx.ui, {
 				state: { events: pi.events, source: "pix-env", message: "secret approval" },
 				mode: "confirm",
 				icon: icon("secret"),

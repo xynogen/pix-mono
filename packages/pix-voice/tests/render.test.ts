@@ -1,0 +1,217 @@
+import { expect, test } from "bun:test";
+import { COLLAPSED_TOOL_GLYPH, renderCall, renderTitle } from "@xynogen/pix-pretty/utils";
+import { makeRenderResult } from "../src/render.ts";
+
+const theme = {
+	fg: (t: string, s: string) => `[${t}]${s}`,
+	bold: (s: string) => `*${s}*`,
+} as never;
+
+function stubComponent() {
+	let captured = "";
+	const component = {
+		setText: (s: string) => {
+			captured = s;
+		},
+		render: (_width?: number) => captured.split("\n"),
+		invalidate: () => {},
+	};
+	return { component, get: () => captured };
+}
+
+function context(stub: ReturnType<typeof stubComponent>, overrides: Record<string, unknown> = {}) {
+	return {
+		lastComponent: stub.component as never,
+		isError: false,
+		state: {},
+		expanded: false,
+		invalidate: () => {},
+		...overrides,
+	} as never;
+}
+
+const config = {
+	tool: "fetch",
+	target: (_details: { _type: "fetchResult"; chars: number }) => "https://example.com",
+	meta: (details: { _type: "fetchResult"; chars: number }) => `${details.chars} chars`,
+};
+
+test("renderCall shows title + dim arg", () => {
+	const stub = stubComponent();
+	const rc = renderCall<{ url: string }>("fetch", (a) => a.url);
+	rc({ url: "https://x.com" }, theme, context(stub));
+	// The tool name is primary. The target is secondary.
+	expect(stub.get()).toBe(`${renderTitle(theme, "fetch")} [dim]https://x.com`);
+});
+
+test("renderCall hides only an effectively collapsed call row", () => {
+	const stub = stubComponent();
+	const rc = renderCall<{ url: string }>("fetch", (a) => a.url);
+	rc({ url: "https://x.com" }, theme, context(stub, { state: { collapsed: true } }));
+	expect(stub.get()).toBe("");
+
+	rc(
+		{ url: "https://x.com" },
+		theme,
+		context(stub, { state: { collapsed: true }, expanded: true }),
+	);
+	expect(stub.get()).toBe(`${renderTitle(theme, "fetch")} [dim]https://x.com`);
+});
+
+test("renderResult renders structured compact details after collapse", () => {
+	const stub = stubComponent();
+	const rr = makeRenderResult(config);
+	rr(
+		{
+			content: [{ type: "text", text: "full body" }],
+			details: { _type: "fetchResult", chars: 9 },
+		} as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(stub, { state: { collapsed: true } }),
+	);
+	expect(stub.get()).toContain("[success]✓");
+	expect(stub.get()).toContain("https://example.com");
+	expect(stub.get()).toContain("9 chars");
+});
+
+test("partial updates keep detail visible and do not schedule collapse", () => {
+	const stub = stubComponent();
+	const state: Record<string, unknown> = {};
+	const rr = makeRenderResult(config);
+	rr(
+		{
+			content: [{ type: "text", text: "streaming body" }],
+			details: { _type: "fetchResult", chars: 14 },
+		} as never,
+		{ expanded: false, isPartial: true },
+		theme,
+		context(stub, { state }),
+	);
+	expect(stub.get()).toContain("streaming body");
+	expect(stub.component.render(20)).toEqual(["\t[dim]streaming body"]);
+	expect(state.timer).toBeUndefined();
+});
+
+test("expanded mode restores full joined text", () => {
+	const stub = stubComponent();
+	const rr = makeRenderResult(config);
+	const component = rr(
+		{
+			content: [
+				{ type: "text", text: "first" },
+				{ type: "image", data: "ignored", mimeType: "image/png" },
+				{ type: "text", text: "second" },
+			],
+			details: { _type: "fetchResult", chars: 12 },
+		} as never,
+		{ expanded: true, isPartial: false },
+		theme,
+		context(stub, { state: { collapsed: true }, expanded: true }),
+	);
+	expect(stub.get()).toBe("\t[dim]first\n\t[dim]second");
+	expect(component.render(20)).toEqual([
+		"\t[dim]first",
+		"\t[dim]second",
+		"[success]────────────────────",
+	]);
+});
+
+test("structured errors get red open frames but collapsed summaries stay unframed", () => {
+	const rr = makeRenderResult({ ...config, status: () => "error" as const });
+	const open = stubComponent();
+	const openComponent = rr(
+		{
+			content: [{ type: "text", text: "failed body" }],
+			details: { _type: "fetchResult", chars: 11 },
+		} as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(open),
+	);
+	expect(openComponent.render(20)).toEqual(["\t[dim]failed body", "[error]────────────────────"]);
+
+	const collapsed = stubComponent();
+	const collapsedComponent = rr(
+		{
+			content: [{ type: "text", text: "failed body" }],
+			details: { _type: "fetchResult", chars: 11 },
+		} as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(collapsed, { state: { collapsed: true } }),
+	);
+	const collapsedLines = collapsedComponent.render(20);
+	expect(collapsedLines).toHaveLength(1);
+	expect(collapsedLines[0]).toContain("fetch");
+	expect(collapsedLines[0]).toContain("https://example.com");
+	expect(collapsedLines[0]).toContain("11 chars");
+});
+
+test("terminal error body gets an error frame", () => {
+	const stub = stubComponent();
+	const component = makeRenderResult(config)(
+		{ content: [{ type: "text", text: "boom" }] } as never,
+		{ expanded: true, isPartial: false },
+		theme,
+		context(stub, { isError: true, expanded: true }),
+	);
+	expect(component.render(20)).toEqual(["\t[error]boom", "[error]────────────────────"]);
+});
+
+test("renderResult caps the normal preview", () => {
+	const stub = stubComponent();
+	const rr = makeRenderResult(config);
+	const body = Array.from({ length: 37 }, (_, i) => `L${i}`).join("\n");
+	rr(
+		{
+			content: [{ type: "text", text: body }],
+			details: { _type: "fetchResult", chars: body.length },
+		} as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(stub, { state: { timer: 1 } }),
+	);
+	expect(stub.get()).toContain("… 5 more lines");
+});
+
+test("warning and error callbacks select shared status glyphs", () => {
+	for (const [status, glyph] of [
+		["warning", COLLAPSED_TOOL_GLYPH.warning],
+		["error", COLLAPSED_TOOL_GLYPH.error],
+	] as const) {
+		const stub = stubComponent();
+		const rr = makeRenderResult({ ...config, status: () => status });
+		rr(
+			{
+				content: [{ type: "text", text: "body" }],
+				details: { _type: "fetchResult", chars: 4 },
+			} as never,
+			{ expanded: false, isPartial: false },
+			theme,
+			context(stub, { state: { collapsed: true } }),
+		);
+		expect(stub.get()).toContain(`[${status}]${glyph}`);
+	}
+});
+
+test("renderResult renders empty and errors without compacting", () => {
+	const rr = makeRenderResult(config);
+	const empty = stubComponent();
+	rr(
+		{ content: [{ type: "text", text: "   " }] } as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(empty),
+	);
+	expect(empty.get()).toBe("\t[muted](empty)");
+
+	const failed = stubComponent();
+	rr(
+		{ content: [{ type: "text", text: "boom" }] } as never,
+		{ expanded: false, isPartial: false },
+		theme,
+		context(failed, { isError: true, state: { collapsed: true } }),
+	);
+	expect(failed.get()).toBe("\t[error]boom");
+});

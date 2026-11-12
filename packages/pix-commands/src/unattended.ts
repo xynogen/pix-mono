@@ -3,7 +3,7 @@
  */
 
 import { lookupBenchmark } from "@xynogen/pix-data";
-import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
 	getUnattendedMode,
@@ -23,7 +23,7 @@ type StatusUI = {
 	setStatus(key: string, text: string | undefined): void;
 	notify(message: string, kind?: string): void;
 };
-type ModelCtx = { model?: { id?: string } };
+type ModelCtx = { model?: { id?: string }; ui?: OverlayUI };
 
 const STATUS_KEY = "unattended";
 
@@ -49,7 +49,7 @@ function syncStatus(events: EventBus, ui: StatusUI): void {
  */
 export async function confirmYoloConsent(events: EventBus, ctx: ModelCtx): Promise<boolean> {
 	if (hasYoloConsent(events)) return true;
-	const ui = (ctx as { ui?: unknown }).ui as Parameters<typeof showOverlay>[0] | undefined;
+	const ui = ctx.ui;
 	if (!ui) return false;
 	const result = await showOverlay(ui, {
 		mode: "confirm",
@@ -187,7 +187,7 @@ export default function registerUnattended(pi: ExtensionAPI): void {
 				);
 				return;
 			}
-			if (!(await confirmYoloConsent(pi.events, ctx as ModelCtx))) {
+			if (!(await confirmYoloConsent(pi.events, ctx))) {
 				ctx.ui.notify("YOLO cancelled — approval prompts remain in place.", "info");
 				return;
 			}

@@ -5,6 +5,7 @@
 
 import { type Api, completeSimple, type Model } from "@xynogen/pix-data/ai";
 import type { ExtensionContext } from "@xynogen/pix-runtime/host";
+import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 
 export const CLEANUP_PROMPT = `You clean up dictated text before it goes into a prompt box. The speaker talked live, so the transcript has the normal slips of speech. Fix only these:
 
@@ -148,9 +149,7 @@ export async function cleanTranscript(
 			env: auth.env,
 			maxTokens: MAX_TOKENS,
 			cacheRetention: "none",
-			signal: signal
-				? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
-				: AbortSignal.timeout(30_000),
+			signal: ioTimeoutSignal(signal, 30_000),
 		},
 	);
 	if (response.stopReason === "error") throw new Error(response.errorMessage ?? "cleanup failed");

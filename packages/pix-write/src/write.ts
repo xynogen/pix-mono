@@ -8,9 +8,8 @@ import {
 	resolveDiffColors,
 	summarize,
 } from "@xynogen/pix-pretty/diff-render";
-import { hlBlock } from "@xynogen/pix-pretty/highlight";
 import { lang } from "@xynogen/pix-pretty/lang";
-import { fadeRowsOf } from "@xynogen/pix-pretty/text";
+import { renderFileContent } from "@xynogen/pix-pretty/renderers";
 import type { ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type {
 	PiPrettyApi,
@@ -29,7 +28,6 @@ import {
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
-	moreLines,
 	renderCollapsed,
 	renderTitle,
 	renderToolError,
@@ -45,6 +43,11 @@ import type {
 	ExtensionContext,
 	WriteToolInput,
 } from "@xynogen/pix-runtime/host";
+
+/** Collapsed preview height for a new file; expanded shows every line. */
+const NEW_FILE_PREVIEW_LINES = 12;
+/** Streaming create-call preview height; expanded shows every line. */
+const CREATE_PREVIEW_LINES = 16;
 
 export function registerWriteTool(
 	pi: PiPrettyApi,
@@ -148,15 +151,18 @@ export function registerWriteTool(
 					// Keep the previous body until the new highlight lands. Dropping to the bare
 					// header shrinks the card on every streamed chunk, and once its top has
 					// scrolled off-screen pi-tui must clear and repaint the whole terminal.
-					const lg = lang(fp);
-					hlBlock(String(args.content), lg, theme)
-						.then((lines) => {
+					const lines = String(args.content).split("\n").length;
+					renderFileContent(
+						String(args.content),
+						fp,
+						1,
+						renderCtx.expanded ? lines : CREATE_PREVIEW_LINES,
+						theme,
+						{ wrapLongLines: renderCtx.expanded, ctx: renderCtx },
+					)
+						.then((rendered) => {
 							if (renderCtx.state._previewKey !== previewKey) return;
-							const maxShow = renderCtx.expanded ? lines.length : 16;
-							const preview = fadeRowsOf(lines.slice(0, maxShow + 1), theme, maxShow).join("\n");
-							const rem = lines.length - maxShow;
-							let body = `\n\n${preview}`;
-							if (rem > 0) body += `\n${moreLines(rem, theme, renderCtx)}`;
+							const body = `\n\n${rendered}`;
 							renderCtx.state._previewText = body;
 							renderCtx.invalidate();
 						})
@@ -255,17 +261,18 @@ export function registerWriteTool(
 					renderCtx.state._nfk = pk;
 					renderCtx.state._nft = base;
 					if (rawContent) {
-						hlBlock(rawContent, lang(fp), theme)
-							.then((hlLines) => {
+						// Same gutter as read/edit: line numbers, wrapped long lines when expanded.
+						renderFileContent(
+							rawContent,
+							fp,
+							1,
+							renderCtx.expanded ? lineCount : NEW_FILE_PREVIEW_LINES,
+							theme,
+							{ wrapLongLines: renderCtx.expanded, ctx: renderCtx },
+						)
+							.then((rendered) => {
 								if (renderCtx.state._nfk !== pk) return;
-								const maxShow = renderCtx.expanded ? hlLines.length : 12;
-								const preview = fadeRowsOf(hlLines.slice(0, maxShow + 1), theme, maxShow).join(
-									"\n",
-								);
-								const rem = hlLines.length - maxShow;
-								let out = `${base}\n${preview}`;
-								if (rem > 0) out += `\n${moreLines(rem, theme, renderCtx)}`;
-								renderCtx.state._nft = out;
+								renderCtx.state._nft = fillToolBackground(`${base}\n${rendered}`);
 								renderCtx.invalidate();
 							})
 							.catch(() => {});

@@ -21,38 +21,13 @@
  *   - Output truncated to 50 KB / 2000 lines.
  */
 
-import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
-import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
-import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
-import { type OverlayResult, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
+import { type OverlayResult, type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
-import { fadeRowsOf } from "@xynogen/pix-pretty/text";
-import { Text } from "@xynogen/pix-pretty/tui";
-import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	bodyLine,
-	dotJoin,
-	fadeRulePaint,
-	fillToolBackground,
-	frameToolResult,
-	getErrorMessage,
-	getTextContent,
-	hideCollapsedToolCall,
-	moreLines,
-	normalizeLineEndings,
-	renderRow,
-	renderTitle,
-	renderToolError,
-	ruleFrame,
-	termW,
-	unframeToolResult,
-} from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, normalizeLineEndings } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import type { AgentToolUpdateCallback, ExtensionAPI } from "@xynogen/pix-runtime/host";
+import type { AgentToolUpdateCallback, EventBus, ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
+import { truncateOutput } from "@xynogen/pix-runtime/output";
 import { currentPlatform } from "@xynogen/pix-runtime/platform";
 import { runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
@@ -62,103 +37,219 @@ import {
 	MAX_OUTPUT_BYTES,
 	MAX_OUTPUT_LINES,
 	runWithSudo,
-	truncate,
+	type SudoResult,
 	validateSudoPassword,
 } from "./lib.ts";
+import { renderSudoCall, renderSudoResult } from "./render.ts";
+import {
+	cancelResult,
+	makeDetails,
+	outputLineCount,
+	type SudoDetailFields,
+	type SudoResultDetails,
+	updatePresentation,
+} from "./result.ts";
+
+export type { SudoResultDetails } from "./result.ts";
 
 // Auto-deny the root prompt after this idle window (dead-man's switch). The
 // first keypress cancels it, so it only fires when the user is truly away.
 const ROOT_PROMPT_TIMEOUT_MS = 60_000;
 const MAX_PASSWORD_ATTEMPTS = 3;
 
-type SudoOutcome =
-	| "awaiting-approval"
-	| "running"
-	| "success"
-	| "denied"
-	| "timed-out"
-	| "cancelled"
-	| "error";
+type SudoParams = { command: string; reason?: string };
+type SudoUI = OverlayUI & { notify(message: string, type?: "info" | "warning" | "error"): void };
+type SudoToolResult = {
+	content: { type: "text"; text: string }[];
+	details: SudoResultDetails;
+	isError?: boolean;
+};
 
-type SudoCancellationKind = "denied" | "timeout" | "missing-password" | "aborted";
-type SudoErrorKind = "no-ui" | "authentication" | "execution" | "no-result" | "exit-code";
-
-export interface SudoResultDetails {
-	_type: "sudoResult";
-	command: string;
-	reason?: string;
-	outcome: SudoOutcome;
-	exitCode?: number;
-	lineCount?: number;
-	truncated?: boolean;
-	cancellationKind?: SudoCancellationKind;
-	errorKind?: SudoErrorKind;
-	_render?: string;
-}
-
-function safeOneLine(value: string): string {
-	return value
-		.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
-}
-
-function makeDetails(
-	command: string,
-	reason: string | undefined,
-	fields: Omit<SudoResultDetails, "_type" | "command" | "reason">,
-): SudoResultDetails {
+function fail(
+	{ command, reason }: SudoParams,
+	text: string,
+	fields: SudoDetailFields,
+): SudoToolResult {
 	return {
-		_type: "sudoResult",
-		command,
-		...(reason?.trim() ? { reason: reason.trim() } : {}),
-		...fields,
+		content: [{ type: "text", text }],
+		details: makeDetails(command, reason, fields),
+		...(fields.outcome === "error" ? { isError: true } : {}),
 	};
 }
 
-function outputLineCount(output: string): number {
-	const normalized = normalizeLineEndings(output).replace(/^\n+|\n+$/g, "");
-	return normalized ? normalized.split("\n").length : 0;
-}
-
-function updatePresentation(
-	onUpdate: AgentToolUpdateCallback<SudoResultDetails> | undefined,
-	command: string,
-	reason: string | undefined,
-	outcome: "awaiting-approval" | "running",
-): void {
-	onUpdate?.({
-		content: [
+/**
+ * Confirm the command, and collect + validate the password inside the same open
+ * overlay. A validation that fails for a reason other than a wrong password is
+ * stored in `validation.error` and reported after the overlay closes.
+ */
+function askApproval(
+	ui: SudoUI,
+	events: EventBus,
+	{ reason }: SudoParams,
+	cached: boolean,
+	signal: AbortSignal | undefined,
+	validation: { error?: unknown },
+): Promise<OverlayResult> {
+	const intent = reason?.trim();
+	const common = {
+		state: { events, source: "sudo_run" },
+		signal,
+		icon: icon("lock"),
+		title: intent || "Root Command Request",
+		accent: "error",
+		timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+	} as const;
+	const body = [
+		"Review the command in the tool card below.",
+		...(intent ? [] : ["No reason provided by AI"]),
+	];
+	if (cached) {
+		return showOverlay(ui, {
+			...common,
+			mode: "confirm",
+			body: [...body, "(sudo session active — no password needed)"],
+			choices: [
+				{ value: "yes", label: "Allow", description: "Run the command" },
+				{ value: "no", label: "Deny", description: "Block the command" },
+			],
+		});
+	}
+	return showOverlay(ui, {
+		...common,
+		mode: "sudo",
+		body,
+		maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
+		validatePassword: async (password, validationSignal) => {
+			try {
+				const result = await validateSudoPassword(password, validationSignal);
+				if (detectAuthFailure(result.code, result.stderr)) return false;
+				if (result.code !== 0)
+					validation.error = new Error(result.stderr || "sudo password validation failed");
+				return true;
+			} catch (err) {
+				validation.error = err;
+				return true;
+			}
+		},
+		choices: [
+			{ value: "yes", label: "Allow — enter password", description: "Proceed to password prompt" },
 			{
-				type: "text",
-				text: outcome === "awaiting-approval" ? "Awaiting root approval…" : "Running as root…",
+				value: "no",
+				label: "Deny — block command",
+				description: "Prevent this command from running",
 			},
 		],
-		details: makeDetails(command, reason, { outcome }),
 	});
 }
 
-function terminalMeta(details: SudoResultDetails): string {
-	if (details.outcome === "denied") return "denied";
-	if (details.outcome === "timed-out") return "timed out";
-	if (details.outcome === "cancelled") return "cancelled";
-	if (details.errorKind === "no-ui") return "interactive session required";
-	if (details.errorKind === "authentication") return "authentication failed";
-	if (details.errorKind === "execution" || details.errorKind === "no-result") return "failed";
-
-	const hasLines = typeof details.lineCount === "number" && details.lineCount > 0;
-	return dotJoin([
-		typeof details.exitCode === "number" && `exit ${details.exitCode}`,
-		hasLines && `${details.lineCount} ${details.lineCount === 1 ? "line" : "lines"}`,
-		details.truncated && "truncated",
-	]);
+/** Map the finished root command to its tool result. */
+function commandResult(params: SudoParams, result: SudoResult): SudoToolResult {
+	if (detectAuthFailure(result.code, result.stderr)) {
+		return fail(
+			params,
+			`sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`,
+			{
+				outcome: "error",
+				exitCode: result.code,
+				lineCount: outputLineCount(result.stderr),
+				truncated: false,
+				errorKind: "authentication",
+				_render: normalizeLineEndings(result.stderr),
+			},
+		);
+	}
+	const combined = [
+		result.stdout && `[stdout]\n${result.stdout}`,
+		result.stderr && `[stderr]\n${result.stderr}`,
+	]
+		.filter(Boolean)
+		.join("\n");
+	const { text: truncatedText, truncated } = truncateOutput(combined || "(no output)");
+	const suffix = truncated
+		? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
+		: "";
+	const rendered = normalizeLineEndings(
+		[result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)",
+	)
+		.replace(/\n{3,}/g, "\n\n")
+		.replace(/^\n+|\n+$/g, "");
+	return {
+		content: [{ type: "text", text: `Exit code: ${result.code}\n\n${truncatedText}${suffix}` }],
+		details: makeDetails(params.command, params.reason, {
+			outcome: result.code === 0 ? "success" : "error",
+			exitCode: result.code,
+			lineCount: outputLineCount(rendered),
+			truncated,
+			...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
+			_render: rendered,
+		}),
+		isError: result.code !== 0,
+	};
 }
 
-function isTerminal(details: SudoResultDetails): boolean {
-	return details.outcome !== "awaiting-approval" && details.outcome !== "running";
-}
+async function runSudo(
+	params: SudoParams,
+	signal: AbortSignal | undefined,
+	update: AgentToolUpdateCallback<SudoResultDetails> | undefined,
+	ctx: { hasUI: boolean; ui: SudoUI },
+	events: EventBus,
+): Promise<SudoToolResult> {
+	const { command, reason } = params;
+	const mode = getUnattendedMode(events);
+	const yolo = mode === "yolo" || mode === "nuclear";
+	if (mode === "afk")
+		return fail(params, "sudo_run denied immediately — AFK mode is active.", {
+			outcome: "denied",
+			cancellationKind: "denied",
+		});
+	if (!ctx.hasUI)
+		return fail(params, "sudo_run requires an interactive session (no UI available).", {
+			outcome: "error",
+			errorKind: "no-ui",
+		});
 
-// ── Extension entry point ─────────────────────────────────────────────────────
+	updatePresentation(update, command, reason, "awaiting-approval");
+
+	// A valid PAM ticket lets us skip the password stage (confirm only).
+	signal?.throwIfAborted();
+	const cached = await hasValidTicket(signal);
+
+	// YOLO auto-approves root, but only when a PAM ticket is already cached:
+	// the password cannot be auto-typed, so a no-ticket run still prompts.
+	const validation: { error?: unknown } = {};
+	let overlayResult: OverlayResult;
+	if (yolo && cached) {
+		ctx.ui.notify(`${mode.toUpperCase()} — root command auto-approved (cached ticket).`, "warning");
+		overlayResult = { action: "approved", password: "" };
+	} else {
+		overlayResult = await askApproval(ctx.ui, events, params, cached, signal, validation);
+	}
+
+	signal?.throwIfAborted();
+	// Checked before anything runs: a wrong password must never reach sudo.
+	if (overlayResult.passwordAttemptsExhausted)
+		return fail(
+			params,
+			`sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`,
+			{ outcome: "error", errorKind: "authentication" },
+		);
+
+	// Cached ticket needs no password; otherwise a blank password is a cancel.
+	const missingPassword = !cached && !overlayResult.password?.trim();
+	if (overlayResult.action !== "approved" || missingPassword)
+		return cancelResult(command, reason, overlayResult.action);
+
+	if (validation.error)
+		return fail(params, `sudo_run failed: ${getErrorMessage(validation.error)}`, {
+			outcome: "error",
+			errorKind: "authentication",
+		});
+
+	updatePresentation(update, command, reason, "running");
+	// Password validation refreshes sudo's PAM ticket with `sudo -v`; the
+	// requested command always runs afterward, outside the checking overlay.
+	return commandResult(params, await runWithSudo(command, "", signal));
+}
 
 export default function pixSudo(pi: ExtensionAPI): void {
 	once(pi, "pix-sudo", () => register(pi));
@@ -200,7 +291,6 @@ function register(pi: ExtensionAPI): void {
 		}),
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
-			const { command, reason } = params;
 			return runToolExecution({
 				signal,
 				onUpdate,
@@ -214,364 +304,19 @@ function register(pi: ExtensionAPI): void {
 						},
 					],
 					details: makeDetails(
-						command,
-						reason,
+						params.command,
+						params.reason,
 						cancelled
 							? { outcome: "cancelled", cancellationKind: "aborted" }
 							: { outcome: "error", errorKind: "execution" },
 					),
 					isError: !cancelled,
 				}),
-				execute: async ({ update: onUpdate }) => {
-					const mode = getUnattendedMode(pi.events);
-					const yolo = mode === "yolo" || mode === "nuclear";
-					if (mode === "afk") {
-						return {
-							content: [
-								{ type: "text", text: "sudo_run denied immediately — AFK mode is active." },
-							],
-							details: makeDetails(command, reason, {
-								outcome: "denied",
-								cancellationKind: "denied",
-							}),
-						};
-					}
-
-					// ── No UI: block immediately ───────────────────────────────────────
-					if (!ctx.hasUI) {
-						return {
-							content: [
-								{
-									type: "text",
-									text: "sudo_run requires an interactive session (no UI available).",
-								},
-							],
-							details: makeDetails(command, reason, {
-								outcome: "error",
-								errorKind: "no-ui",
-							}),
-							isError: true,
-						};
-					}
-
-					updatePresentation(onUpdate, command, reason, "awaiting-approval");
-
-					// A valid PAM ticket lets us skip the password stage (confirm only).
-					signal?.throwIfAborted();
-					const cached = await hasValidTicket(signal);
-
-					const intent = reason?.trim();
-					const title = intent || "Root Command Request";
-					const body = [
-						"Review the command in the tool card below.",
-						...(intent ? [] : ["No reason provided by AI"]),
-					];
-
-					let executionError: unknown;
-
-					// ── Confirm (+ validate password inside the same open overlay) ───────
-					// YOLO auto-approves root, but only when a PAM ticket is already cached:
-					// the password cannot be auto-typed, so a no-ticket run still prompts.
-					if (yolo && cached) {
-						ctx.ui.notify(
-							`${mode.toUpperCase()} — root command auto-approved (cached ticket).`,
-							"warning",
-						);
-					}
-					const overlayResult: OverlayResult =
-						yolo && cached
-							? { action: "approved", password: "" }
-							: await (async () => {
-									if (cached) {
-										return showOverlay(ctx.ui, {
-											state: { events: pi.events, source: "sudo_run" },
-											signal,
-											mode: "confirm",
-											icon: icon("lock"),
-											title,
-											body: [...body, "(sudo session active — no password needed)"],
-											accent: "error",
-											timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-											choices: [
-												{ value: "yes", label: "Allow", description: "Run the command" },
-												{ value: "no", label: "Deny", description: "Block the command" },
-											],
-										});
-									}
-									return showOverlay(ctx.ui, {
-										state: { events: pi.events, source: "sudo_run" },
-										signal,
-										mode: "sudo",
-										icon: icon("lock"),
-										title,
-										body,
-										accent: "error",
-										timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
-										maxPasswordAttempts: MAX_PASSWORD_ATTEMPTS,
-										validatePassword: async (password, validationSignal) => {
-											try {
-												const validation = await validateSudoPassword(password, validationSignal);
-												if (detectAuthFailure(validation.code, validation.stderr)) return false;
-												if (validation.code !== 0) {
-													executionError = new Error(
-														validation.stderr || "sudo password validation failed",
-													);
-												}
-												return true;
-											} catch (err) {
-												executionError = err;
-												return true;
-											}
-										},
-										choices: [
-											{
-												value: "yes",
-												label: "Allow — enter password",
-												description: "Proceed to password prompt",
-											},
-											{
-												value: "no",
-												label: "Deny — block command",
-												description: "Prevent this command from running",
-											},
-										],
-									});
-								})();
-
-					signal?.throwIfAborted();
-					// Checked before anything runs: a wrong password must never reach sudo.
-					if (overlayResult.passwordAttemptsExhausted) {
-						const text = `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`;
-						return {
-							content: [{ type: "text", text }],
-							details: makeDetails(command, reason, {
-								outcome: "error",
-								errorKind: "authentication",
-							}),
-							isError: true,
-						};
-					}
-
-					// Cached ticket needs no password; otherwise a blank password is a cancel.
-					const missingPassword = !cached && !overlayResult.password?.trim();
-					if (overlayResult.action !== "approved" || missingPassword) {
-						const cancellationKind: SudoCancellationKind =
-							overlayResult.action === "timeout"
-								? "timeout"
-								: overlayResult.action === "denied"
-									? "denied"
-									: "missing-password";
-						const outcome: SudoOutcome =
-							cancellationKind === "timeout"
-								? "timed-out"
-								: cancellationKind === "denied"
-									? "denied"
-									: "cancelled";
-						const msg =
-							outcome === "timed-out"
-								? "Timed out — auto-denied."
-								: outcome === "denied"
-									? "Denied by user."
-									: "Cancelled — no password entered.";
-						return {
-							content: [{ type: "text", text: `Cancelled — ${msg}` }],
-							details: makeDetails(command, reason, { outcome, cancellationKind }),
-						};
-					}
-
-					if (executionError) {
-						const msg = getErrorMessage(executionError);
-						return {
-							content: [{ type: "text", text: `sudo_run failed: ${msg}` }],
-							details: makeDetails(command, reason, {
-								outcome: "error",
-								errorKind: "authentication",
-							}),
-							isError: true,
-						};
-					}
-
-					updatePresentation(onUpdate, command, reason, "running");
-
-					// Password validation refreshes sudo's PAM ticket with `sudo -v`; the
-					// requested command always runs afterward, outside the checking overlay.
-					const result = await runWithSudo(command, "", signal);
-
-					if (detectAuthFailure(result.code, result.stderr)) {
-						return {
-							content: [
-								{
-									type: "text",
-									text: `sudo authentication failed after ${MAX_PASSWORD_ATTEMPTS} attempts — wrong password.`,
-								},
-							],
-							details: makeDetails(command, reason, {
-								outcome: "error",
-								exitCode: result.code,
-								lineCount: outputLineCount(result.stderr),
-								truncated: false,
-								errorKind: "authentication",
-								_render: normalizeLineEndings(result.stderr),
-							}),
-							isError: true,
-						};
-					}
-
-					// ── Step 5: Truncate + return ──────────────────────────────────────
-					const combined = [
-						result.stdout && `[stdout]\n${result.stdout}`,
-						result.stderr && `[stderr]\n${result.stderr}`,
-					]
-						.filter(Boolean)
-						.join("\n");
-
-					const { text: truncatedText, truncated } = truncate(combined || "(no output)");
-
-					const suffix = truncated
-						? `\n\n[Output truncated to ${MAX_OUTPUT_LINES} lines / ${MAX_OUTPUT_BYTES / 1024}KB]`
-						: "";
-
-					const combinedOut =
-						[result.stdout, result.stderr].filter(Boolean).join("\n") || "(no output)";
-
-					const rendered = normalizeLineEndings(combinedOut)
-						.replace(/\n{3,}/g, "\n\n")
-						.replace(/^\n+|\n+$/g, "");
-
-					return {
-						content: [
-							{
-								type: "text",
-								text: `Exit code: ${result.code}\n\n${truncatedText}${suffix}`,
-							},
-						],
-						details: makeDetails(command, reason, {
-							outcome: result.code === 0 ? "success" : "error",
-							exitCode: result.code,
-							lineCount: outputLineCount(rendered),
-							truncated,
-							...(result.code === 0 ? {} : { errorKind: "exit-code" as const }),
-							_render: rendered,
-						}),
-						isError: result.code !== 0,
-					};
-				},
+				execute: ({ update }) => runSudo(params, signal, update, ctx, pi.events),
 			});
 		},
 
-		renderCall: ((
-			args: { command: string; reason?: string },
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) => {
-			resolveBaseBackground(theme);
-			const text = renderCtx.lastComponent ?? new Text("", 0, 0);
-			if (
-				hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
-					text.setText(value),
-				)
-			)
-				return text;
-
-			return commandPreview(
-				renderTitle(theme, "sudo", renderCtx),
-				args.command || "(empty command)",
-				"bash",
-				theme,
-				renderCtx.state,
-				renderCtx.invalidate,
-				renderCtx.expanded,
-				3,
-				renderCtx,
-			);
-		}) as never,
-
-		renderResult: ((
-			result: ToolResultLike,
-			_opt: unknown,
-			theme: ThemeLike,
-			renderCtx: RenderContextLike,
-		) => {
-			resolveBaseBackground(theme);
-			const text = unframeToolResult(renderCtx.lastComponent ?? new Text("", 0, 0));
-			const details = result.details as SudoResultDetails | undefined;
-			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
-			const completed = (isError: boolean) => frameToolResult(text, theme, isError);
-
-			if (details?._type !== "sudoResult") {
-				if (renderCtx.isError) {
-					text.setText(renderToolError(getTextContent(result) || "Error", theme));
-				} else {
-					text.setText(
-						fillToolBackground(`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "done")}`),
-					);
-				}
-				return isPartial ? text : completed(renderCtx.isError);
-			}
-
-			if (
-				!isPartial &&
-				isTerminal(details) &&
-				tickCollapse(
-					"sudo",
-					renderCtx.state as CollapseState,
-					renderCtx.invalidate,
-					renderCtx.expanded,
-				)
-			) {
-				const status = details.outcome === "success" ? "success" : "error";
-				return collapsedCommandRow(
-					renderRow(theme, "sudo", "", terminalMeta(details), status).trimEnd(),
-					safeOneLine(details.command),
-					theme,
-				);
-			}
-
-			if (details.outcome === "awaiting-approval" || details.outcome === "running") {
-				text.setText(
-					fillToolBackground(
-						`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "working")}`,
-					),
-				);
-				return text;
-			}
-
-			if (details.outcome !== "success" && details.errorKind !== "exit-code") {
-				const diagnostic = getTextContent(result) || "Error";
-				text.setText(
-					details.outcome === "error"
-						? renderToolError(diagnostic, theme)
-						: fillToolBackground(`${BODY_PAD}${theme.fg("warning", diagnostic)}`),
-				);
-				return isPartial ? text : completed(true);
-			}
-
-			const code = typeof details.exitCode === "number" ? details.exitCode : null;
-			const rendered = typeof details._render === "string" ? details._render : "";
-			const { summary } = renderBashOutput(rendered, code, theme);
-			const lines = rendered ? rendered.split("\n") : [];
-			const lineCount = lines.length;
-
-			if (!rendered) {
-				text.setText(fillToolBackground(`${BODY_PAD}${summary}`));
-				return isPartial ? text : completed(details.outcome !== "success");
-			}
-
-			const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-			const footer = lineCount > maxShow ? [moreLines(lineCount - maxShow, theme, renderCtx)] : [];
-			// Every result (including single-line) is framed; the rules follow exit
-			// status: green ok, red failure, dim unknown. The `✓ exit N` header is
-			// dropped — the collapsed row already carries status.
-			const statusKey = details.outcome === "success" ? "success" : "error";
-			const paint = fadeRulePaint(theme, statusKey);
-			const body = fadeRowsOf(
-				lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
-				theme,
-				maxShow,
-			);
-			const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
-			text.setText(fillToolBackground(out.join("\n")));
-			return text;
-		}) as never,
+		renderCall: renderSudoCall as never,
+		renderResult: renderSudoResult as never,
 	});
 }

@@ -13,8 +13,6 @@
 	},
 	"files": [
 		"src",
-		"!src/**/*.test.*",
-		"!src/**/*.fixture.*",
 		"README.md",
 		"LICENSE",
 		"LICENSE.pi-lens"

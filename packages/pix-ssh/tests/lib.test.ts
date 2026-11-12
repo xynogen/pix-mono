@@ -1,0 +1,466 @@
+import { describe, expect, it } from "bun:test";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import registerSsh, { validatorFor } from "../src/index.ts";
+import {
+	baseScpArgs,
+	baseSshArgs,
+	buildRunSshArgs,
+	closeMasterArgs,
+	commandEscalatesPrivilege,
+	controlPathFor,
+	detectSshFailure,
+	detectSudoFailure,
+	filterSudoPrompt,
+	hostTarget,
+	isUnreachable,
+	parseHost,
+	parseHostAliases,
+	parseHostInfo,
+	parseSshConfig,
+	remoteCommand,
+	remoteTransferPath,
+	shellQuote,
+	transferApprovalDecision,
+	transferArgs,
+} from "../src/lib.ts";
+
+describe("parseHost", () => {
+	it("rejects a host or user that ssh would read as an option", () => {
+		for (const spec of ["-oProxyCommand=touch /tmp/x", "u@-oProxyCommand=x", "-l@host"]) {
+			expect(() => parseHost(spec)).toThrow(/must not start with "-"/);
+		}
+	});
+	it("rejects an unclosed IPv6 bracket", () => {
+		expect(() => parseHost("[::1:22")).toThrow(/missing "]"/);
+	});
+	it("parses bare host", () => {
+		expect(parseHost("example.com")).toEqual({ host: "example.com" });
+	});
+	it("parses user@host", () => {
+		expect(parseHost("deploy@10.0.0.5")).toEqual({ user: "deploy", host: "10.0.0.5" });
+	});
+	it("parses user@host:port", () => {
+		expect(parseHost("deploy@10.0.0.5:2222")).toEqual({
+			user: "deploy",
+			host: "10.0.0.5",
+			port: 2222,
+		});
+	});
+	it("parses bracketed IPv6 with port", () => {
+		expect(parseHost("root@[::1]:22")).toEqual({ user: "root", host: "::1", port: 22 });
+	});
+	it("leaves bare IPv6 (multiple colons) as host", () => {
+		expect(parseHost("fe80::1")).toEqual({ host: "fe80::1" });
+	});
+	it("rejects empty host", () => {
+		expect(() => parseHost("   ")).toThrow();
+		expect(() => parseHost("user@")).toThrow();
+	});
+	it("rejects invalid port", () => {
+		expect(() => parseHost("h:0")).toThrow();
+		expect(() => parseHost("h:70000")).toThrow();
+		expect(() => parseHost("h:abc")).toThrow();
+	});
+});
+
+describe("parseSshConfig", () => {
+	it("reads effective user, hostname, and port from ssh -G output", () => {
+		expect(parseSshConfig("host orin\nuser jetson\nhostname 10.10.21.251\nport 2222\n")).toEqual({
+			user: "jetson",
+			host: "10.10.21.251",
+			port: 2222,
+		});
+	});
+
+	it("rejects incomplete ssh -G output", () => {
+		expect(parseSshConfig("hostname 10.10.21.251\n")).toBeUndefined();
+	});
+});
+
+describe("parseHostAliases", () => {
+	it("extracts aliases with hostname/user/port/proxyjump", () => {
+		const cfg = [
+			"Host web",
+			"  HostName 10.0.0.5",
+			"  User deploy",
+			"  Port 2222",
+			"  ProxyJump bastion",
+			"",
+			"Host db",
+			"  HostName db.internal",
+		].join("\n");
+		expect(parseHostAliases(cfg)).toEqual([
+			{ alias: "web", hostname: "10.0.0.5", user: "deploy", port: "2222", proxyJump: "bastion" },
+			{ alias: "db", hostname: "db.internal" },
+		]);
+	});
+	it("splits a multi-alias Host line and skips wildcard patterns", () => {
+		const cfg = ["Host a b *.example", "  User root", "", "Host *", "  User nobody"].join("\n");
+		expect(parseHostAliases(cfg)).toEqual([
+			{ alias: "a", user: "root" },
+			{ alias: "b", user: "root" },
+		]);
+	});
+	it("ignores comments and keeps first value per key", () => {
+		const cfg = ["# comment", "Host x", "  User first", "  User second"].join("\n");
+		expect(parseHostAliases(cfg)).toEqual([{ alias: "x", user: "first" }]);
+	});
+});
+
+describe("parseHostInfo", () => {
+	it("reads effective fields from ssh -G output, first value wins", () => {
+		const out = [
+			"host web",
+			"hostname 10.0.0.5",
+			"user deploy",
+			"port 2222",
+			"identityfile ~/.ssh/id_ed25519",
+			"proxyjump bastion",
+			"user ignored",
+		].join("\n");
+		expect(parseHostInfo(out)).toEqual({
+			hostname: "10.0.0.5",
+			user: "deploy",
+			port: "2222",
+			identityFile: "~/.ssh/id_ed25519",
+			proxyJump: "bastion",
+		});
+	});
+});
+
+describe("hostTarget", () => {
+	it("joins user and host", () => {
+		expect(hostTarget({ user: "a", host: "b" })).toBe("a@b");
+		expect(hostTarget({ host: "b" })).toBe("b");
+	});
+});
+
+describe("controlPathFor", () => {
+	it("is stable per host+user+port and differs across hosts", () => {
+		const a = controlPathFor({ user: "u", host: "h", port: 22 });
+		expect(a).toBe(controlPathFor({ user: "u", host: "h", port: 22 }));
+		expect(a).not.toBe(controlPathFor({ user: "u", host: "h", port: 23 }));
+		expect(a).not.toBe(controlPathFor({ user: "x", host: "h", port: 22 }));
+		expect(a).toContain("pix-ssh-");
+		expect(a.endsWith(".sock")).toBe(true);
+	});
+});
+
+describe("baseSshArgs", () => {
+	it("enables multiplexing and includes the control path", () => {
+		const args = baseSshArgs({ host: "h" }, "/tmp/x.sock");
+		expect(args).toContain("ControlMaster=auto");
+		expect(args).toContain("ControlPath=/tmp/x.sock");
+		expect(args.some((a) => a.startsWith("ControlPersist="))).toBe(true);
+	});
+	it("adds -p only when a port is set", () => {
+		expect(baseSshArgs({ host: "h" }, "s")).not.toContain("-p");
+		const withPort = baseSshArgs({ host: "h", port: 2222 }, "s");
+		expect(withPort).toContain("-p");
+		expect(withPort).toContain("2222");
+	});
+});
+
+describe("closeMasterArgs", () => {
+	it("asks the master on the given socket to stop", () => {
+		expect(closeMasterArgs({ user: "u", host: "h" }, "/tmp/x.sock")).toEqual([
+			"-o",
+			"ControlPath=/tmp/x.sock",
+			"-O",
+			"stop",
+			"u@h",
+		]);
+	});
+});
+
+describe("buildRunSshArgs", () => {
+	// Regression: a run without a login password must be non-interactive so ssh
+	// never opens its own /dev/tty prompt (which leaked `host's password:` into
+	// the TUI). All password entry goes through the overlay + sshpass instead.
+	it("forces BatchMode=yes when no password is in hand", () => {
+		const { bin, args } = buildRunSshArgs({ host: "h" }, "whoami", { controlPath: "s" });
+		expect(bin).toBe("ssh");
+		expect(args).toContain("BatchMode=yes");
+	});
+	it("keeps BatchMode off on the sshpass path so it can answer the prompt", () => {
+		const { bin, args } = buildRunSshArgs({ host: "h" }, "whoami", {
+			controlPath: "s",
+			loginPassword: "pw",
+		});
+		expect(bin).toBe("sshpass");
+		expect(args).not.toContain("BatchMode=yes");
+		expect(args.slice(0, 2)).toEqual(["-e", "ssh"]);
+	});
+});
+
+describe("transfer unattended approval", () => {
+	it("treats transfer as warning-level in AFK and YOLO", () => {
+		expect(transferApprovalDecision("off", false)).toBe("ask");
+		expect(transferApprovalDecision("afk", false)).toBe("allow");
+		expect(transferApprovalDecision("yolo", false)).toBe("allow");
+	});
+
+	it("denies unattended transfer when a login password is missing", () => {
+		expect(transferApprovalDecision("afk", true)).toBe("deny");
+		expect(transferApprovalDecision("yolo", true)).toBe("deny");
+	});
+});
+
+describe("SCP transfer arguments", () => {
+	it("builds upload and download endpoints", () => {
+		const spec = { user: "deploy", host: "example.com", port: 2222 };
+		expect(remoteTransferPath(spec, "/srv/app file")).toBe("deploy@example.com:/srv/app file");
+		expect(transferArgs(spec, "upload", "./build", "/srv/app")).toEqual([
+			"./build",
+			"deploy@example.com:/srv/app",
+		]);
+		expect(transferArgs(spec, "download", "/var/log/app.log", "./app.log")).toEqual([
+			"deploy@example.com:/var/log/app.log",
+			"./app.log",
+		]);
+		expect(baseScpArgs(spec, "/tmp/control.sock", true)).toEqual([
+			"-o",
+			"ControlMaster=auto",
+			"-o",
+			"ControlPath=/tmp/control.sock",
+			"-o",
+			"ControlPersist=120",
+			"-o",
+			"ConnectTimeout=10",
+			"-o",
+			"StrictHostKeyChecking=accept-new",
+			"-P",
+			"2222",
+			"-r",
+		]);
+	});
+
+	it("brackets IPv6 hosts for SCP remote-path syntax", () => {
+		expect(remoteTransferPath({ user: "root", host: "::1" }, "/tmp/x")).toBe("root@[::1]:/tmp/x");
+	});
+});
+
+describe("remoteCommand + shellQuote", () => {
+	it("returns the command unchanged without sudo", () => {
+		expect(remoteCommand("whoami", false)).toBe("whoami");
+	});
+	it("wraps in sudo -S with a quoted inner command", () => {
+		const out = remoteCommand("apt update", true);
+		expect(out).toStartWith("sudo -S -p '' -- sh -c ");
+		expect(out).toContain("'apt update'");
+	});
+	it("escapes embedded single quotes safely", () => {
+		expect(shellQuote("it's")).toBe(`'it'\\''s'`);
+		// The wrapped form has no unescaped quote that would break out of the string.
+		const wrapped = remoteCommand("echo 'hi'", true);
+		expect(wrapped).toContain(`'echo '\\''hi'\\'''`);
+	});
+});
+
+describe("detectSshFailure", () => {
+	it("is false on exit 0", () => {
+		expect(detectSshFailure(0, "permission denied")).toBe(false);
+	});
+	it("flags common ssh errors", () => {
+		expect(detectSshFailure(255, "Permission denied (publickey,password).")).toBe(true);
+		expect(detectSshFailure(255, "ssh: connect to host x: Connection refused")).toBe(true);
+		expect(detectSshFailure(255, "Could not resolve hostname x")).toBe(true);
+	});
+	it("does not flag a normal nonzero command exit", () => {
+		expect(detectSshFailure(1, "ls: no such file")).toBe(false);
+	});
+});
+
+describe("isUnreachable", () => {
+	it("flags connection/DNS failures (not auth)", () => {
+		expect(isUnreachable("ssh: connect to host x port 22: Connection timed out")).toBe(true);
+		expect(isUnreachable("ssh: connect to host x port 22: Connection refused")).toBe(true);
+		expect(isUnreachable("ssh: Could not resolve hostname x")).toBe(true);
+		expect(isUnreachable("ssh: connect to host x: No route to host")).toBe(true);
+	});
+	it("does NOT flag a password rejection (that's an auth failure)", () => {
+		expect(isUnreachable("Permission denied, please try again.")).toBe(false);
+		expect(isUnreachable("Permission denied (publickey,password).")).toBe(false);
+	});
+});
+
+describe("detectSudoFailure", () => {
+	it("flags wrong sudo password", () => {
+		expect(detectSudoFailure("Sorry, try again.")).toBe(true);
+		expect(detectSudoFailure("sudo: 1 incorrect password attempt")).toBe(true);
+		expect(detectSudoFailure("sudo: a password is required")).toBe(true);
+	});
+	it("ignores unrelated stderr", () => {
+		expect(detectSudoFailure("warning: something")).toBe(false);
+	});
+});
+
+describe("filterSudoPrompt", () => {
+	it("strips bare password prompt lines", () => {
+		expect(filterSudoPrompt("[sudo] password for u:\nreal output")).toBe("real output");
+		expect(filterSudoPrompt("Password:\nx")).toBe("x");
+	});
+	it("keeps normal lines", () => {
+		expect(filterSudoPrompt("line one\nline two")).toBe("line one\nline two");
+	});
+});
+
+describe("commandEscalatesPrivilege", () => {
+	it("flags leading and mid-chain escalation tokens", () => {
+		expect(commandEscalatesPrivilege("sudo apt update")).toBe(true);
+		expect(commandEscalatesPrivilege("apt update && sudo apt install x")).toBe(true);
+		expect(commandEscalatesPrivilege("foo; su -c 'x'")).toBe(true);
+		expect(commandEscalatesPrivilege("doas reboot")).toBe(true);
+		expect(commandEscalatesPrivilege("pkexec whoami")).toBe(true);
+	});
+	it("does not flag plain commands or substrings", () => {
+		expect(commandEscalatesPrivilege("ls -la")).toBe(false);
+		expect(commandEscalatesPrivilege("pseudo-tty")).toBe(false);
+		expect(commandEscalatesPrivilege("cat sudoku.txt")).toBe(false);
+	});
+});
+
+describe("validatorFor", () => {
+	const spec = { host: "h", user: "root" };
+	it("sudo stage: rejects blank, accepts any non-empty (no host probe)", async () => {
+		const v = validatorFor("sudo", spec, "/tmp/cp");
+		expect(await v("")).toBe(false);
+		expect(await v("   ")).toBe(false);
+		expect(await v("anything")).toBe(true);
+	});
+	it("login stage: rejects blank without probing the host", async () => {
+		const v = validatorFor("login", spec, "/tmp/cp");
+		expect(await v("")).toBe(false);
+		expect(await v("  ")).toBe(false);
+	});
+});
+
+describe("ssh call renderer", () => {
+	it("exposes upload and download as actions without a direction parameter", () => {
+		let tool!: {
+			parameters: { properties: Record<string, any> };
+			renderCall: (...args: any[]) => { render(width: number): string[] };
+		};
+		registerSsh({
+			registerTool(value: typeof tool) {
+				tool = value;
+			},
+		} as unknown as ExtensionAPI);
+		expect(
+			tool.parameters.properties.action.anyOf.map((value: { const: string }) => value.const),
+		).toEqual(["command", "upload", "download", "info", "read", "write", "edit"]);
+		expect(tool.parameters.properties).not.toHaveProperty("direction");
+		const theme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
+		for (const action of ["upload", "download"]) {
+			const rendered = tool
+				.renderCall({ action, host: "host", source: "a", destination: "b" }, theme, {
+					state: {},
+					expanded: false,
+					invalidate() {},
+				})
+				.render(80)
+				.join("\n");
+			expect(rendered).toContain(`ssh · ${action} host`);
+			expect(rendered).not.toContain("ssh file");
+		}
+	});
+	it("separates the host and wraps highlighted commands at the viewport width", async () => {
+		let call: ((...args: unknown[]) => { render(width: number): string[] }) | undefined;
+		registerSsh({
+			registerTool(tool: unknown) {
+				call = (tool as { renderCall: typeof call }).renderCall;
+			},
+		} as unknown as ExtensionAPI);
+		if (!call) throw new Error("renderCall missing");
+		const theme = { fg: (_key: string, text: string) => text, bold: (text: string) => text };
+		const ctx = { state: {}, expanded: false, invalidate() {} };
+		const short = call({ host: "user@host", command: "echo ok" }, theme, ctx);
+		expect(short.render(80).join("\n")).toContain("ssh user@host · echo ok");
+		const command =
+			"cd ~/worker-service && git fetch -q origin && git checkout -q -B main origin/main";
+		call({ host: "user@host", command }, theme, ctx);
+		await Promise.resolve();
+		const long = call({ host: "user@host", command }, theme, ctx).render(40);
+		expect(long[0]).toContain("ssh user@host ·");
+		expect(long.length).toBeGreaterThan(2);
+		expect(long[1]).toMatch(/^ {2}/);
+	});
+});
+
+describe("ssh result renderer", () => {
+	const theme = {
+		fg: (key: string, text: string) => `[${key}]${text}[/]`,
+		bold: (text: string) => text,
+	};
+	const register = () => {
+		let renderer: ((...args: unknown[]) => { render(width: number): string[] }) | undefined;
+		registerSsh({
+			registerTool(tool: unknown) {
+				renderer = (tool as { renderResult: typeof renderer }).renderResult;
+			},
+		} as unknown as ExtensionAPI);
+		if (!renderer) throw new Error("renderResult not registered");
+		return renderer;
+	};
+	const render = (
+		renderer: (...args: unknown[]) => { render(width: number): string[] },
+		details: Record<string, unknown> | undefined,
+		isError = false,
+		isPartial = false,
+		state: Record<string, unknown> = {},
+		expanded = false,
+	) =>
+		renderer(
+			{ content: [{ type: "text", text: String(details?.outcome ?? "done") }], details },
+			{ isPartial },
+			theme,
+			{ expanded, isError, invalidate: () => {}, state },
+		)
+			.render(24)
+			.join("\n");
+
+	it("uses solid status closes in normal and expanded output", () => {
+		const renderer = register();
+		const success = render(renderer, undefined).split("\n");
+		expect(success[0]).toContain("done");
+		expect(success.at(-1)).toBe(`[success]${"─".repeat(24)}[/]`);
+		expect(render(renderer, undefined, false, false, {}, true).split("\n").at(-1)).toBe(
+			`[success]${"─".repeat(24)}[/]`,
+		);
+		expect(render(renderer, undefined, true).split("\n").at(-1)).toBe(
+			`[error]${"─".repeat(24)}[/]`,
+		);
+		for (const outcome of ["denied", "timed-out", "cancelled", "error"]) {
+			expect(
+				render(renderer, {
+					_type: "sshResult",
+					command: "id",
+					host: "host",
+					sudo: false,
+					outcome,
+				}),
+			).toContain("[error]────");
+		}
+	});
+
+	it("leaves partial, running, and collapsed rows unframed", () => {
+		const renderer = register();
+		const running = {
+			_type: "sshResult",
+			command: "id",
+			host: "host",
+			sudo: false,
+			outcome: "running",
+		};
+		const partial = render(renderer, running, false, true);
+		expect(partial.split("\n")[0]).toContain("running");
+		expect(partial).not.toContain(`[success]${"─".repeat(24)}[/]`);
+		const open = render(renderer, running);
+		expect(open.split("\n")[0]).toContain("running");
+		expect(open).not.toContain(`[success]${"─".repeat(24)}[/]`);
+		const success = { ...running, outcome: "success", exitCode: 0, _render: "done" };
+		const collapsed = render(renderer, success, false, false, { collapsed: true }, false);
+		expect(collapsed.split("\n")[0]).toContain("success");
+		expect(collapsed).not.toContain(`[success]${"─".repeat(24)}[/]`);
+	});
+});

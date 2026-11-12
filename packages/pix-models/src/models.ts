@@ -7,7 +7,6 @@
  * Sorted by benchlm rank when available (best first), then alphabetical.
  */
 
-import { benchScoreColor, formatCost, lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
 import { getSupportedThinkingLevels } from "@xynogen/pix-data/ai";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import {
@@ -18,195 +17,18 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
-import {
-	fuzzyFilter,
-	Input,
-	Key,
-	matchesKey,
-	type SelectItem,
-	SelectList,
-	visibleWidth,
-} from "@xynogen/pix-pretty/tui";
-import { dotJoin } from "@xynogen/pix-pretty/utils";
+import { Input, Key, matchesKey, type SelectItem, SelectList } from "@xynogen/pix-pretty/tui";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
+import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
+import { filterModelItems, MODEL_TABS, type ModelTab, stepThinkingLevel } from "./lib.ts";
 import { patchOutBuiltinModelCommand } from "./patch-builtin";
+import { buildPickerData, nonChatNotice } from "./picker-rows.ts";
 import { registerProjectPrefs } from "./project-prefs";
 import { reasoningCatalog, withReasoningLevels } from "./thinking.ts";
 
-// ─── Pure logic (exported for tests) ─────────────────────────────────────────
-
-export function resolveContextWindow(
-	model: { contextWindow?: number | null },
-	fallback?: number | null,
-): number {
-	if (
-		typeof model.contextWindow === "number" &&
-		Number.isFinite(model.contextWindow) &&
-		model.contextWindow > 0
-	)
-		return model.contextWindow;
-	if (typeof fallback === "number" && Number.isFinite(fallback) && fallback > 0) return fallback;
-	return 0;
-}
-
-export function fmtCtx(n: number): string {
-	if (!n || n < 1_000) return `${n}`;
-	if (n >= 1_000_000) {
-		const m = n / 1_000_000;
-		return `${Number.isInteger(m) ? m.toFixed(0) : m.toFixed(1).replace(/\.0$/, "")}M`;
-	}
-	return `${Math.round(n / 1_000)}k`;
-}
-
-/** Table cell: pix-data formatCost, or an em dash when the price is unknown. */
-export function fmtCost(entry: { cost?: { input?: number; output?: number } } | undefined): string {
-	if (!entry?.cost) return "\u2014";
-	return formatCost(entry.cost.input ?? 0, entry.cost.output ?? 0) ?? "\u2014";
-}
-
-export function benchStars(score: number | null | undefined): {
-	filled: number;
-	empty: number;
-} {
-	const total = 5;
-	let filled = 1;
-	if (typeof score === "number") {
-		if (score >= 90) filled = 5;
-		else if (score >= 80) filled = 4;
-		else if (score >= 70) filled = 3;
-		else if (score >= 50) filled = 2;
-	}
-	return { filled, empty: total - filled };
-}
-
-export type SortableModel = {
-	provider: string;
-	id: string;
-	name?: string;
-	score?: number | null;
-	/**
-	 * Sort tier. Lower = earlier. Default 0.
-	 *  0 = scored (sort by `score` desc)
-	 *  1 = benched but unscored (sort by name, between scored and off-catalog)
-	 *  2 = off-catalog (no bench entry at all → always last)
-	 * The off-catalog tier exists for models like `openrouter/owl-alpha` that
-	 * are present in the router but missing from every benchmark source —
-	 * they should never interleave with the benched-but-unscored tail.
-	 */
-	tier?: number;
-};
-
-export function sortModels<T extends SortableModel>(models: T[]): T[] {
-	return [...models].sort((a, b) => {
-		const ta = a.tier ?? 0;
-		const tb = b.tier ?? 0;
-		if (ta !== tb) return ta - tb;
-		if (ta === 0) {
-			const sa = a.score ?? -1;
-			const sb = b.score ?? -1;
-			if (sa !== sb) return sb - sa;
-		}
-		return (a.name ?? a.id).localeCompare(b.name ?? b.id);
-	});
-}
-
-/** Short protocol tag for a classifier model's api. */
-export function classifierProtocol(api: string): string {
-	if (api.endsWith("system-one")) return "System One";
-	if (api === "llama-cpp-classify") return "llama.cpp classify";
-	return api;
-}
-
-/** Picker value prefixes for non-chat rows. They cannot be chat models. */
-export const CLASSIFIER_VALUE_PREFIX = "classifier:";
-export const IMAGE_VALUE_PREFIX = "image:";
 // Matches Pi's built-in selector refresh deadline.
 const MODEL_REFRESH_TIMEOUT_MS = 15_000;
-
-/** Picker tabs, one per Pi model type, so each task's models stay separate. */
-export const MODEL_TABS = [
-	{ id: "chat", label: "Chat", hint: "context · pricing · coding rank & score from modelgrep.com" },
-	{ id: "classifier", label: "Classifier", hint: "typed answers · codemode models.classify()" },
-	{ id: "image", label: "Image", hint: "image generation · codemode models.generateImages()" },
-] as const;
-
-export type ModelTab = (typeof MODEL_TABS)[number]["id"];
-
-/** Lowercase and strip all non-alphanumerics: "glm-5.2" → "glm52". */
-export function normalizeModelText(s: string): string {
-	return s.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-// ─── Thinking level control ──────────────────────────────────────────────────
-
-/**
- * Step one notch along the levels the active model supports (from pi-ai
- * `getSupportedThinkingLevels`, which reads the model's `thinkingLevelMap`).
- * Clamps at the ends. Unknown input anchors on "medium", else the first level.
- */
-export function stepThinkingLevel(levels: readonly string[], current: string, dir: -1 | 1): string {
-	const idx = levels.indexOf(current);
-	const base = idx >= 0 ? idx : Math.max(0, levels.indexOf("medium"));
-	return levels[Math.min(levels.length - 1, Math.max(0, base + dir))] ?? current;
-}
-
-export type ModelSearchLookup = {
-	/** benchlm local rank per item value (ranked models only). */
-	rankByValue: Map<string, number>;
-	/** Clean haystack per value: `${id} ${name ?? ""}` (no ANSI, no rank cell). */
-	searchTextByValue: Map<string, string>;
-	/** normalizeModelText(haystack) per value — for family+version substring matches. */
-	normalizedByValue: Map<string, string>;
-};
-
-/**
- * Filter+order picker items for a search query.
- *  - "" → all items unchanged.
- *  - digits-only → items whose benchlm rank equals the number, followed by
- *    normalized-substring matches ("52" ⊂ "glm52") rank-sorted.
- *  - otherwise → normalized-substring matches first (rank-sorted), then
- *    fuzzy matches over the clean haystack (rank-sorted, stable), deduped.
- */
-export function filterModelItems<T extends { value: string }>(
-	items: T[],
-	query: string,
-	lookup: ModelSearchLookup,
-): T[] {
-	const q = query.trim();
-	if (q.length === 0) return items;
-
-	const rankSort = (arr: T[]): T[] => {
-		return arr
-			.map((it, i) => ({ it, i }))
-			.sort((a, b) => {
-				const ra = lookup.rankByValue.get(a.it.value) ?? Infinity;
-				const rb = lookup.rankByValue.get(b.it.value) ?? Infinity;
-				if (ra !== rb) return ra - rb;
-				return a.i - b.i;
-			})
-			.map(({ it }) => it);
-	};
-
-	const nq = normalizeModelText(q);
-	const subMatches =
-		nq.length > 0
-			? items.filter((it) => (lookup.normalizedByValue.get(it.value) ?? "").includes(nq))
-			: [];
-
-	if (/^\d+$/.test(q)) {
-		const wanted = Number(q);
-		const rankMatches = items.filter((it) => lookup.rankByValue.get(it.value) === wanted);
-		const rankValues = new Set(rankMatches.map((it) => it.value));
-		const extraSub = rankSort(subMatches).filter((it) => !rankValues.has(it.value));
-		return [...rankMatches, ...extraSub];
-	}
-
-	const fuzzy = fuzzyFilter(items, q, (it) => lookup.searchTextByValue.get(it.value) ?? "");
-	const subValues = new Set(subMatches.map((it) => it.value));
-	const extraFuzzy = rankSort(fuzzy).filter((it) => !subValues.has(it.value));
-	return [...rankSort(subMatches), ...extraFuzzy];
-}
 
 async function showEnhancedPicker(
 	pi: ExtensionAPI,
@@ -242,7 +64,7 @@ async function showEnhancedPicker(
 	let available = await registry.getAvailable();
 	let [classifiers, images] = await loadTyped();
 	if (available.length === 0) {
-		await registry.refresh?.({ signal: AbortSignal.timeout(MODEL_REFRESH_TIMEOUT_MS) });
+		await registry.refresh?.({ signal: ioTimeoutSignal(undefined, MODEL_REFRESH_TIMEOUT_MS) });
 		available = await registry.getAvailable();
 		[classifiers, images] = await loadTyped();
 	}
@@ -253,52 +75,6 @@ async function showEnhancedPicker(
 
 	const catalog = available.some((model) => model.reasoning) ? await reasoningCatalog.get() : [];
 	let current = ctx.model ? withReasoningLevels(ctx.model, catalog) : undefined;
-
-	// Build items with benchmark data
-	type Row = {
-		m: (typeof available)[number];
-		dev: ReturnType<typeof lookupModelsDev>;
-		bench: ReturnType<typeof lookupBenchmark>;
-		// Rank among the user's *available* models, not the global catalog.
-		localRank: number | null;
-		// Sort tier: 0 scored, 1 benched-but-unscored, 2 off-catalog.
-		tier: 0 | 1 | 2;
-	};
-	const buildRows = (models: Awaited<AvailableModels>): Row[] => {
-		const rows: Row[] = models.map((m) => {
-			const bench = lookupBenchmark(m.id);
-			const tier = !bench
-				? 2 // off-catalog → absolute bottom (no rank)
-				: bench.overallScore == null
-					? 1 // benched, unscored → middle
-					: 0; // scored → top
-			return {
-				m,
-				dev: lookupModelsDev(m.provider, m.id),
-				bench,
-				localRank: null,
-				tier,
-			} satisfies Row;
-		});
-
-		// Mirror sortModels() — score-desc within tier 0, name-asc otherwise.
-		rows.sort((a, b) => {
-			if (a.tier !== b.tier) return a.tier - b.tier;
-			if (a.tier === 0) {
-				const sa = a.bench?.overallScore ?? -1;
-				const sb = b.bench?.overallScore ?? -1;
-				if (sa !== sb) return sb - sa;
-			}
-			return (a.m.name ?? a.m.id).localeCompare(b.m.name ?? b.m.id);
-		});
-
-		// Local rank = position among scored available models (best pickable = #1).
-		let localRank = 0;
-		for (const row of rows) if (row.bench) row.localRank = ++localRank;
-		return rows;
-	};
-
-	// items built inside the custom() factory so we have theme access for colors
 
 	const result = await ctx.ui.custom<string | null>(
 		(tui, theme, _kb, done) => {
@@ -311,90 +87,9 @@ async function showEnhancedPicker(
 			let tab: ModelTab = "chat";
 			const currentValue = current ? `${current.provider}/${current.id}` : undefined;
 
-			const buildPickerData = (forTab: ModelTab) => {
-				const entries =
-					forTab === "chat"
-						? buildRows(available).map(({ m, dev, bench, localRank }) => ({
-								m,
-								dev,
-								bench,
-								rank: localRank,
-								value: `${m.provider}/${m.id}`,
-								text: `${m.id} ${m.name ?? ""}`,
-								tag: "",
-							}))
-						: (forTab === "classifier" ? classifiers : images).map((m, i) => {
-								const tag = forTab === "classifier" ? classifierProtocol(m.api) : "";
-								const prefix =
-									forTab === "classifier" ? CLASSIFIER_VALUE_PREFIX : IMAGE_VALUE_PREFIX;
-								return {
-									m,
-									dev: lookupModelsDev(m.provider, m.id),
-									bench: lookupBenchmark(m.id),
-									// Non-chat models have no benchmark rank; number them in list order.
-									rank: i + 1,
-									value: `${prefix}${m.provider}/${m.id}`,
-									text: `${m.id} ${m.name ?? ""} ${tag}`,
-									tag,
-								};
-							});
-				const maxRankWidth = Math.max(1, ...entries.map((e) => String(e.rank ?? "").length));
-				const maxCostWidth = Math.max("free".length, ...entries.map((e) => fmtCost(e.dev).length));
-				const rankByValue = new Map<string, number>();
-				const searchTextByValue = new Map<string, string>();
-				const normalizedByValue = new Map<string, string>();
-
-				const items: SelectItem[] = entries.map(({ m, dev, bench, rank, value, text, tag }) => {
-					if (rank) rankByValue.set(value, rank);
-					searchTextByValue.set(value, text);
-					normalizedByValue.set(value, normalizeModelText(text));
-					const rankCell = !rank
-						? mute("—".padEnd(maxRankWidth))
-						: forTab === "chat"
-							? theme.fg(benchScoreColor(bench?.overallScore), String(rank).padEnd(maxRankWidth))
-							: mute(String(rank).padEnd(maxRankWidth));
-					const marker = value === currentValue ? theme.fg(accent, "▶") : " ";
-					const nameColor = bench ? benchScoreColor(bench.overallScore) : accent;
-					const label = `${marker} ${mute("#")}${rankCell} ${theme.fg(nameColor, m.id)}`;
-					const ctxRaw = fmtCtx(resolveContextWindow(m, dev?.limit?.context));
-					const rawCost = fmtCost(dev);
-					const costSeg =
-						rawCost === "—"
-							? theme.fg("muted", "—".padEnd(maxCostWidth))
-							: rawCost === "free"
-								? mute("free".padEnd(maxCostWidth))
-								: theme.fg("success", rawCost.padEnd(maxCostWidth));
-					let benchSeg = "";
-					if (bench) {
-						const score = bench.overallScore ?? "?";
-						const scoreColor = benchScoreColor(bench.overallScore);
-						const { filled, empty } = benchStars(bench.overallScore);
-						const stars = theme.fg(scoreColor, "★".repeat(filled)) + mute("☆".repeat(empty));
-						benchSeg = `⚡${theme.fg(scoreColor, String(score))} ${stars}`;
-					}
-					return {
-						value,
-						label,
-						description: dotJoin(
-							[
-								mute(ctxRaw.padStart(4)),
-								costSeg,
-								[benchSeg, tag && mute(tag)].filter(Boolean).join(" "),
-							],
-							mute,
-						),
-					};
-				});
-				return {
-					items,
-					rankByValue,
-					searchTextByValue,
-					normalizedByValue,
-					widestLabel: items.reduce((width, item) => Math.max(width, visibleWidth(item.label)), 0),
-				};
-			};
-
-			let pickerData = buildPickerData(tab);
+			const buildData = (forTab: ModelTab) =>
+				buildPickerData(forTab, { chat: available, classifiers, images }, theme, currentValue);
+			let pickerData = buildData(tab);
 			const currentIdx = currentValue
 				? pickerData.items.findIndex((item) => item.value === currentValue)
 				: 0;
@@ -479,10 +174,7 @@ async function showEnhancedPicker(
 				}, 120);
 				tui.requestRender();
 				try {
-					const signal = AbortSignal.any([
-						closed.signal,
-						AbortSignal.timeout(MODEL_REFRESH_TIMEOUT_MS),
-					]);
+					const signal = ioTimeoutSignal(closed.signal, MODEL_REFRESH_TIMEOUT_MS);
 					const outcome = await registry.refresh?.({ force, signal });
 					if (closed.signal.aborted) return;
 					if (outcome?.aborted)
@@ -502,7 +194,7 @@ async function showEnhancedPicker(
 					available = refreshed;
 					[classifiers, images] = typed;
 					// Read the selection after the await: input stays live during refresh.
-					showData(buildPickerData(tab), list.getSelectedItem()?.value);
+					showData(buildData(tab), list.getSelectedItem()?.value);
 				} catch (error) {
 					if (!closed.signal.aborted)
 						ctx.ui.notify(`Failed to reload models: ${String(error)}`, "error");
@@ -529,7 +221,7 @@ async function showEnhancedPicker(
 			const switchTab = (dir: -1 | 1) => {
 				const idx = MODEL_TABS.findIndex((t) => t.id === tab);
 				tab = MODEL_TABS[(idx + dir + MODEL_TABS.length) % MODEL_TABS.length]?.id ?? "chat";
-				showData(buildPickerData(tab), tab === "chat" ? currentValue : undefined);
+				showData(buildData(tab), tab === "chat" ? currentValue : undefined);
 			};
 			const tabBar = () => {
 				const n = counts();
@@ -692,20 +384,9 @@ async function showEnhancedPicker(
 
 	if (!result) return;
 
-	if (result.startsWith(CLASSIFIER_VALUE_PREFIX)) {
-		const ref = result.slice(CLASSIFIER_VALUE_PREFIX.length);
-		ctx.ui.notify(
-			`${ref} is a classifier model, not a chat model. Call it with models.classify() in codemode or ctx.modelRegistry.classify().`,
-			"info",
-		);
-		return;
-	}
-	if (result.startsWith(IMAGE_VALUE_PREFIX)) {
-		const ref = result.slice(IMAGE_VALUE_PREFIX.length);
-		ctx.ui.notify(
-			`${ref} is an image model, not a chat model. Call it with models.generateImages() in codemode.`,
-			"info",
-		);
+	const notice = nonChatNotice(result);
+	if (notice) {
+		ctx.ui.notify(notice, "info");
 		return;
 	}
 

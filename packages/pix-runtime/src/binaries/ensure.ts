@@ -22,6 +22,7 @@ import {
 import { join } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { ioTimeoutSignal } from "../io.ts";
 import { binDir } from "../paths.ts";
 import { currentPlatform, type HostPlatform } from "../platform.ts";
 import { type BinaryName, type BinarySpec, downloadAsset, hintFor, specOf } from "./catalog.ts";
@@ -154,11 +155,6 @@ export async function installFromRelease(
 	}
 }
 
-function withTimeout(ms: number, signal?: AbortSignal): AbortSignal {
-	const t = AbortSignal.timeout(ms);
-	return signal ? AbortSignal.any([signal, t]) : t;
-}
-
 /** Latest release tag via the `/releases/latest` redirect (no API quota). */
 async function latestTag(
 	repo: string,
@@ -168,7 +164,7 @@ async function latestTag(
 	const res = await doFetch(`https://github.com/${repo}/releases/latest`, {
 		redirect: "manual",
 		headers: { "User-Agent": USER_AGENT },
-		signal: withTimeout(LOOKUP_TIMEOUT_MS, signal),
+		signal: ioTimeoutSignal(signal, LOOKUP_TIMEOUT_MS),
 	});
 	await res.body?.cancel().catch(() => {});
 	const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
@@ -189,7 +185,7 @@ async function download(
 ): Promise<string> {
 	const res = await doFetch(url, {
 		headers: { "User-Agent": USER_AGENT },
-		signal: withTimeout(DOWNLOAD_TIMEOUT_MS, signal),
+		signal: ioTimeoutSignal(signal, DOWNLOAD_TIMEOUT_MS),
 	});
 	if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} for ${url}`);
 	const hash = createHash("sha256");
@@ -216,7 +212,7 @@ async function expectedChecksum(
 ): Promise<string> {
 	const res = await doFetch(url, {
 		headers: { "User-Agent": USER_AGENT },
-		signal: withTimeout(LOOKUP_TIMEOUT_MS, signal),
+		signal: ioTimeoutSignal(signal, LOOKUP_TIMEOUT_MS),
 	});
 	if (res.status === 404) {
 		await res.body?.cancel().catch(() => {});

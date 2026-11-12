@@ -39,7 +39,11 @@ import {
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import type { ExtensionContext, FindToolInput } from "@xynogen/pix-runtime/host";
+import type {
+	AgentToolUpdateCallback,
+	ExtensionContext,
+	FindToolInput,
+} from "@xynogen/pix-runtime/host";
 
 export const DEFAULT_FIND_LIMIT = 200;
 
@@ -96,7 +100,7 @@ export function registerFindTool(
 			tid: string,
 			params: FindBatchParams,
 			sig: AbortSignal | undefined,
-			upd: unknown,
+			upd: AgentToolUpdateCallback<unknown> | undefined,
 			toolCtx: ExtensionContext,
 		) {
 			// Search one glob (FFF-accelerated, SDK fallback) → structured find result.
@@ -143,7 +147,7 @@ export function registerFindTool(
 				}
 
 				// SDK fallback
-				const result = await origFind.execute(callId, effectiveParams, sig, upd as never, toolCtx);
+				const result = await origFind.execute(callId, effectiveParams, sig, upd, toolCtx);
 				const textContent = getTextContent(result);
 				setResultDetails<FindResultDetails>(result, {
 					_type: "findResult",

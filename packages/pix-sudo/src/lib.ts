@@ -6,8 +6,6 @@
 import { runTool } from "@xynogen/pix-runtime/exec";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@xynogen/pix-runtime/host";
 
-export { truncateOutput as truncate } from "@xynogen/pix-runtime/utf8";
-
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.
 export const MAX_OUTPUT_BYTES = DEFAULT_MAX_BYTES;
 export const MAX_OUTPUT_LINES = DEFAULT_MAX_LINES;

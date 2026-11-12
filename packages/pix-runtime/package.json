@@ -9,7 +9,6 @@
 	},
 	"files": [
 		"src",
-		"!src/**/*.test.*",
 		"README.md",
 		"DESIGN.md",
 		"LICENSE"
@@ -24,6 +23,7 @@
 		"./abort": "./src/abort.ts",
 		"./tool-execution": "./src/tool-execution.ts",
 		"./utf8": "./src/utf8.ts",
+		"./output": "./src/output.ts",
 		"./atomic-write": "./src/atomic-write.ts",
 		"./binaries": "./src/binaries/index.ts",
 		"./config": "./src/runtime.ts",

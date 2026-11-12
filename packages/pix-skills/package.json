@@ -9,7 +9,6 @@
 	},
 	"files": [
 		"src",
-		"!src/**/*.test.*",
 		"skills",
 		"README.md",
 		"LICENSE"

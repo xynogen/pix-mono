@@ -1,0 +1,262 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { tempDir } from "@xynogen/pix-runtime/paths";
+import registerPrompts, { resolveOwnSopMd } from "../src/prompts.ts";
+
+type Handler = (event: { systemPrompt?: string }) => Promise<{ systemPrompt?: string } | undefined>;
+
+/** Minimal fake pi that captures the before_agent_start handler. */
+function fakePi(): { pi: ExtensionAPI; getHandler: () => Handler } {
+	let handler: Handler | undefined;
+	const pi = {
+		on(event: string, fn: Handler) {
+			if (event === "before_agent_start") handler = fn;
+		},
+	} as unknown as ExtensionAPI;
+	return {
+		pi,
+		getHandler: () => {
+			if (!handler) throw new Error("handler not registered");
+			return handler;
+		},
+	};
+}
+
+describe("pix-prompts host-aware injection", () => {
+	let dir: string;
+	let prevCwd: string;
+
+	beforeEach(() => {
+		prevCwd = process.cwd();
+		dir = mkdtempSync(join(tempDir(), "pix-prompts-"));
+		process.chdir(dir);
+	});
+
+	afterEach(() => {
+		process.chdir(prevCwd);
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("caps multilingual directive content by UTF-8 bytes", async () => {
+		const input = "a😀é中".repeat(4000);
+		writeFileSync(join(dir, "GEMINI.md"), input);
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+		const match = result?.systemPrompt?.match(
+			/<pix-prompts-gemini-md>\n([\s\S]*?)\n\[pix-prompts: truncated at 16384 bytes\]\n<\/pix-prompts-gemini-md>/,
+		);
+		expect(match).toBeTruthy();
+		const body = match?.[1] ?? "";
+		expect(Buffer.byteLength(body)).toBeGreaterThan(16380);
+		expect(Buffer.byteLength(body)).toBeLessThanOrEqual(16384);
+		expect(input.startsWith(body)).toBe(true);
+	});
+
+	it("resolves the bundled SOP.md to a real file and injects it", async () => {
+		// Regression: URL.pathname made "C:\\C:\\..." on Windows and SOP was silently skipped.
+		expect(existsSync(resolveOwnSopMd())).toBe(true);
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+		expect(result?.systemPrompt).toMatch(/<pix-agent-sop>\n# Agent Operating Specification/);
+	});
+
+	it("injects a repo directive file the host has NOT already injected", async () => {
+		writeFileSync(join(dir, "GEMINI.md"), "gemini rules");
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		const result = await getHandler()({ systemPrompt: "BASE" });
+
+		expect(result?.systemPrompt).toContain("<pix-prompts-gemini-md>");
+		expect(result?.systemPrompt).toContain("gemini rules");
+	});
+
+	it("SKIPS a file the host already injected as <project_instructions path>", async () => {
+		const agentsPath = join(dir, "AGENTS.md");
+		writeFileSync(agentsPath, "repo directives");
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		// Simulate the host having already injected AGENTS.md verbatim.
+		const hostPrompt = `BASE\n<project_instructions path="${agentsPath}">\nrepo directives\n</project_instructions>`;
+		const result = await getHandler()({ systemPrompt: hostPrompt });
+
+		// pix-prompts still injects its own bundled baseline (<pix-agent-sop>),
+		// but must NOT re-wrap AGENTS.md in its own tag (host already has it).
+		expect(result?.systemPrompt).not.toContain("<pix-prompts-agents-md>");
+	});
+
+	it("does NOT inject AGENTS.md / CLAUDE.md — host resource-loader owns those", async () => {
+		// The host unconditionally loads AGENTS.md / CLAUDE.md as
+		// <project_instructions path="...">. pix-prompts must not also inject them;
+		// a path-normalization mismatch broke the string-match dedup and silently
+		// double-injected them (~2500 wasted tokens/turn). Host coverage wins.
+		writeFileSync(join(dir, "AGENTS.md"), "repo directives");
+		writeFileSync(join(dir, "CLAUDE.md"), "claude directives");
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		const result = await getHandler()({ systemPrompt: "BASE" });
+
+		expect(result?.systemPrompt).not.toContain("<pix-prompts-agents-md>");
+		expect(result?.systemPrompt).not.toContain("<pix-prompts-claude-md>");
+	});
+
+	it("is idempotent on retry — does not double-inject its own tag", async () => {
+		writeFileSync(join(dir, "GEMINI.md"), "gemini rules");
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		const first = await getHandler()({ systemPrompt: "BASE" });
+		const second = await getHandler()({ systemPrompt: first?.systemPrompt });
+
+		// Second pass finds its own tag already present → nothing new.
+		expect(second).toBeUndefined();
+		const occurrences = (first?.systemPrompt ?? "").split("<pix-prompts-gemini-md>").length - 1;
+		expect(occurrences).toBe(1);
+	});
+
+	it("renders a byte-identical prompt on consecutive turns (cache prefix stays stable)", async () => {
+		writeFileSync(join(dir, "GEMINI.md"), "gemini rules");
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		// Pi re-renders the base prompt each run, so each turn starts from the same input.
+		const turn1 = await getHandler()({ systemPrompt: "BASE" });
+		const turn2 = await getHandler()({ systemPrompt: "BASE" });
+		expect(turn2?.systemPrompt).toBe(turn1?.systemPrompt as string);
+	});
+
+	it("truncates oversized repo directive files at the byte cap", async () => {
+		writeFileSync(join(dir, "GEMINI.md"), "x".repeat(20 * 1024));
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		const result = await getHandler()({ systemPrompt: "BASE" });
+
+		expect(result?.systemPrompt).toContain("[pix-prompts: truncated at 16384 bytes]");
+		// Injected block must not carry the full 20KB.
+		const block = result?.systemPrompt?.split("<pix-prompts-gemini-md>")[1] ?? "";
+		expect(block.length).toBeLessThan(17 * 1024);
+	});
+
+	it("instructs the agent to offer isolated dependency installation", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		const result = await getHandler()({ systemPrompt: "BASE" });
+
+		expect(result?.systemPrompt).toContain(
+			"ask unless the user already authorized that installation",
+		);
+		expect(result?.systemPrompt).toContain(
+			"Prefer a user- or project-scoped installation over system changes",
+		);
+	});
+
+	it("injects context-aware permission with safety boundaries and proportionate process", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+
+		for (const rule of [
+			"a clear request authorizes the named action and the necessary steps within its scope",
+			"Do not request the same approval twice",
+			"Ask before acting if approval is absent or the effect exceeds the understood scope",
+			"Follow any stricter platform or repo confirmation rule",
+			"Never bypass a tool approval gate",
+			"using the whole conversation, not just the latest sentence",
+			"inspect its relevant conventions before choosing changes",
+			"Resolve short follow-ups from context and inspect available evidence before asking",
+			"Make routine implementation decisions yourself",
+			"only when a remaining uncertainty materially changes the goal, scope, cost, or safety",
+			"Do not invent a task when context provides none",
+			"successful tool calls alone do not establish completion",
+			"even when no tool approval gate is present",
+			"own the requested change and its direct effects",
+			"do not repair them without permission",
+			"Do not require a suggestion in every reply",
+			"ask before expanding the scope",
+			"Use only the steps that reduce risk or help finish the task",
+			"Use an available fallback if the preferred tool fails or is absent",
+			"If `tool_search` is available and no loaded tool clearly fits, search first",
+			"Reuse a known tool without another search",
+			"If discovery finds no suitable tool, use bash and state the reason briefly",
+			"An explicit shell request needs no discovery",
+		]) {
+			expect(result?.systemPrompt).toContain(rule);
+		}
+	});
+
+	it("injects compact multilingual style rules with clarity and safety guards", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({ systemPrompt: "BASE" });
+		const sop = readFileSync(resolveOwnSopMd(), "utf8");
+		const style = sop.split("## 6. Communication\n")[1]?.split("## 7. Code Style")[0];
+
+		expect(style).toBeDefined();
+		expect(style?.length).toBeLessThanOrEqual(900);
+		for (const rule of [
+			"STE100-inspired, not strict STE100",
+			"Reply in the user's language unless asked otherwise",
+			"natural grammar and punctuation",
+			"Keep standard English technical terms as-is",
+			"Explain fully when asked",
+			"Clarity beats brevity",
+			"facts, numbers, units, conditions, scope, code, identifiers, commands, and error strings",
+			"Style never overrides safety or approval rules",
+		]) {
+			expect(style).toContain(rule);
+			expect(result?.systemPrompt).toContain(rule);
+		}
+	});
+
+	it("bundled SOP names only core Pi tools; opt-in tools are found by capability", () => {
+		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
+		// Every backticked snake_case identifier must be a core Pi tool or a host tag.
+		const core = new Set(["tool_search", "available_skills", "API_KEY"]);
+		const named = [...sop.matchAll(/`<?([a-z]+_[a-z_]+|[A-Z]+_[A-Z_]+)/g)].map((m) => m[1] ?? "");
+		expect(named.filter((n) => !core.has(n))).toEqual([]);
+	});
+
+	it("rewrites pi's bash-first hints so SOP §2 Bash check governs ls/find/grep", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+		const result = await getHandler()({
+			systemPrompt:
+				"<tools>\n- bash: Execute bash commands (ls, grep, find, etc.)\n</tools>\n<rules>\n- Use bash for file operations like ls, rg, find\n- Be concise\n</rules>",
+		});
+		expect(result?.systemPrompt).toMatch(
+			/<tools>\n- bash: Execute shell commands \(VCS, builds, tests, CLIs\) — last resort[^\n]*\n<\/tools>\n<rules>\n- Be concise\n<\/rules>/,
+		);
+		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
+		for (const row of [
+			"| `ls`, `tree` | `ls` |",
+			"| `find`, `fd` | `find` |",
+			"`tool_search` by the capability",
+		]) {
+			expect(sop).toContain(row);
+		}
+		expect(sop).toContain("This table overrides any host rule");
+	});
+
+	it("replaces pi's default identity line with generic version", async () => {
+		const { pi, getHandler } = fakePi();
+		registerPrompts(pi);
+
+		const piDefault =
+			"You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.";
+		const result = await getHandler()({ systemPrompt: piDefault });
+
+		// Should replace the restrictive identity line
+		expect(result?.systemPrompt).not.toContain(
+			"You are an expert coding assistant operating inside pi",
+		);
+		expect(result?.systemPrompt).toContain("You are Pix Coding Agent");
+	});
+});

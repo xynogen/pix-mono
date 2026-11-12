@@ -9,10 +9,7 @@ import {
 	sliceBatchTargets,
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
-import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
-import { fileIcon } from "@xynogen/pix-pretty/icons";
-import { renderFileContent } from "@xynogen/pix-pretty/renderers";
 import type {
 	PiPrettyApi,
 	ReadParams,
@@ -23,27 +20,20 @@ import type {
 } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
-	dotJoin,
-	fadeRulePaint,
 	fillToolBackground,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
-	humanSize,
 	isImageContent,
 	isTextContent,
 	normalizeLineEndings,
-	renderCollapsed,
-	renderDimPreview,
 	renderTitle,
 	renderToolError,
-	ruleFrame,
 	setResultDetails,
 	unframeToolResult,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { createHash } from "@xynogen/pix-runtime/crypto";
 import { DEFAULT_READ_LIMIT, readText } from "@xynogen/pix-runtime/files";
 import { access, constants, readdir, readFile } from "@xynogen/pix-runtime/fs";
 import {
@@ -53,6 +43,15 @@ import {
 	type ReadToolInput,
 	type ReadToolOptions,
 } from "@xynogen/pix-runtime/host";
+import {
+	collapsedRow,
+	type ReadBatchDetails,
+	type ReadImageDetails,
+	type ReadItem,
+	renderBatch,
+	renderFile,
+	renderImage,
+} from "./render.ts";
 
 export { DEFAULT_READ_LIMIT } from "@xynogen/pix-runtime/files";
 
@@ -61,24 +60,7 @@ const LINE_NOUNS = ["line", "lines"] as const;
 /** ReadParams plus the optional batch `paths` array (added to the schema at runtime). */
 type ReadBatchParams = ReadParams & { paths?: string[] };
 
-type ReadFileDetails = {
-	_type: "readFile";
-	filePath: string;
-	content: string;
-	offset: number;
-	lineCount: number;
-	modelContent?: string;
-	notice?: string;
-};
-type ReadImageDetails = {
-	_type: "readImage";
-	filePath: string;
-	data: string;
-	mimeType: string;
-};
-type ReadErrorDetails = { _type: "readError"; filePath: string; message: string };
-type ReadItem = ReadFileDetails | ReadImageDetails | ReadErrorDetails;
-type ReadBatchDetails = { _type: "readBatch"; items: ReadItem[]; index: string };
+type ReadDetails = ReadItem | ReadBatchDetails;
 
 /** Levenshtein distance between two short names. */
 function editDistance(a: string, b: string): number {
@@ -387,40 +369,10 @@ export function registerReadTool(
 			}
 
 			// Auto-collapse: show summary line after delay
+			const details = d as ReadDetails | undefined;
 			const cs = renderCtx.state as CollapseState;
 			if (!isPartial && tickCollapse("read", cs, renderCtx.invalidate, renderCtx.expanded)) {
-				if (renderCtx.isError) {
-					text.setText(
-						renderCollapsed(theme, "read", sp(String(d?.filePath ?? "")), "failed", "error"),
-					);
-				} else if (d?._type === "readBatch") {
-					// SAFETY: _type discriminant is "readBatch", set only where we build ReadBatchDetails.
-					const batch = d as ReadBatchDetails;
-					text.setText(
-						renderCollapsed(
-							theme,
-							"read",
-							formatCallTargets(batch.items.map((item) => sp(item.filePath))),
-							`${batch.items.length} files`,
-						),
-					);
-				} else if (d?._type === "readFile") {
-					text.setText(
-						renderCollapsed(theme, "read", sp(String(d.filePath ?? "")), `${d.lineCount} lines`),
-					);
-				} else if (d?._type === "readImage") {
-					const byteSize = Math.ceil(((d.data as string).length * 3) / 4);
-					text.setText(
-						renderCollapsed(
-							theme,
-							"read",
-							sp(String(d.filePath ?? "")),
-							dotJoin([String(d.mimeType ?? "image"), humanSize(byteSize)]),
-						),
-					);
-				} else {
-					text.setText(renderCollapsed(theme, "read", "", "done"));
-				}
+				text.setText(collapsedRow(details, renderCtx.isError, theme, sp));
 				return text;
 			}
 
@@ -429,163 +381,16 @@ export function registerReadTool(
 				return completed();
 			}
 
-			if (d?._type === "readBatch") {
-				// SAFETY: _type discriminant is "readBatch", set only where we build ReadBatchDetails.
-				const batch = d as ReadBatchDetails;
-				const key = JSON.stringify([
-					batch,
-					renderCtx.expanded,
-					isPartial,
-					process.stdout.columns,
-					...[
-						"syntaxKeyword",
-						"syntaxFunction",
-						"syntaxVariable",
-						"syntaxString",
-						"syntaxNumber",
-						"syntaxType",
-						"syntaxOperator",
-						"syntaxPunctuation",
-						"syntaxComment",
-						"dim",
-						"muted",
-					].map((role) => theme.fg(role, "sample")),
-				]);
-				if (renderCtx.state._rbk !== key) {
-					renderCtx.state._rbk = key;
-					renderCtx.state._rbt = undefined;
-					Promise.all(
-						batch.items.map(async (item) => {
-							const header = `${BODY_PAD}${fileIcon(item.filePath, theme)}${theme.fg("dim", item.filePath)}`;
-							const body =
-								item._type === "readFile"
-									? await renderFileContent(
-											item.content,
-											item.filePath,
-											item.offset,
-											renderCtx.expanded ? item.lineCount : MAX_PREVIEW_LINES,
-											theme,
-											{ wrapLongLines: renderCtx.expanded, ctx: renderCtx },
-										)
-									: renderDimPreview(
-											item._type === "readError" ? item.message : item.mimeType,
-											theme,
-											{ ctx: renderCtx },
-										);
-							return `${header}\n${body}`;
-						}),
-					)
-						.then((sections) => {
-							if (renderCtx.state._rbk !== key) return;
-							renderCtx.state._rbt = fillToolBackground(
-								[`${BODY_PAD}${theme.fg("dim", batch.index)}`, ...sections].join("\n\n"),
-							);
-							renderCtx.invalidate();
-						})
-						.catch((error: unknown) => {
-							if (renderCtx.state._rbk !== key) return;
-							renderCtx.state._rbt = renderToolError(getErrorMessage(error), theme);
-							renderCtx.invalidate();
-						});
-				}
-				const full = batch.items
-					.map((item) =>
-						item._type === "readError"
-							? `===== ${item.filePath} =====\n${item.message}`
-							: item._type === "readImage"
-								? `===== ${item.filePath} =====\n${item.mimeType}`
-								: `===== ${item.filePath} =====\n${item.content}`,
-					)
-					.join("\n\n");
-				text.setText(
-					renderCtx.state._rbt ??
-						renderDimPreview(full || batch.index, theme, {
-							header: batch.index,
-							ctx: renderCtx,
-							...(renderCtx.expanded ? { maxLines: Number.MAX_SAFE_INTEGER } : {}),
-						}),
-				);
+			if (details?._type === "readBatch") {
+				renderBatch(details, text, theme, renderCtx, isPartial);
 				return isPartial ? text : completed();
 			}
-
-			if (d?._type === "readImage") {
-				const byteSize = Math.ceil(((d.data as string).length * 3) / 4);
-				text.setText(
-					fillToolBackground(
-						`${BODY_PAD}${fileIcon(d.filePath as string, theme)}${theme.fg("dim", dotJoin([String(d.mimeType ?? "image"), humanSize(byteSize)]))}`,
-					),
-				);
+			if (details?._type === "readImage") {
+				renderImage(details, text, theme);
 				return isPartial ? text : completed();
 			}
-
-			if (d?._type === "readFile" && d.content) {
-				const themeKey = [
-					"muted",
-					"success",
-					"syntaxComment",
-					"syntaxKeyword",
-					"syntaxFunction",
-					"syntaxVariable",
-					"syntaxString",
-					"syntaxNumber",
-					"syntaxType",
-					"syntaxOperator",
-					"syntaxPunctuation",
-				]
-					.map((role) => theme.fg(role, "sample"))
-					.join("|");
-				const contentKey = createHash("sha256")
-					.update(d.content as string)
-					.digest("hex");
-				const key = JSON.stringify([
-					d.filePath,
-					d.offset,
-					d.lineCount,
-					process.stdout.columns ?? 80,
-					renderCtx.expanded,
-					isPartial,
-					themeKey,
-					contentKey,
-				]);
-				// One framed shape; rules follow status color. The line count lives in the
-				// collapsed row — no floating "N lines" header above the frame.
-				const paint = fadeRulePaint(theme, "success");
-				if (renderCtx.state._rk !== key) {
-					renderCtx.state._rk = key;
-					const loading = `${BODY_PAD}${theme.fg("muted", "reading…")}`;
-					renderCtx.state._rt = fillToolBackground(
-						(isPartial ? [loading] : ruleFrame([loading], [], undefined, paint)).join("\n"),
-					);
-
-					const maxShow = renderCtx.expanded ? (d.lineCount as number) : MAX_PREVIEW_LINES;
-					renderFileContent(
-						d.content as string,
-						d.filePath as string,
-						d.offset as number,
-						maxShow,
-						theme,
-						// Expanded view wraps long lines so no source tail is hidden behind ›.
-						{ wrapLongLines: renderCtx.expanded, ctx: renderCtx },
-					)
-						.then((rendered: string) => {
-							if (renderCtx.state._rk !== key) return;
-							const lines = rendered.split("\n");
-							renderCtx.state._rt = fillToolBackground(
-								(isPartial ? lines : ruleFrame(lines, [], undefined, paint)).join("\n"),
-							);
-							renderCtx.invalidate();
-						})
-						.catch(() => {});
-				}
-				text.setText(
-					renderCtx.state._rt ??
-						fillToolBackground(
-							(isPartial
-								? [`${BODY_PAD}${theme.fg("muted", "reading…")}`]
-								: ruleFrame([`${BODY_PAD}${theme.fg("muted", "reading…")}`], [], undefined, paint)
-							).join("\n"),
-						),
-				);
+			if (details?._type === "readFile" && details.content) {
+				renderFile(details, text, theme, renderCtx, isPartial);
 				return text;
 			}
 

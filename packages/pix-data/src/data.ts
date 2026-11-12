@@ -19,11 +19,10 @@
  *   import { lookupModelsDev, lookupBenchmark } from "./data.ts";
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
+import { existsSync, readFile, readFileSync } from "@xynogen/pix-runtime/fs";
+import { ioTimeoutMs, ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 import { cacheDir } from "@xynogen/pix-runtime/paths";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -219,7 +218,7 @@ async function defaultFetchRaw(
 	headers: Record<string, string> | undefined,
 	timeoutMs: number,
 ): Promise<unknown> {
-	const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), headers });
+	const response = await fetch(url, { signal: ioTimeoutSignal(undefined, timeoutMs), headers });
 	if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
 	return response.json();
 }

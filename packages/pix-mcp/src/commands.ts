@@ -609,7 +609,7 @@ export async function openMcpPanel(
 		const preview = previewRemoveServerEntry(prov.path, wantsDelete);
 		const th = ctx.ui.theme;
 		const diffBody = colorizeConfigDiff(preview.diffText, th);
-		const result = await showOverlay(ctx.ui as Parameters<typeof showOverlay>[0], {
+		const result = await showOverlay(ctx.ui, {
 			mode: "confirm",
 			icon: icon("mcp"),
 			title: `Delete MCP Server "${wantsDelete}"?`,

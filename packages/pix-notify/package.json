@@ -12,7 +12,6 @@
 	},
 	"files": [
 		"src",
-		"!src/**/*.test.*",
 		"README.md",
 		"LICENSE"
 	],

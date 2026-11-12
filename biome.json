@@ -68,9 +68,21 @@
 	},
 	"overrides": [
 		{
+			"includes": ["packages/*/src/**/*.ts"],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noExcessiveLinesPerFunction": {
+							"level": "error",
+							"options": { "maxLines": 370, "skipBlankLines": true }
+						}
+					}
+				}
+			}
+		},
+		{
 			"includes": [
 				"packages/*/src/**/*.ts",
-				"!**/*.test.ts",
 				"!**/test-utils.ts",
 				"!packages/pix-runtime/**",
 				"!packages/pix-pretty/**",

@@ -13,7 +13,6 @@
 	},
 	"files": [
 		"src",
-		"!src/**/*.test.*",
 		"SOP.md",
 		"README.md",
 		"LICENSE"

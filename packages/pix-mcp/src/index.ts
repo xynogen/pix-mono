@@ -1,4 +1,3 @@
-import { StringEnum } from "@xynogen/pix-data/ai";
 import { showTransientError, showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { getErrorMessage, pluralize } from "@xynogen/pix-pretty/utils";
 import { registerPackageSettings } from "@xynogen/pix-runtime";
@@ -10,14 +9,7 @@ import type {
 } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
-import {
-	logoutServer,
-	openMcpPanel,
-	openMcpSetup,
-	reconnectServers,
-	showStatus,
-	showTools,
-} from "./commands.ts";
+import { openMcpPanel } from "./commands.ts";
 import { loadMcpConfig, takeUnsupportedConfigNotes } from "./config.ts";
 import {
 	buildProxyDescription,
@@ -32,19 +24,10 @@ import { toolErrorOverride } from "./error-signal.ts";
 import { flushMetadataCache, initializeMcp, updateStatusBar } from "./init.ts";
 import { logger, routeSdkDiagnostics } from "./logger.ts";
 import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
+import { runMcpCommand } from "./mcp-command.ts";
 import { loadMetadataCache } from "./metadata-cache.ts";
 import { patchOutBuiltinMcp } from "./patch-builtin.ts";
-import {
-	executeAuthComplete,
-	executeAuthStart,
-	executeCall,
-	executeConnect,
-	executeDescribe,
-	executeList,
-	executeSearch,
-	executeStatus,
-	executeUiMessages,
-} from "./proxy-modes.ts";
+import { type ProxyParams, parseProxyArgs, proxyParameters, runProxyMode } from "./proxy-tool.ts";
 import type { McpExtensionState } from "./state.ts";
 import { findToolByName } from "./tool-metadata.ts";
 import {
@@ -55,6 +38,60 @@ import {
 } from "./tool-result-renderer.ts";
 import type { DirectToolSpec } from "./types.ts";
 import { getConfigPathFromArgv, normalizeDirectToolInputSchema, truncateAtWord } from "./utils.ts";
+
+// Raw console output clogs the TUI prompt. Batch skips into one transient warning.
+// The transient slot shows the newest message only, so both notes share one line.
+function reportSkippedDirectTools(ctx: ExtensionContext): void {
+	const skipped = takeSkippedDirectTools();
+	const ignored = takeUnsupportedConfigNotes();
+	const parts = [
+		...(skipped.length
+			? [
+					`skipped ${pluralize(skipped.length, "direct tool")} (name collision): ${skipped.join(", ")}`,
+				]
+			: []),
+		...(ignored.length ? [`ignored mcp.json values: ${ignored.join(", ")}`] : []),
+	];
+	if (parts.length === 0) return;
+	const message = `MCP: ${parts.join("; ")}`;
+	if (ctx.hasUI) showTransientMessage(ctx.ui, message, "warning");
+	else console.warn(message);
+}
+
+async function shutdownState(
+	currentState: McpExtensionState | null,
+	reason: string,
+): Promise<void> {
+	if (!currentState) return;
+
+	if (currentState.uiServer) {
+		currentState.uiServer.close(reason);
+		currentState.uiServer = null;
+	}
+
+	let flushError: unknown;
+	try {
+		flushMetadataCache(currentState);
+	} catch (error) {
+		flushError = error;
+	}
+
+	try {
+		await currentState.lifecycle.gracefulShutdown();
+	} catch (error) {
+		if (flushError) {
+			logger.warn(
+				`MCP: graceful shutdown failed after metadata flush error: ${getErrorMessage(error)}`,
+			);
+		} else {
+			throw error;
+		}
+	}
+
+	if (flushError) {
+		throw flushError;
+	}
+}
 
 export default function mcpAdapter(pi: ExtensionAPI) {
 	once(pi, "pix-mcp", () => register(pi));
@@ -73,41 +110,6 @@ function register(pi: ExtensionAPI) {
 	let lifecycleGeneration = 0;
 	let removeLogHandler: (() => void) | undefined;
 	let restoreSdkDiagnostics: (() => void) | undefined;
-
-	async function shutdownState(
-		currentState: McpExtensionState | null,
-		reason: string,
-	): Promise<void> {
-		if (!currentState) return;
-
-		if (currentState.uiServer) {
-			currentState.uiServer.close(reason);
-			currentState.uiServer = null;
-		}
-
-		let flushError: unknown;
-		try {
-			flushMetadataCache(currentState);
-		} catch (error) {
-			flushError = error;
-		}
-
-		try {
-			await currentState.lifecycle.gracefulShutdown();
-		} catch (error) {
-			if (flushError) {
-				logger.warn(
-					`MCP: graceful shutdown failed after metadata flush error: ${getErrorMessage(error)}`,
-				);
-			} else {
-				throw error;
-			}
-		}
-
-		if (flushError) {
-			throw flushError;
-		}
-	}
 
 	const earlyConfigPath = getConfigPathFromArgv();
 	const earlyConfig = loadMcpConfig(earlyConfigPath);
@@ -229,25 +231,6 @@ function register(pi: ExtensionAPI) {
 					),
 			resolveCodemodeTools(currentState.config, loadMetadataCache()),
 		);
-	}
-
-	// Raw console output clogs the TUI prompt. Batch skips into one transient warning.
-	// The transient slot shows the newest message only, so both notes share one line.
-	function reportSkippedDirectTools(ctx: ExtensionContext): void {
-		const skipped = takeSkippedDirectTools();
-		const ignored = takeUnsupportedConfigNotes();
-		const parts = [
-			...(skipped.length
-				? [
-						`skipped ${pluralize(skipped.length, "direct tool")} (name collision): ${skipped.join(", ")}`,
-					]
-				: []),
-			...(ignored.length ? [`ignored mcp.json values: ${ignored.join(", ")}`] : []),
-		];
-		if (parts.length === 0) return;
-		const message = `MCP: ${parts.join("; ")}`;
-		if (ctx.hasUI) showTransientMessage(ctx.ui, message, "warning");
-		else console.warn(message);
 	}
 
 	const getPiTools = (): ToolInfo[] => pi.getAllTools();
@@ -386,48 +369,7 @@ function register(pi: ExtensionAPI) {
 				if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
 				return;
 			}
-
-			const parts = args?.trim()?.split(/\s+/) ?? [];
-			const subcommand = parts[0] ?? "";
-			const targetServer = parts[1];
-			const rest = parts.slice(1).join(" ");
-
-			switch (subcommand) {
-				case "reconnect":
-					await reconnectServers(state, ctx, targetServer);
-					break;
-				case "tools":
-					await showTools(state, ctx);
-					break;
-				case "setup": {
-					const result = await openMcpSetup(state, pi, ctx, earlyConfigPath, "setup");
-					if (result?.configChanged) {
-						await ctx.reload();
-						return;
-					}
-					break;
-				}
-				case "logout": {
-					const serverName = rest;
-					if (!serverName) {
-						if (ctx.hasUI) ctx.ui.notify("Usage: /mcp logout <server>", "error");
-						return;
-					}
-					await logoutServer(serverName, state, ctx);
-					break;
-				}
-				default:
-					if (ctx.hasUI) {
-						const result = await openMcpPanel(state, pi, ctx, earlyConfigPath);
-						if (result?.configChanged) {
-							await ctx.reload();
-							return;
-						}
-					} else {
-						await showStatus(state, ctx);
-					}
-					break;
-			}
+			await runMcpCommand(args, state, pi, ctx, earlyConfigPath);
 		},
 	});
 
@@ -452,92 +394,16 @@ function register(pi: ExtensionAPI) {
 				}
 				return renderMcpProxyToolCall(args, theme, context);
 			},
-			parameters: Type.Object({
-				tool: Type.Optional(
-					Type.String({ description: "Optional. Tool to call. Omit unless calling a tool." }),
-				),
-				args: Type.Optional(
-					Type.String({
-						description:
-							"Optional. Arguments as a JSON object string, for tool/connect/auth-complete.",
-					}),
-				),
-				connect: Type.Optional(
-					Type.String({
-						description:
-							'Optional. Server to connect or refresh. Omit unless reconnecting. Ephemeral env via args, e.g. args: \'{"env":{"API_KEY":"sk-..."}}\' — never persisted.',
-					}),
-				),
-				describe: Type.Optional(
-					Type.String({ description: "Optional. Tool whose schema to show. Omit otherwise." }),
-				),
-				search: Type.Optional(
-					Type.String({ description: "Optional. Find tools by name or description." }),
-				),
-				server: Type.Optional(
-					Type.String({
-						description: "Optional. Alone: list this server's tools. With tool/search: filter.",
-					}),
-				),
-				limit: Type.Optional(
-					Type.Number({ description: "Optional. Max discovery results (default 12, max 50)." }),
-				),
-				includeSchemas: Type.Optional(
-					Type.Boolean({ description: "Optional. Include schemas in search (default false)." }),
-				),
-				regex: Type.Optional(
-					Type.Boolean({ description: "Optional. Treat search as regex (default false)." }),
-				),
-				action: Type.Optional(
-					StringEnum(["auth-start", "auth-complete", "ui-messages"] as const, {
-						description:
-							"Optional. Omit for normal use. auth-start/auth-complete: OAuth login (needs server). ui-messages: read results after an MCP UI window closed.",
-					}),
-				),
-			}),
+			parameters: proxyParameters,
 			renderResult: renderMcpToolResult,
 			async execute(
 				_toolCallId: string,
-				params: {
-					tool?: string;
-					args?: string;
-					connect?: string;
-					describe?: string;
-					search?: string;
-					regex?: boolean;
-					includeSchemas?: boolean;
-					server?: string;
-					limit?: number;
-					action?: string;
-				},
+				params: ProxyParams,
 				signal: AbortSignal | undefined,
 				_onUpdate: AgentToolUpdateCallback<Record<string, unknown>> | undefined,
 				_ctx: ExtensionContext,
 			) {
-				let parsedArgs: Record<string, unknown> | undefined;
-				if (params.args) {
-					try {
-						parsedArgs = JSON.parse(params.args);
-						if (
-							typeof parsedArgs !== "object" ||
-							parsedArgs === null ||
-							Array.isArray(parsedArgs)
-						) {
-							const gotType = Array.isArray(parsedArgs)
-								? "array"
-								: parsedArgs === null
-									? "null"
-									: typeof parsedArgs;
-							throw new Error(`Invalid args: expected a JSON object, got ${gotType}`);
-						}
-					} catch (error) {
-						if (error instanceof SyntaxError) {
-							throw new Error(`Invalid args JSON: ${error.message}`, { cause: error });
-						}
-						throw error;
-					}
-				}
-
+				const parsedArgs = parseProxyArgs(params.args);
 				if (!state && initPromise) {
 					try {
 						state = await initPromise;
@@ -555,86 +421,11 @@ function register(pi: ExtensionAPI) {
 						details: { error: "not_initialized" },
 					};
 				}
-
-				if (params.action === "auth-start") {
-					if (!params.server) {
-						return {
-							content: [
-								{
-									type: "text" as const,
-									text: 'auth-start requires `server`. Example: mcp({ action: "auth-start", server: "linear-server" })',
-								},
-							],
-							details: { mode: "auth-start", error: "missing_server" },
-						};
-					}
-					return executeAuthStart(state, params.server);
-				}
-				if (params.action === "auth-complete") {
-					if (!params.server) {
-						return {
-							content: [{ type: "text" as const, text: "auth-complete requires `server`." }],
-							details: { mode: "auth-complete", error: "missing_server" },
-						};
-					}
-					const input = parsedArgs?.redirectUrl ?? parsedArgs?.code ?? parsedArgs?.input;
-					if (typeof input !== "string" || input.trim().length === 0) {
-						return {
-							content: [
-								{
-									type: "text" as const,
-									text: "auth-complete requires args with `redirectUrl`, `code`, or `input`.",
-								},
-							],
-							details: { mode: "auth-complete", error: "missing_input" },
-						};
-					}
-					return executeAuthComplete(state, params.server, input);
-				}
-				if (params.tool) {
-					return executeCall(state, params.tool, parsedArgs, params.server, getPiTools, signal);
-				}
-				if (params.connect) {
-					const envRaw = parsedArgs?.env;
-					if (
-						envRaw !== undefined &&
-						(typeof envRaw !== "object" ||
-							envRaw === null ||
-							Array.isArray(envRaw) ||
-							Object.values(envRaw).some((v) => typeof v !== "string"))
-					) {
-						throw new Error(
-							'Invalid env: expected a JSON object of strings, e.g. args: \'{"env":{"API_KEY":"sk-..."}}\'',
-						);
-					}
-					return executeConnect(
-						state,
-						params.connect,
-						signal,
-						envRaw as Record<string, string> | undefined,
-					);
-				}
-				if (params.describe) {
-					return executeDescribe(state, params.describe);
-				}
-				if (params.search) {
-					return executeSearch(
-						state,
-						params.search,
-						params.regex,
-						params.server,
-						params.includeSchemas,
-						params.limit ?? defaultDiscoveryLimit,
-					);
-				}
-				if (params.server) {
-					return executeList(state, params.server, params.limit ?? defaultDiscoveryLimit);
-				}
-				// Weak models fill every optional field; a stray action must not shadow a real mode.
-				if (params.action === "ui-messages") {
-					return executeUiMessages(state);
-				}
-				return executeStatus(state);
+				return runProxyMode(state, params, parsedArgs, {
+					signal,
+					getPiTools,
+					defaultDiscoveryLimit,
+				});
 			},
 		});
 	}

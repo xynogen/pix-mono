@@ -46,7 +46,11 @@ import {
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFile, stat } from "@xynogen/pix-runtime/fs";
 import { anchor, decodeLines, initHashline, type SourceLine } from "@xynogen/pix-runtime/hashline";
-import type { ExtensionContext, GrepToolInput } from "@xynogen/pix-runtime/host";
+import type {
+	AgentToolUpdateCallback,
+	ExtensionContext,
+	GrepToolInput,
+} from "@xynogen/pix-runtime/host";
 
 export const DEFAULT_GREP_LIMIT = 30;
 
@@ -146,7 +150,7 @@ export function registerGrepTool(
 			tid: string,
 			params: GrepBatchParams,
 			sig: AbortSignal | undefined,
-			upd: unknown,
+			upd: AgentToolUpdateCallback<unknown> | undefined,
 			toolCtx: ExtensionContext,
 		) {
 			// Search one pattern (FFF-accelerated, SDK fallback) → structured grep result.
@@ -220,7 +224,7 @@ export function registerGrepTool(
 				}
 
 				// SDK fallback
-				const result = await origGrep.execute(callId, effectiveParams, sig, upd as never, toolCtx);
+				const result = await origGrep.execute(callId, effectiveParams, sig, upd, toolCtx);
 				const raw = normalizeLineEndings(getTextContent(result));
 				const textContent = await anchorGrepText(
 					raw,

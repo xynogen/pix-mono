@@ -63,7 +63,7 @@ const rawColors: Record<string, string> = {
 	"220;180;80": "raw.yellow",
 	"100;140;220": "raw.blue",
 	"139;148;158": "raw.muted",
-	// Evidence: pix-display/test/code-blocks.test.ts preserves this raw syntax string color.
+	// Evidence: pix-display/tests/code-blocks.test.ts preserves this raw syntax string color.
 	"206;145;120": "raw.string",
 	"40;40;40": "diff.stripe",
 	"18;42;28": "diff.add",

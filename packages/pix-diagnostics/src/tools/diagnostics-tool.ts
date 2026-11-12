@@ -22,7 +22,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
-import { truncateOutput } from "@xynogen/pix-runtime/utf8";
+import { truncateOutput } from "@xynogen/pix-runtime/output";
 import { Type } from "typebox";
 import type { DiagnosticRequest, LspManager } from "../lsp/manager.ts";
 import type { DiagnosticStore } from "../store.ts";

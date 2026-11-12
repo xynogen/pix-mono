@@ -29,11 +29,6 @@
 		"noUncheckedIndexedAccess": true,
 		"types": ["bun"]
 	},
-	"include": [
-		"packages/*/src/**/*.ts",
-		"packages/*/test/**/*.ts",
-		"packages/*/tests/**/*.ts",
-		"scripts/**/*.ts"
-	],
+	"include": ["packages/*/src/**/*.ts", "packages/*/tests/**/*.ts", "scripts/**/*.ts"],
 	"exclude": ["**/node_modules/**", "**/dist/**", "packages/pix-mcp/**"]
 }

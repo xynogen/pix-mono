@@ -111,7 +111,7 @@ export async function promptPathDecision(
 					},
 				];
 
-	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
+	const result: OverlayResult = await showOverlay(ui, {
 		state,
 		signal,
 		mode: "confirm",
@@ -214,7 +214,7 @@ export async function promptMergedGateDecision(
 				},
 			];
 
-	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
+	const result: OverlayResult = await showOverlay(ui, {
 		state,
 		mode: "confirm",
 		title,
@@ -273,7 +273,7 @@ export async function promptGateDecision(
 					},
 				];
 
-	const result: OverlayResult = await showOverlay(ui as Parameters<typeof showOverlay>[0], {
+	const result: OverlayResult = await showOverlay(ui, {
 		state,
 		mode: "confirm",
 		icon,

@@ -12,37 +12,21 @@
  * pix-gate for command gating on proc, same as bash.
  */
 
-import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
-import {
-	stripTerminalSequences,
-	Text,
-	truncateToWidth,
-	visibleWidth,
-} from "@xynogen/pix-pretty/tui";
-import {
-	BODY_PAD,
-	expandHint,
-	frameToolResult,
-	getErrorMessage,
-	hideCollapsedToolCall,
-	pluralize,
-	renderDimPreview,
-	renderRow,
-	renderTitle,
-	rule,
-	widgetTitle,
-} from "@xynogen/pix-pretty/utils";
-import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { truncateToWidth, visibleWidth } from "@xynogen/pix-pretty/tui";
+import { getErrorMessage, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
+import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
 import { type FSWatcher, watch } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
-import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine, statusWord } from "./format.ts";
+import { fail, type ProcParams, runAction, textResult } from "./actions.ts";
+import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine } from "./format.ts";
 import { PROC_DIR, ProcManager } from "./manager.ts";
 import { MODAL_LOG_LINES, ProcModal, type ProcModalResult } from "./modal.ts";
+import { renderProcCall, renderProcResult } from "./render.ts";
 import { processRow } from "./widget.ts";
 
 const WIDGET_KEY = "pix-proc:procs";
@@ -50,46 +34,6 @@ const POLL_MS = 1000;
 
 const ActionSchema = Type.Enum(["start", "list", "logs", "stop", "rm"] as const, {
 	type: "string",
-});
-
-interface ProcResultDetails {
-	_type: "procResult";
-	action: string;
-	ok: boolean;
-	lines: string[];
-	error?: string;
-	handle?: string;
-	processes?: ProcMeta[];
-	output?: string[];
-	notes?: string[];
-	logPath?: string;
-}
-
-function textResult(details: ProcResultDetails) {
-	return {
-		content: [
-			{
-				type: "text" as const,
-				text: details.error ?? (details.lines.join("\n") || `${details.action} ok`),
-			},
-		],
-		details,
-		isError: !details.ok,
-	};
-}
-
-const ok = (action: string, ...lines: string[]): ProcResultDetails => ({
-	_type: "procResult",
-	action,
-	ok: true,
-	lines,
-});
-const fail = (action: string, error: string): ProcResultDetails => ({
-	_type: "procResult",
-	action,
-	ok: false,
-	lines: [],
-	error,
 });
 
 export default function registerRunner(pi: ExtensionAPI): void {
@@ -262,215 +206,20 @@ function register(pi: ExtensionAPI): void {
 				}),
 			),
 		}),
-		renderCall(args, theme, context) {
-			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
-				return new Text("", 0, 0);
-			const a = args as { action?: string; command?: string; handle?: string };
-			const target = a.command ?? a.handle ?? "";
-			if (!a.command)
-				return new Text(
-					`${renderTitle(theme, "proc", context, a.action)}${target ? `${theme.fg("muted", " · ")}${theme.fg("dim", target)}` : ""}`,
-					0,
-					0,
-				);
-			return commandPreview(
-				renderTitle(theme, "proc", context, a.action),
-				target,
-				a.command ? "bash" : undefined,
-				theme,
-				context.state,
-				context.invalidate,
-				context.expanded,
-				3,
-				context,
-			);
-		},
-		renderResult(result, options, theme, context) {
-			const details = result.details as ProcResultDetails | undefined;
-			const fallback = result.content
-				.flatMap((part) => (part.type === "text" ? [part.text] : []))
-				.join("\n");
-			const failed = context.isError || details?.ok === false;
-			const clean = (value: string) =>
-				stripTerminalSequences(value)
-					.replace(/[\x00-\x1f\x7f-\x9f]/g, " ")
-					.trim();
-			const title = details?.action ? `proc · ${details.action}` : "proc";
-			const target = clean(
-				details?.error ??
-					details?.handle ??
-					(details?.action === "list"
-						? pluralize(details.processes?.length ?? details.lines.length, "process", "processes")
-						: (details?.lines[0] ?? "")),
-			);
-			const meta = details?.output?.length ? pluralize(details.output.length, "line") : "";
-			const now = Date.now();
-			const collapsed =
-				!options.isPartial &&
-				tickCollapse("proc", context.state as CollapseState, context.invalidate, options.expanded);
-			const component = {
-				render(width: number): string[] {
-					const heading = options.isPartial
-						? `${renderTitle(theme, "proc", { ...context, executionStarted: true, isPartial: true }, details?.action)}${target ? ` ${theme.fg("dim", target)}` : ""}`
-						: renderRow(theme, title, target, meta, failed ? "error" : "success", width);
-					if (collapsed) return [heading];
-					const rows = [heading];
-					const processes = details?.processes ?? [];
-					const shown = options.expanded ? processes : processes.slice(0, 6);
-					for (const proc of shown) {
-						rows.push(`${BODY_PAD}${processRow(proc, now, Math.max(1, width - 3), theme)}`);
-						rows.push(
-							`${BODY_PAD}${theme.fg("muted", `${clean(proc.handle)} · pid ${proc.pid} · ${clean(proc.cwd)}${proc.foreign ? " · read-only" : ""}`)}`,
-						);
-						if (proc.logError) rows.push(`${BODY_PAD}${theme.fg("error", clean(proc.logError))}`);
-					}
-					const notes = details?.notes ?? [];
-					for (const note of notes)
-						rows.push(
-							`${BODY_PAD}${theme.fg(details?.action === "stop" || details?.action === "rm" ? "muted" : "warning", clean(note))}`,
-						);
-					if (details?.error) rows.push(`${BODY_PAD}${theme.fg("error", details.error)}`);
-					if (details?.logPath)
-						rows.push(`${BODY_PAD}${theme.fg("muted", `Full log · ${clean(details.logPath)}`)}`);
-					const output =
-						details?.output ??
-						(processes.length || notes.length || details?.error
-							? []
-							: (details?.lines ?? fallback.split("\n")));
-					if (output.length)
-						rows.push(
-							renderDimPreview(output.join("\n"), theme, {
-								maxLines: options.expanded ? output.length : 8,
-								ctx: context,
-							}),
-						);
-					if (processes.length > shown.length)
-						rows.push(
-							`${BODY_PAD}${theme.fg("muted", `… ${processes.length - shown.length} more processes `)}${expandHint(theme, context)}`,
-						);
-					return new Text(rows.join("\n"), 0, 0).render(width);
-				},
-				invalidate() {},
-			};
-			return options.isPartial || collapsed ? component : frameToolResult(component, theme, failed);
-		},
+		renderCall: (args, theme, context) => renderProcCall(args, theme, context),
+		renderResult: (result, options, theme, context) =>
+			renderProcResult(result, options, theme, context),
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			signal?.throwIfAborted();
-			const p = params as {
-				action: string;
-				command?: string;
-				handle?: string;
-				cwd?: string;
-				name?: string;
-				tail?: number;
-			};
+			const p = params as ProcParams;
 			ui ??= ctx.ui;
 			try {
-				if (p.action === "start") return textResult(await doStart(p, ctx));
-				if (p.action === "list") return textResult(doList());
-				if (p.action === "logs") return textResult(await doLogs(p));
-				if (p.action === "stop") return textResult(await doStop(p));
-				if (p.action === "rm") return textResult(doRm(p));
-				return textResult(fail(p.action, `unknown action ${p.action}`));
+				return textResult(await runAction(mgr, p, ctx.cwd, startPolling));
 			} catch (err) {
 				return textResult(fail(p.action, getErrorMessage(err)));
 			}
 		},
 	});
-
-	async function doStart(
-		p: { command?: string; cwd?: string; name?: string },
-		ctx: ExtensionContext,
-	): Promise<ProcResultDetails> {
-		if (!p.command?.trim()) return fail("start", "start requires a command");
-		const meta = mgr.start(p.command, p.cwd ?? ctx.cwd, p.name);
-		startPolling();
-		// Short wait window: first output, or exit, or 1s. Return status + first lines.
-		const start = Date.now();
-		while (Date.now() - start < 1000) {
-			await new Promise((r) => setTimeout(r, 100));
-			if (meta.status !== "running") break;
-			const line = await mgr.lastLine(meta.handle);
-			if (line) break;
-		}
-		const view = await mgr.logsSince(meta.handle);
-		const lines = [`${meta.handle} started — ${p.command} (pid ${meta.pid})`];
-		if (view?.lines.length) lines.push(...view.lines);
-		if (meta.status !== "running") {
-			lines.push(`${statusWord(meta)} in <1s — use bash for one-shot commands`);
-		}
-		return {
-			...ok("start", ...lines),
-			handle: meta.handle,
-			processes: [{ ...meta }],
-			output: view?.lines ?? [],
-			notes: meta.status !== "running" ? [lines.at(-1)!] : [],
-		};
-	}
-
-	function doList(): ProcResultDetails {
-		const all = [...mgr.list(), ...mgr.foreign()];
-		if (all.length === 0) return { ...ok("list", "no processes"), processes: [], output: [] };
-		return {
-			...ok("list", ...all.map((m) => statusLine(m, Date.now()))),
-			processes: all.map((m) => ({ ...m })),
-		};
-	}
-
-	async function doLogs(p: { handle?: string; tail?: number }): Promise<ProcResultDetails> {
-		if (!p.handle) return fail("logs", "logs requires a handle");
-		if (typeof p.tail === "number") {
-			const t = await mgr.logsTail(p.handle, p.tail);
-			if (!t) return fail("logs", `unknown handle ${p.handle}`);
-			const head = [`full log: ${t.logPath}`];
-			if (t.logError) head.push(`log stopped: ${t.logError} — process may still be running`);
-			else if (t.capped)
-				head.push("log capped at 50 MB — process still running, output no longer recorded");
-			return {
-				...ok("logs", ...head, ...(t.lines.length ? t.lines : ["(no output)"])),
-				handle: p.handle,
-				logPath: t.logPath,
-				notes: head.slice(1),
-				output: t.lines.length ? t.lines : ["(no output)"],
-			};
-		}
-		const view = await mgr.logsSince(p.handle);
-		if (!view) return fail("logs", `unknown handle ${p.handle}`);
-		const head = [`full log: ${view.logPath}`];
-		if (view.more > 0) head.push(`+${view.more} more, offset ${view.offset}`);
-		if (view.logError) head.push(`log stopped: ${view.logError} — process may still be running`);
-		else if (view.capped)
-			head.push("log capped at 50 MB — process still running, output no longer recorded");
-		return {
-			...ok("logs", ...head, ...(view.lines.length ? view.lines : ["(no new output)"])),
-			handle: p.handle,
-			logPath: view.logPath,
-			notes: head.slice(1),
-			output: view.lines.length ? view.lines : ["(no new output)"],
-		};
-	}
-
-	async function doStop(p: { handle?: string }): Promise<ProcResultDetails> {
-		if (!p.handle) return fail("stop", "stop requires a handle");
-		const r = await mgr.stop(p.handle);
-		return {
-			...(r.ok ? ok("stop", r.note) : fail("stop", r.note)),
-			handle: p.handle,
-			notes: r.ok ? [r.note] : [],
-			output: [],
-		};
-	}
-
-	function doRm(p: { handle?: string }): ProcResultDetails {
-		if (!p.handle) return fail("rm", "rm requires a handle");
-		const r = mgr.rm(p.handle);
-		return {
-			...(r.ok ? ok("rm", r.note) : fail("rm", r.note)),
-			handle: p.handle,
-			notes: r.ok ? [r.note] : [],
-			output: [],
-		};
-	}
 
 	// ── /proc user command — inspect + stop without the model ────────────────
 	pi.registerCommand("proc", {

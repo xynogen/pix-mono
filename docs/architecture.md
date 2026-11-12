@@ -96,8 +96,8 @@ packages/pix-ls/
   src/
     extension.ts   Pi entry: once() guard, host wiring, calls the registrar
     ls.ts          the tool: schema, execute, renderCall/renderResult
-    ls.test.ts     colocated test
     index.ts       public API (re-exports)
+  tests/           mirrors src/: ls.test.ts, ls.render.test.ts, __snapshots__/
 ```
 
 `package.json` essentials:
@@ -107,7 +107,7 @@ packages/pix-ls/
   "name": "@xynogen/pix-ls",
   "type": "module",
   "exports": { ".": "./src/index.ts", "./extension": "./src/extension.ts" },
-  "files": ["src", "!src/**/*.test.*", "README.md", "LICENSE"],
+  "files": ["src", "README.md", "LICENSE"],   // tests/ is never published
   "pi": { "extensions": ["src/extension.ts"] },
   "dependencies": { "@xynogen/pix-pretty": "^1.19.0", "@xynogen/pix-runtime": "^0.12.2" },
   "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*" }

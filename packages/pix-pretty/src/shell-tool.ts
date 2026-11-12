@@ -12,9 +12,7 @@ import type { AgentToolUpdateCallback, ExtensionContext } from "@earendil-works/
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { resolveBaseBackground } from "./ansi.ts";
 import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
-import { MAX_PREVIEW_LINES } from "./config.ts";
 import { renderBashOutput } from "./renderers.ts";
-import { fadeRowsOf } from "./text.ts";
 import type { ToolContext } from "./tools/context.ts";
 import type {
 	BashParams,
@@ -28,20 +26,17 @@ import {
 	BODY_PAD,
 	bodyLine,
 	dotJoin,
-	fadeRulePaint,
 	fillToolBackground,
 	frameToolResult,
 	getErrorMessage,
 	getTextContent,
 	hideCollapsedToolCall,
 	isTextContent,
-	moreLines,
+	outputBodyRows,
 	renderRow,
 	renderTitle,
 	renderToolError,
-	ruleFrame,
 	setResultDetails,
-	termW,
 	unframeToolResult,
 } from "./utils.ts";
 import { formatDuration } from "./widget-format.ts";
@@ -221,29 +216,18 @@ export function registerShellTool(
 				const normalizedText = normalizeShellText(d.text as string);
 				const { summary } = renderBashOutput(normalizedText, d.exitCode as number | null, theme);
 				const lines = normalizedText ? normalizedText.split("\n") : [];
-				const lineCount = lines.length;
 
 				if (!normalizedText) {
 					text.setText(fillToolBackground(summary));
 					return isPartial ? text : completed();
 				}
 
-				const maxShow = renderCtx.expanded ? lineCount : MAX_PREVIEW_LINES;
-				const footer =
-					lineCount > maxShow ? [moreLines(lineCount - maxShow, theme, renderCtx)] : [];
 				// Every result (including single-line) is framed; the rules follow exit
 				// status: green ok, red failure. The `✓ exit N` header is dropped — the
 				// collapsed row already carries status.
 				const exitCode = d.exitCode as number | null;
-				const statusKey = exitCode === null || exitCode === 0 ? "success" : "error";
-				const paint = fadeRulePaint(theme, statusKey);
-				// Fade the last preview rows instead of a hard cut before the "… N more" row.
-				const body = fadeRowsOf(
-					lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
-					theme,
-					maxShow,
-				);
-				const out = isPartial ? [...body, ...footer] : ruleFrame(body, footer, termW(), paint);
+				const status = exitCode === null || exitCode === 0 ? "success" : "error";
+				const out = outputBodyRows(lines, theme, renderCtx, status, isPartial);
 				text.setText(fillToolBackground(out.join("\n")));
 				return text;
 			}

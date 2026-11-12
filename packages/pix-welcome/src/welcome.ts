@@ -303,15 +303,11 @@ export function summariseSkills(skills: SkillInfo[]): CheckResult {
 	return { label: "Skills", status: "ok", detail };
 }
 
-interface ToolInfo {
-	sourceInfo?: { source?: string };
-}
-
 /**
  * Summarise loaded tools. Counts everything in `getActiveTools()` and reports
  * the total as the detail line (`N loaded`).
  */
-export function summariseTools(tools: ToolInfo[]): CheckResult {
+export function summariseTools(tools: readonly unknown[]): CheckResult {
 	const total = tools.length;
 	if (total === 0) {
 		return { label: "Tools", status: "warn", detail: "none active" };
@@ -319,7 +315,7 @@ export function summariseTools(tools: ToolInfo[]): CheckResult {
 	return { label: "Tools", status: "ok", detail: `${total} loaded` };
 }
 
-function checkTools(pi: { getActiveTools?: () => ToolInfo[] }): CheckResult {
+function checkTools(pi: { getActiveTools?: () => readonly unknown[] }): CheckResult {
 	try {
 		const tools = pi.getActiveTools?.() ?? [];
 		return summariseTools(tools);
@@ -503,11 +499,11 @@ export default function (pi: ExtensionAPI) {
 
 			return {
 				render: (width: number) => {
-					// SAFETY: Host theme implements the smaller local foreground-only Theme contract.
-					const t = theme;
 					// Re-read modelId each render so /model changes show live.
 					// Clamp to width so an over-wide logo line never crashes Pi's TUI.
-					return dismissed ? [] : renderWelcome(t, modelId, cwd, CHECKS, width, user, pixVersion);
+					return dismissed
+						? []
+						: renderWelcome(theme, modelId, cwd, CHECKS, width, user, pixVersion);
 				},
 				dispose() {
 					requestRender = null;
@@ -537,8 +533,7 @@ export default function (pi: ExtensionAPI) {
 		// next tick so dynamically registered tools are counted.
 		// Skills: scan dirs immediately — no need to wait for before_agent_start.
 		setTimeout(() => {
-			// SAFETY: ExtensionAPI exposes getActiveTools at runtime before its published type does.
-			update(3, checkTools(pi as unknown as { getActiveTools?: () => ToolInfo[] }));
+			update(3, checkTools(pi));
 			update(4, {
 				label: "Skills",
 				status: "ok",

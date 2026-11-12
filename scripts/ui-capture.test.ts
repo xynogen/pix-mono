@@ -148,7 +148,7 @@ test("fixture restores globals after startup and shutdown failures", async () =>
 
 test("display syntax regression supplies the checked raw string color", () => {
 	const source = readFileSync(
-		new URL("../packages/pix-display/test/code-blocks.test.ts", import.meta.url),
+		new URL("../packages/pix-display/tests/code-blocks.test.ts", import.meta.url),
 		"utf8",
 	);
 	expect(source).toContain("const highlighted = '\\x1b[38;2;206;145;120m\"TOKEN\"\\x1b[39m'");

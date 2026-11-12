@@ -4,5 +4,5 @@ export {
 	fmtCtx,
 	type SortableModel,
 	sortModels,
-} from "./models.ts";
+} from "./lib.ts";
 export { patchOutBuiltinModelCommand } from "./patch-builtin.ts";

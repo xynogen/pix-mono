@@ -878,6 +878,31 @@ export function ruleFrame(
 	return [...bodyLines, rule(width ?? termW(), paint), ...footerLines];
 }
 
+/**
+ * Command-output body: the first MAX_PREVIEW_LINES rows (all when expanded) with a
+ * fading tail and an "… N more" footer. Completed output closes with a status rule;
+ * partial output stays unframed. Returns the rows; the caller fills the background.
+ */
+export function outputBodyRows(
+	lines: string[],
+	theme: StatusRuleTheme & MutedTheme & Parameters<typeof fadeRowsOf>[1],
+	ctx: ExpandHintCtx,
+	status: "success" | "error",
+	partial: boolean,
+): string[] {
+	const maxShow = ctx.expanded ? lines.length : MAX_PREVIEW_LINES;
+	const footer = lines.length > maxShow ? [moreLines(lines.length - maxShow, theme, ctx)] : [];
+	// Fade the last preview rows instead of a hard cut before the "… N more" row.
+	const body = fadeRowsOf(
+		lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme)),
+		theme,
+		maxShow,
+	);
+	return partial
+		? [...body, ...footer]
+		: ruleFrame(body, footer, termW(), fadeRulePaint(theme, status));
+}
+
 /** Explicit solid top/bottom frame for sections that need stronger separation. */
 export function sectionFrame(
 	bodyLines: string[],

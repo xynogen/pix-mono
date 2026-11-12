@@ -221,16 +221,16 @@ describe("feature package shape", () => {
 	// The shape most feature packages already share; shared layers and the pix-core aggregator own theirs.
 	const SHARED = new Set(["pix-runtime", "pix-pretty", "pix-data", "pix-core"]);
 	const features = pkgs.filter(({ dir, pkg }) => !SHARED.has(dir) && pkg.pi?.extensions);
-	const REQUIRED_FILES = ["src", "!src/**/*.test.*", "README.md", "LICENSE"];
+	const REQUIRED_FILES = ["src", "README.md", "LICENSE"];
 	const ENTRIES = ["src/index.ts", "src/extension.ts"];
 
 	test("every entry registers through once(pi, <package dir>)", () => {
 		const violations = features
 			.filter(
 				({ dir }) =>
-					!sourceFiles(join(packagesDir, dir, "src"))
-						.filter((file) => !/\.test\.[cm]?[jt]sx?$/.test(file))
-						.some((file) => readFileSync(file, "utf8").includes(`once(pi, "${dir}"`)),
+					!sourceFiles(join(packagesDir, dir, "src")).some((file) =>
+						readFileSync(file, "utf8").includes(`once(pi, "${dir}"`),
+					),
 			)
 			.map(({ name, dir }) => `${name}: no once(pi, "${dir}", …) load guard`);
 		expect(violations).toEqual([]);
@@ -260,6 +260,17 @@ describe("feature package shape", () => {
 					if (dep.startsWith("@earendil-works/"))
 						violations.push(`${name}: host package ${dep} must be a peer, not ${field}`);
 		}
+		expect(violations).toEqual([]);
+	});
+
+	test("tests live in tests/, never in the published src/", () => {
+		const violations = pkgs.flatMap(({ dir }) => {
+			const src = join(packagesDir, dir, "src");
+			if (!existsSync(src)) return [];
+			return (readdirSync(src, { recursive: true }) as string[])
+				.filter((file) => /\.(test|fixture)\.[cm]?[jt]sx?$|\.snap$|__snapshots__/.test(file))
+				.map((file) => `${dir}/src/${file}`);
+		});
 		expect(violations).toEqual([]);
 	});
 });
