@@ -224,6 +224,13 @@ describe("pix-prompts host-aware injection", () => {
 		expect(named.filter((n) => !core.has(n))).toEqual([]);
 	});
 
+	it("bundled SOP points the agent at package tool skills", () => {
+		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
+		const skills = sop.split("## 5. Skills\n")[1]?.split("## 6. Communication")[0];
+		expect(skills).toContain("usage skill named after the package");
+		expect(skills).toContain("after that tool fails twice");
+	});
+
 	it("rewrites pi's bash-first hints so SOP §2 Bash check governs ls/find/grep", async () => {
 		const { pi, getHandler } = fakePi();
 		registerPrompts(pi);

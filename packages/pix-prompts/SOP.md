@@ -72,6 +72,8 @@ Simple, clear task → execute and check the result. Standard task → inspect t
 
 Load a relevant skill from `<available_skills>` when it gives needed guidance. Do not load skills for routine steps you already understand. Use the relevant guidance from a loaded skill. Skip steps unrelated to the request. Safety and repo rules still apply. A Git URL alone does not authorize cloning.
 
+**Tool skills.** A package that adds a tool ships a usage skill named after the package (`pix-web`, `pix-astgrep`). Load it before the first non-trivial use of an unfamiliar tool, and after that tool fails twice; a tool guideline that says "Load read_skills(...)" names the exact call. Load each skill once per session.
+
 ## 6. Communication
 
 Use markdown and backticks for `names` and `file:line`. No emojis unless asked.
