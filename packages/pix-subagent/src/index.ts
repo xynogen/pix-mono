@@ -14,9 +14,16 @@
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { AgentManager } from "./agent-manager.ts";
 import { registerAgents } from "./agent-types.ts";
+import { registerAgentCommand } from "./command.ts";
 import { loadCustomAgents } from "./custom-agents.ts";
 import { type AgentActivity, createAgentControlTool, createAgentTool } from "./tools.ts";
 import type { NotificationDetails } from "./types.ts";
+import {
+	COMMAND_RESULT_TYPE,
+	type CommandResultDetails,
+	commandResultDetails,
+	registerCommandResultRenderer,
+} from "./ui/command-result.ts";
 import { registerNotificationRenderer } from "./ui/notification.ts";
 import { AgentWidget } from "./ui/widget.ts";
 import { getSessionContextUsage, type SessionLike } from "./usage.ts";
@@ -93,6 +100,14 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 			const act = agentActivity.get(record.id);
 			if (act) record.streamingMs = act.streamingMs;
 			agentActivity.delete(record.id);
+
+			// /agent runs are the user's own aside: a display-only card, never a steer.
+			if (record.invocation?.fromCommand) {
+				if (record.status !== "running" && record.status !== "queued")
+					pi.appendEntry<CommandResultDetails>(COMMAND_RESULT_TYPE, commandResultDetails(record));
+				widget.update();
+				return;
+			}
 
 			if (record.resultConsumed) {
 				widget.update();
@@ -174,6 +189,7 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 
 	// ── Register renderers ─────────────────────────────────────────────────────
 	registerNotificationRenderer(pi);
+	registerCommandResultRenderer(pi);
 
 	// ── Register tools ─────────────────────────────────────────────────────────
 	// One action-based gateway keeps control/discovery schemas out of the baseline.
@@ -186,6 +202,7 @@ export default function registerPixSubagent(pi: ExtensionAPI): void {
 		),
 	);
 	pi.registerTool(createAgentControlTool(manager, agentActivity, reloadCustomAgents));
+	registerAgentCommand(pi, manager, agentActivity, reloadCustomAgents);
 
 	// ── Lifecycle ──────────────────────────────────────────────────────────────
 	pi.on("session_start", (_event, ctx) => {

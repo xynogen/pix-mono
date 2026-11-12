@@ -151,6 +151,8 @@ export interface AgentInvocation {
 	inheritContext?: boolean;
 	/** Opt in to waking the idle parent when this background agent finishes. */
 	remind?: boolean;
+	/** Launched by the user's `/agent` command: the result is a display-only card, never a steer. */
+	fromCommand?: boolean;
 }
 
 export type TerminalAgentStatus = "completed" | "steered" | "aborted" | "stopped" | "error";

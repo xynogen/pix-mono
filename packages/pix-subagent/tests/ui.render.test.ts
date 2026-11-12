@@ -98,6 +98,8 @@ test("captures registered agent, control and utility render states", async () =>
 			tools.set(tool.name, tool);
 		},
 		registerMessageRenderer() {},
+		registerEntryRenderer() {},
+		registerCommand() {},
 		on() {},
 	};
 	const cleanup = (
@@ -705,6 +707,8 @@ test("captures registered lifecycle delivery and consumption without a real runn
 			tools.set(tool.name, tool);
 		},
 		registerMessageRenderer() {},
+		registerEntryRenderer() {},
+		registerCommand() {},
 		on(name: string, callback: (event: unknown, ctx: unknown) => void) {
 			hooks.set(name, callback);
 		},

@@ -96,7 +96,7 @@ function textResult(
 }
 
 /** Strip provider prefix + date suffix for a compact model label. e.g. "anthropic/claude-haiku-4-5-20251001" → "haiku-4-5" */
-function shortModelLabel(model: { provider: string; id: string; name?: string }): string {
+export function shortModelLabel(model: { provider: string; id: string; name?: string }): string {
 	// prefer name, strip "Claude " prefix
 	if (model.name) return model.name.replace(/^Claude\s+/i, "").toLowerCase();
 	const id = model.id.replace(/-\d{8}$/, ""); // strip date suffix
@@ -1107,7 +1107,7 @@ export function createAgentSteerTool(manager: AgentManager) {
  * Fg-only surfacing is acceptable: bg warnings are rare config errors that also
  * appear in the parent's agent config diagnostics.
  */
-function createActivityTracker(maxTurns?: number, onStreamUpdate?: () => void) {
+export function createActivityTracker(maxTurns?: number, onStreamUpdate?: () => void) {
 	const state: AgentActivity & { durationMs: number; warnings: string[] } = {
 		activeTools: new Map(),
 		toolUses: 0,

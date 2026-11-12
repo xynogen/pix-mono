@@ -1,0 +1,93 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`captures /agent result card: done, long collapsed and expanded, error, empty 1`] = `
+"card:done
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><success+bg:selectedBg>✓︎</success+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>AGENT</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· agent-calm-otter-12 · Explore · model one · 1m 4s · 9 tools</muted+bg:selectedBg><bg:selectedBg>          </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>map the repo layout</dim+bg:selectedBg><bg:selectedBg>                                                          </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdHeading+bg:selectedBg+bold>Layout</mdHeading+bg:selectedBg+bold><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdListBullet+bg:selectedBg>- </mdListBullet+bg:selectedBg><mdCode+bg:selectedBg>packages/</mdCode+bg:selectedBg><customMessageText+bg:selectedBg> holds every extension.</customMessageText+bg:selectedBg><bg:selectedBg>                                             </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><mdListBullet+bg:selectedBg>- </mdListBullet+bg:selectedBg><mdCode+bg:selectedBg>scripts/</mdCode+bg:selectedBg><customMessageText+bg:selectedBg> holds CI checks.</customMessageText+bg:selectedBg><bg:selectedBg>                                                    </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+card:long-collapsed
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><success+bg:selectedBg>✓︎</success+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>AGENT</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· agent-calm-otter-12 · model one · 1m 4s · 9 tools</muted+bg:selectedBg><bg:selectedBg>                    </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>map the repo layout</dim+bg:selectedBg><bg:selectedBg>                                                          </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 1</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 2</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 3</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 4</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 5</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 6</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 7</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 8</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 9</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 10</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 11</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 12</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 13</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 14</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 15</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 16</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 17</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 18</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 19</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 20</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>… 6 more lines — click or expand to view</muted+bg:selectedBg><bg:selectedBg>                                       </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+card:long-expanded
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><success+bg:selectedBg>✓︎</success+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>AGENT</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· agent-calm-otter-12 · model one · 1m 4s · 9 tools</muted+bg:selectedBg><bg:selectedBg>                    </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>map the repo layout</dim+bg:selectedBg><bg:selectedBg>                                                          </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 1</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 2</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 3</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 4</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 5</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 6</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 7</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 8</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 9</customMessageText+bg:selectedBg><bg:selectedBg>                                                                         </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 10</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 11</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 12</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 13</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 14</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 15</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 16</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 17</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 18</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 19</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 20</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 21</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 22</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 23</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 24</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 25</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><customMessageText+bg:selectedBg>line 26</customMessageText+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+card:error
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><error+bg:selectedBg>✗︎</error+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>AGENT</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· agent-calm-otter-12 · Explore · model one · 1m 4s · 9 tools · error</muted+bg:selectedBg><bg:selectedBg>  </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>map the repo layout</dim+bg:selectedBg><bg:selectedBg>                                                          </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><error+bg:selectedBg>Provider unavailable</error+bg:selectedBg><bg:selectedBg>                                                           </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+card:stopped-empty
+
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><warning+bg:selectedBg>✗︎</warning+bg:selectedBg><bg:selectedBg> </bg:selectedBg><bg:selectedBg+bold>AGENT</bg:selectedBg+bold><bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>· agent-calm-otter-12 · Explore · model one · 1m 4s · 9 tools ·        </muted+bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>stopped</muted+bg:selectedBg><bg:selectedBg>                                                                        </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><accent+bg:selectedBg>▐</accent+bg:selectedBg><bg:selectedBg> </bg:selectedBg><dim+bg:selectedBg>map the repo layout</dim+bg:selectedBg><bg:selectedBg>                                                          </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>
+<bg:selectedBg> </bg:selectedBg><muted+bg:selectedBg>No output.</muted+bg:selectedBg><bg:selectedBg>                                                                     </bg:selectedBg>
+<bg:selectedBg>                                                                                </bg:selectedBg>"
+`;

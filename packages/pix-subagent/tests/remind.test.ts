@@ -36,6 +36,8 @@ test("background completion wakes the parent only with opt-in and safe idle stat
 	const pi = {
 		registerTool: (tool: ReturnType<typeof createAgentTool>) => tools.set(tool.name, tool),
 		registerMessageRenderer() {},
+		registerEntryRenderer() {},
+		registerCommand() {},
 		on: (event: string, fn: (event: any, ctx: any) => void) => hooks.set(event, fn),
 		sendMessage: (message: any, options: any) => messages.push({ message, options }),
 	};

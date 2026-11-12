@@ -26,6 +26,8 @@ function host() {
 			tools.set(def.name, def);
 		},
 		registerMessageRenderer() {},
+		registerEntryRenderer() {},
+		registerCommand() {},
 		on() {},
 		getAvailableAgentTypes() {
 			return [];
