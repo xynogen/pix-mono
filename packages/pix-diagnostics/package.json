@@ -15,11 +15,15 @@
 		"src",
 		"README.md",
 		"LICENSE",
-		"LICENSE.pi-lens"
+		"LICENSE.pi-lens",
+		"skills"
 	],
 	"pi": {
 		"extensions": [
 			"src/extension.ts"
+		],
+		"skills": [
+			"./skills"
 		]
 	},
 	"keywords": [

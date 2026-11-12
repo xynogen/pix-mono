@@ -1,5 +1,5 @@
 /**
- * outline-tool.ts — the `ast_outline` tool.
+ * outline-tool.ts — the `ast` tool's `outline` action.
  *
  * Syntax-only structure of a file or directory: the top-level declarations,
  * imports, and exports. No index, no LSP. Reads each supported file once,
@@ -20,7 +20,7 @@ import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
@@ -77,16 +77,14 @@ function outlineFile(root: SgNode): Array<{ line: number; kind: string; name: st
 	return rows;
 }
 
-export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): void {
+export function outlineTool(deps: OutlineToolDeps) {
 	const { cwd } = deps;
 
-	pi.registerTool({
-		name: "ast_outline",
-		...({ exposure: "deferred" } as const),
+	return defineTool({
+		name: "outline",
 		label: "AST outline",
 		description:
 			"Outline a file or dir: list functions, classes, types and imports (top-level declarations) with line numbers; syntax only. Extra grammars require consent and may need an agent restart.",
-		promptSnippet: "ast_outline(path) — file or dir structure, syntax only.",
 		parameters: Type.Object({
 			path: Type.String({ description: "File or directory to outline." }),
 		}),
@@ -96,7 +94,7 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string };
-			const title = renderTitle(t, "ast_outline", context);
+			const title = renderTitle(t, "ast", context, "outline");
 			return new Text(`${title} ${t.fg("dim", a.path ?? "")}`.trimEnd(), 0, 0);
 		},
 
@@ -107,17 +105,12 @@ export function registerOutlineTool(pi: ExtensionAPI, deps: OutlineToolDeps): vo
 			const isError = context.isError || details?.outcome === "error";
 			if (
 				!options.isPartial &&
-				tickCollapse(
-					"ast_outline",
-					context.state as CollapseState,
-					context.invalidate,
-					options.expanded,
-				)
+				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
 			)
 				return new Text(
 					renderRow(
 						theme,
-						"ast_outline",
+						"ast · outline",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

@@ -1,5 +1,5 @@
 /**
- * mark-tool.ts — the `lsp_diagnostic_mark` tool.
+ * mark-tool.ts — the `lsp` tool's `mark` action.
  *
  * Record a disposition for a diagnostic: false-positive, suppress, defer, or
  * flagged. It also lists and clears dispositions. This is visible, auditable
@@ -12,7 +12,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { Text, type Theme } from "@xynogen/pix-pretty/tui";
 import { frameToolResult, renderCall, renderRow } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import type { Disposition, DispositionStore } from "../dispositions.ts";
 
@@ -21,33 +21,33 @@ export interface MarkToolDeps {
 	cwd: string;
 }
 
-export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
+export function markTool(deps: MarkToolDeps) {
 	const { store, cwd } = deps;
 
-	pi.registerTool({
-		name: "lsp_diagnostic_mark",
-		...({ exposure: "deferred" } as const),
+	return defineTool({
+		name: "mark",
 		label: "Mark diagnostic",
 		renderShell: "self",
 		description:
 			"Session-only diagnostic marks; no file changes. set needs path/code/disposition; clear removes one (path/code) or all.",
-		promptSnippet: "Mark, list or clear diagnostic dispositions; session only.",
 		parameters: Type.Object({
-			action: StringEnum(["set", "list", "clear"] as const),
+			op: StringEnum(["set", "list", "clear"] as const, {
+				description: "set (path, code, disposition), list, or clear (path+code, or all).",
+			}),
 			path: Type.Optional(Type.String()),
 			code: Type.Optional(Type.String({ description: "Diagnostic code or identity." })),
 			disposition: Type.Optional(
 				StringEnum(["false-positive", "suppress", "defer", "flagged"] as const, {
-					description: "Disposition for action=set.",
+					description: "Disposition for op=set.",
 				}),
 			),
 			note: Type.Optional(Type.String()),
 		}),
 
 		renderCall: renderCall(
-			"lsp_diagnostic_mark",
+			"lsp",
 			(args) => String(args.disposition ?? ""),
-			(args) => String(args.action ?? ""),
+			(args) => `mark ${String(args.op ?? "")}`.trimEnd(),
 		),
 
 		renderResult(result, options, theme, context) {
@@ -67,18 +67,11 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
 			if (options.isPartial) return body;
 			if (!details) return frameToolResult(body, theme, isError);
-			if (
-				tickCollapse(
-					"lsp_diagnostic_mark",
-					context.state as CollapseState,
-					context.invalidate,
-					context.expanded,
-				)
-			)
+			if (tickCollapse("lsp", context.state as CollapseState, context.invalidate, context.expanded))
 				return new Text(
 					renderRow(
 						t,
-						"lsp_diagnostic_mark",
+						"lsp · mark",
 						"",
 						isError
 							? "failed"
@@ -96,9 +89,9 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 		},
 
 		async execute(_id, params) {
-			const action = params.action as "set" | "list" | "clear";
+			const op = params.op as "set" | "list" | "clear";
 
-			if (action === "list") {
+			if (op === "list") {
 				const rows = store.list();
 				const lines = rows.map(
 					(r) =>
@@ -111,7 +104,7 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 				};
 			}
 
-			if (action === "clear") {
+			if (op === "clear") {
 				const path = params.path as string | undefined;
 				const code = params.code as string | undefined;
 				if (path && code) {
@@ -134,7 +127,7 @@ export function registerMarkTool(pi: ExtensionAPI, deps: MarkToolDeps): void {
 				};
 			}
 
-			// action === "set"
+			// op === "set"
 			const path = params.path as string | undefined;
 			const code = params.code as string | undefined;
 			const disposition = params.disposition as Disposition | undefined;

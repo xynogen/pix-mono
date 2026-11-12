@@ -1,108 +1,108 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`captures registered diagnostics tools and the subscribed widget without a server 1`] = `
-"lsp_diagnostics:call
+"diagnostics:call
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                  
-lsp_diagnostics:success
+<warning>◐︎ </warning> <toolTitle+bold>lsp · diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                
+diagnostics:success
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_diagnostics:partial
+diagnostics:partial
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
-lsp_diagnostics:error
+diagnostics:error
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <error>────────────────────────────────────────────────────────────────────────────────</error>
-lsp_diagnostics:no-details
+diagnostics:no-details
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_diagnostics:no-details-error
+diagnostics:no-details-error
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <error>────────────────────────────────────────────────────────────────────────────────</error>
-lsp_diagnostics:hidden-call
-lsp_diagnostics:collapsed
+diagnostics:hidden-call
+diagnostics:collapsed
 
-<success>✓︎ </success> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <dim>1 files</dim> <muted>·</muted> <muted>1 findings</muted>                                         
-lsp_diagnostics:expanded
+<success>✓︎ </success> <toolTitle+bold>lsp · diagnostics</toolTitle+bold> <dim>1 files</dim> <muted>·</muted> <muted>1 findings</muted>                                       
+diagnostics:expanded
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                  
-lsp_diagnostics:expanded-result
+<warning>◐︎ </warning> <toolTitle+bold>lsp · diagnostics</toolTitle+bold> <muted>lsp</muted> <dim>1 paths</dim>                                                
+diagnostics:expanded-result
 
    <dim>src/a.ts</dim><muted>:3:4</muted> <error>error</error><muted> ts(2304)</muted> Missing name
 <success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_navigation:call
+navigate:call
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_navigation</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                           
-lsp_navigation:success
+<warning>◐︎ </warning> <toolTitle+bold>lsp · navigate</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                           
+navigate:success
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
 <success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_navigation:partial
+navigate:partial
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
-lsp_navigation:error
+navigate:error
 
 <error>✗︎</error> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
 <error>────────────────────────────────────────────────────────────────────────────────</error>
-lsp_navigation:no-details
+navigate:no-details
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
 <success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_navigation:no-details-error
+navigate:no-details-error
 
 <error>✗︎</error> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
 <error>────────────────────────────────────────────────────────────────────────────────</error>
-lsp_navigation:hidden-call
-lsp_navigation:collapsed
+navigate:hidden-call
+navigate:collapsed
 
-<success>✓︎ </success> <toolTitle+bold>lsp_navigation</toolTitle+bold> <dim>references</dim> <muted>·</muted> <muted>2 results</muted>                                        
-lsp_navigation:expanded
+<success>✓︎ </success> <toolTitle+bold>lsp · navigate</toolTitle+bold> <dim>references</dim> <muted>·</muted> <muted>2 results</muted>                                        
+navigate:expanded
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_navigation</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                           
-lsp_navigation:expanded-result
+<warning>◐︎ </warning> <toolTitle+bold>lsp · navigate</toolTitle+bold> <muted>references</muted> <dim>src/a.ts</dim>                                           
+navigate:expanded-result
 
 <success>●︎</success> src/a.ts:3:4                                                                  
 src/b.ts:9:2                                                                    
 <success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_diagnostic_mark:call
+mark:call
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark · set</toolTitle+bold> <dim>defer</dim>                                              
-lsp_diagnostic_mark:success
-
-<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
-<success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_diagnostic_mark:partial
-
-<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
-lsp_diagnostic_mark:error
-
-<error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
-<error>────────────────────────────────────────────────────────────────────────────────</error>
-lsp_diagnostic_mark:no-details
+<warning>◐︎ </warning> <toolTitle+bold>lsp · mark set</toolTitle+bold> <dim>defer</dim>                                                         
+mark:success
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
 <success>────────────────────────────────────────────────────────────────────────────────</success>
-lsp_diagnostic_mark:no-details-error
+mark:partial
+
+<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
+mark:error
 
 <error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
 <error>────────────────────────────────────────────────────────────────────────────────</error>
-lsp_diagnostic_mark:hidden-call
-lsp_diagnostic_mark:collapsed
+mark:no-details
 
-<success>✓︎ </success> <toolTitle+bold>lsp_diagnostic_mark</toolTitle+bold> <muted>·</muted> <muted>1 marks</muted>                                                
-lsp_diagnostic_mark:expanded
+<success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
+<success>────────────────────────────────────────────────────────────────────────────────</success>
+mark:no-details-error
 
-<warning>◐︎ </warning> <toolTitle+bold>lsp_diagnostic_mark · set</toolTitle+bold> <dim>defer</dim>                                              
-lsp_diagnostic_mark:expanded-result
+<error>✗︎</error> Marked src/a.ts TS2304 as defer.                                              
+<error>────────────────────────────────────────────────────────────────────────────────</error>
+mark:hidden-call
+mark:collapsed
+
+<success>✓︎ </success> <toolTitle+bold>lsp · mark</toolTitle+bold> <muted>·</muted> <muted>1 marks</muted>                                                         
+mark:expanded
+
+<warning>◐︎ </warning> <toolTitle+bold>lsp · mark set</toolTitle+bold> <dim>defer</dim>                                                         
+mark:expanded-result
 
 <success>●︎</success> Marked src/a.ts TS2304 as defer.                                              
 <success>────────────────────────────────────────────────────────────────────────────────</success>

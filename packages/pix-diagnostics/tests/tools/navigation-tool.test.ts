@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import type { LspManager, NavigationRequest, NavigationResult } from "../../src/lsp/manager.ts";
 import { methodFor } from "../../src/lsp/manager.ts";
-import { registerNavigationTool } from "../../src/tools/navigation-tool.ts";
+import { navigationTool } from "../../src/tools/navigation-tool.ts";
 
 type ToolDef = {
 	name: string;
@@ -34,18 +34,10 @@ function fakeManager(results: NavigationResult[]): LspManager & { calls: Navigat
 }
 
 function capture(manager: LspManager, cwd = "/repo"): ToolDef {
-	let tool: ToolDef | null = null;
-	const pi = {
-		registerTool(def: ToolDef) {
-			tool = def;
-		},
-	} as never;
-	registerNavigationTool(pi, { manager, cwd });
-	if (!tool) throw new Error("tool not registered");
-	return tool;
+	return navigationTool({ manager, cwd }) as unknown as ToolDef;
 }
 
-describe("lsp_navigation tool", () => {
+describe("lsp navigate action", () => {
 	test("has exactly the nine public fields in order", () => {
 		const tool = capture(fakeManager([]));
 		const { name, description, promptSnippet, parameters } = tool;

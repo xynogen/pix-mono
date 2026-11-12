@@ -10,10 +10,12 @@ Pi extension — an LSP client for project-selected language servers.
 
 - Reads language-server choices from `<project>/.pi/lsp.json`.
 - Starts a configured server only when a visible tool call needs it.
-- Reports diagnostics through `lsp_diagnostics`.
-- Marks known diagnostics for the session (`false-positive`, `suppress`, `defer`, `flagged`) through `lsp_diagnostic_mark`. Marks never change files.
+- Registers one `lsp` tool with three actions: `diagnostics`, `navigate`, and `mark`.
+- Reports diagnostics through `lsp` action `diagnostics`.
+- Marks known diagnostics for the session (`false-positive`, `suppress`, `defer`, `flagged`) through `lsp` action `mark` (`op`: `set`, `list`, `clear`). Marks never change files.
 - Shows a one-line LSP widget with error, warning, and file-state counts. The far right shows the age of the last check (for example `3m ago`). After 5 minutes it shows `stale · Nm ago` in the warning color.
-- Supports definition, references, hover, symbols, rename preview, and call hierarchy through `lsp_navigation`.
+- Supports definition, references, hover, symbols, rename preview, and call hierarchy through `lsp` action `navigate`.
+- Ships the `pix-diagnostics` skill (`read_skills(name="pix-diagnostics", full=true)`) with usage patterns.
 - Opt-in syntax guard (`edit.rejectNewSyntaxErrors` in `pix.json`): an edit that adds a syntax error is undone and fails with the errors and fresh anchors.
 
 Pix does not bundle, install, or select language servers. Use the `lsp` skill to
@@ -65,7 +67,7 @@ Add this server to `<project>/.pi/lsp.json`:
 
 The wrapper uses the project-local server, not a global installation.
 Run `/reload` after you change the server configuration.
-Then call `lsp_diagnostics` with `source: "lsp"` and explicit file paths.
+Then call `lsp` with `action: "diagnostics"`, `source: "lsp"`, and explicit file paths.
 This configuration does not add a JSON language server.
 
 ### Diagnostic states

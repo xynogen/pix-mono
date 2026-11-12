@@ -92,26 +92,26 @@ describe.skipIf(!prefix)("all real AST grammars", () => {
 			expect(parsed.kind).toBe("ok");
 			expect(parsed.root.findAll({ rule: { kind: "ERROR" } })).toHaveLength(0);
 			writeFileSync(join(cwd, file), source);
-			const execute = async (name: string, args: Record<string, unknown>) => {
-				const tool = tools.get(name);
-				if (!tool) throw new Error(`Missing tool: ${name}`);
-				const result = await tool.execute("integration", args);
+			const execute = async (action: string, args: Record<string, unknown>) => {
+				const tool = tools.get("ast");
+				if (!tool) throw new Error("Missing tool: ast");
+				const result = await tool.execute("integration", { action, ...args });
 				if (result.isError) throw new Error(JSON.stringify(result));
 				return result;
 			};
-			const symbols = await execute("symbol_search", { query: "pixneedle", paths: [file] });
+			const symbols = await execute("symbols", { query: "pixneedle", paths: [file] });
 			expect(symbols.details).toMatchObject({ count: 1, scanned: 1 });
 			const matcher = lang === "php" ? { context: "<?php 123;", selector: "integer" } : pattern;
-			const search = await execute("ast_search", { pattern: matcher, paths: [file] });
+			const search = await execute("search", { pattern: matcher, paths: [file] });
 			expect(search.details).toMatchObject({ matches: 1 });
-			const preview = await execute("ast_replace", {
+			const preview = await execute("replace", {
 				pattern: matcher,
 				rewrite,
 				paths: [file],
 			});
 			expect(preview.details).toMatchObject({ applied: false, edits: 1 });
 			expect(readFileSync(join(cwd, file), "utf8")).toBe(source);
-			const applied = await execute("ast_replace", {
+			const applied = await execute("replace", {
 				pattern: matcher,
 				rewrite,
 				paths: [file],

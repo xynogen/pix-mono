@@ -186,6 +186,9 @@ function register(pi: ExtensionAPI): void {
 			"Run and manage long-lived processes that outlive a turn (npm run dev, vite, python main.py, watchers). Actions: start <command> (returns a proc-* handle + first output), list (running processes), logs <handle> (new output since last read; tail <n> for last n lines), stop <handle>, rm <handle>. For one-shot commands use bash instead — start reports and steers you back when a command exits fast.",
 		promptSnippet:
 			"Run/manage long-lived processes via proc (start/list/logs/stop/rm). Use bash for one-shot commands.",
+		promptGuidelines: [
+			'proc: dev servers, watchers and other commands that never exit go here, not in bash (no `&`, no sleep polling). Load read_skills(name="pix-proc", full=true) for patterns.',
+		],
 		parameters: Type.Object({
 			action: ActionSchema,
 			command: Type.Optional(

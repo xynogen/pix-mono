@@ -1,21 +1,13 @@
 import { expect, test } from "bun:test";
-import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { registerFetchProvider } from "../src/providers.ts";
 import { registerSearchProvider } from "../src/search-providers.ts";
-import { registerSearchTool } from "../src/search-tool.ts";
-import { registerFetchTool } from "../src/tools.ts";
+import { webTool } from "../src/web-tool.ts";
 
 for (const name of ["fetch", "search"] as const) {
-	test(`${name} pre-abort skips providers and progress; late provider success stays cancelled`, async () => {
-		let tool!: ToolDefinition;
-		const pi = {
-			registerTool: (definition: ToolDefinition) => {
-				tool = definition;
-			},
-		};
-		if (name === "fetch") registerFetchTool(pi as never);
-		else registerSearchTool(pi as never);
-		const args = name === "fetch" ? { url: "https://example.test" } : { query: "test" };
+	test(`web ${name} pre-abort skips providers and progress; late provider success stays cancelled`, async () => {
+		const tool = webTool();
+		const target = name === "fetch" ? { url: "https://example.test" } : { query: "test" };
+		const args = { action: name, ...target };
 		let calls = 0;
 		let updates = 0;
 		let fail = false;
@@ -53,7 +45,7 @@ for (const name of ["fetch", "search"] as const) {
 			],
 			details: {
 				outcome: "cancelled",
-				target: name === "fetch" ? args.url : args.query,
+				target: name === "fetch" ? target.url : target.query,
 				meta: "cancelled",
 			},
 		});
@@ -73,7 +65,7 @@ for (const name of ["fetch", "search"] as const) {
 			content: [{ type: "text", text: expect.stringContaining("provider unavailable") }],
 			details: {
 				outcome: "error",
-				target: name === "fetch" ? args.url : args.query,
+				target: name === "fetch" ? target.url : target.query,
 				meta: "failed",
 			},
 			isError: true,

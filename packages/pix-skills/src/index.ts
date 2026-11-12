@@ -117,7 +117,7 @@ function scanSkillsDir(root: string): SkillEntry[] {
  * Scan sibling `@xynogen/*` packages that declare `pi.skills` in their manifest.
  * pix-skills lives in the same scope dir (node_modules/@xynogen in an install,
  * packages/ in dev), so other pix packages can own their own skills (e.g.
- * pix-graph ships `graph`) and still be found by `read_skills`. Pi's host loads
+ * pix-graph ships `pix-graph`) and still be found by `read_skills`. Pi's host loads
  * these via the manifest too; this keeps the agent-facing loader in sync.
  */
 export function scanSiblingPackageSkills(scope?: string): SkillEntry[] {

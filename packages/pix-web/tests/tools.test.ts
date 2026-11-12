@@ -1,29 +1,24 @@
 import { describe, expect, test } from "bun:test";
-import { registerFetchTool } from "../src/tools.ts";
+import { searchTool } from "../src/search-tool.ts";
+import { fetchTool } from "../src/tools.ts";
 
-function captureParameters(): {
-	properties: Record<string, unknown>;
-	required?: string[];
-} {
-	let parameters: unknown;
-	registerFetchTool({
-		registerTool(tool: { parameters: unknown }) {
-			parameters = tool.parameters;
-		},
-	} as never);
-	if (!parameters) throw new Error("fetch parameters not captured");
-	return parameters as { properties: Record<string, unknown>; required?: string[] };
-}
+const shape = (parameters: unknown) => {
+	const schema = parameters as { properties: Record<string, unknown>; required?: string[] };
+	return { properties: Object.keys(schema.properties), required: schema.required };
+};
 
-describe("fetch tool schema", () => {
-	test("keeps provider routing in user settings", () => {
-		const parameters = captureParameters();
-		expect({
-			properties: Object.keys(parameters.properties),
-			required: parameters.required,
-		}).toEqual({
+describe("web action schemas", () => {
+	test("fetch keeps provider routing in user settings", () => {
+		expect(shape(fetchTool().parameters)).toEqual({
 			properties: ["url", "format", "max_characters"],
 			required: ["url"],
+		});
+	});
+
+	test("search keeps provider routing in user settings", () => {
+		expect(shape(searchTool().parameters)).toEqual({
+			properties: ["query", "search_type", "max_results"],
+			required: ["query"],
 		});
 	});
 });

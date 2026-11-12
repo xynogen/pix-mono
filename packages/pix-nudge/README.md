@@ -22,14 +22,14 @@ Registers three nudge hooks. Each names only the relevant tool, not a full inven
 
 The tools nudge also watches two native tools, once per session each:
 
-- A `read` without `offset` of a source file with 300+ lines points at `ast_outline`, then `ast_read_symbol` for one function.
-- A `grep` whose pattern is one code identifier (camelCase, PascalCase, snake_case, or SCREAMING_CASE) points at `graph` `action:"impact"` or `lsp_navigation` references. Plain words and regexes stay ordinary greps.
+- A `read` without `offset` of a source file with 300+ lines points at `ast` action `outline`, then action `symbol` for one function.
+- A `grep` whose pattern is one code identifier (camelCase, PascalCase, snake_case, or SCREAMING_CASE) points at `graph` `action:"impact"` or `lsp` action `navigate` references. Plain words and regexes stay ordinary greps.
 
 > **Nudge steers; it does not guard.** Privileged auth stand-ins (bash `sudo`/`ssh`) are *not* nudged here — those are hard-blocked and redirected to `sudo_run`/`ssh_run` by [`pix-gate`](../pix-gate), which handles the auth safely. Guarding (stop) and steering (teach) are separate concerns in separate packages.
 
 **Capability nudge** — steers the model toward tool discovery over guessing:
 
-- One-time orientation message on the **first prompt**: tool counts, the deferred-tool note, deferred non-MCP tool names grouped by prefix family (for example `ast_{outline,search}`), and a capability → tool map that lists only the tools registered in this session (`ask_user`, `read_skills()`, context7, `search`/`fetch`, `lsp_*`, `mcp`).
+- One-time orientation message on the **first prompt**: tool counts, the deferred-tool note, deferred non-MCP tool names grouped by prefix family (for example `agent_{agent,control}`), and a capability → tool map that lists only the tools registered in this session (`ask_user`, `read_skills()`, context7, `web`, `lsp`, `mcp`).
 - A one-line reminder every 10 turns pointing at `read_skills()`, `tool_search` and MCP, each only when registered. The orientation's deferred-tools line also needs `tool_search`.
 - When `.pi/graph/graph.json` exists and the `graph` tool is registered, both messages also route codebase questions to `graph(action:"query")`.
 - Delivered as visible custom messages, not system-prompt rewrites, so the cached prompt prefix stays intact.

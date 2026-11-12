@@ -1,5 +1,5 @@
 /**
- * diagnostics-tool.ts — the `lsp_diagnostics` tool.
+ * diagnostics-tool.ts — the `lsp` tool's `diagnostics` action.
  *
  * Two sources:
  *  - `session` returns cached store snapshots (all, or filtered by `paths`),
@@ -21,7 +21,7 @@ import {
 	rule,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { truncateOutput } from "@xynogen/pix-runtime/output";
 import { Type } from "typebox";
 import type { DiagnosticRequest, LspManager } from "../lsp/manager.ts";
@@ -137,16 +137,15 @@ export function renderClose(
 	return rule(width, fadeRulePaint(theme, role));
 }
 
-export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolDeps): void {
+export function diagnosticsTool(deps: DiagnosticsToolDeps) {
 	const { store, manager, cwd } = deps;
 
-	pi.registerTool({
-		name: "lsp_diagnostics",
+	return defineTool({
+		name: "diagnostics",
 		label: "Diagnostics",
 		renderShell: "self",
 		description:
 			"LSP diagnostics (type errors, lint warnings) for files: session reads cache; lsp checks explicit paths. Prefer fresh checks after edits.",
-		promptSnippet: "Fresh LSP diagnostics or cached session findings.",
 		parameters: Type.Object({
 			source: StringEnum(["session", "lsp"] as const),
 			paths: Type.Optional(
@@ -171,7 +170,7 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { source?: string; paths?: string[] };
-			const title = renderTitle(t, "lsp_diagnostics", context);
+			const title = renderTitle(t, "lsp", context, "diagnostics");
 			const src = t.fg("muted", a.source ?? "session");
 			const count = a.paths?.length ? t.fg("dim", `${a.paths.length} paths`) : "";
 			return new Text(`${title} ${src} ${count}`.trimEnd(), 0, 0);
@@ -185,18 +184,11 @@ export function registerDiagnosticsTool(pi: ExtensionAPI, deps: DiagnosticsToolD
 			const body = resultBody(text, t);
 			if (options.isPartial) return body;
 			if (!details) return frameToolResult(body, theme, isError);
-			if (
-				tickCollapse(
-					"lsp_diagnostics",
-					context.state as CollapseState,
-					context.invalidate,
-					context.expanded,
-				)
-			)
+			if (tickCollapse("lsp", context.state as CollapseState, context.invalidate, context.expanded))
 				return new Text(
 					renderRow(
 						t,
-						"lsp_diagnostics",
+						"lsp · diagnostics",
 						`${details.files} files`,
 						[
 							`${details.findings} findings`,

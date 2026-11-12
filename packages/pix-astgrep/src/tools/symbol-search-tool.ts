@@ -1,5 +1,5 @@
 /**
- * symbol-search-tool.ts — the `symbol_search` tool.
+ * symbol-search-tool.ts — the `ast` tool's `symbols` action.
  *
  * Rank files by how well they match an identifier query. This is an on-demand
  * bounded scan, not a persisted index and not a background loop. It reads each
@@ -22,7 +22,7 @@ import {
 import { cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 
@@ -49,16 +49,14 @@ function scoreFile(source: string, terms: readonly string[]): number {
 	return total;
 }
 
-export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToolDeps): void {
+export function symbolSearchTool(deps: SymbolSearchToolDeps) {
 	const { cwd } = deps;
 
-	pi.registerTool({
-		name: "symbol_search",
-		...({ exposure: "deferred" } as const),
+	return defineTool({
+		name: "symbols",
 		label: "Symbol search",
 		description:
 			"Rank files by identifier frequency; not semantic resolution. Space-separated terms are AND-matched.",
-		promptSnippet: "symbol_search(query, paths?, limit?) — rank files by identifier.",
 		parameters: Type.Object({
 			query: Type.String({ description: "Identifier terms, e.g. `authenticate user`." }),
 			paths: Type.Optional(
@@ -76,7 +74,7 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { query?: string };
-			const title = renderTitle(t, "symbol_search", context);
+			const title = renderTitle(t, "ast", context, "symbols");
 			const q = t.fg("dim", `“${a.query ?? ""}”`);
 			return new Text(`${title} ${q}`, 0, 0);
 		},
@@ -88,17 +86,12 @@ export function registerSymbolSearchTool(pi: ExtensionAPI, deps: SymbolSearchToo
 			const isError = context.isError || details?.outcome === "error";
 			if (
 				!options.isPartial &&
-				tickCollapse(
-					"symbol_search",
-					context.state as CollapseState,
-					context.invalidate,
-					options.expanded,
-				)
+				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
 			)
 				return new Text(
 					renderRow(
 						theme,
-						"symbol_search",
+						"ast · symbols",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

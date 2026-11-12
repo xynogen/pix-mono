@@ -9,20 +9,24 @@ AST-aware structural code search, symbol reads, and rewrites for Pi, built on
 metavariables (`$A`, `$$$ARGS`) instead of text regex, read one named symbol
 without loading a whole file, and rank files by identifier.
 
-Standalone and opt-in — not bundled by `pix-core`, so the six tool schemas are
+Standalone and opt-in — not bundled by `pix-core`, so the `ast` tool schema is
 only present when you install it. Needs the `@ast-grep/napi` native addon (a
 dependency, installed with the package).
 
-## Tools
+## Tool
 
-| Tool | Purpose |
+One deferred tool, `ast`, with six actions. The bundled `pix-astgrep` skill
+(`read_skills(name="pix-astgrep", full=true)`) shows the outline-then-symbol read pattern and
+safe rewrites.
+
+| Action | Purpose |
 |---|---|
-| `ast_search` | Structural search by pattern, e.g. `foo($A)` or `useState($$$)`. |
-| `ast_replace` | AST-aware rewrite (`pattern` → `rewrite`). Preview (line diff) by default; `apply:true` writes atomically. |
-| `ast_outline` | Syntax-only outline of a file or dir — declarations, imports, exports with line numbers. |
-| `ast_read_symbol` | Exact source of one named symbol (function, class, type, enum, const). |
-| `ast_read_enclosing` | Smallest named declaration that encloses a line — the reverse of `ast_read_symbol`. |
-| `symbol_search` | Rank files by how often they contain the query identifiers (AND-matched). |
+| `search` | Structural search by pattern, e.g. `foo($A)` or `useState($$$)`. |
+| `replace` | AST-aware rewrite (`pattern` → `rewrite`). Preview (line diff) by default; `apply:true` writes atomically. |
+| `outline` | Syntax-only outline of a file or dir — declarations, imports, exports with line numbers. |
+| `symbol` | Exact source of one named symbol (function, class, type, enum, const). |
+| `enclosing` | Smallest named declaration that encloses a line — the reverse of `symbol`. |
+| `symbols` | Rank files by how often they contain the query identifiers (AND-matched). |
 
 ## Languages
 
@@ -30,7 +34,7 @@ Six grammars are bundled and always work: `typescript`, `tsx`, `javascript`,
 `jsx`, `css`, `html`.
 
 Other languages (python, go, rust, java, c, cpp, and more) work in every tool.
-`ast_search` and `ast_replace` take them through `lang`; the file tools detect
+`search` and `replace` take them through `lang`; the file actions detect
 them from the file extension. The matching `@ast-grep/lang-*` grammar installs
 on demand into the pix cache prefix after your consent — it never touches a
 global path or this package's `node_modules`.

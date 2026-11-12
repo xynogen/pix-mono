@@ -54,9 +54,8 @@ const CAPABILITIES: { match: (name: string) => boolean; label: string }[] = [
 	{ match: (n) => n === "ask_user", label: "ask_user (unclear intent)" },
 	{ match: (n) => n === "read_skills", label: "read_skills() (task-specific skills)" },
 	{ match: (n) => /context7/i.test(n), label: "context7 tool family (library docs)" },
-	{ match: (n) => n === "search", label: "search (web)" },
-	{ match: (n) => n === "fetch", label: "fetch (web pages)" },
-	{ match: (n) => n.startsWith("lsp_"), label: "lsp_* tool family (types, refs, diagnostics)" },
+	{ match: (n) => n === "web", label: "web (search, fetch pages)" },
+	{ match: (n) => n === "lsp", label: "lsp (types, refs, diagnostics)" },
 	{ match: (n) => n === "mcp", label: "mcp (MCP servers)" },
 ];
 
@@ -198,7 +197,7 @@ export function buildOrientation(
 			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context): load with tool_search("<tool name or task>") before the first call.`
 			: head,
 	];
-	// Names, not schemas: a count alone never tells the model that ast_outline exists.
+	// Names, not schemas: a count alone never tells the model that ast exists.
 	const names = canLoad ? deferredNames(tools, activeToolNames) : "";
 	if (names) lines.push(`Deferred: ${names}.`);
 	const caps = capabilityLabels(tools);

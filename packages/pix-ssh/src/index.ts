@@ -748,7 +748,7 @@ function register(pi: ExtensionAPI): void {
 			"Always set `reason`. File actions use SFTP, not the remote shell; they run as the SSH user (no sudo). Text files must be regular UTF-8 files, at most 50MB; symlinks are rejected. Replacement preserves permission bits, not ownership, ACLs or hard links. Paths use /, Windows drive paths may use C:/ or /C:/. Relative paths start at the SFTP home. command on Windows/PowerShell remains best-effort.",
 		promptSnippet: "Run a remote command, transfer files, or read SSH config over SSH",
 		promptGuidelines: [
-			'ssh_run: REMOTE host only — use `bash`/`sudo_run` locally. `action` is required: "command" (host, command, sudo?), "upload" or "download" (host, source, destination, recursive?), "info" (host? — no host = list aliases). `host` is `[user@]host[:port]`. Use "info" instead of reading `~/.ssh/config`. Always set `reason`.',
+			'ssh_run: REMOTE host only — use `bash`/`sudo_run` locally. `action` is required: "command" (host, command, sudo?), "upload" or "download" (host, source, destination, recursive?), "info" (host? — no host = list aliases). `host` is `[user@]host[:port]`. Use "info" instead of reading `~/.ssh/config`. Always set `reason`. Load read_skills(name="pix-ssh", full=true) for patterns.',
 			"For remote files use read/write/edit, not shell cat/sed/PowerShell. read returns LINE#HASH anchors for edit; write replaces the whole file. Never reuse anchors from another host or file.",
 		],
 

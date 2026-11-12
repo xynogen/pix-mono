@@ -30,9 +30,8 @@ import { DispositionStore } from "./dispositions.ts";
 import { createManager, type LspManager } from "./lsp/manager.ts";
 import { DiagnosticStore } from "./store.ts";
 import { newSyntaxErrors, rejectionText } from "./syntax-guard.ts";
-import { collectFindings, registerDiagnosticsTool, summarize } from "./tools/diagnostics-tool.ts";
-import { registerMarkTool } from "./tools/mark-tool.ts";
-import { registerNavigationTool } from "./tools/navigation-tool.ts";
+import { collectFindings, summarize } from "./tools/diagnostics-tool.ts";
+import { lspTool } from "./tools/lsp-tool.ts";
 import type { PixDiagnostic } from "./types.ts";
 
 type ThemeLike = Pick<Theme, "fg" | "style"> & {
@@ -141,9 +140,7 @@ export default function registerDiagnostics(
 	/** Syntax guard: file bytes and diagnostics before each pending edit, by tool call id. */
 	const beforeEdit = new Map<string, { bytes: Uint8Array; diagnostics: PixDiagnostic[] }>();
 
-	registerDiagnosticsTool(pi, { store, manager, cwd });
-	registerNavigationTool(pi, { manager, cwd });
-	registerMarkTool(pi, { store: dispositions, cwd });
+	pi.registerTool(lspTool({ store, dispositions, manager, cwd }));
 
 	pi.on("session_start", (_event, ctx) => {
 		ctx.ui.setStatus?.(WIDGET_KEY, undefined);
@@ -210,7 +207,7 @@ export default function registerDiagnostics(
 			const findings = collectFindings(cwd, snapshots, "error");
 			const hidden = collectFindings(cwd, snapshots, "all").length - findings.length;
 			report = findings.length ? findings.join("\n") : summarize(snapshots);
-			if (hidden) report += `\n${hidden} warning/info/hint not shown (lsp_diagnostics lists them).`;
+			if (hidden) report += `\n${hidden} warning/info/hint not shown (lsp diagnostics lists them).`;
 			if (findings.length) report += "\nCheck these diagnostics before the next change.";
 		} catch (error) {
 			store.set({ filePath, diagnostics: [], checkedAt: Date.now(), state: "unavailable" });

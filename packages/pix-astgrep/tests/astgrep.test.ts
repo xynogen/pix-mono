@@ -26,19 +26,32 @@ interface Tool {
 	) => Promise<{ content: Array<{ text: string }>; details?: unknown; isError?: boolean }>;
 }
 
+/** The single `ast` tool, keyed by action; each entry's execute adds that `action`. */
 function capture(cwd: string): Map<string, Tool> {
-	const tools = new Map<string, Tool>();
+	let ast: Tool | undefined;
 	const pi = {
 		on() {},
 		registerTool(def: Tool) {
-			tools.set(def.name, def);
+			ast = def;
 		},
 	};
 	const prev = process.cwd();
 	process.chdir(cwd);
 	registerAstGrep(pi as never);
 	process.chdir(prev);
-	return tools;
+	if (!ast) throw new Error("ast tool not registered");
+	const tool = ast;
+	const actions = (tool.parameters.properties.action as { enum: string[] }).enum;
+	return new Map(
+		actions.map((action) => [
+			action,
+			{
+				...tool,
+				execute: (id, params, signal, onUpdate, ctx) =>
+					tool.execute(id, { action, ...params }, signal, onUpdate, ctx),
+			},
+		]),
+	);
 }
 
 function fixture(): string {
@@ -58,7 +71,7 @@ function fixture(): string {
 }
 
 describe("pix-astgrep tools", () => {
-	for (const name of ["ast_read_symbol", "ast_read_enclosing"]) {
+	for (const name of ["symbol", "enclosing"]) {
 		test(`${name} caps multilingual source at a complete UTF-8 boundary`, async () => {
 			const dir = fixture();
 			const source = `function greet() { return "${"a😀é中".repeat(4000)}"; }`;
@@ -74,39 +87,40 @@ describe("pix-astgrep tools", () => {
 		});
 	}
 
-	test("registers exactly the six tools", () => {
+	test("registers one ast tool with the six actions", () => {
 		const tools = capture(fixture());
-		expect([...tools.keys()].sort()).toEqual([
-			"ast_outline",
-			"ast_read_enclosing",
-			"ast_read_symbol",
-			"ast_replace",
-			"ast_search",
-			"symbol_search",
+		expect([...tools.keys()]).toEqual([
+			"outline",
+			"symbol",
+			"enclosing",
+			"search",
+			"replace",
+			"symbols",
 		]);
+		expect(tools.get("outline")?.name).toBe("ast");
 	});
 
-	test("AST contracts stay bounded while preserving pattern and write controls", () => {
-		const tools = capture(fixture());
-		for (const tool of tools.values()) {
-			const { name, description, promptSnippet, parameters } = tool;
-			expect(
-				Buffer.byteLength(JSON.stringify({ name, description, promptSnippet, parameters })),
-			).toBeLessThanOrEqual(1250);
-		}
-		expect(tools.get("ast_search")?.parameters.required).toEqual(["pattern"]);
-		expect(tools.get("ast_replace")?.parameters.required).toEqual(["pattern", "rewrite"]);
-		expect(tools.get("ast_search")?.parameters.properties.pattern).toMatchObject({
+	test("AST contract stays bounded while preserving pattern and write controls", () => {
+		const tool = capture(fixture()).get("search");
+		if (!tool) throw new Error("tool missing");
+		const { name, description, promptSnippet, parameters } = tool;
+		// Six former tools were capped at 1,250 bytes each; one merged tool stays well below their sum.
+		expect(
+			Buffer.byteLength(JSON.stringify({ name, description, promptSnippet, parameters })),
+		).toBeLessThanOrEqual(3500);
+		expect(parameters.required).toEqual(["action"]);
+		const props = parameters.properties as Record<string, { description?: string }>;
+		expect(props.pattern?.description).toStartWith("[search REQUIRED|replace REQUIRED]");
+		expect(props.rewrite?.description).toStartWith("[replace REQUIRED]");
+		expect(props.pattern).toMatchObject({
 			anyOf: [{ type: "string" }, { type: "object", required: ["context", "selector"] }],
 		});
-		expect(tools.get("ast_replace")?.parameters.properties.apply).toMatchObject({
-			type: "boolean",
-		});
+		expect(props.apply).toMatchObject({ type: "boolean" });
 	});
 
-	test("ast_outline lists top-level declarations with line numbers", async () => {
+	test("ast outline lists top-level declarations with line numbers", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_outline");
+		const tool = capture(dir).get("outline");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { path: "." });
 		expect((res.details as { symbols: number }).symbols).toBeGreaterThanOrEqual(2);
@@ -114,9 +128,9 @@ describe("pix-astgrep tools", () => {
 		expect(res.content[0]?.text).toContain("Widget");
 	});
 
-	test("ast_read_enclosing returns the symbol covering a line", async () => {
+	test("ast enclosing returns the symbol covering a line", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_read_enclosing");
+		const tool = capture(dir).get("enclosing");
 		if (!tool) throw new Error("tool missing");
 		// Line 2 is inside greet's body.
 		const res = await tool.execute("t", { path: "a.ts", line: 2 });
@@ -124,9 +138,9 @@ describe("pix-astgrep tools", () => {
 		expect(res.content[0]?.text).toContain("function greet");
 	});
 
-	test("ast_replace previews without writing, applies on request", async () => {
+	test("ast replace previews without writing, applies on request", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_replace");
+		const tool = capture(dir).get("replace");
 		if (!tool) throw new Error("tool missing");
 		const preview = await tool.execute("t", {
 			pattern: "greet($A)",
@@ -148,10 +162,10 @@ describe("pix-astgrep tools", () => {
 		expect(readFileSync(join(dir, "a.ts"), "utf8")).toContain("welcome('a')");
 	});
 
-	test("ast_replace keeps captured `$NAME` text and diffs line-count changes correctly", async () => {
+	test("ast replace keeps captured `$NAME` text and diffs line-count changes correctly", async () => {
 		const dir = mkdtempSync(join(tempDir(), "pix-astgrep-rewrite-"));
 		writeFileSync(join(dir, "b.ts"), "log('$B');\nconst tail = 1;\n");
-		const tool = capture(dir).get("ast_replace");
+		const tool = capture(dir).get("replace");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", {
 			pattern: "log($A)",
@@ -169,9 +183,9 @@ describe("pix-astgrep tools", () => {
 		expect(text).not.toContain("const tail");
 	});
 
-	test("ast_search finds every call of a pattern", async () => {
+	test("ast search finds every call of a pattern", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_search");
+		const tool = capture(dir).get("search");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { pattern: "greet($A)", paths: ["."] });
 		expect((res.details as { matches: number }).matches).toBe(2);
@@ -192,7 +206,7 @@ describe("pix-astgrep tools", () => {
 				},
 			},
 		};
-		for (const name of ["ast_search", "ast_replace", "ast_outline"]) {
+		for (const name of ["search", "replace", "outline"]) {
 			const tool = tools.get(name);
 			if (!tool) throw new Error("tool missing");
 			const res = await tool.execute(
@@ -200,7 +214,7 @@ describe("pix-astgrep tools", () => {
 				{
 					pattern: "import $M",
 					rewrite: "import $M",
-					paths: [name === "ast_search" ? "." : "case_body.py"],
+					paths: [name === "search" ? "." : "case_body.py"],
 					lang: "python",
 					path: "case_body.py",
 				},
@@ -212,7 +226,7 @@ describe("pix-astgrep tools", () => {
 			expect(res.content[0]?.text).toMatch(/python.*@ast-grep\/lang-python/);
 		}
 		expect(prompts).toBe(1);
-		const outline = tools.get("ast_outline");
+		const outline = tools.get("outline");
 		if (!outline) throw new Error("tool missing");
 		const result = await outline.execute("t", { path: "." });
 		expect(result.isError).toBe(true);
@@ -222,7 +236,7 @@ describe("pix-astgrep tools", () => {
 	test("a missing grammar does not apply earlier replacements", async () => {
 		const dir = fixture();
 		writeFileSync(join(dir, "z.py"), "import math\n");
-		const tool = capture(dir).get("ast_replace");
+		const tool = capture(dir).get("replace");
 		if (!tool) throw new Error("tool missing");
 		const before = readFileSync(join(dir, "a.ts"), "utf8");
 		const res = await tool.execute("t", {
@@ -235,9 +249,9 @@ describe("pix-astgrep tools", () => {
 		expect(readFileSync(join(dir, "a.ts"), "utf8")).toBe(before);
 	});
 
-	test("ast_read_symbol returns one symbol body with a header line", async () => {
+	test("ast symbol returns one symbol body with a header line", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_read_symbol");
+		const tool = capture(dir).get("symbol");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { path: "a.ts", symbol: "greet" });
 		expect((res.details as { outcome: string }).outcome).toBe("success");
@@ -245,18 +259,18 @@ describe("pix-astgrep tools", () => {
 		expect(res.content[0]?.text).toContain("a.ts:1");
 	});
 
-	test("ast_read_symbol reports a missing symbol as an error", async () => {
+	test("ast symbol reports a missing symbol as an error", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("ast_read_symbol");
+		const tool = capture(dir).get("symbol");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { path: "a.ts", symbol: "nope" });
 		expect(res.isError).toBe(true);
 		expect(res.content[0]?.text).toContain("not found");
 	});
 
-	test("symbol_search ranks files by identifier and returns the match count", async () => {
+	test("ast symbols ranks files by identifier and returns the match count", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("symbol_search");
+		const tool = capture(dir).get("symbols");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { query: "greet" });
 		const details = res.details as { count: number };
@@ -264,9 +278,9 @@ describe("pix-astgrep tools", () => {
 		expect(res.content[0]?.text).toContain("a.ts");
 	});
 
-	test("symbol_search AND-matches every term", async () => {
+	test("ast symbols AND-matches every term", async () => {
 		const dir = fixture();
-		const tool = capture(dir).get("symbol_search");
+		const tool = capture(dir).get("symbols");
 		if (!tool) throw new Error("tool missing");
 		const res = await tool.execute("t", { query: "greet Widget" });
 		// No single file contains both identifiers.
@@ -300,7 +314,7 @@ test("AST replacement yields to Esc before the write phase", async () => {
 	const dir = fixture();
 	const before = readFileSync(join(dir, "a.ts"), "utf8");
 	const controller = new AbortController();
-	const tool = capture(dir).get("ast_replace")!;
+	const tool = capture(dir).get("replace")!;
 	const pending = tool.execute(
 		"cancel",
 		{ paths: ["."], pattern: "greet($A)", rewrite: "changed($A)", apply: true },

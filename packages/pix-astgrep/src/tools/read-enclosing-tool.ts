@@ -1,7 +1,7 @@
 /**
- * read-enclosing-tool.ts — the `ast_read_enclosing` tool.
+ * read-enclosing-tool.ts — the `ast` tool's `enclosing` action.
  *
- * The reverse of `ast_read_symbol`: given a line, return the smallest named
+ * The reverse of the `symbol` action: given a line, return the smallest named
  * declaration that encloses it. Use it when you know a location but not the
  * symbol name. Supports the six ast-grep grammars.
  */
@@ -20,7 +20,7 @@ import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import { grammarErrorResult } from "../grammar-result.ts";
@@ -69,15 +69,13 @@ function nameOf(node: SgNode): string {
 	return node.kind();
 }
 
-export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingToolDeps): void {
+export function readEnclosingTool(deps: ReadEnclosingToolDeps) {
 	const { cwd } = deps;
 
-	pi.registerTool({
-		name: "ast_read_enclosing",
-		...({ exposure: "deferred" } as const),
+	return defineTool({
+		name: "enclosing",
 		label: "Read enclosing",
 		description: "Read the smallest declaration covering a one-based line. Grammar-dependent.",
-		promptSnippet: "ast_read_enclosing(path, line) — smallest symbol covering a line.",
 		parameters: Type.Object({
 			path: Type.String({ description: "Source file, e.g. `src/app.ts`." }),
 			line: Type.Integer({ minimum: 1, description: "One-based line inside the symbol." }),
@@ -88,7 +86,7 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string; line?: number };
-			const title = renderTitle(t, "ast_read_enclosing", context);
+			const title = renderTitle(t, "ast", context, "enclosing");
 			const loc = a.path ? t.fg("dim", `${a.path}:${a.line ?? ""}`) : "";
 			return new Text(`${title} ${loc}`.trimEnd(), 0, 0);
 		},
@@ -100,17 +98,12 @@ export function registerReadEnclosingTool(pi: ExtensionAPI, deps: ReadEnclosingT
 			const isError = context.isError || details?.outcome === "error";
 			if (
 				!options.isPartial &&
-				tickCollapse(
-					"ast_read_enclosing",
-					context.state as CollapseState,
-					context.invalidate,
-					options.expanded,
-				)
+				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
 			)
 				return new Text(
 					renderRow(
 						theme,
-						"ast_read_enclosing",
+						"ast · enclosing",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

@@ -4,8 +4,8 @@ import type { DiagnosticRequest, LspManager, NavigationResult } from "../../src/
 import { DiagnosticStore } from "../../src/store.ts";
 import {
 	collectFindings,
+	diagnosticsTool,
 	paintRow,
-	registerDiagnosticsTool,
 	renderClose,
 } from "../../src/tools/diagnostics-tool.ts";
 import type { DiagnosticSnapshot } from "../../src/types.ts";
@@ -56,18 +56,10 @@ function fakeManager(
 }
 
 function capture(store: DiagnosticStore, manager: LspManager, cwd = "/repo"): ToolDef {
-	let tool: ToolDef | null = null;
-	const pi = {
-		registerTool(def: ToolDef) {
-			tool = def;
-		},
-	} as never;
-	registerDiagnosticsTool(pi, { store, manager, cwd });
-	if (!tool) throw new Error("tool not registered");
-	return tool;
+	return diagnosticsTool({ store, manager, cwd }) as unknown as ToolDef;
 }
 
-describe("lsp_diagnostics tool", () => {
+describe("lsp diagnostics action", () => {
 	test("findings use relative forward-slash paths only inside cwd", () => {
 		const cwd = resolve("/repo");
 		const files = [join(cwd, "src", "a.ts"), join(`${cwd}-other`, "a.ts")];
@@ -199,13 +191,11 @@ describe("result rows", () => {
 	});
 
 	test("indent under the tool name and hang wrapped rows", () => {
-		let tool: { renderResult: (...args: unknown[]) => { render(w: number): string[] } } | null =
-			null;
-		registerDiagnosticsTool({ registerTool: (def: never) => (tool = def) } as never, {
+		const tool = diagnosticsTool({
 			store: new DiagnosticStore(),
 			manager: fakeManager(),
 			cwd: "/repo",
-		});
+		}) as unknown as { renderResult: (...args: unknown[]) => { render(w: number): string[] } };
 		const plain = { fg: (_role: string, text: string) => text, bold: (t: string) => t };
 		const text = `src/a.ts:1:1 error ts(1) ${"word ".repeat(20)}\nsrc/b.ts: unconfirmed: no reply`;
 		const rows = tool!

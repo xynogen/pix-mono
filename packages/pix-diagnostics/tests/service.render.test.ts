@@ -49,11 +49,11 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 				},
 			},
 		);
-		expect(tools.map((tool) => [tool.name, tool.renderShell])).toEqual([
-			["lsp_diagnostics", "self"],
-			["lsp_navigation", "self"],
-			["lsp_diagnostic_mark", "self"],
-		]);
+		expect(tools.map((tool) => [tool.name, tool.renderShell])).toEqual([["lsp", "self"]]);
+		const lsp = tools[0]!;
+		// The merged tool routes rendering by the call's action, as the host passes it in args.
+		const renderCtx = (args: object, overrides: Parameters<typeof makeRenderCtx>[0] = {}) =>
+			({ ...makeRenderCtx(overrides), args }) as never;
 		const rows = (
 			label: string,
 			component: { render(width: number): string[] } | undefined,
@@ -68,23 +68,24 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 		};
 		const cases = [
 			{
-				args: { source: "lsp", paths: ["src/a.ts"] },
+				args: { action: "diagnostics", source: "lsp", paths: ["src/a.ts"] },
 				text: "src/a.ts:3:4 error ts(2304) Missing name",
 				details: { files: 1, findings: 1, unconfirmed: 0, unavailable: 0 },
 			},
 			{
-				args: { operation: "references", path: "src/a.ts" },
+				args: { action: "navigate", operation: "references", path: "src/a.ts" },
 				text: "src/a.ts:3:4\nsrc/b.ts:9:2",
 				details: { operation: "references", results: 2 },
 			},
 			{
-				args: { action: "set", disposition: "defer" },
+				args: { action: "mark", op: "set", disposition: "defer" },
 				text: "Marked src/a.ts TS2304 as defer.",
 				details: { count: 1 },
 			},
 		];
-		for (const [index, tool] of tools.entries()) {
-			const item = cases[index]!;
+		for (const item of cases) {
+			const tool = lsp;
+			const label = item.args.action;
 			const result = {
 				content: [{ type: "text" as const, text: item.text }],
 				details: { outcome: "success", ...item.details },
@@ -94,10 +95,7 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 				enabled: false,
 				tools: {},
 			}));
-			rows(
-				`${tool.name}:call`,
-				tool.renderCall?.(item.args, theme as never, makeRenderCtx() as never),
-			);
+			rows(`${label}:call`, tool.renderCall?.(item.args, theme as never, renderCtx(item.args)));
 			for (const state of [
 				"success",
 				"partial",
@@ -107,12 +105,12 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 			] as const) {
 				const isError = state.endsWith("error");
 				const rendered = rows(
-					`${tool.name}:${state}`,
+					`${label}:${state}`,
 					tool.renderResult?.(
 						{ ...result, details: state.startsWith("no-details") ? undefined : result.details },
 						{ isPartial: state === "partial", expanded: false },
 						theme as never,
-						makeRenderCtx({ isError }) as never,
+						renderCtx(item.args, { isError }),
 					),
 				);
 				if (state !== "partial")
@@ -127,21 +125,16 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 				tools: {},
 			}));
 			for (const expanded of [false, true]) {
-				const context = makeRenderCtx({ state: { collapsed: true }, expanded });
+				const context = renderCtx(item.args, { state: { collapsed: true }, expanded });
 				rows(
-					`${tool.name}:${expanded ? "expanded" : "hidden-call"}`,
-					tool.renderCall?.(item.args, theme as never, context as never),
+					`${label}:${expanded ? "expanded" : "hidden-call"}`,
+					tool.renderCall?.(item.args, theme as never, context),
 				);
 				rows(
-					`${tool.name}:${expanded ? "expanded-result" : "collapsed"}`,
-					tool.renderResult?.(
-						result,
-						{ isPartial: false, expanded },
-						theme as never,
-						context as never,
-					),
+					`${label}:${expanded ? "expanded-result" : "collapsed"}`,
+					tool.renderResult?.(result, { isPartial: false, expanded }, theme as never, context),
 				);
-				expect(context.state as unknown).toEqual({ collapsed: true });
+				expect((context as { state: unknown }).state).toEqual({ collapsed: true });
 			}
 		}
 		await handlers.get("session_start")!({}, ctx);
@@ -163,11 +156,10 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 		);
 		expect(widget).toBeUndefined();
 		output.push("widget:touched-only (no registered row)");
-		const diag = tools[0]!;
 		const showWidget = async (label: string, width = 80) => {
-			await diag.execute(
+			await lsp.execute(
 				"capture",
-				{ source: "lsp", paths: ["src/a.ts"] },
+				{ action: "diagnostics", source: "lsp", paths: ["src/a.ts"] },
 				undefined,
 				undefined,
 				{} as never,

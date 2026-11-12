@@ -1,13 +1,13 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`AST captures six default host-box tools without executing the engine: ast_search call 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: search call 1`] = `
 "
                                                                                 
- <warning>◐︎ </warning> <toolTitle+bold>ast_search</toolTitle+bold> <dim>greet($A)</dim><muted> · typescript</muted>                                           
+ <warning>◐︎ </warning> <toolTitle+bold>ast · search</toolTitle+bold> <dim>greet($A)</dim><muted> · typescript</muted>                                         
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_search body 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: search body 1`] = `
 "
                                                                                 
  <success>✓︎</success> src/a.ts:12:3  greet(user)                                                   
@@ -15,14 +15,14 @@ exports[`AST captures six default host-box tools without executing the engine: a
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_replace call 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: replace call 1`] = `
 "
                                                                                 
- <warning>◐︎ </warning> <toolTitle+bold>ast_replace</toolTitle+bold> <dim>greet($A) → welcome($A)</dim><muted> · preview</muted>                               
+ <warning>◐︎ </warning> <toolTitle+bold>ast · replace</toolTitle+bold> <dim>greet($A) → welcome($A)</dim><muted> · preview</muted>                             
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_replace body 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: replace body 1`] = `
 "
                                                                                 
  <success>✓︎</success> Preview: 1 edit(s) in 1 file(s). Set apply=true to write.                    
@@ -34,14 +34,14 @@ exports[`AST captures six default host-box tools without executing the engine: a
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_outline call 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: outline call 1`] = `
 "
                                                                                 
- <warning>◐︎ </warning> <toolTitle+bold>ast_outline</toolTitle+bold> <dim>src</dim>                                                             
+ <warning>◐︎ </warning> <toolTitle+bold>ast · outline</toolTitle+bold> <dim>src</dim>                                                           
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_outline body 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: outline body 1`] = `
 "
                                                                                 
  <success>✓︎</success> src/a.ts                                                                     
@@ -51,14 +51,14 @@ exports[`AST captures six default host-box tools without executing the engine: a
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_read_symbol call 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: symbol call 1`] = `
 "
                                                                                 
- <warning>◐︎ </warning> <toolTitle+bold>ast_read_symbol</toolTitle+bold> <dim>greet</dim><muted> · src/a.ts</muted>                                            
+ <warning>◐︎ </warning> <toolTitle+bold>ast · symbol</toolTitle+bold> <dim>greet</dim><muted> · src/a.ts</muted>                                               
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_read_symbol body 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: symbol body 1`] = `
 "
                                                                                 
  <success>✓︎</success> src/a.ts:1  greet                                                            
@@ -70,14 +70,14 @@ exports[`AST captures six default host-box tools without executing the engine: a
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_read_enclosing call 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: enclosing call 1`] = `
 "
                                                                                 
- <warning>◐︎ </warning> <toolTitle+bold>ast_read_enclosing</toolTitle+bold> <dim>src/a.ts:12</dim>                                              
+ <warning>◐︎ </warning> <toolTitle+bold>ast · enclosing</toolTitle+bold> <dim>src/a.ts:12</dim>                                                 
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: ast_read_enclosing body 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: enclosing body 1`] = `
 "
                                                                                 
  <success>✓︎</success> src/a.ts:1  greet                                                            
@@ -88,14 +88,14 @@ exports[`AST captures six default host-box tools without executing the engine: a
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: symbol_search call 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: symbols call 1`] = `
 "
                                                                                 
- <warning>◐︎ </warning> <toolTitle+bold>symbol_search</toolTitle+bold> <dim>“greet user”</dim>                                                  
+ <warning>◐︎ </warning> <toolTitle+bold>ast · symbols</toolTitle+bold> <dim>“greet user”</dim>                                                  
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: symbol_search body 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: symbols body 1`] = `
 "
                                                                                 
  <success>✓︎</success> src/a.ts  (3)                                                                
@@ -104,14 +104,14 @@ exports[`AST captures six default host-box tools without executing the engine: s
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: replace apply 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: replace apply 1`] = `
 "
                                                                                 
- <warning>◐︎ </warning> <toolTitle+bold>ast_replace</toolTitle+bold> <dim>greet($A) → welcome($A)</dim><muted> · apply</muted>                                 
+ <warning>◐︎ </warning> <toolTitle+bold>ast · replace</toolTitle+bold> <dim>greet($A) → welcome($A)</dim><muted> · apply</muted>                               
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: empty 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: empty 1`] = `
 "
                                                                                 
  <success>✓︎</success> No matches in 2 file(s).                                                     
@@ -119,7 +119,7 @@ exports[`AST captures six default host-box tools without executing the engine: e
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: context error 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: context error 1`] = `
 "
                                                                                 
  <error>✗︎</error> Cannot read src/a.ts.                                                        
@@ -127,7 +127,7 @@ exports[`AST captures six default host-box tools without executing the engine: c
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: detail error 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: detail error 1`] = `
 "
                                                                                 
  <error>✗︎</error> ast-grep engine unavailable                                                  
@@ -135,14 +135,14 @@ exports[`AST captures six default host-box tools without executing the engine: d
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: partial 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: partial 1`] = `
 "
                                                                                 
  <success>✓︎</success> src/a.ts:12:3  greet(user)                                                   
                                                                                 "
 `;
 
-exports[`AST captures six default host-box tools without executing the engine: no details 1`] = `
+exports[`AST captures the six actions of the default host-box ast tool without executing the engine: no details 1`] = `
 "
                                                                                 
  <success>✓︎</success> No matches.                                                                  

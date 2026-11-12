@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DispositionStore } from "../src/dispositions.ts";
-import { registerMarkTool } from "../src/tools/mark-tool.ts";
+import { markTool } from "../src/tools/mark-tool.ts";
 
 interface Tool {
 	name: string;
@@ -11,15 +11,7 @@ interface Tool {
 }
 
 function captureMark(store: DispositionStore, cwd = "/repo"): Tool {
-	let tool: Tool | undefined;
-	const pi = {
-		registerTool(def: Tool) {
-			tool = def;
-		},
-	};
-	registerMarkTool(pi as never, { store, cwd });
-	if (!tool) throw new Error("tool not registered");
-	return tool;
+	return markTool({ store, cwd }) as unknown as Tool;
 }
 
 describe("DispositionStore", () => {
@@ -43,17 +35,17 @@ describe("DispositionStore", () => {
 	});
 });
 
-describe("lsp_diagnostic_mark tool", () => {
+describe("lsp mark action", () => {
 	test("set requires path, code, and disposition", async () => {
 		const tool = captureMark(new DispositionStore());
-		await expect(tool.execute("t", { action: "set", path: "a.ts" })).rejects.toThrow("disposition");
+		await expect(tool.execute("t", { op: "set", path: "a.ts" })).rejects.toThrow("disposition");
 	});
 
 	test("set then list shows the marked finding", async () => {
 		const store = new DispositionStore();
 		const tool = captureMark(store);
-		await tool.execute("t", { action: "set", path: "a.ts", code: "TS2322", disposition: "defer" });
-		const res = await tool.execute("t", { action: "list" });
+		await tool.execute("t", { op: "set", path: "a.ts", code: "TS2322", disposition: "defer" });
+		const res = await tool.execute("t", { op: "list" });
 		expect((res.details as { count: number }).count).toBe(1);
 		expect(res.content[0]?.text).toContain("a.ts");
 		expect(res.content[0]?.text).toContain("defer");
@@ -62,8 +54,8 @@ describe("lsp_diagnostic_mark tool", () => {
 	test("clear with no args clears all", async () => {
 		const store = new DispositionStore();
 		const tool = captureMark(store);
-		await tool.execute("t", { action: "set", path: "a.ts", code: "X", disposition: "suppress" });
-		const res = await tool.execute("t", { action: "clear" });
+		await tool.execute("t", { op: "set", path: "a.ts", code: "X", disposition: "suppress" });
+		const res = await tool.execute("t", { op: "clear" });
 		expect((res.details as { cleared: number }).cleared).toBe(1);
 		expect(store.list()).toHaveLength(0);
 	});

@@ -8,7 +8,10 @@ interface Handler {
 
 function mockPi() {
 	const handlers: Handler[] = [];
-	const tools: Array<{ name: string }> = [];
+	const tools: Array<{
+		name: string;
+		parameters?: { properties?: Record<string, { enum?: string[] }> };
+	}> = [];
 	const widgets: Array<{
 		key: string;
 		content?: unknown;
@@ -19,7 +22,7 @@ function mockPi() {
 		on(event: string, fn: (e: unknown, c: unknown) => unknown) {
 			handlers.push({ event, fn });
 		},
-		registerTool(def: { name: string }) {
+		registerTool(def: (typeof tools)[number]) {
 			tools.push(def);
 		},
 		registerCommand() {},
@@ -42,13 +45,14 @@ function mockPi() {
 }
 
 describe("pix-diagnostics extension", () => {
-	test("registers exactly the three runtime tools and starts no process", () => {
+	test("registers one lsp tool with three actions and starts no process", () => {
 		const m = mockPi();
 		registerExtension(m.pi as never);
-		expect(m.tools.map((t) => t.name)).toEqual([
-			"lsp_diagnostics",
-			"lsp_navigation",
-			"lsp_diagnostic_mark",
+		expect(m.tools.map((t) => t.name)).toEqual(["lsp"]);
+		expect(m.tools[0]?.parameters?.properties?.action?.enum).toEqual([
+			"diagnostics",
+			"navigate",
+			"mark",
 		]);
 	});
 
@@ -89,10 +93,6 @@ describe("pix-diagnostics extension", () => {
 		const m = mockPi();
 		registerExtension(m.pi as never);
 		registerExtension(m.pi as never);
-		expect(m.tools.map((t) => t.name)).toEqual([
-			"lsp_diagnostics",
-			"lsp_navigation",
-			"lsp_diagnostic_mark",
-		]);
+		expect(m.tools.map((t) => t.name)).toEqual(["lsp"]);
 	});
 });

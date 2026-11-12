@@ -415,14 +415,14 @@ describe("identifier grep nudge", () => {
 		content: [{ type: "text", text: "a.ts:1#ABC|x" }],
 		isError: false,
 	});
-	const tools = [...ALL_TOOLS, "graph", "lsp_navigation"];
+	const tools = [...ALL_TOOLS, "graph", "lsp"];
 
 	test("one code identifier points at graph impact once per session", async () => {
 		const handler = makeHandler(["read", "grep"], tools);
 		const { ctx } = makeCtx();
 		const result = (await handler(grepEvent("frameToolResult"), ctx)) as Result;
 		expect(result?.content.at(-1)?.text).toMatch(
-			/^\[pix-nudge\] Grepped one identifier\. Loaded `graph` for you; call it directly next time \(action:"impact" lists callers, users and tests; or `lsp_navigation` references\)\./,
+			/^\[pix-nudge\] Grepped one identifier\. Loaded `graph` for you; call it directly next time \(action:"impact" lists callers, users and tests; or `lsp` action "navigate" references\)\./,
 		);
 		expect(await handler(grepEvent("MAX_LIMIT"), ctx)).toBeUndefined();
 	});
@@ -446,16 +446,16 @@ describe("whole-file read nudge", () => {
 		content: [{ type: "text", text: lines(n) }],
 		isError: false,
 	});
-	const tools = [...ALL_TOOLS, "ast_outline", "ast_read_symbol"];
+	const tools = [...ALL_TOOLS, "ast"];
 
-	test("a whole read of a large source file loads ast_outline once", async () => {
+	test("a whole read of a large source file loads ast once", async () => {
 		const handler = makeHandler(["read"], tools);
 		const { ctx } = makeCtx();
 		const result = (await handler(readEvent("src/big.ts", 400), ctx)) as Result;
 		expect(result?.content.at(-1)?.text).toMatch(
-			/^\[pix-nudge\] Read a large source file whole\. Loaded `ast_outline` for you; call it directly next time \(then `ast_read_symbol` for one function\)\./,
+			/^\[pix-nudge\] Read a large source file whole\. Loaded `ast` for you; call it directly next time \(action "outline", then action "symbol" for one function\)\./,
 		);
-		expect(loadedTools).toEqual(["read", "ast_outline"]);
+		expect(loadedTools).toEqual(["read", "ast"]);
 		expect(await handler(readEvent("src/other.ts", 400), ctx)).toBeUndefined();
 	});
 

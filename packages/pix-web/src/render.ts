@@ -41,7 +41,10 @@ interface RenderCtx {
 }
 
 interface CompactRendererConfig<TDetails> {
+	/** Collapse-config key. */
 	tool: string;
+	/** Collapsed row title; defaults to `tool`. */
+	title?: string;
 	target: (details: TDetails) => string;
 	meta: (details: TDetails) => string;
 	status?: (details: TDetails) => CollapsedToolStatus;
@@ -98,7 +101,7 @@ export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetai
 			text.setText(
 				renderRow(
 					theme,
-					config.tool,
+					config.title ?? config.tool,
 					config.target(details),
 					config.meta(details),
 					config.status?.(details) ?? "success",

@@ -448,7 +448,7 @@ const CODE_IDENTIFIER =
 const IMPACT_RULE: Pick<Rule, "reason" | "tool" | "hint" | "note"> = {
 	reason: "Grepped one identifier.",
 	tool: "graph",
-	hint: 'action:"impact" lists callers, users and tests; or `lsp_navigation` references',
+	hint: 'action:"impact" lists callers, users and tests; or `lsp` action "navigate" references',
 	note: "Keep grep for text, comments and non-TS files.",
 };
 
@@ -459,7 +459,7 @@ const OUTLINE_FILE =
 const OUTLINE_MIN_LINES = 300;
 const OUTLINE_RULE: Pick<Rule, "reason" | "tool" | "hint" | "note"> = {
 	reason: "Read a large source file whole.",
-	tool: "ast_outline",
-	hint: "then `ast_read_symbol` for one function",
+	tool: "ast",
+	hint: 'action "outline", then action "symbol" for one function',
 	note: "Use read with offset/limit when you already know the lines.",
 };

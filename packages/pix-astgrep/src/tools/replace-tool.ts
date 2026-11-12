@@ -1,5 +1,5 @@
 /**
- * replace-tool.ts — the `ast_replace` tool.
+ * replace-tool.ts — the `ast` tool's `replace` action.
  *
  * AST-aware structural rewrite. The agent gives a `pattern` and a `rewrite`,
  * both with metavariables ($A, $$$ARGS). The tool matches each file, resolves
@@ -36,7 +36,7 @@ import {
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
@@ -79,16 +79,14 @@ function summarizeChange(rel: string, before: string, after: string): string {
 	return out.join("\n");
 }
 
-export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): void {
+export function replaceTool(deps: ReplaceToolDeps) {
 	const { cwd } = deps;
 
-	pi.registerTool({
-		name: "ast_replace",
-		...({ exposure: "deferred" } as const),
+	return defineTool({
+		name: "replace",
 		label: "AST replace",
 		description:
 			"Structural replace ($A, $$$ARGS). Preview only unless apply=true. Extra grammars require consent; newly installed grammars may need an agent restart.",
-		promptSnippet: "ast_replace(pattern, rewrite, paths?, lang?, apply?) — preview by default.",
 		parameters: Type.Object({
 			pattern: Type.Union([
 				Type.String({ description: "Pattern, e.g. foo($A)." }),
@@ -117,7 +115,7 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { pattern?: string; rewrite?: string; apply?: boolean };
-			const title = renderTitle(t, "ast_replace", context);
+			const title = renderTitle(t, "ast", context, "replace");
 			const rule = t.fg("dim", `${a.pattern ?? ""} → ${a.rewrite ?? ""}`);
 			const mode = t.fg("muted", a.apply ? " · apply" : " · preview");
 			return new Text(`${title} ${rule}${mode}`, 0, 0);
@@ -130,17 +128,12 @@ export function registerReplaceTool(pi: ExtensionAPI, deps: ReplaceToolDeps): vo
 			const isError = context.isError || details?.outcome === "error";
 			if (
 				!options.isPartial &&
-				tickCollapse(
-					"ast_replace",
-					context.state as CollapseState,
-					context.invalidate,
-					options.expanded,
-				)
+				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
 			)
 				return new Text(
 					renderRow(
 						theme,
-						"ast_replace",
+						"ast · replace",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

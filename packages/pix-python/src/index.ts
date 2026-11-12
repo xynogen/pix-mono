@@ -159,7 +159,7 @@ function register(pi: ExtensionAPI): void {
 			`Set \`packages\` to pip-install third-party modules into a managed venv at \`${VENV_REL}\` (created on first use, reused when \`python\` is omitted).`,
 		promptSnippet: "Run a Python snippet locally",
 		promptGuidelines: [
-			"python_run: Python computation/data work instead of `python -c`/heredoc in bash. Set `intent` to a short why.",
+			'python_run: Python computation/data work instead of `python -c`/heredoc in bash. Set `intent` to a short why. Load read_skills(name="pix-python", full=true) for patterns.',
 		],
 		renderShell: "self",
 		parameters: Type.Object({

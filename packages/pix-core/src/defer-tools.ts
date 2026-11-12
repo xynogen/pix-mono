@@ -97,7 +97,7 @@ const DEFAULT_LIMIT = 8;
 /** Pool size, as a multiple of the requested limit, that the re-rank chooses from. */
 const POOL_FACTOR = 3;
 // ponytail: one fixed penalty, in rank positions. 8 lifted the native tool into the top 8 on
-// every probe query of this session (grep, ast_outline, find, read_env, lsp_diagnostics) and
+// every probe query of this session (grep, ast, find, read_env, lsp) and
 // left server-specific queries ("kicad footprint", "browser click") unchanged.
 const MCP_PENALTY = 8;
 

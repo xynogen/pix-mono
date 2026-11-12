@@ -10,7 +10,7 @@ Goal: the full map, not the first match.
 ## Tools
 
 - **Unknown location, text, config, comments** → the `grep` and `find` tools, then `read` the hits.
-- **Known symbol** → `lsp_navigation` with `definition`, `references`, `implementation`, `callHierarchy`, or `hover`. LSP results are exact; prefer them over grep for symbols.
+- **Known symbol** → `lsp` with `action: "navigate"` and `operation` `definition`, `references`, `implementation`, `callHierarchy`, or `hover`. LSP results are exact; prefer them over grep for symbols.
 - **Code graph available** (`.pi/pix-graph/graph.json`) → `graph` query first.
 
 Start broad with grep, then switch to LSP for exact navigation.

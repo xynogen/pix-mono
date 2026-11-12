@@ -4,7 +4,9 @@
 
 # pix-web
 
-Provider-neutral `fetch` tool for Pi. It returns plain text for model input.
+Provider-neutral `web` tool for Pi with two actions, `search` and `fetch`. It
+returns plain text for model input. The bundled `pix-web` skill
+(`read_skills(name="pix-web", full=true)`) shows the search-then-fetch pattern.
 
 Built-in providers:
 
@@ -17,10 +19,11 @@ Built-in providers:
 - 9Router through `NINEROUTER_URL` and `NINEROUTER_KEY`
 - `curl`, a basic HTTP provider
 
-The model calls `fetch` with three fields only:
+The model fetches a page with three fields only:
 
 ```ts
-fetch({
+web({
+  action: "fetch",
   url: string,
   format?: "markdown" | "text" | "html",
   max_characters?: number,
@@ -52,7 +55,7 @@ export NINEROUTER_KEY="your-api-key"
 Replace the example URL and key with the values for your 9Router server.
 `ROUTER_API_BASE` and `ROUTER_API_KEY` also work as fallbacks.
 
-A long `fetch` or `search` result shows a preview whose last rows fade out,
+A long `web` result shows a preview whose last rows fade out,
 followed by `… N more lines (ctrl+o to expand)`. Expand to see the full page.
 
 ```ts
@@ -80,7 +83,7 @@ interface FetchProvider {
 
 ## Web search
 
-The same package registers a provider-neutral `search` tool. It returns web or
+The `web` tool's `search` action is provider-neutral too. It returns web or
 news results as plain text.
 
 Built-in search providers:
@@ -100,10 +103,11 @@ Built-in search providers:
 - GLM (z.ai Coding plan) through `ZAI_API_KEY`
 - 9Router through `NINEROUTER_URL` and `NINEROUTER_KEY`
 
-The model calls `search` with three fields only:
+The model searches with three fields only:
 
 ```ts
-search({
+web({
+  action: "search",
   query: string,
   search_type?: "web" | "news",
   max_results?: number,

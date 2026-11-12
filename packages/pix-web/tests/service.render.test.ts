@@ -1,25 +1,17 @@
 import { expect, test } from "bun:test";
 import { promises as dns } from "node:dns";
-import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { makeRenderCtx } from "@xynogen/pix-pretty/test-utils";
 import type { PackageSettings } from "@xynogen/pix-runtime";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 
-// Snapshot budget exception: 208 lines retain both registered tools, the 32/33-line preview boundary, and four actual command states.
-test("captures registered fetch and search Markdown without links or external execution", async () => {
+// Snapshot budget exception: 208 lines retain both web actions, the 32/33-line preview boundary, and four actual command states.
+test("captures web fetch and search Markdown without links or external execution", async () => {
 	const fixture = await withUiFixture({ hostTheme: true });
 	try {
-		const { registerFetchTool } = await import("../src/tools.ts");
-		const { registerSearchTool } = await import("../src/search-tool.ts");
-		const tools: ToolDefinition[] = [];
-		const pi = { registerTool: (tool: ToolDefinition) => tools.push(tool) };
-		registerFetchTool(pi as never);
-		registerSearchTool(pi as never);
-		expect(tools.map((tool) => [tool.name, tool.renderShell])).toEqual([
-			["fetch", "self"],
-			["search", "self"],
-		]);
+		const { webTool } = await import("../src/web-tool.ts");
+		const tool = webTool();
+		expect([tool.name, tool.renderShell]).toEqual(["web", "self"]);
 		const theme = roleTheme();
 		const output: string[] = [];
 		const rows = (label: string, component: { render(width: number): string[] } | undefined) => {
@@ -28,14 +20,19 @@ test("captures registered fetch and search Markdown without links or external ex
 			output.push(label, ...rendered);
 			return rendered;
 		};
+		// Renderers route by the call's action, so every context carries the call args.
+		const ctx = (args: object, overrides: Parameters<typeof makeRenderCtx>[0] = {}) =>
+			({ ...makeRenderCtx(overrides), args }) as never;
 		// ponytail: link-free fixtures retain actual Markdown. OSC 8 hyperlinks remain a harness blocker.
-		for (const tool of tools) {
+		for (const action of ["fetch", "search"] as const) {
 			const args =
-				tool.name === "fetch" ? { url: "https://example.test/guide" } : { query: "code guide" };
+				action === "fetch"
+					? { action, url: "https://example.test/guide" }
+					: { action, query: "code guide" };
 			const result = {
 				content: [{ type: "text" as const, text: "# Guide\n\n- **Read** the code.\n- *Test* it." }],
 				details: {
-					target: tool.name === "fetch" ? "https://example.test/guide" : "code guide",
+					target: action === "fetch" ? "https://example.test/guide" : "code guide",
 					meta: "2 items · fixture",
 					outcome: "success",
 				},
@@ -45,28 +42,28 @@ test("captures registered fetch and search Markdown without links or external ex
 				enabled: false,
 				tools: {},
 			}));
-			rows(`${tool.name}:call`, tool.renderCall?.(args, theme as never, makeRenderCtx() as never));
+			rows(`${action}:call`, tool.renderCall?.(args, theme as never, ctx(args)));
 			const completed = rows(
-				`${tool.name}:markdown`,
+				`${action}:markdown`,
 				tool.renderResult?.(
 					result,
 					{ expanded: false, isPartial: false },
 					theme as never,
-					makeRenderCtx() as never,
+					ctx(args),
 				),
 			);
 			expect(completed.at(-1)).toBe(`<success>${"─".repeat(80)}</success>`);
 			rows(
-				`${tool.name}:partial`,
+				`${action}:partial`,
 				tool.renderResult?.(
 					{ ...result, content: [{ type: "text", text: "Loading..." }] },
 					{ expanded: false, isPartial: true },
 					theme as never,
-					makeRenderCtx() as never,
+					ctx(args),
 				),
 			);
 			const error = rows(
-				`${tool.name}:error`,
+				`${action}:error`,
 				tool.renderResult?.(
 					{
 						...result,
@@ -75,7 +72,7 @@ test("captures registered fetch and search Markdown without links or external ex
 					},
 					{ expanded: false, isPartial: false },
 					theme as never,
-					makeRenderCtx() as never,
+					ctx(args),
 				),
 			);
 			expect(error.at(-1)).toBe(`<error>${"─".repeat(80)}</error>`);
@@ -86,34 +83,30 @@ test("captures registered fetch and search Markdown without links or external ex
 			}));
 			for (const outcome of ["success", "error", "cancelled"]) {
 				rows(
-					`${tool.name}:collapsed-${outcome}`,
+					`${action}:collapsed-${outcome}`,
 					tool.renderResult?.(
 						{ ...result, details: { ...result.details, outcome } },
 						{ expanded: false, isPartial: false },
 						theme as never,
-						makeRenderCtx({ state: { collapsed: true } }) as never,
+						ctx(args, { state: { collapsed: true } }),
 					),
 				);
 			}
 			rows(
-				`${tool.name}:hidden-call`,
-				tool.renderCall?.(
-					args,
-					theme as never,
-					makeRenderCtx({ state: { collapsed: true } }) as never,
-				),
+				`${action}:hidden-call`,
+				tool.renderCall?.(args, theme as never, ctx(args, { state: { collapsed: true } })),
 			);
 			rows(
-				`${tool.name}:expanded`,
+				`${action}:expanded`,
 				tool.renderResult?.(
 					result,
 					{ expanded: true, isPartial: false },
 					theme as never,
-					makeRenderCtx({ expanded: true, state: { collapsed: true } }) as never,
+					ctx(args, { expanded: true, state: { collapsed: true } }),
 				),
 			);
 		}
-		const tool = tools[0]!;
+		const fetchArgs = { action: "fetch", url: "https://example.test/guide" };
 		const longText = Array.from({ length: 33 }, (_, index) => `row ${index + 1}`).join("\n");
 		for (const expanded of [false, true])
 			rows(
@@ -122,7 +115,7 @@ test("captures registered fetch and search Markdown without links or external ex
 					{ content: [{ type: "text", text: longText }], details: undefined },
 					{ expanded, isPartial: false },
 					theme as never,
-					makeRenderCtx({ expanded }) as never,
+					ctx(fetchArgs, { expanded }),
 				),
 			);
 		for (const [label, text, isError] of [
@@ -135,7 +128,7 @@ test("captures registered fetch and search Markdown without links or external ex
 					{ content: [{ type: "text", text }], details: undefined },
 					{ expanded: false, isPartial: false },
 					theme as never,
-					makeRenderCtx({ isError }) as never,
+					ctx(fetchArgs, { isError }),
 				),
 			);
 		expect(output.join("\n")).toMatchSnapshot();

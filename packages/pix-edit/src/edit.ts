@@ -126,7 +126,7 @@ export function registerEditTool(
 		parameters: editSchema,
 		promptSnippet: "Edit with hash anchors first; exact text only after failure",
 		promptGuidelines: [
-			"For edit, try hash anchors from read first. Only if the hash-anchor edit fails, fall back to oldText/newText. If the file changed, read the affected region again before using current source text; never guess anchors or overwrite unseen changes.",
+			'For edit, try hash anchors from read first. Only if the hash-anchor edit fails, fall back to oldText/newText. If the file changed, read the affected region again before using current source text; never guess anchors or overwrite unseen changes. After a failed or partial edit, load read_skills(name="pix-edit", full=true).',
 		],
 		prepareArguments: prepareEditArguments,
 		constrainedSampling: { type: "json_schema", strict: "prefer" },

@@ -1,6 +1,6 @@
 import { StringEnum } from "@xynogen/pix-data/ai";
 import { renderCall } from "@xynogen/pix-pretty/utils";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { fetchConfig } from "./config.ts";
@@ -18,18 +18,21 @@ function configuredProvider(): string[] | undefined {
 	return fetchConfig.provider === "auto" ? undefined : [fetchConfig.provider];
 }
 
-export function registerFetchTool(pi: ExtensionAPI): void {
-	pi.registerTool({
+/** The `fetch` action of the `web` tool. */
+export function fetchTool() {
+	return defineTool({
 		name: "fetch",
 		label: "Fetch",
 		renderShell: "self",
 		description: "Fetch a URL as plain text through a configured provider.",
-		promptSnippet: "fetch(url, format?, max_characters?)",
-		renderCall: renderCall<unknown>("fetch", (args) =>
-			String((args as { url?: string }).url ?? ""),
+		renderCall: renderCall<unknown>(
+			"web",
+			(args) => String((args as { url?: string }).url ?? ""),
+			() => "fetch",
 		),
 		renderResult: makeRenderResult<Details>({
-			tool: "fetch",
+			tool: "web",
+			title: "web · fetch",
 			target: (details) => details.target,
 			meta: (details) => details.meta,
 			status: (details) =>

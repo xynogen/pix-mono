@@ -1,5 +1,5 @@
 /**
- * search-tool.ts — the `ast_search` tool.
+ * search-tool.ts — the `ast` tool's `search` action.
  *
  * AST-aware structural search. The agent gives an ast-grep pattern and a
  * language (or lets the tool infer it per file). The tool walks explicit paths
@@ -27,7 +27,7 @@ import {
 } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
@@ -46,16 +46,14 @@ interface Match {
 	text: string;
 }
 
-export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void {
+export function searchTool(deps: SearchToolDeps) {
 	const { cwd } = deps;
 
-	pi.registerTool({
-		name: "ast_search",
-		...({ exposure: "deferred" } as const),
+	return defineTool({
+		name: "search",
 		label: "AST search",
 		description:
 			"Structural search ($A, $$$ARGS). Paths default to cwd; lang defaults to file extension. Extra grammars require consent; newly installed grammars may need an agent restart.",
-		promptSnippet: "ast_search(pattern, paths?, lang?, limit?) — structural code search.",
 		parameters: Type.Object({
 			pattern: Type.Union([
 				Type.String({ description: "Pattern, e.g. foo($A)." }),
@@ -83,7 +81,7 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { pattern?: string; lang?: string };
-			const title = renderTitle(t, "ast_search", context);
+			const title = renderTitle(t, "ast", context, "search");
 			const pat = t.fg("dim", a.pattern ?? "");
 			const lang = a.lang ? t.fg("muted", ` · ${a.lang}`) : "";
 			return new Text(`${title} ${pat}${lang}`.trimEnd(), 0, 0);
@@ -96,17 +94,12 @@ export function registerSearchTool(pi: ExtensionAPI, deps: SearchToolDeps): void
 			const isError = context.isError || details?.outcome === "error";
 			if (
 				!options.isPartial &&
-				tickCollapse(
-					"ast_search",
-					context.state as CollapseState,
-					context.invalidate,
-					options.expanded,
-				)
+				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
 			)
 				return new Text(
 					renderRow(
 						theme,
-						"ast_search",
+						"ast · search",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

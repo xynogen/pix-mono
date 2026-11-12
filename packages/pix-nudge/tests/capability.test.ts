@@ -167,25 +167,22 @@ describe("buildOrientation", () => {
 
 	test("maps only registered capabilities to their tools, without user-only toolbox", () => {
 		const out = buildOrientation(
-			[tool("read_skills", "x"), tool("ask_user", "x"), tool("lsp_navigation", "x")],
+			[tool("read_skills", "x"), tool("ask_user", "x"), tool("lsp", "x")],
 			[],
 		);
-		expect(out).toMatch(/^Before you improvise, use: ask_user .*read_skills\(\) .*lsp_\* .*\.$/m);
+		expect(out).toMatch(/^Before you improvise, use: ask_user .*read_skills\(\) .*lsp .*\.$/m);
 		expect(out).not.toContain("search/fetch");
 		expect(out).not.toContain("/toolbox");
 		expect(out).not.toContain("toolbox(");
 	});
 
 	test("web labels name only registered tools; wildcard labels are explicit families", () => {
-		for (const name of ["search", "fetch"]) {
-			const out = buildOrientation([tool(name, "x")], []);
-			expect(out.split("\n")[1]).toBe(
-				`Before you improvise, use: ${name} (${name === "search" ? "web" : "web pages"}).`,
-			);
-		}
-		const out = buildOrientation([tool("context7-docs", "x"), tool("lsp_navigation", "x")], []);
+		expect(buildOrientation([tool("web", "x")], []).split("\n")[1]).toBe(
+			"Before you improvise, use: web (search, fetch pages).",
+		);
+		const out = buildOrientation([tool("context7-docs", "x"), tool("lsp", "x")], []);
 		expect(out).toContain("context7 tool family (library docs)");
-		expect(out).toContain("lsp_* tool family (types, refs, diagnostics)");
+		expect(out).toContain("lsp (types, refs, diagnostics)");
 	});
 
 	test("falls back to a generic line when no capability tool is registered", () => {

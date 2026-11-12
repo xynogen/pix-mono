@@ -1,7 +1,6 @@
 import { expect, mock, test } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { SgNode } from "@xynogen/pix-runtime/ast";
 import * as ast from "@xynogen/pix-runtime/ast";
 import { tempDir } from "@xynogen/pix-runtime/paths";
@@ -33,21 +32,12 @@ mock.module("@xynogen/pix-runtime/ast", () => ({
 	}),
 }));
 
-const { registerOutlineTool } = await import("../../src/tools/outline-tool.ts");
+const { outlineTool } = await import("../../src/tools/outline-tool.ts");
 
 test("Python outline lists imports, functions, classes and decorated definitions", async () => {
 	const cwd = mkdtempSync(join(tempDir(), "pix-outline-"));
 	writeFileSync(join(cwd, "a.py"), "# parser fixture\n");
-	let tool: Parameters<ExtensionAPI["registerTool"]>[0] | undefined;
-	registerOutlineTool(
-		{
-			registerTool: (definition) => {
-				tool = definition as unknown as typeof tool;
-			},
-		} as ExtensionAPI,
-		{ cwd },
-	);
-	if (!tool) throw new Error("tool missing");
+	const tool = outlineTool({ cwd });
 	const result = await tool.execute("t", { path: "." }, undefined, undefined, {} as never);
 	expect(result.details).toMatchObject({ outcome: "success", symbols: 4 });
 	const text = result.content

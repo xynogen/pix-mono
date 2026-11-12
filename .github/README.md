@@ -105,7 +105,7 @@ Widgets, slash commands, and display changes for the TUI.
 | [`@xynogen/pix-update`](https://www.npmjs.com/package/@xynogen/pix-update) | `/update` — self-update Pi + all extensions, detects install method |
 | [`@xynogen/pix-commands`](https://www.npmjs.com/package/@xynogen/pix-commands) | `/clear` (flushes `~/.cache/pi`), `/btw` isolated side question, `/afk` and `/yolo` unattended-run modes |
 | [`@xynogen/pix-nudge`](https://www.npmjs.com/package/@xynogen/pix-nudge) | Tools nudge + capability nudge hooks to steer model toward correct tools |
-| [`@xynogen/pix-diagnostics`](https://www.npmjs.com/package/@xynogen/pix-diagnostics) | Lazy LSP diagnostics, navigation, and a compact session widget — replaces the pi-lens LSP core |
+| [`@xynogen/pix-diagnostics`](https://www.npmjs.com/package/@xynogen/pix-diagnostics) | One `lsp` tool (diagnostics, navigate, mark), lazy servers, and a compact session widget — replaces the pi-lens LSP core |
 | [`@xynogen/pix-display`](https://www.npmjs.com/package/@xynogen/pix-display) | Paste chip rendering (`[paste image #1]`) + leaked `<think>` tag → native thinking blocks |
 | [`@xynogen/pix-prompts`](https://www.npmjs.com/package/@xynogen/pix-prompts) | System-prompt injection — bundled `SOP.md` baseline + repo directive files |
 | [`@xynogen/pix-skills`](https://www.npmjs.com/package/@xynogen/pix-skills) | `read_skills` discovery and loading — includes references, bundled resources, and on-demand TOON guidance |
@@ -143,7 +143,7 @@ Not bundled by `pix-core`. Install each one only if you want it. Each one stays 
 
 | Package | Why it's opt-in |
 | --- | --- |
-| [`@xynogen/pix-web`](https://www.npmjs.com/package/@xynogen/pix-web) | Provider-neutral `fetch` and `search` tools with Exa, Tavily, You.com, Brave, SearXNG, 9Router, and more adapters |
+| [`@xynogen/pix-web`](https://www.npmjs.com/package/@xynogen/pix-web) | Provider-neutral `web` tool (`search`, `fetch`) with Exa, Tavily, You.com, Brave, SearXNG, 9Router, and more adapters |
 | [`@xynogen/pix-voice`](https://www.npmjs.com/package/@xynogen/pix-voice) | Provider-neutral push-to-talk dictation (`Ctrl+Alt+Z`) plus the `transcribe` and `speak` tools, with 9Router, OpenAI, Groq, Deepgram, ElevenLabs, Gemini, and more adapters |
 | [`@xynogen/pix-9router`](https://www.npmjs.com/package/@xynogen/pix-9router) | 9Router LLM provider — needs a 9Router API key |
 | [`@xynogen/pix-sudo`](https://www.npmjs.com/package/@xynogen/pix-sudo) | `sudo_run` — root execution via a PAM password overlay (blocked in non-interactive mode) |
@@ -154,7 +154,7 @@ Not bundled by `pix-core`. Install each one only if you want it. Each one stays 
 | [`@xynogen/pix-mcp`](https://www.npmjs.com/package/@xynogen/pix-mcp) | Token-efficient MCP gateway — external servers can execute commands or reach sensitive services |
 | [`@xynogen/pix-codemode`](https://www.npmjs.com/package/@xynogen/pix-codemode) | Native `codemode` with highlighted JavaScript, formatted JSON, and Pix result frames |
 | [`@xynogen/pix-graph`](https://www.npmjs.com/package/@xynogen/pix-graph) | `graph` tool — native-TS code knowledge graph (build/query, no Python); TS/JS only |
-| [`@xynogen/pix-astgrep`](https://www.npmjs.com/package/@xynogen/pix-astgrep) | `ast_search` / `ast_read_symbol` / `symbol_search` — structural code search and symbol reads; needs the `@ast-grep/napi` native addon |
+| [`@xynogen/pix-astgrep`](https://www.npmjs.com/package/@xynogen/pix-astgrep) | One `ast` tool (outline, symbol, enclosing, search, replace, symbols) — structural code search, symbol reads and rewrites; needs the `@ast-grep/napi` native addon |
 | [`@xynogen/pix-hunk`](https://www.npmjs.com/package/@xynogen/pix-hunk) | `hunk` tool — live Hunk diff-review bridge; needs the external Hunk CLI and an active review session |
 | [`@xynogen/pix-aria2`](https://www.npmjs.com/package/@xynogen/pix-aria2) | `download` tool — fast, resumable downloads via an auto-managed aria2 RPC daemon; needs the external `aria2c` binary |
 | [`@xynogen/pix-proc`](https://www.npmjs.com/package/@xynogen/pix-proc) | `proc` tool — run and manage long-lived processes (`npm run dev`, `vite`, `python`) that outlive a turn; spawns background processes |

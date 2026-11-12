@@ -133,7 +133,7 @@ describe("pix-diagnostics end-to-end", () => {
 		expect(mixed.content[1]?.text.split("\n")).toEqual([
 			"LSP after write:",
 			"a.ts:3:1 error error msg",
-			"2 warning/info/hint not shown (lsp_diagnostics lists them).",
+			"2 warning/info/hint not shown (lsp diagnostics lists them).",
 			"Check these diagnostics before the next change.",
 		]);
 		await h.manager.shutdown();
@@ -145,9 +145,15 @@ describe("pix-diagnostics end-to-end", () => {
 		writeFileSync(join(cwd, "package.json"), "{}\n");
 
 		const h = harness(cwd);
-		const diag = h.tools.find((t) => t.name === "lsp_diagnostics");
-		const nav = h.tools.find((t) => t.name === "lsp_navigation");
-		if (!diag || !nav) throw new Error("tools missing");
+		const lsp = h.tools.find((t) => t.name === "lsp");
+		if (!lsp) throw new Error("lsp tool missing");
+		// One tool, routed by action, exactly as the model calls it.
+		const action = (name: string) => ({
+			execute: (id: string, params: Record<string, unknown>) =>
+				lsp.execute(id, { action: name, ...params }),
+		});
+		const diag = action("diagnostics");
+		const nav = action("navigate");
 
 		// Successful edits run LSP and keep the original result.
 		const edited = (await h.handlers.get("tool_result")?.(

@@ -2,9 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { DispositionStore } from "../../src/dispositions.ts";
 import type { LspManager } from "../../src/lsp/manager.ts";
 import { DiagnosticStore } from "../../src/store.ts";
-import { registerDiagnosticsTool } from "../../src/tools/diagnostics-tool.ts";
-import { registerMarkTool } from "../../src/tools/mark-tool.ts";
-import { registerNavigationTool } from "../../src/tools/navigation-tool.ts";
+import { lspTool } from "../../src/tools/lsp-tool.ts";
 
 const theme = {
 	fg: (_role: string, text: string) => text,
@@ -32,52 +30,47 @@ type Renderer = {
 	) => { render(width: number): string[] };
 };
 
-function capture(register: (pi: never) => void): Renderer {
-	let tool: Renderer | undefined;
-	register({ registerTool: (definition: Renderer) => (tool = definition) } as never);
-	if (!tool) throw new Error("tool not registered");
-	return tool;
-}
+// The merged `lsp` tool routes rendering by `args.action`, as the host passes it.
+const tool = lspTool({
+	store: new DiagnosticStore(),
+	dispositions: new DispositionStore(),
+	manager,
+	cwd: process.cwd(),
+}) as Renderer;
 
-describe("diagnostics tool collapse", () => {
+describe("lsp tool collapse", () => {
 	const cases = [
 		{
-			name: "lsp_diagnostics",
-			args: { source: "lsp", paths: ["a.ts"] },
+			name: "lsp · diagnostics",
+			args: { action: "diagnostics", source: "lsp", paths: ["a.ts"] },
 			result: {
 				content: [{ type: "text", text: "1 files, 0 clean, 1 unconfirmed" }],
 				details: { outcome: "success", files: 1, findings: 0, unconfirmed: 1, unavailable: 0 },
 			},
-			register: (pi: never) =>
-				registerDiagnosticsTool(pi, { store: new DiagnosticStore(), manager, cwd: process.cwd() }),
 		},
 		{
-			name: "lsp_navigation",
-			args: { operation: "references", path: "a.ts" },
+			name: "lsp · navigate",
+			args: { action: "navigate", operation: "references", path: "a.ts" },
 			result: {
 				content: [{ type: "text", text: "a.ts:5:2\na.ts:9:3" }],
 				details: { outcome: "success", operation: "references", results: 2, truncated: false },
 			},
-			register: (pi: never) => registerNavigationTool(pi, { manager, cwd: process.cwd() }),
 		},
 		{
-			name: "lsp_diagnostic_mark",
-			args: { action: "list" },
+			name: "lsp · mark",
+			args: { action: "mark", op: "list" },
 			result: {
 				content: [{ type: "text", text: "No dispositions." }],
 				details: { outcome: "success", count: 0 },
 			},
-			register: (pi: never) =>
-				registerMarkTool(pi, { store: new DispositionStore(), cwd: process.cwd() }),
 		},
 	];
 
-	for (const { name, args, result, register } of cases) {
+	for (const { name, args, result } of cases) {
 		test(`${name} shows one summary, hides its call, and expands to the full result`, () => {
-			const tool = capture(register);
 			expect(tool.renderShell).toBe("self");
 			const state = { collapsed: true };
-			const context = { state, expanded: false, isError: false, invalidate: () => {} };
+			const context = { args, state, expanded: false, isError: false, invalidate: () => {} };
 			expect(tool.renderCall(args, theme, context).render(80).join("\n").trim()).toBe("");
 			const collapsed = tool
 				.renderResult(result, { isPartial: false }, theme, context)

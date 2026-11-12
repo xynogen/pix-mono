@@ -40,18 +40,18 @@ const info = (name: string, source = "pkg") => ({ name, sourceInfo: { source } }
 const mcp = (server: string, n: number) =>
 	Array.from({ length: n }, (_, i) => `mcp__${server}__t${i}`);
 // BM25 order for "search file contents": 9 KiCad/Playwright hits, then the native tools.
-const ranked = [...mcp("kicad", 6), "grep", ...mcp("playwright", 3), "ast_search"];
+const ranked = [...mcp("kicad", 6), "grep", ...mcp("playwright", 3), "ast"];
 const tools = ranked.map((n) => info(n, n.startsWith("mcp__") ? `mcp:${n.split("__")[1]}` : "pkg"));
 
 test("weightNative lifts native tools and drops unnamed MCP hits ranked below them", () => {
 	// grep (rank 6) beats every penalised hit. Playwright (7-9) ranked below grep: dropped.
-	// ast_search (10) ties with kicad t2 (2 + 8); the tie keeps BM25 order.
+	// ast (10) ties with kicad t2 (2 + 8); the tie keeps BM25 order.
 	expect(weightNative(ranked, tools, "search file contents")).toEqual([
 		"grep",
 		"mcp__kicad__t0",
 		"mcp__kicad__t1",
 		"mcp__kicad__t2",
-		"ast_search",
+		"ast",
 		"mcp__kicad__t3",
 		"mcp__kicad__t4",
 		"mcp__kicad__t5",

@@ -1,5 +1,5 @@
 /**
- * read-symbol-tool.ts — the `ast_read_symbol` tool.
+ * read-symbol-tool.ts — the `ast` tool's `symbol` action.
  *
  * Return the exact source of one named top-level symbol in a file. It parses
  * the file with ast-grep and finds a declaration node whose name matches. This
@@ -23,7 +23,7 @@ import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import { grammarErrorResult } from "../grammar-result.ts";
@@ -69,15 +69,13 @@ function findSymbol(root: SgNode, name: string): SgNode | undefined {
 	return best;
 }
 
-export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDeps): void {
+export function readSymbolTool(deps: ReadSymbolToolDeps) {
 	const { cwd } = deps;
 
-	pi.registerTool({
-		name: "ast_read_symbol",
-		...({ exposure: "deferred" } as const),
+	return defineTool({
+		name: "symbol",
 		label: "Read symbol",
 		description: "Read one named declaration. Grammar-dependent; not semantic resolution.",
-		promptSnippet: "ast_read_symbol(path, symbol) — one symbol's source.",
 		parameters: Type.Object({
 			path: Type.String({ description: "Source file, e.g. `src/app.ts`." }),
 			symbol: Type.String({ description: "Exact symbol name to read." }),
@@ -88,7 +86,7 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 				return new Text("", 0, 0);
 			const t = theme as Theme;
 			const a = args as { path?: string; symbol?: string };
-			const title = renderTitle(t, "ast_read_symbol", context);
+			const title = renderTitle(t, "ast", context, "symbol");
 			const sym = t.fg("dim", a.symbol ?? "");
 			const path = a.path ? t.fg("muted", ` · ${a.path}`) : "";
 			return new Text(`${title} ${sym}${path}`.trimEnd(), 0, 0);
@@ -101,17 +99,12 @@ export function registerReadSymbolTool(pi: ExtensionAPI, deps: ReadSymbolToolDep
 			const isError = context.isError || details?.outcome === "error";
 			if (
 				!options.isPartial &&
-				tickCollapse(
-					"ast_read_symbol",
-					context.state as CollapseState,
-					context.invalidate,
-					options.expanded,
-				)
+				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
 			)
 				return new Text(
 					renderRow(
 						theme,
-						"ast_read_symbol",
+						"ast · symbol",
 						"",
 						`${text.split("\n").length} lines`,
 						isError ? "error" : "success",

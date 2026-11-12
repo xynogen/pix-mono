@@ -1,5 +1,5 @@
 ---
-name: graph
+name: pix-graph
 description: "Use for any question about a TS/JS codebase — its architecture, what calls what, how a feature works, or tracing data flow. Prefer this over grepping when a graph exists. Builds, queries, and summarizes a native knowledge graph via the `graph` tool (build / query / summarize) or the pix-graph CLI. No Python, no external service."
 disable-model-invocation: true
 ---

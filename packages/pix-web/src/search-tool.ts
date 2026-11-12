@@ -1,6 +1,6 @@
 import { StringEnum } from "@xynogen/pix-data/ai";
 import { renderCall } from "@xynogen/pix-pretty/utils";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { makeRenderResult } from "./render.ts";
@@ -18,18 +18,21 @@ function configuredProvider(): string[] | undefined {
 	return searchConfig.provider === "auto" ? undefined : [searchConfig.provider];
 }
 
-export function registerSearchTool(pi: ExtensionAPI): void {
-	pi.registerTool({
+/** The `search` action of the `web` tool. */
+export function searchTool() {
+	return defineTool({
 		name: "search",
 		label: "Search",
 		renderShell: "self",
 		description: "Search the web through a configured provider.",
-		promptSnippet: "search(query, search_type?, max_results?)",
-		renderCall: renderCall<unknown>("search", (args) =>
-			String((args as { query?: string }).query ?? ""),
+		renderCall: renderCall<unknown>(
+			"web",
+			(args) => String((args as { query?: string }).query ?? ""),
+			() => "search",
 		),
 		renderResult: makeRenderResult<Details>({
-			tool: "search",
+			tool: "web",
+			title: "web · search",
 			target: (details) => `“${details.target}”`,
 			meta: (details) => details.meta,
 			status: (details) =>

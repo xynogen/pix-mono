@@ -1,6 +1,6 @@
 ---
 name: lint
-description: Selects and runs the project's linter (lsp_diagnostics, then the project script, config, or a language default) and fixes findings. Use when asked to lint, fix lint errors, or check code quality.
+description: Selects and runs the project's linter (lsp diagnostics, then the project script, config, or a language default) and fixes findings. Use when asked to lint, fix lint errors, or check code quality.
 disable-model-invocation: true
 ---
 # Project Lint
@@ -9,7 +9,7 @@ Pix does not bundle linters. Use the project toolchain.
 
 ## Selection order
 
-1. Run `lsp_diagnostics` for language-server diagnostics.
+1. Run `lsp` with `action: "diagnostics"` for language-server diagnostics.
 2. Prefer the project's `lint` or `check` script.
 3. Use the tool named by a project config file.
 4. Use the language default below only when the project has no choice.

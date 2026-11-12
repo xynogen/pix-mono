@@ -1,5 +1,5 @@
 /**
- * navigation-tool.ts — the `lsp_navigation` tool.
+ * navigation-tool.ts — the `lsp` tool's `navigate` action.
  *
  * LSP navigation: definition, type definition, implementation, references,
  * hover, document symbols, workspace symbols, rename, and call hierarchy.
@@ -23,7 +23,7 @@ import {
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
-import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { defineTool } from "@xynogen/pix-runtime/host";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import type {
@@ -96,16 +96,15 @@ function capHover(text: string): { text: string; truncated: boolean } {
 	return { text: out, truncated };
 }
 
-export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDeps): void {
+export function navigationTool(deps: NavigationToolDeps) {
 	const { manager, cwd } = deps;
 
-	pi.registerTool({
-		name: "lsp_navigation",
+	return defineTool({
+		name: "navigate",
 		label: "Navigation",
 		renderShell: "self",
 		description:
 			"LSP navigation: definition, references/usages, callers (call hierarchy), implementations, hover types, symbols, rename preview. One-based positions. File ops need path; positional ones need line + character or symbol.",
-		promptSnippet: "LSP lookup, symbols, preview rename and call hierarchy.",
 		parameters: Type.Object({
 			operation: StringEnum([
 				"definition",
@@ -141,7 +140,7 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
 				return new Text("", 0, 0);
 			const a = args as { operation?: string; path?: string; query?: string };
-			const title = renderTitle(t, "lsp_navigation", context);
+			const title = renderTitle(t, "lsp", context, "navigate");
 			const op = t.fg("muted", a.operation ?? "");
 			const target = a.path ? t.fg("dim", a.path) : a.query ? t.fg("dim", `“${a.query}”`) : "";
 			return new Text(`${title} ${op} ${target}`.trimEnd(), 0, 0);
@@ -157,18 +156,11 @@ export function registerNavigationTool(pi: ExtensionAPI, deps: NavigationToolDep
 			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
 			if (options.isPartial) return body;
 			if (!details) return frameToolResult(body, theme, isError);
-			if (
-				tickCollapse(
-					"lsp_navigation",
-					context.state as CollapseState,
-					context.invalidate,
-					context.expanded,
-				)
-			)
+			if (tickCollapse("lsp", context.state as CollapseState, context.invalidate, context.expanded))
 				return new Text(
 					renderRow(
 						t,
-						"lsp_navigation",
+						"lsp · navigate",
 						details.operation,
 						`${details.results} results`,
 						isError ? "error" : "success",
