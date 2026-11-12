@@ -157,7 +157,7 @@ describe("cli init helper", () => {
 		}
 	});
 
-	// Windows without Developer Mode cannot create symlinks. CI (Linux) runs this.
+	// Windows without Developer Mode cannot create symlinks; elsewhere (CI runners included) this runs.
 	it.skipIf(!canSymlink())("runs when invoked through a symlinked bin path", () => {
 		const home = mkdtempSync(join(tempDir(), "pi-mcp-cli-home-"));
 		const binDir = mkdtempSync(join(tempDir(), "pi-mcp-cli-bin-"));
@@ -169,6 +169,8 @@ describe("cli init helper", () => {
 			env: {
 				...process.env,
 				HOME: home,
+				// Windows resolves the home dir from USERPROFILE, not HOME.
+				USERPROFILE: home,
 				PI_CODING_AGENT_DIR: join(home, ".pi", "agent"),
 			},
 			encoding: "utf-8",

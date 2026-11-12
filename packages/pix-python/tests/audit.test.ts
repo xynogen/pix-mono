@@ -84,7 +84,9 @@ describe("runtime Python path gate", () => {
 			const r = await f.run('print(open("link/../.env").read())');
 			expect(r.code).not.toBe(0);
 			expect(r.stdout).toBe("");
-			expect(f.accesses.some((a) => a.paths.includes(join(f.root, "private", ".env")))).toBe(true);
+			// POSIX follows the link before `..`; Windows resolves `..` lexically first.
+			const opened = process.platform === "win32" ? [".env"] : ["private", ".env"];
+			expect(f.accesses.some((a) => a.paths.includes(join(f.root, ...opened)))).toBe(true);
 		},
 	);
 

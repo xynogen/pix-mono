@@ -55,7 +55,7 @@ jobs:
 
   # Windows catches path, CRLF and symlink bugs the Linux job cannot. Tests only: lint, typecheck
   # and the tarball smoke are OS-independent, and coverage is ratcheted once, on Linux.
-  # ponytail: no extra test binaries here; tests that need them skip. Add a setup step to widen coverage.
+  # ponytail: only ripgrep is installed here (pix-graph needs it); other tests that need a binary skip.
   test-windows:
     runs-on: windows-latest
     steps:
@@ -69,6 +69,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Install test binaries
+        run: choco install ripgrep --no-progress -y
 
       - name: Test
         run: bun run test
