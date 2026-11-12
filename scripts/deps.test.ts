@@ -21,7 +21,9 @@ interface PkgJson {
 	pi?: {
 		extensions?: string[];
 		themes?: string | string[];
+		skills?: string[];
 	};
+	files?: string[];
 	dependencies?: Record<string, string>;
 	devDependencies?: Record<string, string>;
 	optionalDependencies?: Record<string, string>;
@@ -394,6 +396,68 @@ describe("dependency hygiene", () => {
 			.filter(({ name }) => !installer.includes(`npm:${name}|`))
 			.map(({ name }) => `${name}: not bundled by pix-core or listed in OPTIN_PIX_PACKAGES`);
 
+		expect(violations).toEqual([]);
+	});
+});
+
+describe("skill packaging", () => {
+	// The loader ships the shared catalogue; every other package ships only the skill for its own tools.
+	const CATALOGUE = "pix-skills";
+
+	/** Both layouts the loader accepts: `skills/<name>.md` and `skills/<name>/SKILL.md`. */
+	function skillsIn(dir: string): { name: string; file: string }[] {
+		const root = join(packagesDir, dir, "skills");
+		if (!existsSync(root)) return [];
+		const found: { name: string; file: string }[] = [];
+		for (const entry of readdirSync(root, { withFileTypes: true })) {
+			if (entry.isDirectory()) {
+				const file = join(root, entry.name, "SKILL.md");
+				if (existsSync(file)) found.push({ name: entry.name, file });
+			} else if (entry.name.endsWith(".md")) {
+				found.push({ name: entry.name.slice(0, -3), file: join(root, entry.name) });
+			}
+		}
+		return found;
+	}
+
+	test("shipped skills are declared, published, and named after their package", () => {
+		const violations: string[] = [];
+		for (const { name, dir, pkg } of pkgs) {
+			const shipped = skillsIn(dir);
+			const declared = (pkg.pi?.skills ?? []).map((entry) =>
+				entry.replace(/^\.\//, "").replace(/\/$/, ""),
+			);
+			if (shipped.length > 0 && !declared.includes("skills"))
+				violations.push(`${name}: skills/ is not declared in pi.skills`);
+			for (const entry of declared)
+				if (!existsSync(join(packagesDir, dir, entry)))
+					violations.push(`${name}: pi.skills "${entry}" does not exist`);
+			if (declared.length > 0 && !pkg.files?.includes("skills"))
+				violations.push(`${name}: files must include skills`);
+			if (dir === CATALOGUE) continue;
+			for (const { name: skill } of shipped)
+				if (skill !== dir) violations.push(`${dir}: skill ${skill} is not named after its package`);
+		}
+		expect(violations).toEqual([]);
+	});
+
+	test("skill names are unique, match frontmatter, and every pix-* skill has a package", () => {
+		const violations: string[] = [];
+		const owners = new Map<string, string>();
+		for (const { dir } of pkgs) {
+			for (const { name: skill, file } of skillsIn(dir)) {
+				const owner = owners.get(skill);
+				if (owner) violations.push(`skill ${skill} is shipped by both ${owner} and ${dir}`);
+				owners.set(skill, dir);
+				if (skill.startsWith("pix-") && !existsSync(join(packagesDir, skill)))
+					violations.push(`${dir}: skill ${skill} has no matching package`);
+				const declared = /^---\r?\n[\s\S]*?^name:\s*([^\s]+)/m.exec(
+					readFileSync(file, "utf8"),
+				)?.[1];
+				if (declared !== skill)
+					violations.push(`${dir}/skills: frontmatter name "${declared}" is not "${skill}"`);
+			}
+		}
 		expect(violations).toEqual([]);
 	});
 });

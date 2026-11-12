@@ -15,11 +15,15 @@
 		"cli.ts",
 		"README.md",
 		"OAUTH.md",
-		"LICENSE"
+		"LICENSE",
+		"skills"
 	],
 	"pi": {
 		"extensions": [
 			"src/index.ts"
+		],
+		"skills": [
+			"./skills"
 		]
 	},
 	"keywords": [
