@@ -865,6 +865,19 @@ export function unframeToolResult<T extends FramableComponent>(component: T): T 
 	return (framed[RESULT_FRAME]?.component ?? component) as T;
 }
 
+function isTextComponent(component: Component): component is TextComponentLike {
+	return typeof (component as Partial<TextComponentLike>).setText === "function";
+}
+
+/** The prior render's text component (unframed) when it has one, else a fresh one. */
+export function reuseText(
+	last: Component | undefined,
+	TextComponent: TextComponentCtor = Text,
+): TextComponentLike {
+	const prior = last && unframeToolResult(last);
+	return prior && isTextComponent(prior) ? prior : new TextComponent("", 0, 0);
+}
+
 /**
  * Default completed-tool chrome: unchanged body, full-width solid close, then
  * footer lines. Existing callers inherit this distro-wide presentation.

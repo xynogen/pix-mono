@@ -275,8 +275,7 @@ export function registerSkillPicker(
 				(tui, theme, _kb, done) => {
 					const picker = new SkillPicker({
 						local: listLocal(),
-						// SAFETY: Pi's Theme.getBgAnsi takes ThemeBg; ThemeLike widens it to string. The picker only passes valid keys.
-						theme: theme as never,
+						theme,
 						search,
 						done,
 						onChange: () => tui.requestRender(),

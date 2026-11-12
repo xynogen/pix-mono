@@ -36,8 +36,8 @@ import {
 	renderRow,
 	renderTitle,
 	renderToolError,
+	reuseText,
 	setResultDetails,
-	unframeToolResult,
 } from "./utils.ts";
 import { formatDuration } from "./widget-format.ts";
 
@@ -144,7 +144,7 @@ export function registerShellTool(
 		renderCall(args: BashParams, theme: ThemeLike, renderCtx: RenderContextLike) {
 			resolveBaseBackground(theme);
 			const displayCmdRaw = (args.command ?? "").trim();
-			const text = renderCtx.lastComponent ?? new TextComponent("", 0, 0);
+			const text = reuseText(renderCtx.lastComponent, TextComponent);
 			const label = renderTitle(theme, name, renderCtx);
 			const collapseState = renderCtx.state as CollapseState;
 			if (hideCollapsedToolCall(collapseState, renderCtx.expanded, (value) => text.setText(value)))
@@ -170,7 +170,7 @@ export function registerShellTool(
 			renderCtx: RenderContextLike,
 		) {
 			resolveBaseBackground(theme);
-			const text = unframeToolResult(renderCtx.lastComponent ?? new TextComponent("", 0, 0));
+			const text = reuseText(renderCtx.lastComponent, TextComponent);
 			const d = result.details as Record<string, unknown> | undefined;
 			const isPartial = (_opt as { isPartial?: boolean } | undefined)?.isPartial === true;
 			const completed = () => frameToolResult(text, theme, renderCtx.isError);

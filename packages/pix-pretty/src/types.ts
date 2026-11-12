@@ -12,6 +12,7 @@ import type {
 	ReadToolInput,
 	WriteToolInput,
 } from "@earendil-works/pi-coding-agent";
+import type { Component } from "@earendil-works/pi-tui";
 import type { FileFinder } from "@ff-labs/fff-node";
 
 // We keep the original shiki-shaped types as plain string aliases so the
@@ -25,10 +26,11 @@ export type BundledTheme = string;
 // ---------------------------------------------------------------------------
 
 export type BgTheme = {
-	getBgAnsi?: (key: string) => string;
+	// Method syntax: Pi's Theme takes narrower ThemeBg keys, and method params are bivariant.
+	getBgAnsi?(key: string): string;
 	// Semantic background wrapper exposed by Pi's theme (e.g. modal fills). Optional
 	// so mock/partial themes remain assignable; real runtime themes provide it.
-	bg?: (key: string, text: string) => string;
+	bg?(key: string, text: string): string;
 };
 
 export type FgTheme = {
@@ -48,11 +50,9 @@ export type ToolContent = TextContent | ImageContent;
 
 export type ToolResultLike<TDetails = unknown> = AgentToolResult<TDetails | undefined>;
 
-export type TextComponentLike = {
+export type TextComponentLike = Component & {
 	setText(value: string): void;
 	getText?: () => string;
-	render?: (width: number) => string[];
-	invalidate?: () => void;
 };
 
 export type TextComponentCtor = new (text?: string, x?: number, y?: number) => TextComponentLike;
@@ -62,7 +62,7 @@ export type ThemeLike = BgTheme & FgTheme & { bold: (text: string) => string };
 export type RenderContextLike<
 	TState extends Record<string, string | undefined> = Record<string, string | undefined>,
 > = {
-	lastComponent?: TextComponentLike;
+	lastComponent?: Component;
 	state: TState;
 	expanded: boolean;
 	isError: boolean;

@@ -846,8 +846,7 @@ function register(pi: ExtensionAPI): void {
 
 		execute: (_toolCallId, params, sig, onUpdate, ctx) =>
 			execute(params, sig, onUpdate, ctx, pi.events, sessionHosts),
-		// SAFETY: pix-pretty renderers take ThemeLike/RenderContextLike, structural subsets of Pi's Theme/ToolRenderContext.
-		renderCall: renderSshCall as never,
-		renderResult: renderSshResult as never,
+		renderCall: renderSshCall,
+		renderResult: renderSshResult,
 	});
 }

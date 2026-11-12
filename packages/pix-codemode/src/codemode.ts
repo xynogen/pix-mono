@@ -3,8 +3,13 @@ import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { type FadeTheme, fadePaint, fadeRowsOf, fadeText } from "@xynogen/pix-pretty/text";
-import { Text, type ToolRenderResultOptions, visibleWidth } from "@xynogen/pix-pretty/tui";
-import type { TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
+import {
+	type Component,
+	Text,
+	type ToolRenderResultOptions,
+	visibleWidth,
+} from "@xynogen/pix-pretty/tui";
+import type { ThemeLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
 	expandHint,
@@ -16,8 +21,8 @@ import {
 	pluralize,
 	renderCollapsed,
 	renderTitle,
+	reuseText,
 	termW,
-	unframeToolResult,
 	viewportTextConstructor,
 } from "@xynogen/pix-pretty/utils";
 import { formatMs } from "@xynogen/pix-pretty/widget-format";
@@ -143,7 +148,7 @@ type Context = {
 	isPartial?: boolean;
 	executionStarted?: boolean;
 	invalidate: () => void;
-	lastComponent?: TextComponentLike;
+	lastComponent?: Component;
 	/** Host-recorded execution time (Pi >= 1.1). */
 	durationMs?: number;
 	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
@@ -391,10 +396,9 @@ export function renderResult(
 	if (calls.length > 0) {
 		for (let i = outputStart; i < preview.length; i++) preview[i] = `       ${preview[i]}`;
 	}
-	const prior = ctx.lastComponent ? unframeToolResult(ctx.lastComponent) : undefined;
 	// ponytail: the preview cap counts logical lines. Long values wrap in full.
 	// Add a visual-line viewport if wrapped payloads need a separate height limit.
-	const text = options.expanded ? new Text("", 0, 0) : (prior ?? new Text("", 0, 0));
+	const text = options.expanded ? new Text("", 0, 0) : reuseText(ctx.lastComponent);
 	text.setText(
 		preview.join("\n") ||
 			theme.fg("muted", options.isPartial ? "Running script..." : "(empty output)"),

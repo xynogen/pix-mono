@@ -31,7 +31,7 @@ import {
 	renderRow,
 	renderTitle,
 	renderToolError,
-	unframeToolResult,
+	reuseText,
 } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
@@ -271,14 +271,13 @@ function register(pi: ExtensionAPI): void {
 			});
 		},
 
-		// SAFETY: pix-pretty renderers take ThemeLike/RenderContextLike, structural subsets of Pi's Theme/ToolRenderContext.
-		renderCall: ((
+		renderCall: (
 			args: { intent?: string; code?: string; python?: string },
 			theme: ThemeLike,
 			rc: RenderContextLike,
 		) => {
 			resolveBaseBackground(theme);
-			const text = rc.lastComponent ?? new Text("", 0, 0);
+			const text = reuseText(rc.lastComponent);
 			if (hideCollapsedToolCall(rc.state as CollapseState, rc.expanded, (v) => text.setText(v)))
 				return text;
 			const py = args.python?.trim() ? ` ${theme.fg("muted", `(${args.python.trim()})`)}` : "";
@@ -300,17 +299,16 @@ function register(pi: ExtensionAPI): void {
 				rc.expanded,
 				rc,
 			);
-		}) as never,
+		},
 
-		// SAFETY: pix-pretty renderers take ThemeLike/RenderContextLike, structural subsets of Pi's Theme/ToolRenderContext.
-		renderResult: ((
+		renderResult: (
 			result: ToolResultLike,
 			opt: unknown,
 			theme: ThemeLike,
 			rc: RenderContextLike,
 		) => {
 			resolveBaseBackground(theme);
-			const text = unframeToolResult(rc.lastComponent ?? new Text("", 0, 0));
+			const text = reuseText(rc.lastComponent);
 			const d = result.details as PythonResultDetails | undefined;
 			const isPartial = (opt as { isPartial?: boolean } | undefined)?.isPartial === true;
 			const done = (isError: boolean) => (isPartial ? text : frameToolResult(text, theme, isError));
@@ -382,6 +380,6 @@ function register(pi: ExtensionAPI): void {
 			];
 			text.setText(fillToolBackground(rows.join("\n")));
 			return done(!ok);
-		}) as never,
+		},
 	});
 }

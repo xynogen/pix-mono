@@ -36,6 +36,7 @@ import {
 	renderDimPreview,
 	renderRow,
 	renderTitle,
+	reuseText,
 	rule,
 	ruleFrame,
 	sectionFrame,
@@ -379,6 +380,16 @@ describe("frameToolResult", () => {
 
 		expect(unframeToolResult(framed)).toBe(child);
 		expect(unframeToolResult(framed).render(20)).toEqual(["collapsed"]);
+	});
+
+	it("reuseText keeps the prior text component and replaces anything else", () => {
+		const child = new MockTextComponent();
+		const theme: FgTheme = { fg: (_key, text) => text };
+		expect(reuseText(frameToolResult(child, theme, false))).toBe(child);
+		expect(reuseText(child)).toBe(child);
+		const plain = { render: () => [], invalidate: () => {} };
+		expect(reuseText(plain)).toBeInstanceOf(Text);
+		expect(reuseText(undefined)).toBeInstanceOf(Text);
 	});
 
 	it("uses error rules for failed results", () => {

@@ -22,7 +22,7 @@ import {
 	hideCollapsedToolCall,
 	renderCollapsed,
 	renderToolError,
-	unframeToolResult,
+	reuseText,
 } from "./utils.ts";
 
 type RenderState = Record<string, string | undefined>;
@@ -59,7 +59,7 @@ export function toolCardRenderer<D = Record<string, unknown>, S extends RenderSt
 		ctx: RenderContextLike<S>,
 	) => {
 		resolveBaseBackground(theme);
-		const text = unframeToolResult(ctx.lastComponent ?? new TextComponent("", 0, 0));
+		const text = reuseText(ctx.lastComponent, TextComponent);
 		const d = result.details ?? undefined;
 		const isPartial = options?.isPartial === true;
 		const completed = () => frameToolResult(text, theme, ctx.isError);
@@ -102,7 +102,7 @@ export function toolCallRenderer<A, S extends RenderState = RenderState>(
 ) {
 	return (args: A, theme: ThemeLike, ctx: RenderContextLike<S>) => {
 		resolveBaseBackground(theme);
-		const text = ctx.lastComponent ?? new TextComponent("", 0, 0);
+		const text = reuseText(ctx.lastComponent, TextComponent);
 		if (hideCollapsedToolCall(ctx.state as CollapseState, ctx.expanded, (v) => text.setText(v)))
 			return text;
 		text.setText(line(args, theme, ctx));

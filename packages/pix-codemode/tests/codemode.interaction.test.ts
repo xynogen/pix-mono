@@ -106,6 +106,7 @@ test("reuses a framed custom component and updates its body", () => {
 			this.value = value;
 		},
 		render: () => [],
+		invalidate: () => {},
 	};
 	const previous = frameToolResult(inner, theme, false);
 	const reused = renderResult(result("plain"), options, theme, {

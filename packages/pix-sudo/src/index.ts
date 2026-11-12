@@ -316,8 +316,7 @@ function register(pi: ExtensionAPI): void {
 			});
 		},
 
-		// SAFETY: pix-pretty renderers take ThemeLike/RenderContextLike, structural subsets of Pi's Theme/ToolRenderContext.
-		renderCall: renderSudoCall as never,
-		renderResult: renderSudoResult as never,
+		renderCall: renderSudoCall,
+		renderResult: renderSudoResult,
 	});
 }

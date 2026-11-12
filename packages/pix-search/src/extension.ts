@@ -45,8 +45,7 @@ function register(pi: ExtensionAPI): void {
 					const picker = new FilePicker({
 						files: [],
 						recency,
-						// SAFETY: Pi's Theme.getBgAnsi takes ThemeBg; ThemeLike widens it to string. The picker only passes valid keys.
-						theme: theme as never,
+						theme,
 						cwd,
 						done,
 						onChange: () => tui.requestRender(),

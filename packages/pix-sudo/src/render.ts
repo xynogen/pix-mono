@@ -3,7 +3,6 @@
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
-import { Text } from "@xynogen/pix-pretty/tui";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
@@ -16,7 +15,7 @@ import {
 	renderRow,
 	renderTitle,
 	renderToolError,
-	unframeToolResult,
+	reuseText,
 } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { SudoResultDetails } from "./result.ts";
@@ -54,7 +53,7 @@ export function renderSudoCall(
 	renderCtx: RenderContextLike,
 ) {
 	resolveBaseBackground(theme);
-	const text = renderCtx.lastComponent ?? new Text("", 0, 0);
+	const text = reuseText(renderCtx.lastComponent);
 	if (
 		hideCollapsedToolCall(renderCtx.state as CollapseState, renderCtx.expanded, (value) =>
 			text.setText(value),
@@ -82,7 +81,7 @@ export function renderSudoResult(
 	renderCtx: RenderContextLike,
 ) {
 	resolveBaseBackground(theme);
-	const text = unframeToolResult(renderCtx.lastComponent ?? new Text("", 0, 0));
+	const text = reuseText(renderCtx.lastComponent);
 	const details = result.details as SudoResultDetails | undefined;
 	const isPartial = (opt as { isPartial?: boolean } | undefined)?.isPartial === true;
 	const completed = (isError: boolean) => frameToolResult(text, theme, isError);
