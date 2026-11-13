@@ -76,6 +76,9 @@
 							"level": "error",
 							"options": { "maxLines": 253, "skipBlankLines": true }
 						}
+					},
+					"suspicious": {
+						"noExplicitAny": "error"
 					}
 				}
 			}

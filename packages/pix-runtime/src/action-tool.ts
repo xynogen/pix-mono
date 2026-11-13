@@ -12,7 +12,10 @@ import { type JsonObject, validateToolArguments } from "@earendil-works/pi-ai";
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { type TSchema, Type } from "typebox";
 
-// Each action keeps its own params/details types, so the merged tool is untyped.
+// Each action keeps its own params/details types, so the merged tool is untyped. ToolDefinition
+// is invariant in its params (execute takes them, renderers return them), so no non-any type accepts
+// every action's definition.
+// biome-ignore lint/suspicious/noExplicitAny: erased-generic registry of heterogeneous tool definitions
 type AnyDefinition = ToolDefinition<any, any, any>;
 
 export interface ActionSpec {
