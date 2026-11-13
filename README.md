@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/pix-logo.svg" alt="Pix" width="304" height="160">
+  <img src=".github/assets/pix-logo.svg" alt="Pix" width="304" height="160">
 </p>
 
 <h1 align="center">Pix</h1>
@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@xynogen/pix-core"><img src="https://img.shields.io/npm/v/@xynogen/pix-core?label=pix-core" alt="npm"></a>
   <a href="https://github.com/xynogen/pix-mono/actions/workflows/ci.yml"><img src="https://github.com/xynogen/pix-mono/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@ pi install npm:@xynogen/pix-core
 
 Or use the [one-shot installer](#install). It installs Pi, a theme, and the distro together. See the [package breakdown](#packages) and [what is opt-in](#standalone-extensions-opt-in) below.
 
-> **🎨 Opinionated** — the visual choices are intentional. A style PR may be declined. See [CONTRIBUTING.md](CONTRIBUTING.md).
+> **🎨 Opinionated** — the visual choices are intentional. A style PR may be declined. See [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 >
 > **⚠ Breaking changes** — upgrade through [uninstall + reinstall](#upgrade--clean-reinstall), not an incremental update.
 >
