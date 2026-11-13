@@ -53,7 +53,8 @@ test("env renderer hides disclosed values even on expansion and summarizes types
 			})
 			.render(100)
 			.join("\n");
-		expect(preview).toContain("20 variables");
+		// The call row carries the title; the open body lists variables without repeating it.
+		expect(preview).not.toContain("read_env · info");
 		expect(preview).toContain("8 more variables");
 		expect(preview).not.toContain("KEY_19");
 		const full = tool

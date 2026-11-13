@@ -89,17 +89,23 @@ export function renderReadEnvResult(
 		);
 	const component = {
 		render(width: number): string[] {
-			const header = renderRow(
-				theme,
-				details?.action ? `read_env · ${details.action}` : "read_env",
-				target,
-				details?.outcome ?? (hiddenRead || details?.name ? "values hidden" : ""),
-				status,
-				width,
-			);
-			if (collapsed) return [header];
+			// The call row carries the title; the heading only stands in once collapsed hides it.
+			if (collapsed)
+				return [
+					renderRow(
+						theme,
+						details?.action ? `read_env · ${details.action}` : "read_env",
+						target,
+						details?.outcome ?? (hiddenRead || details?.name ? "values hidden" : ""),
+						status,
+						width,
+					),
+				];
 			const body = bodyRows(result, details, names, hiddenRead, options.expanded, theme, renderCtx);
-			return new Text([header, ...body].join("\n"), 0, 0).render(width);
+			// A denied/cancelled outcome keeps its warning once the heading is gone.
+			if (status === "warning" && details?.outcome)
+				body.unshift(`${BODY_PAD}${theme.fg("warning", details.outcome)}`);
+			return new Text(body.join("\n"), 0, 0).render(width);
 		},
 		invalidate() {},
 	};

@@ -5,7 +5,6 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   "describe": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>mcp · describe</toolTitle+bold> <dim>demo_search</dim>                                                   ",
-    "<success>✓︎ </success> <toolTitle+bold>mcp · describe</toolTitle+bold> <dim>demo</dim>                                                          ",
     "   <accent>demo_search</accent>                                                                  ",
     "   <dim>Find records</dim>                                                                 ",
     "   <dim>demo_search</dim>                                                                  ",
@@ -66,7 +65,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   "list": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>mcp · list</toolTitle+bold> <dim>demo</dim>                                                              ",
-    "<success>✓︎ </success> <toolTitle+bold>mcp · list</toolTitle+bold> <dim>demo</dim><muted> · 1 tool</muted>                                                     ",
+    "   <muted>1 tool</muted>                                                                       ",
     "   <accent>demo_search</accent>                                                                  ",
     "   <muted>(ctrl+o to expand)</muted>                                                           ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
@@ -120,7 +119,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   "search": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>mcp · search</toolTitle+bold> <dim>records</dim>                                                         ",
-    "<success>✓︎ </success> <toolTitle+bold>mcp · search</toolTitle+bold> <dim>records</dim><muted> · 1 match</muted>                                               ",
+    "   <muted>1 match</muted>                                                                      ",
     "   <accent>demo_search</accent><muted> · demo</muted>                                                           ",
     "   <muted>(ctrl+o to expand)</muted>                                                           ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
@@ -128,7 +127,7 @@ exports[`registered MCP gateway and direct tools render their own shell 1`] = `
   "status": [
     "",
     "<muted>○︎ </muted> <toolTitle+bold>mcp · status</toolTitle+bold>                                                                 ",
-    "<success>✓︎ </success> <toolTitle+bold>mcp · status</toolTitle+bold><muted> · 1 tool</muted>                                                        ",
+    "   <muted>1 tool</muted>                                                                       ",
     "   <accent>demo</accent><muted> · </muted><success>connected</success><muted> · 1 tool</muted>                                                    ",
     "   <muted>(ctrl+o to expand)</muted>                                                           ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",

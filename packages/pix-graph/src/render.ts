@@ -172,13 +172,9 @@ export function renderGraphResult(
 		const rows: string[] = [];
 		if (details.impact) {
 			const info = details.impact;
+			// The call row carries the title and question; keep only the counts.
 			rows.push(
-				renderRow(
-					t,
-					"graph · impact",
-					details.query?.question ?? "",
-					`${pluralize(info.dependents, "dependent")} · ${pluralize(info.files.length, "file")} · ${pluralize(info.tests.length, "test")}`,
-				),
+				`${BODY_PAD}${t.fg("muted", `${pluralize(info.dependents, "dependent")} · ${pluralize(info.files.length, "file")} · ${pluralize(info.tests.length, "test")}`)}`,
 			);
 			const packages = new Map<string, number>();
 			for (const file of info.files)
@@ -204,11 +200,7 @@ export function renderGraphResult(
 				);
 		} else if (details.summary) {
 			rows.push(
-				renderRow(
-					t,
-					"graph · summarize",
-					`${details.summary.remaining}/${details.summary.total} missing or stale`,
-				),
+				`${BODY_PAD}${t.fg("muted", `${details.summary.remaining}/${details.summary.total} missing or stale`)}`,
 			);
 			for (const module of details.summary.modules)
 				rows.push(

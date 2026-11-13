@@ -3,7 +3,7 @@
 exports[`management previews show structured metadata and expansion retains source: status preview 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · status</toolTitle+bold><muted> · 3 tools</muted>                                                       ",
+  "   <muted>3 tools</muted>                                                                      ",
   "   <accent>demo</accent><muted> · </muted><warning>needs-auth</warning><muted> · 3 tools</muted>                                                  ",
   "   <muted>(ctrl+o to expand)</muted>                                                           ",
   "<success>────────────────────────────────────────────────────────────────────────────────</success>",
@@ -13,7 +13,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: status narrow 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · status</toolTitle+bold><muted> · 3 tools</muted>               ",
+  "   <muted>3 tools</muted>                              ",
   "   <accent>demo</accent><muted> · </muted><warning>needs-auth</warning><muted> · 3 tools</muted>          ",
   "   <muted>(ctrl+o to expand)</muted>                   ",
   "<success>────────────────────────────────────────</success>",
@@ -23,7 +23,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: status expanded 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · status</toolTitle+bold><muted> · 3 tools</muted>                                                       ",
+  "   <muted>3 tools</muted>                                                                      ",
   "   <dim>Full discovery text</dim>                                                          ",
   "   <dim>Parameters:</dim>                                                                  ",
   "   <dim>unique-schema-field</dim>                                                          ",
@@ -41,7 +41,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: search preview 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · search</toolTitle+bold> <dim>mesh</dim><muted> · 2 matches</muted>                                                ",
+  "   <muted>2 matches</muted>                                                                    ",
   "   <accent>mesh</accent><muted> · demo</muted>                                                                  ",
   "   <warning>1 omitted by discovery limit; refine search or raise limit</warning>                   ",
   "   <muted>(ctrl+o to expand)</muted>                                                           ",
@@ -52,7 +52,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: search narrow 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · search</toolTitle+bold> <dim>mesh</dim><muted> · 2 matches</muted>        ",
+  "   <muted>2 matches</muted>                            ",
   "   <accent>mesh</accent><muted> · demo</muted>                          ",
   "   <warning>1 omitted by discovery limit; refine </warning>",
   "<warning>search or raise limit</warning>                   ",
@@ -64,7 +64,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: search expanded 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · search</toolTitle+bold> <dim>mesh</dim><muted> · 2 matches</muted>                                                ",
+  "   <muted>2 matches</muted>                                                                    ",
   "   <dim>Full discovery text</dim>                                                          ",
   "   <dim>Parameters:</dim>                                                                  ",
   "   <dim>unique-schema-field</dim>                                                          ",
@@ -82,7 +82,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: list preview 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · list</toolTitle+bold> <dim>demo</dim><muted> · 1 tool</muted>                                                     ",
+  "   <muted>1 tool</muted>                                                                       ",
   "   <accent>mesh</accent>                                                                         ",
   "   <muted>(ctrl+o to expand)</muted>                                                           ",
   "<success>────────────────────────────────────────────────────────────────────────────────</success>",
@@ -92,7 +92,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: list narrow 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · list</toolTitle+bold> <dim>demo</dim><muted> · 1 tool</muted>             ",
+  "   <muted>1 tool</muted>                               ",
   "   <accent>mesh</accent>                                 ",
   "   <muted>(ctrl+o to expand)</muted>                   ",
   "<success>────────────────────────────────────────</success>",
@@ -102,7 +102,7 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: list expanded 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · list</toolTitle+bold> <dim>demo</dim><muted> · 1 tool</muted>                                                     ",
+  "   <muted>1 tool</muted>                                                                       ",
   "   <dim>Full discovery text</dim>                                                          ",
   "   <dim>Parameters:</dim>                                                                  ",
   "   <dim>unique-schema-field</dim>                                                          ",
@@ -120,7 +120,6 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: describe preview 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · describe</toolTitle+bold> <dim>demo</dim>                                                          ",
   "   <accent>mesh</accent>                                                                         ",
   "   <dim>Build a mesh</dim>                                                                 ",
   "   <dim>Full discovery text</dim>                                                          ",
@@ -134,7 +133,6 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: describe narrow 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · describe</toolTitle+bold> <dim>demo</dim>                  ",
   "   <accent>mesh</accent>                                 ",
   "   <dim>Build a mesh</dim>                         ",
   "   <dim>Full discovery text</dim>                  ",
@@ -148,7 +146,6 @@ exports[`management previews show structured metadata and expansion retains sour
 exports[`management previews show structured metadata and expansion retains source: describe expanded 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>mcp · describe</toolTitle+bold> <dim>demo</dim>                                                          ",
   "   <dim>Full discovery text</dim>                                                          ",
   "   <dim>Parameters:</dim>                                                                  ",
   "   <dim>unique-schema-field</dim>                                                          ",

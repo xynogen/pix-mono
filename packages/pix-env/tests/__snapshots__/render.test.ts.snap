@@ -17,7 +17,6 @@ exports[`env renderer hides disclosed values even on expansion and summarizes ty
 exports[`env renderer hides disclosed values even on expansion and summarizes types: read expanded 40 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>read_env · read</toolTitle+bold> <dim>TOKEN</dim> <muted>·</muted> <muted>values hidden</muted>",
   "   <accent>TOKEN</accent><muted> · value hidden</muted>                 ",
   "<success>────────────────────────────────────────</success>",
 ]
@@ -26,7 +25,6 @@ exports[`env renderer hides disclosed values even on expansion and summarizes ty
 exports[`env renderer hides disclosed values even on expansion and summarizes types: read expanded 80 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>read_env · read</toolTitle+bold> <dim>TOKEN</dim> <muted>·</muted> <muted>values hidden</muted>                                        ",
   "   <accent>TOKEN</accent><muted> · value hidden</muted>                                                         ",
   "<success>────────────────────────────────────────────────────────────────────────────────</success>",
 ]
@@ -35,7 +33,6 @@ exports[`env renderer hides disclosed values even on expansion and summarizes ty
 exports[`env renderer hides disclosed values even on expansion and summarizes types: types preview 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold> <dim>20 variables</dim>                                                 ",
   "   “︎ <accent>KEY_0</accent><muted> · string</muted>                                                             ",
   "   “︎ <accent>KEY_1</accent><muted> · string</muted>                                                             ",
   "   “︎ <accent>KEY_2</accent><muted> · string</muted>                                                             ",
@@ -56,7 +53,6 @@ exports[`env renderer hides disclosed values even on expansion and summarizes ty
 exports[`env renderer hides disclosed values even on expansion and summarizes types: types expanded 1`] = `
 [
   "",
-  "<success>✓︎ </success> <toolTitle+bold>read_env · info</toolTitle+bold> <dim>20 variables</dim>                                                 ",
   "   “︎ <accent>KEY_0</accent><muted> · string</muted>                                                             ",
   "   “︎ <accent>KEY_1</accent><muted> · string</muted>                                                             ",
   "   “︎ <accent>KEY_2</accent><muted> · string</muted>                                                             ",
@@ -84,7 +80,7 @@ exports[`env renderer hides disclosed values even on expansion and summarizes ty
 exports[`env renderer hides disclosed values even on expansion and summarizes types: denied 1`] = `
 [
   "",
-  "<warning>⚠︎ </warning> <toolTitle+bold>read_env · read</toolTitle+bold> <muted>·</muted> <muted>denied</muted>             ",
+  "   <warning>denied</warning>                               ",
   "   <dim>Denied</dim>                               ",
   "<success>────────────────────────────────────────</success>",
 ]

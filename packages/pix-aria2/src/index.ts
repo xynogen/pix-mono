@@ -297,17 +297,17 @@ function register(pi: ExtensionAPI): void {
 				);
 			const component = {
 				render(width: number): string[] {
-					const rows = [
-						renderRow(
-							theme,
-							details?.action ? `download · ${details.action}` : "download",
-							target,
-							details?.action === "add" && details.handle ? "queued" : "",
-							failed ? "error" : options.isPartial ? "warning" : "success",
-							width,
-						),
-					];
-					if (collapsed) return rows;
+					const heading = renderRow(
+						theme,
+						details?.action ? `download · ${details.action}` : "download",
+						target,
+						details?.action === "add" && details.handle ? "queued" : "",
+						failed ? "error" : "success",
+						width,
+					);
+					// The call row carries the title; the heading only stands in once collapsed hides it.
+					if (collapsed) return [heading];
+					const rows: string[] = [];
 					if (downloads) {
 						const shown = options.expanded ? downloads : downloads.slice(0, 6);
 						for (const { handle, status } of shown) {

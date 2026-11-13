@@ -8,36 +8,30 @@ exports[`proc registered self shell, modal, and widget with a fake manager 1`] =
    <dim>fixture/source</dim>
 partial
 
-<warning>◐︎ </warning> <toolTitle+bold>proc</toolTitle+bold>                                                                         
    <dim>ready</dim>                                                                        
    <dim>listening</dim>                                                                    
 compact success
 
-<success>✓︎ </success> <toolTitle+bold>proc · start</toolTitle+bold> <dim>proc-dev</dim> <muted>·</muted> <muted>1 line</muted>                                               
    <accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                                      <muted>5s</muted>
    <muted>proc-dev · pid 42 · /fixture</muted>                                                 
    <dim>ready</dim>                                                                        
 <success>────────────────────────────────────────────────────────────────────────────────</success>
 expanded
 
-<success>✓︎ </success> <toolTitle+bold>proc · start</toolTitle+bold> <dim>proc-dev</dim> <muted>·</muted> <muted>1 line</muted>                                               
    <accent>◐︎ running</accent><muted> · </muted><warning>capped</warning><muted> · </muted><accent>proc-dev</accent><muted> · </muted><dim>serve</dim>                                      <muted>5s</muted>
    <muted>proc-dev · pid 42 · /fixture</muted>                                                 
    <dim>ready</dim>                                                                        
 <success>────────────────────────────────────────────────────────────────────────────────</success>
 compact error
 
-<error>✗︎ </error> <toolTitle+bold>proc · start</toolTitle+bold> <dim>start requires a command</dim>                                        
    <error>start requires a command</error>                                                     
 <error>────────────────────────────────────────────────────────────────────────────────</error>
 expanded error
 
-<error>✗︎ </error> <toolTitle+bold>proc · start</toolTitle+bold> <dim>start requires a command</dim>                                        
    <error>start requires a command</error>                                                     
 <error>────────────────────────────────────────────────────────────────────────────────</error>
 fallback
 
-<success>✓︎ </success> <toolTitle+bold>proc</toolTitle+bold>                                                                         
    <dim>ready</dim>                                                                        
    <dim>listening</dim>                                                                    
 <success>────────────────────────────────────────────────────────────────────────────────</success>

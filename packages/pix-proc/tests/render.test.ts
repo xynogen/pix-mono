@@ -182,7 +182,8 @@ describe("proc renderer", () => {
 			})
 			.render(120)
 			.join("\n");
-		expect(rendered).toContain("proc · start");
+		// The call row already carries the title; the expanded body must not repeat it.
+		expect(rendered).not.toContain("proc · start");
 		expect(rendered).toContain("pid 42 · /project · read-only");
 		expect(rendered).toContain("<warning>log stopped: disk full</warning>");
 		expect(rendered).toContain("Full log · /logs/proc-dev.log");

@@ -56,13 +56,13 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   "hiddenCall": [],
   "impactExpanded": [
     "",
-    "<success>✓︎ </success> <toolTitle+bold>graph · impact</toolTitle+bold> <dim>authenticate</dim> <muted>·</muted> <muted>0 dependents · 0 files · 0 tests</muted>               ",
+    "   <muted>0 dependents · 0 files · 0 tests</muted>                                             ",
     "   <dim>full evidence unique-source-line</dim>                                             ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "impactPreview": [
     "",
-    "<success>✓︎ </success> <toolTitle+bold>graph · impact</toolTitle+bold> <dim>authenticate</dim> <muted>·</muted> <muted>3 dependents · 2 files · 1 test</muted>                ",
+    "   <muted>3 dependents · 2 files · 1 test</muted>                                              ",
     "   <accent>packages/a</accent><muted> · 1 file</muted>                                                          ",
     "   <accent>packages/b</accent><muted> · 1 file</muted>                                                          ",
     "   <muted>Test · </muted><dim>packages/a/src/a.test.ts</dim>                                              ",
@@ -84,14 +84,14 @@ exports[`captures actual graph calls, progress, trees and terminal result states
   ],
   "summaryExpanded": [
     "",
-    "<success>✓︎ </success> <toolTitle+bold>graph · summarize</toolTitle+bold> <dim>0/2 missing or stale</dim>                                       ",
+    "   <muted>0/2 missing or stale</muted>                                                         ",
     "   <success>All summaries are current</success>                                                    ",
     "   <dim>full evidence unique-card-line</dim>                                               ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",
   ],
   "summaryPreview": [
     "",
-    "<success>✓︎ </success> <toolTitle+bold>graph · summarize</toolTitle+bold> <dim>1/2 missing or stale</dim>                                       ",
+    "   <muted>1/2 missing or stale</muted>                                                         ",
     "   <accent>@xynogen/pix-a</accent><warning> · missing</warning>                                                     ",
     "   <muted>(ctrl+o to expand)</muted>                                                           ",
     "<success>────────────────────────────────────────────────────────────────────────────────</success>",

@@ -20,7 +20,6 @@ import {
 	getTextContent,
 	hideCollapsedToolCall,
 	renderCollapsed,
-	renderRow,
 	renderTitle,
 	renderToolError,
 	reuseText,
@@ -42,7 +41,8 @@ const SSH_ERRORS: Record<string, string> = {
 };
 
 function renderHostInfo(info: SshInfoDetails, body: string, theme: ThemeLike): string {
-	const rows = [renderRow(theme, "ssh · info", info.host ?? "", "read-only")];
+	// The call row carries `ssh · info <host>`; the body lists only the details.
+	const rows: string[] = [];
 	if (info.info) {
 		for (const [label, value] of [
 			["Host", info.info.hostname],

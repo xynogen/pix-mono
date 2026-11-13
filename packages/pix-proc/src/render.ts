@@ -120,16 +120,12 @@ export function renderProcResult(
 	const collapsed =
 		!options.isPartial &&
 		tickCollapse("proc", context.state as CollapseState, context.invalidate, options.expanded);
+	// The call row shows title and target; the heading only replaces it once collapsed hides it.
 	const component = {
 		render(width: number): string[] {
-			const heading = options.isPartial
-				? `${renderTitle(theme, "proc", { ...context, executionStarted: true, isPartial: true }, details?.action)}${target ? ` ${theme.fg("dim", target)}` : ""}`
-				: renderRow(theme, title, target, meta, failed ? "error" : "success", width);
-			if (collapsed) return [heading];
-			const rows = [
-				heading,
-				...bodyRows(details, fallback, options.expanded, width, theme, context),
-			];
+			if (collapsed)
+				return [renderRow(theme, title, target, meta, failed ? "error" : "success", width)];
+			const rows = bodyRows(details, fallback, options.expanded, width, theme, context);
 			return new Text(rows.join("\n"), 0, 0).render(width);
 		},
 		invalidate() {},

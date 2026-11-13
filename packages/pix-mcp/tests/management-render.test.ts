@@ -48,7 +48,8 @@ test("management previews show structured metadata and expansion retains source"
 					.render(100)
 					.join("\n"),
 			);
-			expect(preview).toContain(`mcp · ${details.mode}`);
+			// The call row carries the title; the open result must not repeat it.
+			expect(preview).not.toContain(`mcp · ${details.mode}`);
 			if (details.mode === "status") expect(preview).toContain("needs-auth");
 			if (details.mode === "search") expect(preview).toContain("1 omitted by discovery limit");
 			const full = stripTerminalSequences(

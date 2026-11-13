@@ -528,18 +528,29 @@ function renderManagementResult(
 		tickCollapse("mcp", context.state, context.invalidate, options.expanded);
 	const component = {
 		render(width: number): string[] {
-			const title = renderTitle(
-				theme,
-				"mcp",
-				{ ...context, isPartial: options.isPartial === true, isError: failed },
-				d.mode as string,
-			);
-			const heading = truncateToWidth(
-				`${title}${target ? ` ${theme.fg("dim", target)}` : ""}${count ? theme.fg("muted", ` · ${count}`) : ""}${failed ? theme.fg("error", ` · ${String(d.error)}`) : ""}`,
-				width,
-				"…",
-			);
-			if (collapsed) return [heading];
+			if (collapsed) {
+				const title = renderTitle(
+					theme,
+					"mcp",
+					{ ...context, isPartial: options.isPartial === true, isError: failed },
+					d.mode as string,
+				);
+				return [
+					truncateToWidth(
+						`${title}${target ? ` ${theme.fg("dim", target)}` : ""}${count ? theme.fg("muted", ` · ${count}`) : ""}${failed ? theme.fg("error", ` · ${String(d.error)}`) : ""}`,
+						width,
+						"…",
+					),
+				];
+			}
+			// The call row carries the title and target; the body keeps the count and error.
+			const heading = [
+				count && `${BODY_PAD}${theme.fg("muted", count)}`,
+				failed && d.error && `${BODY_PAD}${theme.fg("error", String(d.error))}`,
+			]
+				.filter(Boolean)
+				.map((row) => `${row}\n`)
+				.join("");
 			const body = result.content.flatMap(blockToLines).join("\n");
 			// Keep schema, auth instructions, diagnostics, and all source text available on expansion.
 			const showSource = options.expanded || failed || !rows.length;
@@ -558,7 +569,7 @@ function renderManagementResult(
 					? `\n${BODY_PAD}${theme.fg("muted", `… ${rows.length - 12} more `)}${expandHint(theme, context)}`
 					: "";
 			const hint = !options.expanded && !failed ? `\n${BODY_PAD}${expandHint(theme, context)}` : "";
-			return new Text(`${heading}\n${output}${schema}${more}${hint}`, 0, 0).render(width);
+			return new Text(`${heading}${output}${schema}${more}${hint}`, 0, 0).render(width);
 		},
 		invalidate() {},
 	};

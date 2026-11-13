@@ -188,22 +188,9 @@ function formatInfoModels(text: string, count: number, theme: Theme): string {
 	return out.join("\n");
 }
 
-/** `result`/`steer`/`stop` — colored header row + dim, indented body. */
-function formatUtilityAction(
-	verb: string,
-	agentId: string,
-	statusWord: string,
-	meta: string,
-	body: string,
-	theme: Theme,
-): string {
-	const header = dotJoin(
-		[
-			`${statusMark(statusWord, theme)} ${theme.fg("toolTitle", theme.bold("agent_control"))} ${theme.fg("dim", `${verb} ${agentId}`)}`,
-			meta ? theme.fg("muted", meta) : "",
-		],
-		(s) => theme.fg("muted", s),
-	);
+/** `result`/`steer`/`stop` — status row + dim, indented body. The call row carries title and id. */
+function formatUtilityAction(statusWord: string, meta: string, body: string, theme: Theme): string {
+	const header = `${statusMark(statusWord, theme)} ${theme.fg("muted", meta || statusWord)}`;
 	const bodyLines = body
 		.split("\n")
 		.filter((l) => l.trim())
@@ -240,7 +227,7 @@ function renderExpandedUtility(
 					? `last ${details.turns} turn${details.turns === 1 ? "" : "s"}`
 					: details.status;
 		return {
-			pretty: formatUtilityAction("result", details.agentId, details.status, meta, text, theme),
+			pretty: formatUtilityAction(details.status, meta, text, theme),
 			isError,
 		};
 	}
@@ -261,14 +248,7 @@ function renderExpandedUtility(
 	} else if (details.outcome === "already-finished") meta = "already finished";
 	else if (details.outcome === "not-found") meta = "not found";
 	return {
-		pretty: formatUtilityAction(
-			details.action,
-			details.agentId,
-			details.outcome,
-			meta,
-			text,
-			theme,
-		),
+		pretty: formatUtilityAction(details.outcome, meta, text, theme),
 		isError,
 	};
 }
