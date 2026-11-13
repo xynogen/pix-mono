@@ -1,124 +1,19 @@
 /**
- * render.ts — shared dim renderers for fetch/search tool output.
+ * render.ts — fetch/search results as dim text.
  *
- * fetch/search return external web content the model already consumed; the
- * full body is noise in the transcript. We render it dim (theme `dim` token)
- * so it reads like faded reasoning — present for inspection, visually quiet.
- * The tool title line stays normal so calls remain scannable.
- *
- * pi-tui's Text component is loaded via require() so the renderers degrade to
- * the default pi renderer (undefined-safe via cast) when pi-tui is absent.
+ * fetch/search return external web content the model already consumed; the full body is noise
+ * in the transcript. It renders dim (theme `dim`) so it reads like faded reasoning — present for
+ * inspection, visually quiet — with the tool title line kept normal so calls stay scannable.
  */
 
-import { fadeRowsOf } from "@xynogen/pix-pretty/text";
-import {
-	type Component,
-	Text,
-	type Theme,
-	type ToolRenderResultOptions,
-} from "@xynogen/pix-pretty/tui";
-import {
-	BODY_PAD,
-	bodyLine,
-	type CollapsedToolStatus,
-	frameToolResult,
-	getTextContent,
-	moreLines,
-	renderRow,
-	unframeToolResult,
-} from "@xynogen/pix-pretty/utils";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import type { AgentToolResult } from "@xynogen/pix-runtime/host";
+import { type BodyCardSpec, bodyCardRenderer } from "@xynogen/pix-pretty/tool-card";
+import { Text } from "@xynogen/pix-pretty/tui";
 
-interface TextLike extends Component {
-	setText(text: string): void;
-}
+export type { BodyCardSpec as CompactRendererConfig };
 
-// ToolRenderContext is not re-exported by pi-coding-agent; model the fields the
-// renderers actually read. Structurally compatible with the SDK context.
-interface RenderCtx {
-	executionStarted?: boolean;
-	isPartial?: boolean;
-	lastComponent: Component | undefined;
-	isError: boolean;
-	state: Record<string, unknown>;
-	expanded: boolean;
-	invalidate: () => void;
-	keyHint?: (keybinding: "app.tools.expand", description: string) => string;
-}
-
-interface CompactRendererConfig<TDetails> {
-	tool: string;
-	target: (details: TDetails) => string;
-	meta: (details: TDetails) => string;
-	status?: (details: TDetails) => CollapsedToolStatus;
-}
-
-// Preview cap is intentionally generous — dimming already de-emphasises the
-// body, so we only truncate to keep pathological multi-thousand-line dumps
-// from flooding the viewport. Expanding shows everything.
-const MAX_PREVIEW_LINES = 32;
-
-function getText(lastComponent: Component | undefined): TextLike {
-	if (lastComponent && "setText" in lastComponent)
-		return unframeToolResult(lastComponent as TextLike);
-	return new Text("", 0, 0);
-}
-
-function dimBody(body: string, theme: Theme, ctx: RenderCtx, expanded: boolean): string {
-	const lines = body.split("\n");
-	const maxShow = expanded ? lines.length : MAX_PREVIEW_LINES;
-	const out = fadeRowsOf(
-		lines.slice(0, maxShow + 1).map((line) => bodyLine(line, theme, (l) => theme.fg("dim", l))),
-		theme,
-		maxShow,
-	);
-	const remaining = lines.length - maxShow;
-	if (remaining > 0) out.push(moreLines(remaining, theme, ctx));
-	return out.join("\n");
-}
-
-/** Build a `renderResult` with a bounded detail preview and optional compact terminal row. */
-export function makeRenderResult<TDetails>(config?: CompactRendererConfig<TDetails>) {
-	return (
-		result: AgentToolResult<unknown>,
-		opts: ToolRenderResultOptions,
-		theme: Theme,
-		ctx: RenderCtx,
-	): Component => {
-		const text = getText(ctx.lastComponent);
-		const body = getTextContent(result);
-
-		if (ctx.isError) {
-			text.setText(`${BODY_PAD}${theme.fg("error", body || "Error")}`);
-			return opts.isPartial ? text : frameToolResult(text, theme, true);
-		}
-		if (!body.trim()) {
-			text.setText(`${BODY_PAD}${theme.fg("muted", "(empty)")}`);
-			return opts.isPartial ? text : frameToolResult(text, theme, false);
-		}
-
-		const details = result.details as TDetails | undefined;
-		const isError = Boolean(details && config?.status?.(details) === "error");
-		if (
-			!opts.isPartial &&
-			config &&
-			details &&
-			tickCollapse(config.tool, ctx.state as CollapseState, ctx.invalidate, opts.expanded)
-		) {
-			text.setText(
-				renderRow(
-					theme,
-					config.tool,
-					config.target(details),
-					config.meta(details),
-					config.status?.(details) ?? "success",
-				),
-			);
-			return text;
-		}
-
-		text.setText(dimBody(body, theme, ctx, opts.expanded));
-		return opts.isPartial ? text : frameToolResult(text, theme, isError);
-	};
+/** Build a `renderResult` with a bounded dim preview and optional compact terminal row. */
+export function makeRenderResult<TDetails>(config?: BodyCardSpec<TDetails>) {
+	// Preview cap is intentionally generous — dimming already de-emphasises the body, so we only
+	// truncate to keep pathological multi-thousand-line dumps from flooding the viewport.
+	return bodyCardRenderer(Text, { ...config, tool: config?.tool ?? "", maxPreviewLines: 32 });
 }

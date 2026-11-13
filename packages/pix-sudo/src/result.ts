@@ -1,6 +1,7 @@
 /** sudo_run result details and the result objects built from them. */
 
 import type { OverlayResult } from "@xynogen/pix-pretty/gate-overlay";
+import { gatedCancellation } from "@xynogen/pix-pretty/shell-tool";
 import { normalizeLineEndings } from "@xynogen/pix-pretty/utils";
 import type { AgentToolUpdateCallback } from "@xynogen/pix-runtime/host";
 
@@ -71,22 +72,9 @@ export function cancelResult(
 	reason: string | undefined,
 	action: OverlayResult["action"],
 ): { content: { type: "text"; text: string }[]; details: SudoResultDetails } {
-	const cancellationKind: SudoCancellationKind =
-		action === "timeout" ? "timeout" : action === "denied" ? "denied" : "missing-password";
-	const outcome: SudoOutcome =
-		cancellationKind === "timeout"
-			? "timed-out"
-			: cancellationKind === "denied"
-				? "denied"
-				: "cancelled";
-	const msg =
-		outcome === "timed-out"
-			? "Timed out — auto-denied."
-			: outcome === "denied"
-				? "Denied by user."
-				: "Cancelled — no password entered.";
+	const { outcome, cancellationKind, text } = gatedCancellation(action);
 	return {
-		content: [{ type: "text", text: `Cancelled — ${msg}` }],
+		content: [{ type: "text", text }],
 		details: makeDetails(command, reason, { outcome, cancellationKind }),
 	};
 }

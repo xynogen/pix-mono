@@ -1,8 +1,12 @@
 /** ssh_run tool card: call header and result body. */
 
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
-import { collapsedCommandRow, commandPreview } from "@xynogen/pix-pretty/command-preview";
-import { renderBashOutput } from "@xynogen/pix-pretty/renderers";
+import { commandPreview } from "@xynogen/pix-pretty/command-preview";
+import {
+	gatedCommandMeta,
+	renderGatedCommandResult,
+	safeOneLine,
+} from "@xynogen/pix-pretty/shell-tool";
 import type {
 	RenderContextLike,
 	TextComponentLike,
@@ -11,12 +15,10 @@ import type {
 } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
-	dotJoin,
 	fillToolBackground,
 	frameToolResult,
 	getTextContent,
 	hideCollapsedToolCall,
-	outputBodyRows,
 	renderCollapsed,
 	renderRow,
 	renderTitle,
@@ -30,36 +32,14 @@ import type { SshResultDetails } from "./result.ts";
 
 type SshInfoDetails = { _type?: string; host?: string; info?: HostInfo; aliases?: HostAlias[] };
 
-function safeOneLine(value: string): string {
-	return value
-		.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
-}
-
-function terminalMeta(details: SshResultDetails): string {
-	if (details.outcome === "denied") return "denied";
-	if (details.outcome === "timed-out") return "timed out";
-	if (details.outcome === "cancelled") return "cancelled";
-	if (details.errorKind === "no-ui") return "interactive session required";
-	if (details.errorKind === "auth-ssh") return "ssh auth failed";
-	if (details.errorKind === "host-key") return "host key verification failed";
-	if (details.errorKind === "auth-sudo") return "sudo auth failed";
-	if (details.errorKind === "execution" || details.errorKind === "no-result") return "failed";
-
-	const hasLines = typeof details.lineCount === "number" && details.lineCount > 0;
-	return dotJoin([
-		typeof details.exitCode === "number" && `exit ${details.exitCode}`,
-		details.auth && `${details.auth} auth`,
-		details.connection && `${details.connection} connection`,
-		hasLines && `${details.lineCount} ${details.lineCount === 1 ? "line" : "lines"}`,
-		details.truncated && "truncated",
-	]);
-}
-
-function isTerminal(details: SshResultDetails): boolean {
-	return details.outcome !== "awaiting-approval" && details.outcome !== "running";
-}
+const SSH_ERRORS: Record<string, string> = {
+	"no-ui": "interactive session required",
+	"auth-ssh": "ssh auth failed",
+	"host-key": "host key verification failed",
+	"auth-sudo": "sudo auth failed",
+	execution: "failed",
+	"no-result": "failed",
+};
 
 function renderHostInfo(info: SshInfoDetails, body: string, theme: ThemeLike): string {
 	const rows = [renderRow(theme, "ssh · info", info.host ?? "", "read-only")];
@@ -186,57 +166,22 @@ export function renderSshResult(
 	renderCtx: RenderContextLike,
 ) {
 	resolveBaseBackground(theme);
-	const text = reuseText(renderCtx.lastComponent);
 	const details = result.details as SshResultDetails | undefined;
 	const isPartial = (opt as { isPartial?: boolean } | undefined)?.isPartial === true;
-	const completed = (isError: boolean) => frameToolResult(text, theme, isError);
-
-	if (details?._type !== "sshResult")
+	if (details?._type !== "sshResult") {
+		const text = reuseText(renderCtx.lastComponent);
 		return renderInfoResult(result, theme, renderCtx, text, isPartial);
-
-	if (
-		!isPartial &&
-		isTerminal(details) &&
-		tickCollapse("ssh", renderCtx.state as CollapseState, renderCtx.invalidate, renderCtx.expanded)
-	) {
-		const status = details.outcome === "success" ? "success" : "error";
-		return collapsedCommandRow(
-			renderRow(theme, "ssh", details.host, terminalMeta(details), status).trimEnd(),
-			safeOneLine(details.command),
-			theme,
-		);
 	}
-
-	if (details.outcome === "awaiting-approval" || details.outcome === "running") {
-		text.setText(
-			fillToolBackground(`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "working")}`),
-		);
-		return text;
-	}
-
-	if (details.outcome !== "success" && details.errorKind !== "exit-code") {
-		const diagnostic = getTextContent(result) || "Error";
-		text.setText(
-			details.outcome === "error"
-				? renderToolError(diagnostic, theme)
-				: fillToolBackground(`${BODY_PAD}${theme.fg("warning", diagnostic)}`),
-		);
-		return isPartial ? text : completed(true);
-	}
-
-	const code = typeof details.exitCode === "number" ? details.exitCode : null;
-	const rendered = typeof details._render === "string" ? details._render : "";
-	const { summary } = renderBashOutput(rendered, code, theme);
-	const lines = rendered ? rendered.split("\n") : [];
-
-	if (!rendered) {
-		text.setText(fillToolBackground(`${BODY_PAD}${summary}`));
-		return isPartial ? text : completed(details.outcome !== "success");
-	}
-
-	const status = details.outcome === "success" ? "success" : "error";
-	text.setText(
-		fillToolBackground(outputBodyRows(lines, theme, renderCtx, status, isPartial).join("\n")),
+	const meta = gatedCommandMeta(details, SSH_ERRORS, [
+		details.auth && `${details.auth} auth`,
+		details.connection && `${details.connection} connection`,
+	]);
+	return renderGatedCommandResult(
+		result,
+		details,
+		{ name: "ssh", target: details.host, meta },
+		isPartial,
+		theme,
+		renderCtx,
 	);
-	return text;
 }
