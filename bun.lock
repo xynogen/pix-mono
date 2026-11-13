@@ -32,7 +32,7 @@
     },
     "packages/pix-aria2": {
       "name": "@xynogen/pix-aria2",
-      "version": "0.2.10",
+      "version": "0.2.11",
       "dependencies": {
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
@@ -138,7 +138,7 @@
         "@xynogen/pix-read": "^0.4.13",
         "@xynogen/pix-runtime": "^0.21.0",
         "@xynogen/pix-skills": "^0.10.11",
-        "@xynogen/pix-subagent": "^0.10.19",
+        "@xynogen/pix-subagent": "^0.10.20",
         "@xynogen/pix-todo": "^0.4.16",
         "@xynogen/pix-update": "^0.2.14",
         "@xynogen/pix-welcome": "^0.2.18",
@@ -206,7 +206,7 @@
     },
     "packages/pix-env": {
       "name": "@xynogen/pix-env",
-      "version": "0.4.7",
+      "version": "0.4.8",
       "dependencies": {
         "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
@@ -257,7 +257,7 @@
     },
     "packages/pix-graph": {
       "name": "@xynogen/pix-graph",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "bin": {
         "pix-graph": "src/cli.ts",
       },
@@ -315,7 +315,7 @@
     },
     "packages/pix-mcp": {
       "name": "@xynogen/pix-mcp",
-      "version": "0.8.20",
+      "version": "0.8.21",
       "bin": {
         "pix-mcp": "cli.ts",
       },
@@ -423,7 +423,7 @@
     },
     "packages/pix-proc": {
       "name": "@xynogen/pix-proc",
-      "version": "0.2.14",
+      "version": "0.2.15",
       "dependencies": {
         "@xynogen/pix-pretty": "^2.1.0",
         "@xynogen/pix-runtime": "^0.20.0",
@@ -518,7 +518,7 @@
     },
     "packages/pix-ssh": {
       "name": "@xynogen/pix-ssh",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "dependencies": {
         "@xynogen/pix-pretty": "^2.2.0",
         "@xynogen/pix-runtime": "^0.21.0",
@@ -531,7 +531,7 @@
     },
     "packages/pix-subagent": {
       "name": "@xynogen/pix-subagent",
-      "version": "0.10.19",
+      "version": "0.10.20",
       "dependencies": {
         "@xynogen/pix-data": "^0.6.0",
         "@xynogen/pix-pretty": "^2.1.0",
