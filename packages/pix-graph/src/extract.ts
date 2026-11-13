@@ -222,15 +222,29 @@ export function extract(
 	files: string[] | ParsedFile[],
 	repoRoot: string,
 ): Extraction & { unresolved: UnresolvedImport[] } {
-	const nodes: GraphNode[] = [];
-	const links: GraphLink[] = [];
-	const unresolved: UnresolvedImport[] = [];
-	const seen = new Set<string>();
-
 	const parsed: ParsedFile[] =
 		typeof files[0] === "string" || files.length === 0
 			? (files as string[]).map((file) => parseFile(file, repoRoot))
 			: (files as ParsedFile[]);
+	const g = createGraphState(parsed, repoRoot);
+	// Pass 1: file + entity nodes, contains edges, import bindings, export tables.
+	for (const file of parsed) indexFile(g, file);
+	// Pass 2: calls/references from the enclosing top-level declaration (or the file) to imported
+	// or same-file entities. A use that is not a call (type annotation, `extends`, a passed
+	// constant) becomes `references`, so impact on an interface or const is not silently empty.
+	for (const file of parsed) linkUses(g, file);
+	return { nodes: g.nodes, links: g.links, unresolved: g.unresolved };
+}
+
+type Binding = { file: string; name: string };
+type GraphState = ReturnType<typeof createGraphState>;
+
+/** Shared tables for both passes, plus the edge builders that dedupe into them. */
+function createGraphState(parsed: ParsedFile[], repoRoot: string) {
+	const nodes: GraphNode[] = [];
+	const links: GraphLink[] = [];
+	const unresolved: UnresolvedImport[] = [];
+	const seen = new Set<string>();
 	const resolver = createResolver(
 		parsed.map((p) => p.rel),
 		repoRoot,
@@ -238,7 +252,7 @@ export function extract(
 	const fileIdByRel = new Map(parsed.map((p) => [p.rel, p.fileId]));
 	const exportsByRel = new Map<string, FileExports>();
 	// Per file: local binding -> imported module file + imported name ("*" = namespace).
-	const bindingsByRel = new Map<string, Map<string, { file: string; name: string }>>();
+	const bindingsByRel = new Map<string, Map<string, Binding>>();
 	// `rel\0Class.member` → member node id, and `classNodeId\0member` → member node id.
 	const membersByRel = new Map<string, string>();
 	const memberById = new Map<string, string>();
@@ -268,97 +282,6 @@ export function extract(
 			source_location: line(source, at),
 		});
 	};
-
-	// Pass 1: file + entity nodes, contains edges, import bindings, export tables.
-	for (const { rel, source, fileId } of parsed) {
-		const pkg = resolver.packageOf(rel);
-		if (!seen.has(fileId)) {
-			seen.add(fileId);
-			nodes.push({
-				id: fileId,
-				label: basename(rel),
-				file_type: "code",
-				source_file: rel,
-				...(pkg ? { package: pkg } : {}),
-			});
-		}
-		const table: FileExports = { declared: new Map(), named: new Map(), star: [] };
-		const bindings = new Map<string, { file: string; name: string }>();
-		exportsByRel.set(rel, table);
-		bindingsByRel.set(rel, bindings);
-		for (const stmt of source.statements) {
-			if (ts.isImportDeclaration(stmt) && ts.isStringLiteral(stmt.moduleSpecifier)) {
-				const target = resolveSpec(rel, source, stmt, stmt.moduleSpecifier.text);
-				if (!target) continue;
-				if (!stmt.importClause?.isTypeOnly) addImport(rel, source, stmt, target);
-				const clause = stmt.importClause;
-				const named = clause?.namedBindings;
-				if (named && ts.isNamespaceImport(named)) {
-					bindings.set(named.name.text, { file: target, name: "*" });
-				} else if (named) {
-					for (const el of named.elements) {
-						bindings.set(el.name.text, { file: target, name: (el.propertyName ?? el.name).text });
-					}
-				}
-				continue;
-			}
-			if (
-				ts.isExportDeclaration(stmt) &&
-				stmt.moduleSpecifier &&
-				ts.isStringLiteral(stmt.moduleSpecifier)
-			) {
-				const target = resolveSpec(rel, source, stmt, stmt.moduleSpecifier.text);
-				if (!target) continue;
-				if (!stmt.isTypeOnly) addImport(rel, source, stmt, target);
-				const clause = stmt.exportClause;
-				if (!clause) table.star.push(target);
-				else if (ts.isNamedExports(clause)) {
-					for (const el of clause.elements) {
-						table.named.set(el.name.text, {
-							file: target,
-							name: (el.propertyName ?? el.name).text,
-						});
-					}
-				}
-				continue;
-			}
-			const decl = declName(stmt);
-			if (!decl) continue;
-			const id = entityNodeId(fileId, decl.name);
-			table.declared.set(decl.name, id);
-			const entities = [{ id, label: decl.label, at: stmt as ts.Node, parent: fileId }];
-			// Class members become `Class.member` nodes, so impact can target one method.
-			for (const m of classMembers(stmt)) {
-				const mid = entityNodeId(fileId, `${decl.name}.${m.name}`);
-				membersByRel.set(`${rel}\0${decl.name}.${m.name}`, mid);
-				memberById.set(`${id}\0${m.name}`, mid);
-				entities.push({ id: mid, label: `${decl.name}.${m.label}`, at: m.at, parent: id });
-			}
-			for (const e of entities) {
-				if (!seen.has(e.id)) {
-					seen.add(e.id);
-					nodes.push({
-						id: e.id,
-						label: e.label,
-						file_type: "code",
-						source_file: rel,
-						source_location: line(source, e.at),
-						...(pkg ? { package: pkg } : {}),
-					});
-				}
-				links.push({
-					source: e.parent,
-					target: e.id,
-					relation: "contains",
-					confidence: "EXTRACTED",
-					confidence_score: 1,
-					source_file: rel,
-					source_location: line(source, e.at),
-				});
-			}
-		}
-	}
-
 	/** Entity id for `name` exported by `file`, following re-exports (cycle-safe). */
 	const resolveExport = (file: string, name: string, depth = 0): string | undefined => {
 		const table = exportsByRel.get(file);
@@ -373,131 +296,241 @@ export function extract(
 		}
 		return undefined;
 	};
+	/** Add a node once by id. */
+	const addNode = (node: GraphNode) => {
+		if (seen.has(node.id)) return;
+		seen.add(node.id);
+		nodes.push(node);
+	};
+	return {
+		nodes,
+		links,
+		unresolved,
+		resolver,
+		exportsByRel,
+		bindingsByRel,
+		membersByRel,
+		memberById,
+		resolveSpec,
+		addImport,
+		resolveExport,
+		addNode,
+	};
+}
 
-	// Pass 2: calls/references from the enclosing top-level declaration (or the file) to imported
-	// or same-file entities. A use that is not a call (type annotation, `extends`, a passed
-	// constant) becomes `references`, so impact on an interface or const is not silently empty.
-	for (const { rel, source, fileId } of parsed) {
-		const bindings = bindingsByRel.get(rel) ?? new Map();
-		const local = exportsByRel.get(rel)?.declared ?? new Map<string, string>();
-		if (bindings.size === 0 && local.size === 0) continue;
-		const emitted = new Set<string>();
-		// ponytail: name-based, no scope analysis. A parameter or local that shadows a top-level
-		// name of the same file adds a false edge; upgrade with the TS checker if that shows up.
-		const callee = (expr: ts.Node): string | undefined => {
-			if (ts.isIdentifier(expr)) {
-				const b = bindings.get(expr.text);
-				if (b) return b.name !== "*" ? resolveExport(b.file, b.name) : undefined;
-				return local.get(expr.text);
+/** `import … from` and `export … from`: file import edge plus binding/export table entries.
+ * Returns false when `stmt` is neither. */
+function indexModuleStatement(
+	g: GraphState,
+	rel: string,
+	source: ts.SourceFile,
+	stmt: ts.Statement,
+	table: FileExports,
+	bindings: Map<string, Binding>,
+): boolean {
+	if (ts.isImportDeclaration(stmt) && ts.isStringLiteral(stmt.moduleSpecifier)) {
+		const target = g.resolveSpec(rel, source, stmt, stmt.moduleSpecifier.text);
+		if (!target) return true;
+		if (!stmt.importClause?.isTypeOnly) g.addImport(rel, source, stmt, target);
+		const named = stmt.importClause?.namedBindings;
+		if (named && ts.isNamespaceImport(named)) {
+			bindings.set(named.name.text, { file: target, name: "*" });
+		} else if (named) {
+			for (const el of named.elements) {
+				bindings.set(el.name.text, { file: target, name: (el.propertyName ?? el.name).text });
 			}
-			const ns =
-				ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.expression)
-					? [expr.expression.text, expr.name.text]
-					: ts.isQualifiedName(expr) && ts.isIdentifier(expr.left)
-						? [expr.left.text, expr.right.text]
-						: undefined;
-			if (!ns) return undefined;
-			const [left, right] = ns as [string, string];
-			const b = bindings.get(left);
-			if (b?.name === "*") return resolveExport(b.file, right);
-			// `Class.member` of a class declared here or imported by name (static access).
-			const owner = b ? resolveExport(b.file, b.name) : local.get(left);
-			return owner ? memberById.get(`${owner}\0${right}`) : undefined;
-		};
-		for (const stmt of source.statements) {
-			if (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) continue;
-			const decl = declName(stmt);
-			const stmtFrom = decl ? entityNodeId(fileId, decl.name) : fileId;
-			// Inside a class, attribute uses to the enclosing member; `this.x` resolves to `Class.x`.
-			let from = stmtFrom;
-			const link = (relation: "calls" | "references", target: string, at: ts.Node) => {
-				const key = `${relation}\0${from}\0${target}`;
-				if (target === from || emitted.has(key)) return;
-				emitted.add(key);
-				links.push({
-					source: from,
-					target,
-					relation,
-					confidence: "EXTRACTED",
-					confidence_score: 1,
-					source_file: rel,
-					source_location: line(source, at),
-				});
-			};
-			const visit = (node: ts.Node): void => {
-				if (
-					decl &&
-					ts.isClassDeclaration(stmt) &&
-					node.parent === stmt &&
-					(ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node)) &&
-					ts.isIdentifier(node.name)
-				) {
-					const prev = from;
-					from = membersByRel.get(`${rel}\0${decl.name}.${node.name.text}`) ?? stmtFrom;
-					ts.forEachChild(node, (c) => {
-						if (c !== node.name) visit(c);
-					});
-					from = prev;
-					return;
-				}
-				if (
-					decl &&
-					ts.isClassDeclaration(stmt) &&
-					ts.isPropertyAccessExpression(node) &&
-					node.expression.kind === ts.SyntaxKind.ThisKeyword
-				) {
-					const target = membersByRel.get(`${rel}\0${decl.name}.${node.name.text}`);
-					const isCall = ts.isCallExpression(node.parent) && node.parent.expression === node;
-					if (target) link(isCall ? "calls" : "references", target, node);
-					return;
-				}
-				if (ts.isCallExpression(node)) {
-					// `import("./x")`, `require("./x")`, and test mocks (`vi.mock`, `jest.mock`,
-					// `mock.module`) name a module by string; keep each as a file import.
-					const [arg] = node.arguments;
-					if (arg && ts.isStringLiteralLike(arg) && isModuleCall(node.expression)) {
-						const target = resolveSpec(rel, source, node, arg.text);
-						if (target) addImport(rel, source, node, target);
-					}
-					const target = callee(node.expression);
-					if (target) link("calls", target, node);
-					// The callee is handled; walk only the arguments and type arguments.
-					for (const child of [...(node.typeArguments ?? []), ...node.arguments]) visit(child);
-					if (!target) visit(node.expression);
-					return;
-				}
-				// `ns.X` / `ns.T`: one reference to the member, not a second one to the namespace.
-				// Otherwise walk only the left side: `obj.foo` must not match an imported `foo`.
-				if (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node)) {
-					const target = callee(node);
-					if (target) link("references", target, node);
-					else visit(ts.isQualifiedName(node) ? node.left : node.expression);
-					return;
-				}
-				// Object keys and member names are labels, not uses of a same-named import.
-				if (
-					(ts.isPropertyAssignment(node) ||
-						ts.isPropertySignature(node) ||
-						ts.isPropertyDeclaration(node) ||
-						ts.isMethodDeclaration(node) ||
-						ts.isMethodSignature(node)) &&
-					ts.isIdentifier(node.name)
-				) {
-					ts.forEachChild(node, (c) => {
-						if (c !== node.name) visit(c);
-					});
-					return;
-				}
-				if (ts.isIdentifier(node)) {
-					const target = callee(node);
-					if (target) link("references", target, node);
-					return;
-				}
-				ts.forEachChild(node, visit);
-			};
-			visit(stmt);
+		}
+		return true;
+	}
+	if (
+		ts.isExportDeclaration(stmt) &&
+		stmt.moduleSpecifier &&
+		ts.isStringLiteral(stmt.moduleSpecifier)
+	) {
+		const target = g.resolveSpec(rel, source, stmt, stmt.moduleSpecifier.text);
+		if (!target) return true;
+		if (!stmt.isTypeOnly) g.addImport(rel, source, stmt, target);
+		const clause = stmt.exportClause;
+		if (!clause) table.star.push(target);
+		else if (ts.isNamedExports(clause)) {
+			for (const el of clause.elements) {
+				table.named.set(el.name.text, { file: target, name: (el.propertyName ?? el.name).text });
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+/** Pass 1 for one file. */
+function indexFile(g: GraphState, { rel, source, fileId }: ParsedFile): void {
+	const pkg = g.resolver.packageOf(rel);
+	const withPkg = pkg ? { package: pkg } : {};
+	g.addNode({ id: fileId, label: basename(rel), file_type: "code", source_file: rel, ...withPkg });
+	const table: FileExports = { declared: new Map(), named: new Map(), star: [] };
+	const bindings = new Map<string, Binding>();
+	g.exportsByRel.set(rel, table);
+	g.bindingsByRel.set(rel, bindings);
+	for (const stmt of source.statements) {
+		if (indexModuleStatement(g, rel, source, stmt, table, bindings)) continue;
+		const decl = declName(stmt);
+		if (!decl) continue;
+		const id = entityNodeId(fileId, decl.name);
+		table.declared.set(decl.name, id);
+		const entities = [{ id, label: decl.label, at: stmt as ts.Node, parent: fileId }];
+		// Class members become `Class.member` nodes, so impact can target one method.
+		for (const m of classMembers(stmt)) {
+			const mid = entityNodeId(fileId, `${decl.name}.${m.name}`);
+			g.membersByRel.set(`${rel}\0${decl.name}.${m.name}`, mid);
+			g.memberById.set(`${id}\0${m.name}`, mid);
+			entities.push({ id: mid, label: `${decl.name}.${m.label}`, at: m.at, parent: id });
+		}
+		for (const e of entities) {
+			const location = line(source, e.at);
+			g.addNode({
+				id: e.id,
+				label: e.label,
+				file_type: "code",
+				source_file: rel,
+				source_location: location,
+				...withPkg,
+			});
+			g.links.push({
+				source: e.parent,
+				target: e.id,
+				relation: "contains",
+				confidence: "EXTRACTED",
+				confidence_score: 1,
+				source_file: rel,
+				source_location: location,
+			});
 		}
 	}
+}
 
-	return { nodes, links, unresolved };
+/** Pass 2 for one file. */
+function linkUses(g: GraphState, { rel, source, fileId }: ParsedFile): void {
+	const bindings = g.bindingsByRel.get(rel) ?? new Map<string, Binding>();
+	const local = g.exportsByRel.get(rel)?.declared ?? new Map<string, string>();
+	if (bindings.size === 0 && local.size === 0) return;
+	const emitted = new Set<string>();
+	// ponytail: name-based, no scope analysis. A parameter or local that shadows a top-level
+	// name of the same file adds a false edge; upgrade with the TS checker if that shows up.
+	const callee = (expr: ts.Node): string | undefined => {
+		if (ts.isIdentifier(expr)) {
+			const b = bindings.get(expr.text);
+			if (b) return b.name !== "*" ? g.resolveExport(b.file, b.name) : undefined;
+			return local.get(expr.text);
+		}
+		const ns =
+			ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.expression)
+				? [expr.expression.text, expr.name.text]
+				: ts.isQualifiedName(expr) && ts.isIdentifier(expr.left)
+					? [expr.left.text, expr.right.text]
+					: undefined;
+		if (!ns) return undefined;
+		const [left, right] = ns as [string, string];
+		const b = bindings.get(left);
+		if (b?.name === "*") return g.resolveExport(b.file, right);
+		// `Class.member` of a class declared here or imported by name (static access).
+		const owner = b ? g.resolveExport(b.file, b.name) : local.get(left);
+		return owner ? g.memberById.get(`${owner}\0${right}`) : undefined;
+	};
+	for (const stmt of source.statements) {
+		if (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) continue;
+		const decl = declName(stmt);
+		const stmtFrom = decl ? entityNodeId(fileId, decl.name) : fileId;
+		// Inside a class, attribute uses to the enclosing member; `this.x` resolves to `Class.x`.
+		let from = stmtFrom;
+		const link = (relation: "calls" | "references", target: string, at: ts.Node) => {
+			const key = `${relation}\0${from}\0${target}`;
+			if (target === from || emitted.has(key)) return;
+			emitted.add(key);
+			g.links.push({
+				source: from,
+				target,
+				relation,
+				confidence: "EXTRACTED",
+				confidence_score: 1,
+				source_file: rel,
+				source_location: line(source, at),
+			});
+		};
+		const className = decl && ts.isClassDeclaration(stmt) ? decl.name : undefined;
+		const member = (name: string) => g.membersByRel.get(`${rel}\0${className}.${name}`);
+		const visitNamed = (node: ts.Node & { name: ts.Node }) =>
+			ts.forEachChild(node, (c) => {
+				if (c !== node.name) visit(c);
+			});
+		const visit = (node: ts.Node): void => {
+			if (
+				className &&
+				node.parent === stmt &&
+				(ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node)) &&
+				ts.isIdentifier(node.name)
+			) {
+				const prev = from;
+				from = member(node.name.text) ?? stmtFrom;
+				visitNamed(node);
+				from = prev;
+				return;
+			}
+			if (
+				className &&
+				ts.isPropertyAccessExpression(node) &&
+				node.expression.kind === ts.SyntaxKind.ThisKeyword
+			) {
+				const target = member(node.name.text);
+				const isCall = ts.isCallExpression(node.parent) && node.parent.expression === node;
+				if (target) link(isCall ? "calls" : "references", target, node);
+				return;
+			}
+			if (ts.isCallExpression(node)) {
+				// `import("./x")`, `require("./x")`, and test mocks (`vi.mock`, `jest.mock`,
+				// `mock.module`) name a module by string; keep each as a file import.
+				const [arg] = node.arguments;
+				if (arg && ts.isStringLiteralLike(arg) && isModuleCall(node.expression)) {
+					const target = g.resolveSpec(rel, source, node, arg.text);
+					if (target) g.addImport(rel, source, node, target);
+				}
+				const target = callee(node.expression);
+				if (target) link("calls", target, node);
+				// The callee is handled; walk only the arguments and type arguments.
+				for (const child of [...(node.typeArguments ?? []), ...node.arguments]) visit(child);
+				if (!target) visit(node.expression);
+				return;
+			}
+			// `ns.X` / `ns.T`: one reference to the member, not a second one to the namespace.
+			// Otherwise walk only the left side: `obj.foo` must not match an imported `foo`.
+			if (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node)) {
+				const target = callee(node);
+				if (target) link("references", target, node);
+				else visit(ts.isQualifiedName(node) ? node.left : node.expression);
+				return;
+			}
+			// Object keys and member names are labels, not uses of a same-named import.
+			if (isNamedMember(node)) {
+				visitNamed(node);
+				return;
+			}
+			if (ts.isIdentifier(node)) {
+				const target = callee(node);
+				if (target) link("references", target, node);
+				return;
+			}
+			ts.forEachChild(node, visit);
+		};
+		visit(stmt);
+	}
+}
+
+function isNamedMember(node: ts.Node): node is ts.Node & { name: ts.Identifier } {
+	return (
+		(ts.isPropertyAssignment(node) ||
+			ts.isPropertySignature(node) ||
+			ts.isPropertyDeclaration(node) ||
+			ts.isMethodDeclaration(node) ||
+			ts.isMethodSignature(node)) &&
+		ts.isIdentifier(node.name)
+	);
 }

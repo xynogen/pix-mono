@@ -16,7 +16,7 @@ import {
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import { createBinariesTab } from "./binaries-tab.ts";
+import { type BinariesTab, createBinariesTab } from "./binaries-tab.ts";
 import { icon } from "./icon-catalog.ts";
 import { isPackageLoaded } from "./once.ts";
 import { type PixRuntime, pixRuntime } from "./runtime.ts";
@@ -354,18 +354,6 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 			await runtime.reload({ origin: "command", source: "pix" });
 			const panels = packageSettings(pi);
 			const settings = visibleSettings(pi);
-			// Pi owns the active theme (settings.json); `/pix` only cycles it through `ctx.ui.setTheme`.
-			const themeNames = (ctx.ui.getAllThemes?.() ?? []).map((t) => t.name).sort();
-			const themeRow: ThemeRow | undefined =
-				themeNames.length > 1
-					? {
-							kind: "theme",
-							section: "Pretty",
-							label: "theme",
-							values: themeNames,
-							current: () => ctx.ui.theme.name ?? "",
-						}
-					: undefined;
 			// SAFETY: Runtime UI supports custom overlays beyond the published command context type.
 			const ui = ctx.ui as unknown as {
 				custom?: (f: unknown, opts?: unknown) => Promise<unknown>;
@@ -383,360 +371,20 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 			}
 
 			await ui.custom(
-				(
-					tui: { requestRender(): void; terminal?: { rows?: number } },
-					theme: {
-						fg(c: string, t: string): string;
-						bg(c: string, t: string): string;
-						bold(t: string): string;
-					},
-					kb: KeybindingsManager,
-					done: (v: null) => void,
-				) => {
-					const guide = (key: string, action: string) =>
-						theme.fg("text", key) + theme.fg("muted", ` ${action}`);
-					const guideSep = theme.fg("muted", " · ");
-					let selected = 0;
-					let bodyOffset = 0;
-					let visibleBodyLines = 1;
-					let maxBodyOffset = 0;
-					let inspectingPage = false;
-					const tabs = [
-						...TABS.filter(
-							(name) => name !== "Footer" || settings.some((row) => row.section === "Footer"),
-						),
-						...panels.map((entry) => entry.label),
-					].sort((a, b) => tabRank(a) - tabRank(b));
-					const wanted = (args ?? "").trim().toLowerCase();
-					let tab = tabs.find((name) => name.toLowerCase() === wanted) ?? "Settings";
-					let embedded:
-						| { render(width: number): string[]; handleInput(data: string): void; dispose?(): void }
-						| undefined;
-					let leavePanel: (() => void) | undefined;
-					let panelGeneration = 0;
-					let panelShrink = 1;
-					const mountPanel = () => {
-						const generation = ++panelGeneration;
-						leavePanel?.();
-						embedded?.dispose?.();
-						embedded = undefined;
-						leavePanel = undefined;
-						const panel = panels.find((entry) => entry.label === tab);
-						if (!panel) return;
-						// SAFETY: spreads the real command context and only overrides ui.custom, so the full shape is kept.
-						const panelContext = {
-							...ctx,
-							ui: {
-								...ctx.ui,
-								custom: async (
-									factory: (
-										tui: unknown,
-										theme: unknown,
-										kb: unknown,
-										done: (value: unknown) => void,
-									) => NonNullable<typeof embedded>,
-								) => {
-									if (generation !== panelGeneration) return null;
-									return new Promise<unknown>((resolve) => {
-										leavePanel = () => resolve(null);
-										// The /pix tab row takes one line; render() shrinks the panel's terminal until both fit.
-										// Proxies, not spreads: the real TUI and terminal are class instances whose
-										// methods (requestRender, columns) live on the prototype and a spread drops them.
-										const terminal = tui.terminal ?? {};
-										const panelTerminal = forward(terminal, {
-											rows: () =>
-												Math.max(1, (terminal.rows ?? process.stdout.rows ?? 24) - panelShrink),
-										});
-										const panelTui = forward(tui, { terminal: () => panelTerminal });
-										embedded = factory(panelTui, theme, kb, (value: unknown) => {
-											if (generation !== panelGeneration) return resolve(null);
-											if (value == null) {
-												embedded = undefined;
-												done(null);
-											}
-											resolve(value);
-										});
-										tui.requestRender();
-									});
-								},
-							},
-						} as unknown as ExtensionCommandContext;
-						void panel.open(panelContext).catch((error) => {
-							if (generation === panelGeneration)
-								ui.notify(
-									`pix: ${panel.label}: ${error instanceof Error ? error.message : String(error)}`,
-									"error",
-								);
-						});
-					};
-					let binaries: ReturnType<typeof createBinariesTab> | undefined;
-					const binariesTab = () => {
-						binaries ??= createBinariesTab({
-							env: binariesEnv(runtime),
-							theme,
-							requestRender: () => tui.requestRender(),
-						});
-						return binaries;
-					};
-					const tabBar = (width: number) => {
-						const full = tabs
-							.map((name) =>
-								name === tab
-									? theme.fg("accent", theme.bold(`  ${name}  `))
-									: theme.fg("muted", `  ${name}  `),
-							)
-							.join(theme.fg("muted", "│"));
-						if (visibleWidth(full) <= width) return full;
-						return (
-							theme.fg("accent", theme.bold(`  ${tab}  `)) +
-							theme.fg("muted", `${tabs.indexOf(tab) + 1}/${tabs.length}`)
-						);
-					};
-					const switchTab = (direction: -1 | 1) => {
-						const next = (tabs.indexOf(tab) + direction + tabs.length) % tabs.length;
-						tab = tabs[next] ?? "Settings";
-						selected = 0;
-						bodyOffset = 0;
-						inspectingPage = false;
-						if (tab === "Binaries") binariesTab().refresh();
-						mountPanel();
-					};
-
-					// `/pix <tab>` opens straight into that tab.
-					if (tab === "Binaries") binariesTab().refresh();
-					mountPanel();
-
-					const rows = (): Row[] => {
-						const list = settings.filter((r) => (r.section === "Footer") === (tab === "Footer"));
-						return tab === "Settings" && themeRow ? [themeRow, ...list] : list;
-					};
-					const cycle = (direction: -1 | 1) => {
-						const row = rows()[selected];
-						if (!row) return;
-						if (isThemeRow(row)) {
-							const cur = row.values.indexOf(row.current());
-							const start = cur === -1 && direction === -1 ? 0 : cur;
-							const next = row.values[(start + direction + row.values.length) % row.values.length];
-							const result = next ? ctx.ui.setTheme(next) : undefined;
-							if (result && !result.success)
-								ui.notify(`pix: theme ${next}: ${result.error ?? "failed"}`, "error");
-							tui.requestRender();
-							return;
-						}
-						// Functional updater: the runtime queue serializes writes, and the
-						// callback sees the latest committed value — so rapid presses each
-						// advance exactly one step instead of collapsing on a stale snapshot.
-						type SettingsState = Record<string, unknown>;
-						const step = (current: unknown): SettingsState => {
-							const state: SettingsState =
-								current !== null && typeof current === "object" ? { ...(current as object) } : {};
-							const curVal = row.read(state);
-							let cur = row.values.indexOf(curVal);
-							// ponytail: unsupported custom values snap to section default on first change.
-							if (cur === -1) {
-								const def = row.read(row.handle.defaults);
-								const defIdx = row.values.indexOf(def);
-								cur = defIdx !== -1 ? defIdx - direction : -1;
-							}
-							const next = (cur + direction + row.values.length) % row.values.length;
-							const val = row.values[next];
-							if (val === undefined) return state;
-							return deepMerge(state, row.patch(val) as DeepPartial<SettingsState>);
-						};
-						// Re-render AFTER the commit lands; the synchronous render in
-						// handleInput fires before the queued write and shows a stale value.
-						void runtime
-							.update(row.handle, step, { origin: "command", source: "pix" })
-							.then(() => tui.requestRender())
-							.catch(() => ui.notify(`pix: failed to update ${row.label}`, "error"));
-					};
-					const move = (direction: -1 | 1) => {
-						selected = (selected + direction + rows().length) % rows().length;
-						inspectingPage = false;
-					};
-
-					return {
-						render: (width: number) => {
-							const frame = {
-								width,
-								maxHeight: modalHeight(
-									tui.terminal?.rows,
-									runtime.get(prettySection).maxRenderHeight,
-								),
-								title: `${icon("settings")} Pix Settings`,
-								titleColor: (s: string) => theme.fg("accent", theme.bold(s)),
-								color: (s: string) => theme.fg("accent", s),
-								bg: (s: string) => theme.bg("customMessageBg", s),
-							};
-							const tabGuide = guide("tab", "switch tab");
-							if (tab === "Binaries") {
-								const bt = binariesTab();
-								const view = bt.view(width);
-								const hints = view.footer.map(([key, action]) => guide(key, action)).join(guideSep);
-								const result = frameModal({
-									...frame,
-									header: [tabBar(Math.max(1, width - 4)), "", ...view.header],
-									body: view.body,
-									footer: [
-										"",
-										bt.editing
-											? hints
-											: hints + guideSep + tabGuide + guideSep + guide("esc", "close"),
-									],
-									bodyOffset,
-									selectedBodyLine: inspectingPage ? undefined : view.selectedBodyLine,
-								});
-								bodyOffset = result.bodyOffset;
-								visibleBodyLines = Math.max(1, result.visibleBodyLines);
-								maxBodyOffset = result.maxBodyOffset;
-								return result.lines;
-							}
-							if (!TABS.some((name) => name === tab)) {
-								if (embedded) {
-									let lines = embedded.render(width);
-									// Keep the composite inside the same budget as built-in tabs.
-									for (let tries = 0; lines.length + 1 > frame.maxHeight && tries < 8; tries++) {
-										panelShrink += lines.length + 1 - frame.maxHeight;
-										lines = embedded.render(width);
-									}
-									const panelWidth = visibleWidth(lines[0] ?? "");
-									lines.splice(
-										1,
-										0,
-										...frameRows(panelWidth, [tabBar(Math.max(1, panelWidth - 4))], frame).slice(
-											1,
-											-1,
-										),
-									);
-									return lines;
-								}
-								return frameModal({
-									...frame,
-									header: [tabBar(Math.max(1, width - 4)), ""],
-									body: [theme.fg("dim", `  Loading ${tab} settings…`)],
-									footer: ["", tabGuide + guideSep + guide("esc", "close")],
-									bodyOffset: 0,
-								}).lines;
-							}
-							const settings = rows();
-							const labelW = Math.max(...settings.map((r) => visibleWidth(r.label)));
-							const body: string[] = [];
-							const settingBodyLines: number[] = [];
-							let lastSection = "";
-							for (let i = 0; i < settings.length; i++) {
-								const row = settings[i];
-								if (!row) continue;
-								if (row.section !== lastSection) {
-									if (lastSection) body.push("");
-									body.push(theme.fg("dim", `  ${row.section}`));
-									lastSection = row.section;
-								}
-								const sel = i === selected;
-								const cursor = sel ? theme.fg("accent", "→") : " ";
-								const label = theme.fg(
-									sel ? "accent" : "text",
-									row.label + " ".repeat(labelW - visibleWidth(row.label)),
-								);
-								const value = isThemeRow(row) ? row.current() : row.read(runtime.get(row.handle));
-								const isDefault = isThemeRow(row) || value === row.read(row.handle.defaults);
-								settingBodyLines[i] = body.length;
-								body.push(`${cursor} ${label}  ${theme.fg(isDefault ? "dim" : "success", value)}`);
-							}
-							const result = frameModal({
-								...frame,
-								header: [tabBar(Math.max(1, width - 4)), ""],
-								body,
-								footer: [
-									"",
-									guide("←→", "change") +
-										guideSep +
-										guide("↑↓", "move") +
-										guideSep +
-										guide("PgUp/PgDn", "inspect") +
-										guideSep +
-										tabGuide +
-										guideSep +
-										guide("esc", "close"),
-								],
-								bodyOffset,
-								selectedBodyLine: inspectingPage ? undefined : settingBodyLines[selected],
-							});
-							bodyOffset = result.bodyOffset;
-							visibleBodyLines = Math.max(1, result.visibleBodyLines);
-							maxBodyOffset = result.maxBodyOffset;
-							return result.lines;
-						},
-						dispose: () => {
-							panelGeneration++;
-							leavePanel?.();
-							embedded?.dispose?.();
-						},
-						invalidate: () => {},
-						handleInput: (data: string) => {
-							if (tab === "Binaries" && binariesTab().editing) {
-								// The filter input takes ↑↓ to move through its matches.
-								const nav = !binariesTab().editingPath;
-								binariesTab().handleInput(data, {
-									up: nav && kb.matches(data, "tui.select.up"),
-									down: nav && kb.matches(data, "tui.select.down"),
-									enter: false,
-								});
-								inspectingPage = false;
-								tui.requestRender();
-								return;
-							}
-							const shiftTab = matchesKey(data, Key.shift(Key.tab));
-							if (shiftTab || matchesKey(data, Key.tab)) {
-								switchTab(shiftTab ? -1 : 1);
-								tui.requestRender();
-								return;
-							}
-							if (!TABS.some((name) => name === tab) && embedded) {
-								embedded.handleInput(data);
-								return;
-							}
-							const pageUp = kb?.matches(data, "tui.select.pageUp") || matchesKey(data, Key.pageUp);
-							const pageDown =
-								kb?.matches(data, "tui.select.pageDown") || matchesKey(data, Key.pageDown);
-							if (pageUp || pageDown) {
-								const direction = pageUp ? -1 : 1;
-								bodyOffset = pageBodyOffset(bodyOffset, visibleBodyLines, maxBodyOffset, direction);
-								inspectingPage = true;
-								tui.requestRender();
-								return;
-							}
-							// matchesKey handles both legacy bytes and Kitty CSI-u encodings
-							// for letters and special keys alike — raw string compares like
-							// `data === "k"` silently fail under the Kitty keyboard protocol.
-							if (kb.matches(data, "tui.select.cancel")) {
-								if (tab === "Binaries" && binariesTab().clearFilter()) {
-									tui.requestRender();
-									return;
-								}
-								done(null);
-								return;
-							}
-							if (tab === "Binaries") {
-								const handled = binariesTab().handleInput(data, {
-									up: kb.matches(data, "tui.select.up"),
-									down: kb.matches(data, "tui.select.down"),
-									enter: kb.matches(data, "tui.select.confirm"),
-								});
-								if (handled) {
-									inspectingPage = false;
-									tui.requestRender();
-								}
-								return;
-							}
-							if (kb.matches(data, "tui.select.up")) move(-1);
-							else if (kb.matches(data, "tui.select.down")) move(1);
-							else if (matchesKey(data, Key.left)) cycle(-1);
-							else if (matchesKey(data, Key.right)) cycle(1);
-							else return;
-							tui.requestRender();
-						},
-					};
-				},
+				(tui: OverlayTui, theme: OverlayTheme, kb: KeybindingsManager, done: (v: null) => void) =>
+					new PixSettingsView({
+						runtime,
+						ctx,
+						notify: (m, t) => ui.notify(m, t),
+						panels,
+						settings,
+						themeRow: themeRowFor(ctx),
+						args,
+						tui,
+						theme,
+						kb,
+						done,
+					}),
 				{
 					overlay: true,
 					overlayOptions: () => {
@@ -752,6 +400,447 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 			);
 		},
 	});
+}
+
+/** Pi owns the active theme (settings.json); `/pix` only cycles it through `ctx.ui.setTheme`. */
+function themeRowFor(ctx: ExtensionCommandContext): ThemeRow | undefined {
+	const themeNames = (ctx.ui.getAllThemes?.() ?? []).map((t) => t.name).sort();
+	if (themeNames.length <= 1) return undefined;
+	return {
+		kind: "theme",
+		section: "Pretty",
+		label: "theme",
+		values: themeNames,
+		current: () => ctx.ui.theme.name ?? "",
+	};
+}
+
+/** Advance one setting by one step. A functional updater: the runtime queue serializes writes
+ * and the callback sees the latest committed value, so rapid presses each advance exactly one
+ * step instead of collapsing on a stale snapshot. */
+function stepSetting(
+	row: SettingRow<unknown>,
+	current: unknown,
+	direction: -1 | 1,
+): Record<string, unknown> {
+	const state: Record<string, unknown> =
+		current !== null && typeof current === "object" ? { ...(current as object) } : {};
+	let cur = row.values.indexOf(row.read(state));
+	// ponytail: unsupported custom values snap to section default on first change.
+	if (cur === -1) {
+		const defIdx = row.values.indexOf(row.read(row.handle.defaults));
+		cur = defIdx !== -1 ? defIdx - direction : -1;
+	}
+	const val = row.values[(cur + direction + row.values.length) % row.values.length];
+	if (val === undefined) return state;
+	return deepMerge(state, row.patch(val) as DeepPartial<Record<string, unknown>>);
+}
+
+// ── /pix overlay ────────────────────────────────────────────────────────────────────────────
+
+interface OverlayTui {
+	requestRender(): void;
+	terminal?: { rows?: number };
+}
+
+interface OverlayTheme {
+	fg(c: string, t: string): string;
+	bg(c: string, t: string): string;
+	bold(t: string): string;
+}
+
+interface EmbeddedPanel {
+	render(width: number): string[];
+	handleInput(data: string): void;
+	dispose?(): void;
+}
+
+type ModalFrame = Omit<
+	RuntimeModalOptions,
+	"header" | "body" | "footer" | "bodyOffset" | "selectedBodyLine"
+>;
+
+interface SettingsViewDeps {
+	runtime: PixRuntime;
+	ctx: ExtensionCommandContext;
+	notify(message: string, type?: "info" | "warning" | "error"): void;
+	panels: PackageSettings[];
+	settings: SettingRow<unknown>[];
+	themeRow: ThemeRow | undefined;
+	args: string;
+	tui: OverlayTui;
+	theme: OverlayTheme;
+	kb: KeybindingsManager;
+	done: (value: null) => void;
+}
+
+const CLOSE_GUIDES: Array<[string, string]> = [
+	["tab", "switch tab"],
+	["esc", "close"],
+];
+const SETTINGS_GUIDES: Array<[string, string]> = [
+	["←→", "change"],
+	["↑↓", "move"],
+	["PgUp/PgDn", "inspect"],
+	...CLOSE_GUIDES,
+];
+
+/** The `/pix` overlay: built-in tabs (Settings, Binaries, Footer) plus package panels as tabs. */
+class PixSettingsView {
+	private selected = 0;
+	private bodyOffset = 0;
+	private visibleBodyLines = 1;
+	private maxBodyOffset = 0;
+	private inspectingPage = false;
+	private readonly tabs: string[];
+	private tab: string;
+	private embedded: EmbeddedPanel | undefined;
+	private leavePanel: (() => void) | undefined;
+	private panelGeneration = 0;
+	private panelShrink = 1;
+	private binaries: BinariesTab | undefined;
+
+	constructor(private readonly d: SettingsViewDeps) {
+		this.tabs = [
+			...TABS.filter(
+				(name) => name !== "Footer" || d.settings.some((row) => row.section === "Footer"),
+			),
+			...d.panels.map((entry) => entry.label),
+		].sort((a, b) => tabRank(a) - tabRank(b));
+		const wanted = (d.args ?? "").trim().toLowerCase();
+		this.tab = this.tabs.find((name) => name.toLowerCase() === wanted) ?? "Settings";
+		// `/pix <tab>` opens straight into that tab.
+		if (this.tab === "Binaries") this.binariesTab().refresh();
+		this.mountPanel();
+	}
+
+	render(width: number): string[] {
+		const { runtime, theme, tui } = this.d;
+		const frame: ModalFrame = {
+			width,
+			maxHeight: modalHeight(tui.terminal?.rows, runtime.get(prettySection).maxRenderHeight),
+			title: `${icon("settings")} Pix Settings`,
+			titleColor: (s: string) => theme.fg("accent", theme.bold(s)),
+			color: (s: string) => theme.fg("accent", s),
+			bg: (s: string) => theme.bg("customMessageBg", s),
+		};
+		if (this.tab === "Binaries") return this.renderBinaries(width, frame);
+		if (!this.isBuiltinTab()) return this.renderPanel(width, frame);
+		return this.renderSettings(width, frame);
+	}
+
+	dispose(): void {
+		this.panelGeneration++;
+		this.leavePanel?.();
+		this.embedded?.dispose?.();
+	}
+
+	/** Nothing is cached between frames: render() rebuilds from live state. */
+	invalidate(): void {}
+
+	handleInput(data: string): void {
+		const { kb, tui } = this.d;
+		if (this.tab === "Binaries" && this.binariesTab().editing) {
+			this.binariesEditInput(data);
+			return;
+		}
+		const shiftTab = matchesKey(data, Key.shift(Key.tab));
+		if (shiftTab || matchesKey(data, Key.tab)) {
+			this.switchTab(shiftTab ? -1 : 1);
+			tui.requestRender();
+			return;
+		}
+		if (!this.isBuiltinTab() && this.embedded) {
+			this.embedded.handleInput(data);
+			return;
+		}
+		if (this.pageInput(data)) return;
+		// matchesKey handles both legacy bytes and Kitty CSI-u encodings
+		// for letters and special keys alike — raw string compares like
+		// `data === "k"` silently fail under the Kitty keyboard protocol.
+		if (kb.matches(data, "tui.select.cancel")) {
+			if (this.tab === "Binaries" && this.binariesTab().clearFilter()) tui.requestRender();
+			else this.d.done(null);
+			return;
+		}
+		if (this.tab === "Binaries") {
+			this.binariesInput(data);
+			return;
+		}
+		if (kb.matches(data, "tui.select.up")) this.move(-1);
+		else if (kb.matches(data, "tui.select.down")) this.move(1);
+		else if (matchesKey(data, Key.left)) this.cycle(-1);
+		else if (matchesKey(data, Key.right)) this.cycle(1);
+		else return;
+		tui.requestRender();
+	}
+
+	private isBuiltinTab(): boolean {
+		return TABS.some((name) => name === this.tab);
+	}
+
+	private guides(pairs: Array<[string, string]>): string {
+		const { theme } = this.d;
+		return pairs
+			.map(([key, action]) => theme.fg("text", key) + theme.fg("muted", ` ${action}`))
+			.join(theme.fg("muted", " · "));
+	}
+
+	private binariesTab(): BinariesTab {
+		this.binaries ??= createBinariesTab({
+			env: binariesEnv(this.d.runtime),
+			theme: this.d.theme,
+			requestRender: () => this.d.tui.requestRender(),
+		});
+		return this.binaries;
+	}
+
+	private mountPanel(): void {
+		const generation = ++this.panelGeneration;
+		this.leavePanel?.();
+		this.embedded?.dispose?.();
+		this.embedded = undefined;
+		this.leavePanel = undefined;
+		const panel = this.d.panels.find((entry) => entry.label === this.tab);
+		if (!panel) return;
+		void panel.open(this.panelContext(generation)).catch((error) => {
+			if (generation !== this.panelGeneration) return;
+			const message = error instanceof Error ? error.message : String(error);
+			this.d.notify(`pix: ${panel.label}: ${message}`, "error");
+		});
+	}
+
+	/** Command context whose `ui.custom` mounts the panel inside this overlay, not a new one. */
+	private panelContext(generation: number): ExtensionCommandContext {
+		const { ctx, tui, theme, kb, done } = this.d;
+		// SAFETY: spreads the real command context and only overrides ui.custom, so the full shape is kept.
+		return {
+			...ctx,
+			ui: {
+				...ctx.ui,
+				custom: async (
+					factory: (
+						tui: unknown,
+						theme: unknown,
+						kb: unknown,
+						done: (value: unknown) => void,
+					) => EmbeddedPanel,
+				) => {
+					if (generation !== this.panelGeneration) return null;
+					return new Promise<unknown>((resolve) => {
+						this.leavePanel = () => resolve(null);
+						// The /pix tab row takes one line; render() shrinks the panel's terminal until both fit.
+						// Proxies, not spreads: the real TUI and terminal are class instances whose
+						// methods (requestRender, columns) live on the prototype and a spread drops them.
+						const terminal = tui.terminal ?? {};
+						const panelTerminal = forward(terminal, {
+							rows: () =>
+								Math.max(1, (terminal.rows ?? process.stdout.rows ?? 24) - this.panelShrink),
+						});
+						const panelTui = forward(tui, { terminal: () => panelTerminal });
+						this.embedded = factory(panelTui, theme, kb, (value: unknown) => {
+							if (generation !== this.panelGeneration) return resolve(null);
+							if (value == null) {
+								this.embedded = undefined;
+								done(null);
+							}
+							resolve(value);
+						});
+						tui.requestRender();
+					});
+				},
+			},
+		} as unknown as ExtensionCommandContext;
+	}
+
+	private tabBar(width: number): string {
+		const { theme } = this.d;
+		const full = this.tabs
+			.map((name) =>
+				name === this.tab
+					? theme.fg("accent", theme.bold(`  ${name}  `))
+					: theme.fg("muted", `  ${name}  `),
+			)
+			.join(theme.fg("muted", "│"));
+		if (visibleWidth(full) <= width) return full;
+		return (
+			theme.fg("accent", theme.bold(`  ${this.tab}  `)) +
+			theme.fg("muted", `${this.tabs.indexOf(this.tab) + 1}/${this.tabs.length}`)
+		);
+	}
+
+	private switchTab(direction: -1 | 1): void {
+		const next = (this.tabs.indexOf(this.tab) + direction + this.tabs.length) % this.tabs.length;
+		this.tab = this.tabs[next] ?? "Settings";
+		this.selected = 0;
+		this.bodyOffset = 0;
+		this.inspectingPage = false;
+		if (this.tab === "Binaries") this.binariesTab().refresh();
+		this.mountPanel();
+	}
+
+	private rows(): Row[] {
+		const list = this.d.settings.filter(
+			(r) => (r.section === "Footer") === (this.tab === "Footer"),
+		);
+		return this.tab === "Settings" && this.d.themeRow ? [this.d.themeRow, ...list] : list;
+	}
+
+	private move(direction: -1 | 1): void {
+		const count = this.rows().length;
+		this.selected = (this.selected + direction + count) % count;
+		this.inspectingPage = false;
+	}
+
+	private cycle(direction: -1 | 1): void {
+		const row = this.rows()[this.selected];
+		if (!row) return;
+		if (isThemeRow(row)) {
+			this.cycleTheme(row, direction);
+			return;
+		}
+		// Re-render AFTER the commit lands; the synchronous render in
+		// handleInput fires before the queued write and shows a stale value.
+		void this.d.runtime
+			.update(row.handle, (current) => stepSetting(row, current, direction), {
+				origin: "command",
+				source: "pix",
+			})
+			.then(() => this.d.tui.requestRender())
+			.catch(() => this.d.notify(`pix: failed to update ${row.label}`, "error"));
+	}
+
+	private cycleTheme(row: ThemeRow, direction: -1 | 1): void {
+		const cur = row.values.indexOf(row.current());
+		const start = cur === -1 && direction === -1 ? 0 : cur;
+		const next = row.values[(start + direction + row.values.length) % row.values.length];
+		const result = next ? this.d.ctx.ui.setTheme(next) : undefined;
+		if (result && !result.success)
+			this.d.notify(`pix: theme ${next}: ${result.error ?? "failed"}`, "error");
+		this.d.tui.requestRender();
+	}
+
+	private pageInput(data: string): boolean {
+		const { kb } = this.d;
+		const pageUp = kb?.matches(data, "tui.select.pageUp") || matchesKey(data, Key.pageUp);
+		const pageDown = kb?.matches(data, "tui.select.pageDown") || matchesKey(data, Key.pageDown);
+		if (!pageUp && !pageDown) return false;
+		const direction = pageUp ? -1 : 1;
+		this.bodyOffset = pageBodyOffset(
+			this.bodyOffset,
+			this.visibleBodyLines,
+			this.maxBodyOffset,
+			direction,
+		);
+		this.inspectingPage = true;
+		this.d.tui.requestRender();
+		return true;
+	}
+
+	/** Path editor or filter input open: it takes every key (↑↓ move through filter matches). */
+	private binariesEditInput(data: string): void {
+		const { kb } = this.d;
+		const bt = this.binariesTab();
+		const nav = !bt.editingPath;
+		bt.handleInput(data, {
+			up: nav && kb.matches(data, "tui.select.up"),
+			down: nav && kb.matches(data, "tui.select.down"),
+			enter: false,
+		});
+		this.inspectingPage = false;
+		this.d.tui.requestRender();
+	}
+
+	private binariesInput(data: string): void {
+		const { kb } = this.d;
+		const handled = this.binariesTab().handleInput(data, {
+			up: kb.matches(data, "tui.select.up"),
+			down: kb.matches(data, "tui.select.down"),
+			enter: kb.matches(data, "tui.select.confirm"),
+		});
+		if (!handled) return;
+		this.inspectingPage = false;
+		this.d.tui.requestRender();
+	}
+
+	/** Frame a scrollable view and keep its scroll state for the next frame and PgUp/PgDn. */
+	private framed(opts: RuntimeModalOptions): string[] {
+		const result = frameModal(opts);
+		this.bodyOffset = result.bodyOffset;
+		this.visibleBodyLines = Math.max(1, result.visibleBodyLines);
+		this.maxBodyOffset = result.maxBodyOffset;
+		return result.lines;
+	}
+
+	private renderBinaries(width: number, frame: ModalFrame): string[] {
+		const bt = this.binariesTab();
+		const view = bt.view(width);
+		return this.framed({
+			...frame,
+			header: [this.tabBar(Math.max(1, width - 4)), "", ...view.header],
+			body: view.body,
+			footer: ["", this.guides(bt.editing ? view.footer : [...view.footer, ...CLOSE_GUIDES])],
+			bodyOffset: this.bodyOffset,
+			selectedBodyLine: this.inspectingPage ? undefined : view.selectedBodyLine,
+		});
+	}
+
+	private renderPanel(width: number, frame: ModalFrame): string[] {
+		const { embedded } = this;
+		if (!embedded) {
+			return frameModal({
+				...frame,
+				header: [this.tabBar(Math.max(1, width - 4)), ""],
+				body: [this.d.theme.fg("dim", `  Loading ${this.tab} settings…`)],
+				footer: ["", this.guides(CLOSE_GUIDES)],
+				bodyOffset: 0,
+			}).lines;
+		}
+		let lines = embedded.render(width);
+		// Keep the composite inside the same budget as built-in tabs.
+		for (let tries = 0; lines.length + 1 > frame.maxHeight && tries < 8; tries++) {
+			this.panelShrink += lines.length + 1 - frame.maxHeight;
+			lines = embedded.render(width);
+		}
+		const panelWidth = visibleWidth(lines[0] ?? "");
+		const bar = frameRows(panelWidth, [this.tabBar(Math.max(1, panelWidth - 4))], frame);
+		lines.splice(1, 0, ...bar.slice(1, -1));
+		return lines;
+	}
+
+	private renderSettings(width: number, frame: ModalFrame): string[] {
+		const { runtime, theme } = this.d;
+		const rows = this.rows();
+		const labelW = Math.max(...rows.map((r) => visibleWidth(r.label)));
+		const body: string[] = [];
+		const settingBodyLines: number[] = [];
+		let lastSection = "";
+		for (const [i, row] of rows.entries()) {
+			if (row.section !== lastSection) {
+				if (lastSection) body.push("");
+				body.push(theme.fg("dim", `  ${row.section}`));
+				lastSection = row.section;
+			}
+			const sel = i === this.selected;
+			const cursor = sel ? theme.fg("accent", "→") : " ";
+			const label = theme.fg(
+				sel ? "accent" : "text",
+				row.label + " ".repeat(labelW - visibleWidth(row.label)),
+			);
+			const value = isThemeRow(row) ? row.current() : row.read(runtime.get(row.handle));
+			const isDefault = isThemeRow(row) || value === row.read(row.handle.defaults);
+			settingBodyLines[i] = body.length;
+			body.push(`${cursor} ${label}  ${theme.fg(isDefault ? "dim" : "success", value)}`);
+		}
+		return this.framed({
+			...frame,
+			header: [this.tabBar(Math.max(1, width - 4)), ""],
+			body,
+			footer: ["", this.guides(SETTINGS_GUIDES)],
+			bodyOffset: this.bodyOffset,
+			selectedBodyLine: this.inspectingPage ? undefined : settingBodyLines[this.selected],
+		});
+	}
 }
 
 // ── Inline modal engine (runtime cannot depend on pix-pretty: pretty depends on runtime) ─

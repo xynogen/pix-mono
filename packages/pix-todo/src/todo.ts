@@ -10,7 +10,8 @@
  */
 
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { Text } from "@xynogen/pix-pretty/tui";
+import { Text, type ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
+import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	dotJoin,
 	frameToolResult,
@@ -22,7 +23,7 @@ import {
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
-import { Type } from "typebox";
+import { type Static, Type } from "typebox";
 import { renderTodoWidget } from "./widget.ts";
 
 export type TodoStatus = "pending" | "in_progress" | "done" | "blocked";
@@ -210,6 +211,185 @@ export function parseUpdates(raw: string): { ops: TodoUpdateOp[] } | { error: st
 		: { error: 'update requires `updates` ("id:status") or `id`+`status`.' };
 }
 
+// ── Tool spec ───────────────────────────────────────────────────────────────────────
+
+// Durable execution checklist for BUILD mode. Survives context compaction
+// and session restore. Plans from `/plan` (.pi/plans/*.md) seed it
+// from their tasks so execution stays anchored to the plan file.
+const TODO_TOOL_SPEC = {
+	description:
+		"Track BUILD-phase execution progress. Durable across context compaction. Actions: list, set (replace all items from newline/numbered text), add, update (change one or more items' status — batch via `updates`), clear.",
+	promptSnippet:
+		"todo(action, items?, updates?, id?, status?, text?, remind?) — action: list|set|add|update|clear. Use to track implementation progress, especially when executing a plan.",
+	promptGuidelines: [
+		"When you start executing a multi-step plan in BUILD mode, seed the todo list with `todo(action:'set', items: <plan Implementation Phases>)`.",
+		"Batch status changes in ONE call: `todo(action:'update', updates:'3:done,4:in_progress')`. Opening an item auto-closes earlier ones (ordered lists), so do not send per-item update calls.",
+		"When marking an item done, the tool checks for earlier incomplete items and warns you — resolve each skipped item (mark done or blocked) before moving on.",
+		"If the list is NOT a sequential run (items independent, done in any order), pass `ordered:false` on `set` — that disables the cascade-close and skip warning.",
+		"Call `todo(action:'list')` to recover your place after long runs or context compaction.",
+		"Set `remind:true` to opt into visible continue reminders while tasks remain; `remind:false` disables them. Reminders stop on interruption, error, blocked work, or 3 nudges without progress.",
+	],
+	parameters: Type.Object({
+		action: Type.Enum(["list", "set", "add", "update", "clear"] as const, {
+			type: "string",
+			description:
+				'Required operation: "list" shows items; "set" replaces all from items; "add" appends items; "update" changes one or more items by id; "clear" removes all.',
+		}),
+		items: Type.Optional(
+			Type.String({
+				description: "For set/add: newline-separated or numbered list of todo texts.",
+			}),
+		),
+		updates: Type.Optional(
+			Type.String({
+				description:
+					'For update (preferred for status changes): comma-separated "id:status" pairs, e.g. "3:done,4:in_progress". Applied in order.',
+			}),
+		),
+		id: Type.Optional(Type.Number({ description: "For update: single target todo id." })),
+		status: Type.Optional(
+			Type.Enum(["pending", "in_progress", "done", "blocked"] as const, {
+				type: "string",
+				description:
+					'For update: "pending" = not started; "in_progress" = active; "done" = finished; "blocked" = cannot proceed.',
+			}),
+		),
+		text: Type.Optional(
+			Type.String({
+				description: "For update: replacement text (optional).",
+			}),
+		),
+		ordered: Type.Optional(
+			Type.Boolean({
+				description:
+					"For set: true (default) = sequential run (opening/completing an item cascades to earlier ones and warns on skips); false = independent items done in any order.",
+			}),
+		),
+		remind: Type.Optional(
+			Type.Boolean({
+				description:
+					"Continue reminders when unfinished (TUI only). Default false on set; omitted on other actions keeps current value. Clear disables.",
+			}),
+		),
+	}),
+};
+
+type TodoParams = Static<typeof TODO_TOOL_SPEC.parameters>;
+type FocusCard = (state: CollapseState, invalidate: () => void) => void;
+
+function renderTodoResult(
+	result: ToolResultLike,
+	options: ToolRenderResultOptions,
+	theme: ThemeLike,
+	context: RenderContextLike,
+	focusCard: FocusCard,
+) {
+	const details = result.details as TodoResultDetails | undefined;
+	const resultText = getTextContent(result);
+	const isPartial = options.isPartial === true;
+	const state = context.state as CollapseState;
+	if (context.isError || details?.outcome === "error" || !details) {
+		const component = new Text(resultText, 0, 0);
+		if (isPartial) return component;
+		const isError = context.isError || details?.outcome === "error";
+		if (tickCollapse("todo", state, context.invalidate, options.expanded)) {
+			const row = renderRow(
+				theme as TodoTheme,
+				"todo",
+				resultText.split("\n")[0] ?? "",
+				"",
+				isError ? "error" : "success",
+			);
+			return new Text(row, 0, 0);
+		}
+		return frameToolResult(component, theme, isError);
+	}
+
+	const collapsed = !isPartial && tickCollapse("todo", state, context.invalidate, options.expanded);
+	if (collapsed) {
+		return {
+			render: (width: number) =>
+				new Text(renderTodoSummaryLine(details.snapshot, theme as TodoTheme, width), 0, 0).render(
+					width,
+				),
+			invalidate() {},
+		};
+	}
+	// An open card claims focus, collapsing any earlier open board.
+	focusCard(state, context.invalidate);
+	const component = new Text(renderTodoLines(details.snapshot, theme as TodoTheme), 0, 0);
+	if (isPartial) return component;
+	return frameToolResult(component, theme, false);
+}
+
+/**
+ * The `update` action. Mutates items in `todos` in place. Batch form (`updates`) is preferred —
+ * one call closes many items; single form (`id`+`status`/`text`) stays supported for renames.
+ */
+export function applyTodoUpdate(
+	todos: TodoItem[],
+	ordered: boolean,
+	params: Pick<TodoParams, "updates" | "id" | "status" | "text">,
+	hint: () => string,
+): { text: string } | { error: string } {
+	let ops: TodoUpdateOp[] = [];
+	if (params.updates) {
+		const parsed = parseUpdates(params.updates);
+		if ("error" in parsed) return parsed;
+		ops = parsed.ops;
+	} else if (params.id !== undefined && params.status) {
+		ops = [{ id: params.id, status: params.status }];
+	}
+
+	const missing = ops.filter((o) => !todos.some((t) => t.id === o.id)).map((o) => o.id);
+	if (missing.length) return { error: `No todo with id ${missing.join(", ")}.` };
+
+	// Text-only / no-op single update: keep the legacy tolerant path.
+	if (!ops.length) {
+		const t = todos.find((x) => x.id === params.id);
+		if (!t) return { error: `No todo with id ${params.id}.` };
+		if (params.text) t.text = params.text;
+		return { text: `#${t.id} ${t.status} · ${hint()}` };
+	}
+
+	const autoClosed = new Set<number>();
+	let skipWarning = "";
+	for (const op of ops) {
+		const t = todos.find((x) => x.id === op.id) as TodoItem;
+		// Sequential-progress invariant (ordered lists only): opening a task
+		// means everything before it is finished. Cascade-close every earlier
+		// pending or in_progress item so the model never has to mark skipped
+		// steps done by hand. `blocked` is left untouched. Unordered lists
+		// treat each item independently — no cascade, no skip warning.
+		if (ordered && op.status === "in_progress")
+			for (const other of todos)
+				if (other.id < t.id && (other.status === "pending" || other.status === "in_progress")) {
+					other.status = "done";
+					autoClosed.add(other.id);
+				}
+
+		// Only the last op's skip state matters — earlier ops in the same
+		// batch may legitimately still be settling.
+		skipWarning = ordered && op.status === "done" ? buildSkipWarning(todos, t.id) : "";
+		t.status = op.status;
+	}
+	// Text rename only applies to a single-target update.
+	const only = ops.length === 1 ? ops[0] : undefined;
+	if (params.text && only) {
+		const t = todos.find((x) => x.id === only.id) as TodoItem;
+		t.text = params.text;
+	}
+
+	// Delta-only echo: the model already holds the list; re-sending it on
+	// every update is pure token waste. The TUI card still renders the
+	// full checklist from `details.snapshot`.
+	const applied = ops.map((o) => `#${o.id} ${o.status}`).join(", ");
+	const auto = autoClosed.size
+		? ` (auto-done ${[...autoClosed].map((i) => `#${i}`).join(",")})`
+		: "";
+	return { text: `${applied}${auto} · ${hint()}${skipWarning}` };
+}
+
 export default function registerTodo(pi: ExtensionAPI): void {
 	once(pi, "pix-todo", () => {
 		let todos: TodoItem[] = [];
@@ -301,61 +481,7 @@ export default function registerTodo(pi: ExtensionAPI): void {
 			// Avoid the default Box shell's one-cell x padding: Todo owns its compact
 			// result row and should align its status glyph with other compact tools.
 			renderShell: "self",
-			description:
-				"Track BUILD-phase execution progress. Durable across context compaction. Actions: list, set (replace all items from newline/numbered text), add, update (change one or more items' status — batch via `updates`), clear.",
-			promptSnippet:
-				"todo(action, items?, updates?, id?, status?, text?, remind?) — action: list|set|add|update|clear. Use to track implementation progress, especially when executing a plan.",
-			promptGuidelines: [
-				"When you start executing a multi-step plan in BUILD mode, seed the todo list with `todo(action:'set', items: <plan Implementation Phases>)`.",
-				"Batch status changes in ONE call: `todo(action:'update', updates:'3:done,4:in_progress')`. Opening an item auto-closes earlier ones (ordered lists), so do not send per-item update calls.",
-				"When marking an item done, the tool checks for earlier incomplete items and warns you — resolve each skipped item (mark done or blocked) before moving on.",
-				"If the list is NOT a sequential run (items independent, done in any order), pass `ordered:false` on `set` — that disables the cascade-close and skip warning.",
-				"Call `todo(action:'list')` to recover your place after long runs or context compaction.",
-				"Set `remind:true` to opt into visible continue reminders while tasks remain; `remind:false` disables them. Reminders stop on interruption, error, blocked work, or 3 nudges without progress.",
-			],
-			parameters: Type.Object({
-				action: Type.Enum(["list", "set", "add", "update", "clear"] as const, {
-					type: "string",
-					description:
-						'Required operation: "list" shows items; "set" replaces all from items; "add" appends items; "update" changes one or more items by id; "clear" removes all.',
-				}),
-				items: Type.Optional(
-					Type.String({
-						description: "For set/add: newline-separated or numbered list of todo texts.",
-					}),
-				),
-				updates: Type.Optional(
-					Type.String({
-						description:
-							'For update (preferred for status changes): comma-separated "id:status" pairs, e.g. "3:done,4:in_progress". Applied in order.',
-					}),
-				),
-				id: Type.Optional(Type.Number({ description: "For update: single target todo id." })),
-				status: Type.Optional(
-					Type.Enum(["pending", "in_progress", "done", "blocked"] as const, {
-						type: "string",
-						description:
-							'For update: "pending" = not started; "in_progress" = active; "done" = finished; "blocked" = cannot proceed.',
-					}),
-				),
-				text: Type.Optional(
-					Type.String({
-						description: "For update: replacement text (optional).",
-					}),
-				),
-				ordered: Type.Optional(
-					Type.Boolean({
-						description:
-							"For set: true (default) = sequential run (opening/completing an item cascades to earlier ones and warns on skips); false = independent items done in any order.",
-					}),
-				),
-				remind: Type.Optional(
-					Type.Boolean({
-						description:
-							"Continue reminders when unfinished (TUI only). Default false on set; omitted on other actions keeps current value. Clear disables.",
-					}),
-				),
-			}),
+			...TODO_TOOL_SPEC,
 			// Show the `todo <action>` title like other tool calls. Hidden once the
 			// card collapses — the collapsed summary row already carries the title.
 			renderCall: renderCall(
@@ -363,62 +489,8 @@ export default function registerTodo(pi: ExtensionAPI): void {
 				() => "",
 				(args) => String(args.action ?? ""),
 			),
-			renderResult(result, options, theme, context) {
-				const details = result.details as TodoResultDetails | undefined;
-				const resultText = getTextContent(result);
-				const isPartial = options.isPartial === true;
-				if (context.isError || details?.outcome === "error" || !details) {
-					const component = new Text(resultText, 0, 0);
-					if (isPartial) return component;
-					const isError = context.isError || details?.outcome === "error";
-					if (
-						tickCollapse(
-							"todo",
-							context.state as CollapseState,
-							context.invalidate,
-							options.expanded,
-						)
-					) {
-						return new Text(
-							renderRow(
-								theme as TodoTheme,
-								"todo",
-								resultText.split("\n")[0] ?? "",
-								"",
-								isError ? "error" : "success",
-							),
-							0,
-							0,
-						);
-					}
-					return frameToolResult(component, theme, isError);
-				}
-
-				const collapsed =
-					!isPartial &&
-					tickCollapse(
-						"todo",
-						context.state as CollapseState,
-						context.invalidate,
-						options.expanded,
-					);
-				// An open card claims focus, collapsing any earlier open board.
-				if (!collapsed) focusCard(context.state as CollapseState, context.invalidate);
-				if (collapsed)
-					return {
-						render: (width: number) => [
-							...new Text(
-								renderTodoSummaryLine(details.snapshot, theme as TodoTheme, width),
-								0,
-								0,
-							).render(width),
-						],
-						invalidate() {},
-					};
-				const component = new Text(renderTodoLines(details.snapshot, theme as TodoTheme), 0, 0);
-				if (isPartial) return component;
-				return frameToolResult(component, theme, false);
-			},
+			renderResult: (result, options, theme, context) =>
+				renderTodoResult(result, options, theme, context, focusCard),
 
 			async execute(_id, params, _signal, _onUpdate, ctx) {
 				ui = ctx?.ui ?? ui;
@@ -485,71 +557,8 @@ export default function registerTodo(pi: ExtensionAPI): void {
 					}
 
 					case "update": {
-						// Batch form (`updates`) is preferred — one call closes many items.
-						// Single form (`id`+`status`/`text`) stays supported for renames.
-						let ops: TodoUpdateOp[];
-						if (params.updates) {
-							const parsed = parseUpdates(params.updates as string);
-							if ("error" in parsed) return fail(parsed.error);
-							ops = parsed.ops;
-						} else if (params.id !== undefined && params.status) {
-							ops = [{ id: params.id as number, status: params.status as TodoStatus }];
-						} else {
-							ops = [];
-						}
-
-						const missing = ops.filter((o) => !todos.some((t) => t.id === o.id)).map((o) => o.id);
-						if (missing.length) return fail(`No todo with id ${missing.join(", ")}.`);
-
-						// Text-only / no-op single update: keep the legacy tolerant path.
-						if (!ops.length) {
-							const t = todos.find((x) => x.id === params.id);
-							if (!t) return fail(`No todo with id ${params.id}.`);
-							if (params.text) {
-								t.text = params.text;
-							}
-							return ok(`#${t.id} ${t.status} · ${todoHint()}`);
-						}
-
-						const autoClosed = new Set<number>();
-						let skipWarning = "";
-						for (const op of ops) {
-							const t = todos.find((x) => x.id === op.id) as TodoItem;
-							// Sequential-progress invariant (ordered lists only): opening a task
-							// means everything before it is finished. Cascade-close every earlier
-							// pending or in_progress item so the model never has to mark skipped
-							// steps done by hand. `blocked` is left untouched. Unordered lists
-							// treat each item independently — no cascade, no skip warning.
-							if (ordered && op.status === "in_progress")
-								for (const other of todos)
-									if (
-										other.id < t.id &&
-										(other.status === "pending" || other.status === "in_progress")
-									) {
-										other.status = "done";
-										autoClosed.add(other.id);
-									}
-
-							// Only the last op's skip state matters — earlier ops in the same
-							// batch may legitimately still be settling.
-							skipWarning = ordered && op.status === "done" ? buildSkipWarning(todos, t.id) : "";
-							t.status = op.status;
-						}
-						// Text rename only applies to a single-target update.
-						const only = ops.length === 1 ? ops[0] : undefined;
-						if (params.text && only) {
-							const t = todos.find((x) => x.id === only.id) as TodoItem;
-							t.text = params.text;
-						}
-
-						// Delta-only echo: the model already holds the list; re-sending it on
-						// every update is pure token waste. The TUI card still renders the
-						// full checklist from `details.snapshot`.
-						const applied = ops.map((o) => `#${o.id} ${o.status}`).join(", ");
-						const auto = autoClosed.size
-							? ` (auto-done ${[...autoClosed].map((i) => `#${i}`).join(",")})`
-							: "";
-						return ok(`${applied}${auto} · ${todoHint()}${skipWarning}`);
+						const r = applyTodoUpdate(todos, ordered, params, todoHint);
+						return "error" in r ? fail(r.error) : ok(r.text);
 					}
 
 					case "clear":

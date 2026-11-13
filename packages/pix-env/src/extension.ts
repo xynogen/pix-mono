@@ -18,38 +18,21 @@
 import { StringEnum } from "@xynogen/pix-data/ai";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { Text } from "@xynogen/pix-pretty/tui";
-import {
-	BODY_PAD,
-	expandHint,
-	frameToolResult,
-	getErrorMessage,
-	getTextContent,
-	pluralize,
-	renderCall,
-	renderDimPreview,
-	renderRow,
-} from "@xynogen/pix-pretty/utils";
+import { renderCall } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
-import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
-import { existsSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
-import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";
 import { Type } from "typebox";
+import { readEnv, writeEnv } from "./actions.ts";
 import {
 	allRefsIn,
 	collectRefs,
 	collectUnsupported,
-	describeRegistry,
-	editEnvText,
-	envPath,
-	loadPath,
 	loadRegistry,
 	resolveInput,
 	shellPrelude,
 } from "./lib.ts";
+import { renderReadEnvResult } from "./render.ts";
 
 const REF_TAG = "pix-env-secrets";
 
@@ -130,255 +113,13 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 					),
 				(args) => String(args.action ?? ""),
 			),
-			renderResult(result, _options, theme, renderCtx) {
-				const details = result.details as
-					| {
-							action?: string;
-							name?: string;
-							path?: string;
-							revealed?: string[];
-							outcome?: string;
-							count?: number;
-							types?: Record<string, "boolean" | "int" | "float" | "string">;
-					  }
-					| undefined;
-				const entries = Object.entries(details?.types ?? {});
-				const hiddenRead = details?.action === "read" && !renderCtx.isError;
-				const names = hiddenRead ? (details?.revealed ?? []) : details?.name ? [details.name] : [];
-				const target =
-					names.join(", ") ||
-					(details?.count !== undefined ? pluralize(details.count, "variable") : "");
-				const status = renderCtx.isError
-					? "error"
-					: details?.outcome && details.outcome !== "approved"
-						? "warning"
-						: "success";
-				const collapsed =
-					!_options.isPartial &&
-					tickCollapse(
-						"read_env",
-						renderCtx.state as CollapseState,
-						renderCtx.invalidate,
-						_options.expanded,
-					);
-				const component = {
-					render(width: number): string[] {
-						const rows = [
-							renderRow(
-								theme,
-								details?.action ? `read_env · ${details.action}` : "read_env",
-								target,
-								details?.outcome ?? (hiddenRead || details?.name ? "values hidden" : ""),
-								status,
-								width,
-							),
-						];
-						if (collapsed) return rows;
-						if (entries.length) {
-							const shown = _options.expanded ? entries : entries.slice(0, 12);
-							for (const [name, type] of shown)
-								rows.push(
-									`${BODY_PAD}${icon(`data.${type}`)} ${theme.fg("accent", name)}${theme.fg("muted", ` · ${type}`)}`,
-								);
-							if (entries.length > shown.length)
-								rows.push(
-									`${BODY_PAD}${theme.fg("muted", `… ${entries.length - shown.length} more variables `)}${expandHint(theme, renderCtx)}`,
-								);
-						} else if (hiddenRead && names.length) {
-							for (const name of names)
-								rows.push(
-									`${BODY_PAD}${theme.fg("accent", name)}${theme.fg("muted", " · value hidden")}`,
-								);
-						} else {
-							const text = getTextContent(result) || "No env variables loaded.";
-							rows.push(
-								renderDimPreview(text, theme, {
-									maxLines: _options.expanded || renderCtx.isError ? Number.MAX_SAFE_INTEGER : 8,
-									ctx: renderCtx,
-								}),
-							);
-						}
-						if (details?.path)
-							rows.push(
-								`${BODY_PAD}${theme.fg("muted", "File · ")}${theme.fg("dim", details.path)}`,
-							);
-						return new Text(rows.join("\n"), 0, 0).render(width);
-					},
-					invalidate() {},
-				};
-				return _options.isPartial || collapsed
-					? component
-					: frameToolResult(component, theme, renderCtx.isError);
-			},
+			renderResult: renderReadEnvResult,
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				signal?.throwIfAborted();
-				if (params.action === "add" || params.action === "edit") {
-					try {
-						if (!params.name || params.value === undefined)
-							throw new Error("name and value are required for add/edit");
-						if (params.path === undefined) throw new Error("path is required for add/edit");
-						const path = envPath(params.path, ctx.cwd);
-						const safe = await validateOutputPath(path);
-						if (!safe.ok) throw new Error(safe.reason);
-						if (existsSync(path) && !statSync(path).isFile())
-							throw new Error("env path must be a regular file");
-						const before = existsSync(path) ? readFileSync(path, "utf-8") : null;
-						const next = editEnvText(
-							before ?? "",
-							params.name,
-							String(params.value),
-							params.action,
-						);
-						const nuclear = getUnattendedMode(pi.events) === "nuclear";
-						if (!ctx.hasUI && !nuclear)
-							throw new Error("env writes require interactive user approval");
-						const result = nuclear
-							? { action: "approved" }
-							: await showOverlay(ctx.ui, {
-									state: { events: pi.events, source: "read_env", message: "env write approval" },
-									signal,
-									mode: "confirm",
-									icon: icon("secret"),
-									title: `${params.action === "add" ? "Add" : "Edit"} Environment Variable`,
-									body: [
-										`File: ${path}`,
-										`Variable: ${params.name}`,
-										"Values are hidden. Other assignments are preserved.",
-									],
-									accent: "warning",
-									timeoutMs: 30_000,
-									choices: [
-										{ value: "no", label: "Deny", description: "Keep file unchanged" },
-										{ value: "yes", label: "Write", description: `Save ${params.name}` },
-									],
-									approveValue: "yes",
-								});
-						signal?.throwIfAborted();
-						if (result.action !== "approved")
-							return {
-								content: [{ type: "text", text: `read_env ${result.action}: ${params.name}` }],
-								details: { action: params.action, name: params.name, outcome: result.action },
-							};
-						const recheck = await validateOutputPath(path);
-						if (!recheck.ok) throw new Error(recheck.reason);
-						if ((existsSync(path) ? readFileSync(path, "utf-8") : null) !== before)
-							throw new Error("env file changed during approval; retry with the current file");
-						// ponytail: single-writer atomic save; add cross-process locking for concurrent writers.
-						signal?.throwIfAborted();
-						writeFileAtomicSync(path, next);
-						cache.clear();
-						return {
-							content: [
-								{
-									type: "text",
-									text: `${params.action === "add" ? "Added" : "Edited"} ${params.name} in ${path} (value hidden).`,
-								},
-							],
-							details: { action: params.action, name: params.name, path },
-						};
-					} catch (error) {
-						return {
-							content: [{ type: "text", text: `read_env failed: ${getErrorMessage(error)}` }],
-							details: { action: params.action },
-							isError: true,
-						};
-					}
-				}
-				let reg: Map<string, string>;
-				try {
-					reg = params.path !== undefined ? loadPath(params.path, ctx.cwd) : loadRegistry(ctx.cwd);
-				} catch (error) {
-					return {
-						content: [{ type: "text", text: `read_env failed: ${getErrorMessage(error)}` }],
-						details: { action: params.action },
-						isError: true,
-					};
-				}
-				if (params.action === "info") {
-					const types = describeRegistry(reg);
-					const text = Object.entries(types)
-						.map(([key, type]) => `${key} = ${type}`)
-						.join("\n");
-					return {
-						content: [{ type: "text", text: text || "No env variables loaded." }],
-						details: { action: "info", count: Object.keys(types).length, types },
-					};
-				}
-
-				const names = [...new Set(params.names?.map((name) => name.trim()).filter(Boolean) ?? [])];
-				if (names.length === 0) {
-					return {
-						content: [
-							{ type: "text", text: 'read_env failed: names is required for action="read"' },
-						],
-						details: { action: "read", revealed: [] },
-						isError: true,
-					};
-				}
-				const unknown = names.filter((name) => !reg.has(name));
-				if (unknown.length > 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: `read_env failed: unknown env variable(s): ${unknown.join(", ")}`,
-							},
-						],
-						details: { action: "read", revealed: [] },
-						isError: true,
-					};
-				}
-				const nuclear = getUnattendedMode(pi.events) === "nuclear";
-				if (!ctx.hasUI && !nuclear) {
-					return {
-						content: [{ type: "text", text: "read_env requires interactive user approval." }],
-						details: { action: "read", revealed: [] },
-						isError: true,
-					};
-				}
-
-				const list = names.sort((a, b) => a.localeCompare(b)).join(", ");
-				const result = nuclear
-					? { action: "approved" }
-					: await showOverlay(ctx.ui, {
-							state: {
-								events: pi.events,
-								source: "read_env",
-								message: "secret disclosure approval",
-							},
-							signal,
-							mode: "confirm",
-							icon: icon("secret"),
-							title: `Reveal Environment Value${names.length > 1 ? "s" : ""}`,
-							body: [
-								`Variables: ${list}`,
-								"Warning: approved values enter model context and session transcript.",
-							],
-							accent: "error",
-							timeoutMs: 30_000,
-							choices: [
-								{ value: "no", label: "Deny", description: "Keep values hidden" },
-								{ value: "yes", label: "Reveal", description: `Expose only ${list}` },
-							],
-							approveValue: "yes",
-						});
-				signal?.throwIfAborted();
-				if (result.action !== "approved") {
-					return {
-						content: [{ type: "text", text: `read_env ${result.action}: ${list}` }],
-						details: { action: "read", revealed: [], outcome: result.action },
-					};
-				}
-
-				return {
-					content: [
-						{
-							type: "text",
-							text: names.map((name) => `${name}=${reg.get(name) as string}`).join("\n"),
-						},
-					],
-					details: { action: "read", revealed: names },
-				};
+				const { action } = params;
+				if (action === "add" || action === "edit")
+					return writeEnv(pi, { ...params, action }, signal, ctx, () => cache.clear());
+				return readEnv(pi, { ...params, action: action === "info" ? "info" : "read" }, signal, ctx);
 			},
 		});
 

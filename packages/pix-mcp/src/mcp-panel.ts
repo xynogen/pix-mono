@@ -484,149 +484,150 @@ class McpPanel {
 			return;
 		}
 
-		if (
-			this.pager.handleInput(
-				data,
-				{
-					matches: (input, action) =>
-						action === "tui.select.pageUp"
-							? this.keys.selectPageUp(input)
-							: this.keys.selectPageDown(input),
-				},
-				true,
-			)
-		) {
+		const pageKeys = {
+			matches: (input: string, action: string) =>
+				action === "tui.select.pageUp"
+					? this.keys.selectPageUp(input)
+					: this.keys.selectPageDown(input),
+		};
+		if (this.pager.handleInput(data, pageKeys, true)) {
 			this.tui.requestRender();
 			return;
 		}
 
-		// Modal description search mode
-		if (this.descSearchActive) {
-			if (matchesKey(data, "escape") || this.keys.selectConfirm(data)) {
-				this.descSearchActive = false;
-				this.descQuery = "";
-				this.rebuildVisibleItems();
-				this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-				return;
-			}
-			if (matchesKey(data, "backspace")) {
-				if (this.descQuery.length > 0) {
-					this.descQuery = this.descQuery.slice(0, -1);
-					this.rebuildVisibleItems();
-					this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-				}
-				return;
-			}
-			if (this.keys.selectUp(data)) {
-				this.moveCursor(-1);
-				return;
-			}
-			if (this.keys.selectDown(data)) {
-				this.moveCursor(1);
-				return;
-			}
-			if (matchesKey(data, "space")) {
-				// Toggle even while in desc search
-				const item = this.visibleItems[this.cursorIndex];
-				if (item) this.toggleItem(item);
-				return;
-			}
-			const descChar = printableChar(data);
-			if (descChar !== undefined) {
-				this.descQuery += descChar;
-				this.rebuildVisibleItems();
-				this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-				return;
+		if (this.descSearchActive) this.handleDescSearchInput(data);
+		else if (!this.handleListInput(data)) this.handleServerShortcut(data);
+	}
+
+	/** Rebuild the visible list (filter or expand changed) and keep the cursor on a row. */
+	private refreshVisible(): void {
+		this.rebuildVisibleItems();
+		this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
+	}
+
+	/** Modal description search mode (`?`): typing edits the description query. */
+	private handleDescSearchInput(data: string): void {
+		if (matchesKey(data, "escape") || this.keys.selectConfirm(data)) {
+			this.descSearchActive = false;
+			this.descQuery = "";
+			this.refreshVisible();
+			return;
+		}
+		if (matchesKey(data, "backspace")) {
+			if (this.descQuery.length > 0) {
+				this.descQuery = this.descQuery.slice(0, -1);
+				this.refreshVisible();
 			}
 			return;
 		}
+		if (this.keys.selectUp(data)) this.moveCursor(-1);
+		else if (this.keys.selectDown(data)) this.moveCursor(1);
+		else if (matchesKey(data, "space")) {
+			// Toggle even while in desc search
+			const item = this.visibleItems[this.cursorIndex];
+			if (item) this.toggleItem(item);
+		} else {
+			const descChar = printableChar(data);
+			if (descChar === undefined) return;
+			this.descQuery += descChar;
+			this.refreshVisible();
+		}
+	}
 
+	/** List navigation, toggles and the always-on name filter. False when the key is not one. */
+	private handleListInput(data: string): boolean {
 		if (matchesKey(data, "escape")) {
 			if (this.nameQuery) {
 				this.nameQuery = "";
-				this.rebuildVisibleItems();
-				this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-				return;
-			}
-			if (this.dirty) {
+				this.refreshVisible();
+			} else if (this.dirty) {
 				this.confirmingDiscard = true;
 				this.discardSelected = 1;
-				return;
+			} else {
+				this.cleanup();
+				this.done({ cancelled: true, changes: new Map() });
 			}
-			this.cleanup();
-			this.done({ cancelled: true, changes: new Map() });
-			return;
+			return true;
 		}
-
-		if (this.keys.selectUp(data)) {
-			this.moveCursor(-1);
-			return;
-		}
-		if (this.keys.selectDown(data)) {
-			this.moveCursor(1);
-			return;
-		}
-
-		if (matchesKey(data, "space")) {
+		if (this.keys.selectUp(data)) this.moveCursor(-1);
+		else if (this.keys.selectDown(data)) this.moveCursor(1);
+		else if (matchesKey(data, "space")) {
 			const item = this.visibleItems[this.cursorIndex];
 			if (item) this.toggleItem(item);
+		} else if (this.keys.selectConfirm(data)) this.confirmSelected();
+		else if (printableChar(data) === "?") {
+			this.descSearchActive = true;
+			this.descQuery = "";
+			this.refreshVisible();
+		} else if (matchesKey(data, "backspace")) {
+			// Backspace removes from name query
+			if (this.nameQuery.length > 0) {
+				this.nameQuery = this.nameQuery.slice(0, -1);
+				this.refreshVisible();
+			}
+		} else {
+			// All other printable chars → always-on name search. Ctrl keys are never printable.
+			const nameChar = printableChar(data);
+			if (nameChar === undefined) return false;
+			this.nameQuery += nameChar;
+			this.refreshVisible();
+		}
+		return true;
+	}
+
+	/** Enter: add a server, authenticate or expand a server row, or toggle a tool's direct flag. */
+	private confirmSelected(): void {
+		const item = this.visibleItems[this.cursorIndex];
+		if (!item) return;
+		if (item.type === "add") {
+			this.requestAdd();
 			return;
 		}
-
-		if (this.keys.selectConfirm(data)) {
-			const item = this.visibleItems[this.cursorIndex];
-			if (!item) return;
-			if (item.type === "add") {
-				this.requestAdd();
+		const server = this.servers[item.serverIndex];
+		if (!server) return;
+		if (item.type === "server") {
+			if (server.connectionStatus === "needs-auth") {
+				this.authenticateServer(server);
 				return;
 			}
-			const server = this.servers[item.serverIndex];
-			if (!server) return;
-			if (item.type === "server") {
-				if (server.connectionStatus === "needs-auth") {
-					this.authenticateServer(server);
-					return;
-				}
-				server.expanded = !server.expanded;
-				this.rebuildVisibleItems();
-				this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-			} else if (item.toolIndex !== undefined) {
-				const tool = server.tools[item.toolIndex];
-				if (!tool) return;
-				tool.isDirect = !tool.isDirect;
-				if (tool.isDirect && server.source === "import") {
-					this.importNotice = `Imported from ${sanitizeDisplayText(server.importKind ?? "external")} — will copy to user config on save`;
-				}
-				this.updateDirty();
-			}
+			server.expanded = !server.expanded;
+			this.refreshVisible();
 			return;
 		}
+		if (item.toolIndex === undefined) return;
+		const tool = server.tools[item.toolIndex];
+		if (!tool) return;
+		tool.isDirect = !tool.isDirect;
+		if (tool.isDirect && server.source === "import") {
+			this.importNotice = `Imported from ${sanitizeDisplayText(server.importKind ?? "external")} — will copy to user config on save`;
+		}
+		this.updateDirty();
+	}
 
+	/** The server under the cursor, or undefined on the add row. */
+	private selectedServer(): ServerState | undefined {
+		const item = this.visibleItems[this.cursorIndex];
+		if (!item || item.type === "add") return undefined;
+		return this.servers[item.serverIndex];
+	}
+
+	/** ctrl+a/e/d/r/x on the selected server. */
+	private handleServerShortcut(data: string): void {
 		if (matchesKey(data, "ctrl+a")) {
 			const item = this.visibleItems[this.cursorIndex];
 			if (item) this.authenticateSelectedServer(item);
 			return;
 		}
-
+		const server = this.selectedServer();
+		if (!server) return;
 		if (matchesKey(data, "ctrl+e")) {
-			const item = this.visibleItems[this.cursorIndex];
-			if (!item || item.type === "add") return;
-			const server = this.servers[item.serverIndex];
-			if (!server) return;
 			if (server.source === "import") {
 				this.importNotice = `${sanitizeDisplayText(server.name)} is imported (read-only) — edit its source config instead.`;
 				this.tui.requestRender();
 				return;
 			}
 			this.requestEdit(server.name);
-			return;
-		}
-
-		if (matchesKey(data, "ctrl+d")) {
-			const item = this.visibleItems[this.cursorIndex];
-			if (!item || item.type === "add") return;
-			const server = this.servers[item.serverIndex];
-			if (!server) return;
+		} else if (matchesKey(data, "ctrl+d")) {
 			// Import-sourced entries live in a read-only external config until the
 			// user saves them here; deletion only applies to owned user/project files.
 			if (server.source === "import") {
@@ -635,90 +636,56 @@ class McpPanel {
 				return;
 			}
 			this.requestDelete(server.name);
+		} else if (matchesKey(data, "ctrl+r")) {
+			this.reconnectServer(server);
+		} else if (matchesKey(data, "ctrl+x")) {
+			this.disconnectServer(server);
+		}
+	}
+
+	private reconnectServer(server: ServerState): void {
+		if (server.disabled) {
+			this.importNotice = `${sanitizeDisplayText(server.name)} is disabled — ctrl+e to enable it.`;
+			this.tui.requestRender();
 			return;
 		}
-
-		if (matchesKey(data, "ctrl+r")) {
-			const item = this.visibleItems[this.cursorIndex];
-			if (!item || item.type === "add") return;
-			const server = this.servers[item.serverIndex];
-			if (!server) return;
-			if (server.disabled) {
-				this.importNotice = `${sanitizeDisplayText(server.name)} is disabled — ctrl+e to enable it.`;
-				this.tui.requestRender();
-				return;
-			}
-			if (server.connectionStatus === "connecting") return;
-			server.connectionStatus = "connecting";
-			this.callbacks
-				.reconnect(server.name)
-				.then(() => {
-					server.connectionStatus = this.callbacks.getConnectionStatus(server.name);
-					if (server.connectionStatus === "connected") {
-						const entry = this.callbacks.refreshCacheAfterReconnect(server.name);
-						if (entry) {
-							this.rebuildServerTools(server, entry);
-						}
-						server.hasCachedData = true;
+		if (server.connectionStatus === "connecting") return;
+		server.connectionStatus = "connecting";
+		this.callbacks
+			.reconnect(server.name)
+			.then(() => {
+				server.connectionStatus = this.callbacks.getConnectionStatus(server.name);
+				if (server.connectionStatus === "connected") {
+					const entry = this.callbacks.refreshCacheAfterReconnect(server.name);
+					if (entry) {
+						this.rebuildServerTools(server, entry);
 					}
-					this.tui.requestRender();
-				})
-				.catch((error) => {
-					server.connectionStatus = "failed";
-					const message = sanitizeDisplayText(getErrorMessage(error));
-					const serverName = sanitizeDisplayText(server.name);
-					this.authNotice = `Reconnect failed for ${serverName}: ${message}`;
-					this.tui.requestRender();
-				});
-			return;
-		}
+					server.hasCachedData = true;
+				}
+				this.tui.requestRender();
+			})
+			.catch((error) => {
+				server.connectionStatus = "failed";
+				const message = sanitizeDisplayText(getErrorMessage(error));
+				const serverName = sanitizeDisplayText(server.name);
+				this.authNotice = `Reconnect failed for ${serverName}: ${message}`;
+				this.tui.requestRender();
+			});
+	}
 
-		if (matchesKey(data, "ctrl+x")) {
-			const item = this.visibleItems[this.cursorIndex];
-			if (!item || item.type === "add") return;
-			const server = this.servers[item.serverIndex];
-			if (!server) return;
-			if (server.connectionStatus !== "connected") return;
-			this.callbacks
-				.disconnect(server.name)
-				.then(() => {
-					server.connectionStatus = this.callbacks.getConnectionStatus(server.name);
-					this.tui.requestRender();
-				})
-				.catch((error) => {
-					const message = sanitizeDisplayText(getErrorMessage(error));
-					this.authNotice = `Disconnect failed for ${sanitizeDisplayText(server.name)}: ${message}`;
-					this.tui.requestRender();
-				});
-			return;
-		}
-
-		if (printableChar(data) === "?") {
-			this.descSearchActive = true;
-			this.descQuery = "";
-			this.rebuildVisibleItems();
-			this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-			return;
-		}
-
-		// Backspace removes from name query
-		if (matchesKey(data, "backspace")) {
-			if (this.nameQuery.length > 0) {
-				this.nameQuery = this.nameQuery.slice(0, -1);
-				this.rebuildVisibleItems();
-				this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-			}
-			return;
-		}
-
-		// All other printable chars → always-on name search
-		const nameChar = printableChar(data);
-		if (nameChar !== undefined) {
-			this.nameQuery += nameChar;
-			this.rebuildVisibleItems();
-			this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
-			return;
-		}
+	private disconnectServer(server: ServerState): void {
+		if (server.connectionStatus !== "connected") return;
+		this.callbacks
+			.disconnect(server.name)
+			.then(() => {
+				server.connectionStatus = this.callbacks.getConnectionStatus(server.name);
+				this.tui.requestRender();
+			})
+			.catch((error) => {
+				const message = sanitizeDisplayText(getErrorMessage(error));
+				this.authNotice = `Disconnect failed for ${sanitizeDisplayText(server.name)}: ${message}`;
+				this.tui.requestRender();
+			});
 	}
 
 	private authenticateSelectedServer(item: VisibleItem): void {

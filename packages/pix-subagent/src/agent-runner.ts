@@ -392,6 +392,115 @@ function forwardAbortSignal(session: AgentSession, signal?: AbortSignal): () => 
 	});
 }
 
+/**
+ * A subagent spawns mid-task, so a bad `tools:`/`extensions:`/`ext:` entry warns rather than
+ * aborts. Misconfigurations caught here:
+ *   - a plain `tools:` entry that is not a built-in (extension tools go through `ext:`), so an
+ *     unknown name is a typo. Previously a silently broken agent (#75).
+ *   - `exclude_extensions` with `extensions: false`: nothing loads, so nothing to exclude.
+ *   - an exclude that matches no discovered extension. Compared against the PRE-filter set: an
+ *     excluded name absent from the survivors is the exclude working as intended.
+ *   - `extensions: [foo]` but foo did not load (typo, failed path, or excluded too).
+ *   - `tools: ext:foo` but foo is not loaded. Since v0.9 `ext:` no longer pulls extensions in;
+ *     loading is `extensions:`-authoritative.
+ */
+function warnExtensionConfig(
+	warn: ((message: string) => void) | undefined,
+	type: string,
+	c: {
+		builtinToolNames: readonly string[] | undefined;
+		noExtensions: boolean;
+		excludeNames: Set<string>;
+		discoveredNames: Set<string> | undefined;
+		keepNames: Set<string>;
+		extNames: Set<string>;
+		survivingNames: () => Set<string>;
+	},
+): void {
+	if (!warn) return;
+	const knownBuiltins = new Set<string>(BUILTIN_TOOL_NAMES);
+	for (const name of c.builtinToolNames ?? []) {
+		if (!knownBuiltins.has(name))
+			warn(`tool "${name}" requested by agent "${type}" is not a known built-in`);
+	}
+	const hasExcludes = c.excludeNames.size > 0;
+	if (hasExcludes && c.noExtensions) {
+		warn(`exclude_extensions has no effect for agent "${type}" — extensions: false loads nothing`);
+	}
+	if (hasExcludes && c.discoveredNames) {
+		for (const name of c.excludeNames) {
+			if (!c.discoveredNames.has(name))
+				warn(
+					`exclude_extensions: "${name}" for agent "${type}" did not match any discovered extension`,
+				);
+		}
+	}
+	if (c.keepNames.size === 0 && c.extNames.size === 0) return;
+	const surviving = c.survivingNames();
+	for (const name of c.keepNames) {
+		if (surviving.has(name)) continue;
+		warn(
+			c.excludeNames.has(name)
+				? `extension "${name}" is in both extensions: and exclude_extensions: for agent "${type}" — exclude wins`
+				: `extension "${name}" requested by agent "${type}" was not loaded`,
+		);
+	}
+	for (const name of c.extNames) {
+		if (!surviving.has(name))
+			warn(
+				`ext:${name} referenced by agent "${type}" but extension "${name}" is not loaded (check extensions:/exclude_extensions:)`,
+			);
+	}
+}
+
+/**
+ * Extension-registered tool names from the loaded resource loader. Extensions populate
+ * `extension.tools` during `loader.reload()` and the set is stable afterwards.
+ * Opt-in flip: when any `ext:` selector is present, extension tools become an explicit
+ * allowlist — a loaded extension not named by a selector contributes no tools (its handlers
+ * still ran), and `ext:foo/bar` narrows `foo` to `bar`.
+ */
+function extensionTools(
+	extensions: ReadonlyArray<{ path: string; tools: ReadonlyMap<string, unknown> }>,
+	extNames: Set<string>,
+	narrowing: ReadonlyMap<string, Set<string>>,
+): string[] {
+	const names: string[] = [];
+	for (const extension of extensions) {
+		const canon = extensionCanonicalName(extension.path);
+		if (extNames.size > 0 && !extNames.has(canon)) continue;
+		const narrowed = narrowing.get(canon);
+		for (const toolName of extension.tools.keys()) {
+			if (!narrowed || narrowed.has(toolName)) names.push(toolName);
+		}
+	}
+	return names;
+}
+
+/**
+ * The master tool allowlist applied at session construction. pi-mono's `allowedToolNames`
+ * gates BOTH registration and the initial active set, so listing the exact final set here
+ * scopes the session from the first instant — no post-construction narrowing required.
+ */
+function sessionToolAllowlist(t: {
+	toolNames: string[];
+	extensionToolNames: string[];
+	disallowed: readonly string[] | undefined;
+	callerAllowed: readonly string[] | undefined;
+	noExtensions: boolean;
+}): string[] {
+	const builtin = new Set(t.toolNames);
+	const disallowed = t.disallowed ? new Set(t.disallowed) : undefined;
+	const callerAllowed = t.callerAllowed ? new Set(t.callerAllowed) : undefined;
+	return [...t.toolNames, ...t.extensionToolNames].filter((name) => {
+		if (EXCLUDED_TOOL_NAMES.includes(name)) return false;
+		if (disallowed?.has(name)) return false;
+		// allowed_tools[] intersection: extension tools are also subject to the caller allowlist
+		if (callerAllowed && !callerAllowed.has(name)) return false;
+		return builtin.has(name) || !t.noExtensions;
+	});
+}
+
 export async function runAgent(
 	ctx: ExtensionContext,
 	type: SubagentType,
@@ -528,67 +637,16 @@ export async function runAgent(
 	await loader.reload();
 	options.signal?.throwIfAborted();
 
-	// Plain entries in `tools:` are expected to be built-in names (extension tools
-	// go through `ext:`), so an unknown name there is unambiguously a typo. Previously
-	// this produced a silently broken agent (#75) — pi-mono accepted the bogus name
-	// into the allowlist, then dropped it at registration with no signal back.
-	if (agentConfig?.builtinToolNames?.length) {
-		const knownBuiltins = new Set(BUILTIN_TOOL_NAMES);
-		for (const name of agentConfig.builtinToolNames) {
-			if (!knownBuiltins.has(name)) {
-				options.onWarning?.(`tool "${name}" requested by agent "${type}" is not a known built-in`);
-			}
-		}
-	}
-
-	// A subagent spawns mid-task, so a bad `extensions:`/`ext:` entry warns rather
-	// than aborts. Two distinct misconfigurations to catch:
-	//   - `extensions: [foo]` but no extension named foo was discovered (typo or
-	//     path that failed to load — path entries fold their canonical name into
-	//     `keepNames`, so this covers them too).
-	//   - `tools: ext:foo` but foo isn't in the loaded set (because `extensions:`
-	//     didn't include it). Since v0.9, `ext:` no longer pulls extensions in;
-	//     loading is `extensions:`-authoritative.
-	// An exclude_extensions: alongside extensions: false is contradictory — nothing
-	// loads, so there is nothing to exclude.
-	if (hasExcludes && noExtensions) {
-		options.onWarning?.(
-			`exclude_extensions has no effect for agent "${type}" — extensions: false loads nothing`,
-		);
-	}
-	// Exclude typo check: compares against the PRE-filter discovered set (an excluded
-	// name absent from the surviving set is the exclude working as intended). Also
-	// flags path-like and "*" entries — excludes are plain names only.
-	if (hasExcludes && discoveredNames) {
-		for (const name of excludeNames) {
-			if (!discoveredNames.has(name)) {
-				options.onWarning?.(
-					`exclude_extensions: "${name}" for agent "${type}" did not match any discovered extension`,
-				);
-			}
-		}
-	}
-	if (keepNames.size > 0 || extNames.size > 0) {
-		const survivingNames = new Set(
-			loader.getExtensions().extensions.map((e) => extensionCanonicalName(e.path)),
-		);
-		for (const name of keepNames) {
-			if (!survivingNames.has(name)) {
-				options.onWarning?.(
-					excludeNames.has(name)
-						? `extension "${name}" is in both extensions: and exclude_extensions: for agent "${type}" — exclude wins`
-						: `extension "${name}" requested by agent "${type}" was not loaded`,
-				);
-			}
-		}
-		for (const name of extNames) {
-			if (!survivingNames.has(name)) {
-				options.onWarning?.(
-					`ext:${name} referenced by agent "${type}" but extension "${name}" is not loaded (check extensions:/exclude_extensions:)`,
-				);
-			}
-		}
-	}
+	warnExtensionConfig(options.onWarning, type, {
+		builtinToolNames: agentConfig?.builtinToolNames,
+		noExtensions,
+		excludeNames,
+		discoveredNames,
+		keepNames,
+		extNames,
+		survivingNames: () =>
+			new Set(loader.getExtensions().extensions.map((e) => extensionCanonicalName(e.path))),
+	});
 
 	// Resolve model: explicit option > config.model > parent model.
 	// Uses the shared resolveModel() (fuzzy + exact) so config.model strings
@@ -613,46 +671,14 @@ export async function runAgent(
 	// that bypass the public agent tool receive the same default.
 	const thinkingLevel = options.thinkingLevel ?? agentConfig?.thinking ?? "medium";
 
-	const disallowedSet = agentConfig?.disallowedTools
-		? new Set(agentConfig.disallowedTools)
-		: undefined;
-
-	// Enumerate extension-registered tool names from the loaded resource loader.
-	// Extensions populate `extension.tools` during `loader.reload()` and the set
-	// is stable afterwards — `bindExtensions` does not register new tools.
-	//
-	// Opt-in flip: when any `ext:` selector is present, extension tools become an
-	// explicit allowlist — a loaded extension not named by a selector contributes
-	// no tools (its handlers still ran), and `ext:foo/bar` narrows `foo` to `bar`.
-	const extensionToolNames: string[] = [];
-	if (!noExtensions) {
-		const optInActive = extNames.size > 0;
-		for (const extension of loader.getExtensions().extensions) {
-			const canon = extensionCanonicalName(extension.path);
-			if (optInActive && !extNames.has(canon)) continue;
-			const narrowed = narrowing.get(canon);
-			for (const toolName of extension.tools.keys()) {
-				if (narrowed && !narrowed.has(toolName)) continue;
-				extensionToolNames.push(toolName);
-			}
-		}
-	}
-
-	// Build the master tool allowlist applied at session construction.
-	// pi-mono's `allowedToolNames` gates BOTH registration and the initial active
-	// set, so listing the exact final set here means the session is correctly
-	// scoped from the first instant — no post-construction narrowing required.
-	const builtinToolNameSet = new Set(toolNames);
-	const allowedToolNamesSet = options.allowedToolNames
-		? new Set(options.allowedToolNames)
-		: undefined;
-	const allowedTools = [...toolNames, ...extensionToolNames].filter((t) => {
-		if (EXCLUDED_TOOL_NAMES.includes(t)) return false;
-		if (disallowedSet?.has(t)) return false;
-		// allowed_tools[] intersection: extension tools are also subject to the caller allowlist
-		if (allowedToolNamesSet && !allowedToolNamesSet.has(t)) return false;
-		if (builtinToolNameSet.has(t)) return true;
-		return !noExtensions;
+	const allowedTools = sessionToolAllowlist({
+		toolNames,
+		extensionToolNames: noExtensions
+			? []
+			: extensionTools(loader.getExtensions().extensions, extNames, narrowing),
+		disallowed: agentConfig?.disallowedTools,
+		callerAllowed: options.allowedToolNames,
+		noExtensions,
 	});
 
 	const sessionOpts: NonNullable<Parameters<typeof createAgentSession>[0]> = {

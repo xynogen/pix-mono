@@ -257,6 +257,104 @@ function output(result: AgentToolResult<Details>) {
 	return { blocks, wallTime, failed };
 }
 
+type OutputBlock = ReturnType<typeof output>["blocks"][number];
+
+/** One collapsed row: tool names with counts, then call/line/time/cost totals. */
+function collapsedRow(
+	calls: Call[],
+	lineCount: number,
+	wall: string,
+	cost: number,
+	theme: ThemeLike,
+) {
+	const counts = new Map<string, number>();
+	for (const call of calls) counts.set(call.name, (counts.get(call.name) ?? 0) + 1);
+	const names = [...counts].map(([name, count]) => (count > 1 ? `${name} ×${count}` : name));
+	const totals = dotJoin([
+		pluralize(calls.length, "call"),
+		pluralize(lineCount, "line"),
+		wall,
+		cost ? costText(cost) : "",
+	]);
+	return new Text(renderCollapsed(theme, "codemode", dotJoin(names), totals), 0, 0);
+}
+
+/** Rows for the nested tool calls; expanded calls also show their output. Returns the blocks
+ * already shown, so script output can skip duplicates. */
+function callRows(calls: Call[], expanded: boolean, theme: ThemeLike) {
+	const rows: string[] = [];
+	const nestedTexts: OutputBlock[] = [];
+	const shown = expanded ? calls : calls.slice(-8);
+	if (shown.length < calls.length)
+		rows.push(`    ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
+	for (const call of shown) {
+		rows.push(`    ${compactRow(call, theme, expanded, termW() - 4)}`);
+		if (expanded && call.result) {
+			const nestedOutput = output(
+				(call.name === "bash" || call.name === "powershell") && call.result.structuredContent
+					? {
+							content: [{ type: "text", text: JSON.stringify(call.result.structuredContent) }],
+							details: {},
+						}
+					: (call.result as AgentToolResult<Details>),
+			);
+			const color = call.result.isError ? "error" : "toolOutput";
+			for (const block of nestedOutput.blocks) {
+				nestedTexts.push(block);
+				for (const line of block.text.split("\n")) rows.push(`       ${theme.fg(color, line)}`);
+				if (block.metadata) rows.push(`       ${theme.fg("muted", block.metadata)}`);
+				if (block.fullOutputPath)
+					rows.push(`       ${theme.fg("muted", `Full output: ${block.fullOutputPath}`)}`);
+			}
+		}
+		if (expanded && call.error && !call.result) {
+			for (const errLine of call.error.split("\n"))
+				rows.push(`      ${theme.fg("error", errLine)}`);
+		}
+	}
+	return { rows, nestedTexts };
+}
+
+/** Script output rows. Blocks already shown under a nested call are skipped once each. */
+function scriptRows(
+	blocks: OutputBlock[],
+	nestedTexts: OutputBlock[],
+	calls: Call[],
+	compactPreview: boolean,
+	theme: ThemeLike,
+): string[] {
+	// ponytail: hide duplicate script output only in successful child-result previews. Expansion keeps every block.
+	const scriptBlocks = blocks.filter((block) => {
+		if (compactPreview) return false;
+		const index = nestedTexts.findIndex(
+			(nested) =>
+				nested.text === block.text &&
+				nested.metadata === block.metadata &&
+				nested.fullOutputPath === block.fullOutputPath,
+		);
+		if (!block.text || index < 0) return true;
+		nestedTexts.splice(index, 1);
+		return false;
+	});
+	const rows: string[] = [];
+	if (calls.some((call) => call.result) && scriptBlocks.some((block) => block.text))
+		rows.push(theme.fg("muted", "Script output"));
+	for (const block of scriptBlocks) {
+		if (!block.text && !block.metadata) continue;
+		if (block.json) rows.push(...highlightJson(block.text, theme).split("\n"));
+		else {
+			let errorBlock = false;
+			for (const line of block.text.split("\n")) {
+				errorBlock ||= line.startsWith("Script error:");
+				rows.push(theme.fg(errorBlock ? "error" : "toolOutput", line));
+			}
+		}
+		if (block.metadata) rows.push(theme.fg("muted", block.metadata));
+		if (block.fullOutputPath) rows.push(theme.fg("muted", `Full output: ${block.fullOutputPath}`));
+	}
+	return rows;
+}
+
 export function renderResult(
 	result: AgentToolResult<Details>,
 	options: ToolRenderResultOptions,
@@ -294,91 +392,14 @@ export function renderResult(
 		!options.isPartial &&
 		!isError &&
 		tickCollapse("codemode", ctx.state, ctx.invalidate, options.expanded)
-	) {
-		const counts = new Map<string, number>();
-		for (const call of calls) counts.set(call.name, (counts.get(call.name) ?? 0) + 1);
-		const names = [...counts].map(([name, count]) => (count > 1 ? `${name} ×${count}` : name));
-		return new Text(
-			renderCollapsed(
-				theme,
-				"codemode",
-				dotJoin(names),
-				dotJoin([
-					pluralize(calls.length, "call"),
-					pluralize(lineCount, "line"),
-					wall,
-					cost ? costText(cost) : "",
-				]),
-			),
-			0,
-			0,
-		);
-	}
+	)
+		return collapsedRow(calls, lineCount, wall, cost, theme);
+
 	const compactPreview = !options.expanded && !isError && calls.some((call) => call.result);
-	const rows: string[] = [];
-	const nestedTexts: { text: string; metadata?: string; fullOutputPath?: string }[] = [];
-	const shown = options.expanded ? calls : calls.slice(-8);
-	if (shown.length < calls.length)
-		rows.push(`    ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
-	for (const call of shown) {
-		rows.push(`    ${compactRow(call, theme, options.expanded, termW() - 4)}`);
-		if (options.expanded && call.result) {
-			const nestedOutput = output(
-				(call.name === "bash" || call.name === "powershell") && call.result.structuredContent
-					? {
-							content: [{ type: "text", text: JSON.stringify(call.result.structuredContent) }],
-							details: {},
-						}
-					: (call.result as AgentToolResult<Details>),
-			);
-			for (const block of nestedOutput.blocks) {
-				nestedTexts.push(block);
-				for (const line of block.text.split("\n")) {
-					rows.push(`       ${theme.fg(call.result.isError ? "error" : "toolOutput", line)}`);
-				}
-				if (block.metadata) rows.push(`       ${theme.fg("muted", block.metadata)}`);
-				if (block.fullOutputPath)
-					rows.push(`       ${theme.fg("muted", `Full output: ${block.fullOutputPath}`)}`);
-			}
-		}
-		if (options.expanded && call.error && !call.result) {
-			for (const errLine of call.error.split("\n")) {
-				rows.push(`      ${theme.fg("error", errLine)}`);
-			}
-		}
-	}
+	const { rows, nestedTexts } = callRows(calls, options.expanded, theme);
 	const outputStart = rows.length;
-	// ponytail: hide duplicate script output only in successful child-result previews. Expansion keeps every block.
-	const scriptBlocks = display.blocks.filter((block) => {
-		if (compactPreview) return false;
-		const index = nestedTexts.findIndex(
-			(nested) =>
-				nested.text === block.text &&
-				nested.metadata === block.metadata &&
-				nested.fullOutputPath === block.fullOutputPath,
-		);
-		if (!block.text || index < 0) return true;
-		nestedTexts.splice(index, 1);
-		return false;
-	});
-	if (!options.isPartial) {
-		if (calls.some((call) => call.result) && scriptBlocks.some((block) => block.text))
-			rows.push(theme.fg("muted", "Script output"));
-		for (const block of scriptBlocks) {
-			if (!block.text && !block.metadata) continue;
-			if (block.json) rows.push(...highlightJson(block.text, theme).split("\n"));
-			else {
-				let errorBlock = false;
-				for (const line of block.text.split("\n")) {
-					errorBlock ||= line.startsWith("Script error:");
-					rows.push(theme.fg(errorBlock ? "error" : "toolOutput", line));
-				}
-			}
-			if (block.metadata) rows.push(theme.fg("muted", block.metadata));
-			if (block.fullOutputPath)
-				rows.push(theme.fg("muted", `Full output: ${block.fullOutputPath}`));
-		}
-	}
+	if (!options.isPartial)
+		rows.push(...scriptRows(display.blocks, nestedTexts, calls, compactPreview, theme));
 	const preview =
 		!options.expanded && rows.length > MAX_PREVIEW_LINES
 			? [

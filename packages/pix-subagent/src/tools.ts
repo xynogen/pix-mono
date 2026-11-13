@@ -542,7 +542,6 @@ export function createAgentTool(
 
 			// Resolve model — ALWAYS compute modelName (the pix twist)
 			let model = ctx.model;
-			let modelName: string | undefined;
 			if (resolvedConfig.modelInput) {
 				const resolved = resolveModel(resolvedConfig.modelInput, ctx.modelRegistry);
 				if (typeof resolved === "string") {
@@ -554,41 +553,16 @@ export function createAgentTool(
 				}
 			}
 			// Always set modelName (the twist: visible even when same as parent)
-			if (model) modelName = shortModelLabel(model);
+			const modelName = model ? shortModelLabel(model) : undefined;
 
-			// Mentor guard: reject when the chosen model is weaker than the parent
-			// OR when benchmark data is missing (can't verify it meets the floor).
-			// Equal or higher scores are allowed — same-tier calls (e.g. Opus → Opus)
-			// are useful for a second perspective on critical decisions.
 			if (subagentType === "Mentor" && model && ctx.model) {
-				const childBench = lookupBenchmark(model.id);
-				const parentBench = lookupBenchmark(ctx.model.id);
-				const childScore = childBench?.overallScore ?? null;
-				const parentScore = parentBench?.overallScore ?? null;
-				if (childScore == null || parentScore == null) {
-					const missing = [
-						childScore == null ? `"${modelName}"` : "",
-						parentScore == null ? "current model" : "",
-					]
-						.filter(Boolean)
-						.join(" and ");
-					return textResult(
-						`Cannot verify Mentor model is at least as capable as the parent — no benchmark score for ${missing}. ` +
-							`Pick a model with a known ⚡ score from the available models list so the guard can verify it.`,
-					);
-				}
-				if (childScore < parentScore) {
-					return textResult(
-						`Mentor model "${modelName}" (⚡${childScore}) is weaker than the current model (⚡${parentScore}). ` +
-							`Mentor requires a model at least as capable as the parent (⚡${parentScore}+) — pick one from the available models list.`,
-					);
-				}
+				const rejected = mentorGuard(model.id, ctx.model.id, modelName);
+				if (rejected) return textResult(rejected);
 			}
 
-			const thinking = resolvedConfig.thinking;
-			const inheritContext = resolvedConfig.inheritContext;
-			const isolated = resolvedConfig.isolated;
+			const { thinking, inheritContext, isolated } = resolvedConfig;
 			const effectiveMaxTurns = normalizeMaxTurns(resolvedConfig.maxTurns);
+			const isBackground = runsInBackground(params.background);
 
 			// Build invocation snapshot (for widget + notification)
 			const agentInvocation: AgentInvocation = {
@@ -597,233 +571,303 @@ export function createAgentTool(
 				maxTurns: effectiveMaxTurns,
 				isolated,
 				inheritContext,
-				remind: runsInBackground(params.background) && params.remind === true,
+				remind: isBackground && params.remind === true,
 			};
 
-			const detailBase = {
+			const detailBase: DetailBase = {
 				displayName,
 				description: params.description as string,
 				subagentType,
 				modelName, // pix twist: always pass through
-				tags: [] as string[],
+				// Surface any config-load warnings (e.g. invalid thinking level)
+				tags: [...(customConfig?.warnings ?? [])],
 			};
-
-			// Surface any config-load warnings (e.g. invalid thinking level)
-			if (customConfig?.warnings?.length) {
-				for (const w of customConfig.warnings) detailBase.tags.push(w);
-			}
-
 			if (fellBack) detailBase.tags.push("(unknown type → general)");
 			if (thinking) detailBase.tags.push(`thinking: ${thinking}`);
 			if (isolated) detailBase.tags.push("isolated");
 			if (agentInvocation.remind) detailBase.tags.push("remind:on");
 
-			// Resume existing agent
 			if (params.resume) {
-				const existing = manager.getRecord(params.resume as string);
-				if (!existing)
-					return textResult(
-						`Agent not found: "${params.resume}". Only the last ${DEFAULT_MAX_RETAINED} finished agents are kept per session; older ones are evicted.`,
-					);
-				if (!existing.session)
-					return textResult(`Agent "${params.resume}" has no active session to resume.`);
-				const record = await manager.resume(
+				return resumeAgent(
+					manager,
 					params.resume as string,
 					params.prompt as string,
 					signal,
-				);
-				if (!record) return textResult(`Failed to resume agent "${params.resume}".`);
-				if (record === "busy")
-					return textResult(
-						`Agent "${params.resume}" is still running (or still stopping). Use steer to redirect it, or wait for it to finish, then resume.`,
-					);
-				return textResult(
-					record.result?.trim() || record.error?.trim() || "No output.",
-					buildDetails(detailBase, record),
+					detailBase,
 				);
 			}
 
-			// Validate + build allowed_tools list
-			const rawAllowed = params.allowed_tools as string[] | undefined;
-			let allowedToolNames: string[] | undefined;
-			if (rawAllowed) {
-				const knownSet = new Set([...BUILTIN_TOOL_NAMES]);
-				const unknown = rawAllowed.filter((t) => !knownSet.has(t));
-				// Warn about unknown names but proceed with the valid subset
-				const valid = rawAllowed.filter((t) => knownSet.has(t));
-				if (unknown.length > 0) {
-					const note = `(unknown tool names ignored: ${unknown.join(", ")})`;
-					detailBase.tags.push(note);
-				}
-				allowedToolNames = valid.length > 0 ? valid : undefined;
-			}
-
-			const isBackground = runsInBackground(params.background);
-
-			if (isBackground) {
-				// ── Background mode: spawn and return immediately ──────────
-				const { state: bgState, callbacks: bgCallbacks } = createActivityTracker(
-					effectiveMaxTurns,
-					() => {
-						agentActivity.set(bgId, bgState);
-					},
-				);
-
-				let bgId: string;
-				try {
-					bgId = manager.spawn(pi, ctx, subagentType, params.prompt as string, {
-						description: params.description as string,
-						model,
-						maxTurns: effectiveMaxTurns,
-						isolated,
-						inheritContext,
-						thinkingLevel: thinking,
-						isBackground: true,
-						invocation: agentInvocation,
-						// Intentionally no `signal` here: the tool-call signal is aborted
-						// when the parent turn ends, which would kill the background agent
-						// prematurely — bg agents are meant to outlive the spawning turn.
-						allowedToolNames,
-						...bgCallbacks,
-					});
-				} catch (err) {
-					return textResult(getErrorMessage(err));
-				}
-
-				agentActivity.set(bgId, bgState);
-
-				// Mark as user-initiated background so the widget lingers the
-				// finished line (foreground results show inline in transcript).
-				const bgRecord = manager.getRecord(bgId);
-				if (bgRecord) bgRecord.isBackground = true;
-
-				return textResult(
-					`Launched ${bgId}. To steer or stop it while it runs: agent_control action:"steer"/"stop". ` +
-						`Its result is delivered automatically when it finishes — do NOT poll, sleep-wait, or call agent_control just to fetch it. ` +
-						`Idle continuation: remind:${agentInvocation.remind ? "on" : "off"}. Stop is gentle by default: the agent summarizes its progress first, so partial work is never lost. Continue with other work or respond to the user.`,
-					{
-						...detailBase,
-						toolUses: 0,
-						context: "",
-						durationMs: 0,
-						status: "background",
-						agentId: bgId,
-					},
-				);
-			}
-
-			// ── Foreground mode (background: false): await inline with streaming progress ──
-			let fgSpinnerFrame = 0;
-			const fgStartedAt = Date.now();
-			const fgUpdateInterval = onUpdate
-				? setInterval(() => {
-						fgSpinnerFrame++;
-						const act = agentActivity.get(fgId);
-						const activity = act
-							? describeActivity(act.activeTools, act.responseText)
-							: "thinking…";
-						const contextUsage = act?.session
-							? getSessionContextUsage(act.session as SessionLike)
-							: null;
-						onUpdate({
-							content: [{ type: "text" as const, text: "" }],
-							details: {
-								...detailBase,
-								toolUses: act?.toolUses ?? 0,
-								context: formatContext(contextUsage),
-								outputTokens: act?.lifetimeUsage.output,
-								streamingMs: act?.streamingMs,
-								durationMs: Date.now() - fgStartedAt,
-								status: "running" as const,
-								activity,
-								spinnerFrame: fgSpinnerFrame,
-								turnCount: act?.turnCount,
-								maxTurns: act?.maxTurns,
-							} satisfies AgentDetails,
-						});
-					}, 80)
-				: undefined;
-
-			const { state: fgState, callbacks: fgCallbacks } = createActivityTracker(
-				effectiveMaxTurns,
-				() => {
-					agentActivity.set(fgId, fgState);
-				},
-			);
-
-			let fgId: string;
-			try {
-				fgId = manager.spawn(pi, ctx, subagentType, params.prompt as string, {
+			const launch: AgentLaunch = {
+				pi,
+				ctx,
+				manager,
+				agentActivity,
+				subagentType,
+				prompt: params.prompt as string,
+				detailBase,
+				spawn: {
 					description: params.description as string,
 					model,
 					maxTurns: effectiveMaxTurns,
 					isolated,
 					inheritContext,
 					thinkingLevel: thinking,
-					// Keep the manager record foreground so the widget does not render
-					// a second status line while this blocking tool call streams inline.
-					isBackground: false,
 					invocation: agentInvocation,
-					signal, // foreground: parent abort kills the agent
-					allowedToolNames,
-					...fgCallbacks,
-				});
-			} catch (err) {
-				if (fgUpdateInterval) clearInterval(fgUpdateInterval);
-				return textResult(getErrorMessage(err));
-			}
-
-			agentActivity.set(fgId, fgState);
-
-			// Emit initial partial so renderResult shows the live line immediately
-			if (onUpdate) {
-				onUpdate({
-					content: [{ type: "text" as const, text: "" }],
-					details: {
-						...detailBase,
-						toolUses: 0,
-						context: "",
-						durationMs: 0,
-						status: "running" as const,
-						activity: "starting…",
-						spinnerFrame: 0,
-						turnCount: 0,
-						maxTurns: effectiveMaxTurns,
-					} satisfies AgentDetails,
-				});
-			}
-
-			// Await the agent's promise — this blocks the tool call until the agent finishes
-			const record = manager.getRecord(fgId);
-			if (record?.promise) {
-				await record.promise;
-			}
-
-			if (fgUpdateInterval) clearInterval(fgUpdateInterval);
-
-			// Suppress the completion notification — result is returned inline
-			const finalRecord = manager.getRecord(fgId);
-			if (finalRecord) finalRecord.resultConsumed = true;
-
-			agentActivity.delete(fgId);
-
-			const resultText = finalRecord?.result?.trim() || finalRecord?.error?.trim() || "No output.";
-
-			return textResult(
-				resultText,
-				buildDetails(
-					detailBase,
-					finalRecord ?? {
-						toolUses: 0,
-						startedAt: Date.now(),
-						status: "error",
-						lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
-					},
-					fgState,
-				),
-			);
+					allowedToolNames: filterAllowedTools(
+						params.allowed_tools as string[] | undefined,
+						detailBase.tags,
+					),
+				},
+			};
+			if (isBackground) return launchBackground(launch, agentInvocation.remind === true);
+			return runForeground(launch, signal, onUpdate);
 		},
 	});
+}
+
+type DetailBase = Pick<
+	AgentDetails,
+	"displayName" | "description" | "subagentType" | "modelName" | "tags"
+> & { tags: string[] };
+type SpawnOptions = Parameters<AgentManager["spawn"]>[4];
+type AgentUpdate = (result: ReturnType<typeof textResult>) => void;
+
+/** Everything one `agent` call needs to start a child, shared by the fg and bg paths. */
+interface AgentLaunch {
+	pi: Parameters<AgentManager["spawn"]>[0];
+	ctx: Parameters<AgentManager["spawn"]>[1];
+	manager: AgentManager;
+	agentActivity: Map<string, AgentActivity>;
+	subagentType: string;
+	prompt: string;
+	detailBase: DetailBase;
+	/** Spawn options without the mode-specific fields (isBackground, signal, callbacks). */
+	spawn: Omit<SpawnOptions, "isBackground" | "signal">;
+}
+
+/**
+ * Mentor guard: reject when the chosen model is weaker than the parent
+ * OR when benchmark data is missing (can't verify it meets the floor).
+ * Equal or higher scores are allowed — same-tier calls (e.g. Opus → Opus)
+ * are useful for a second perspective on critical decisions.
+ * Returns the rejection message, or undefined when the model passes.
+ */
+function mentorGuard(
+	childId: string,
+	parentId: string,
+	modelName: string | undefined,
+): string | undefined {
+	const childScore = lookupBenchmark(childId)?.overallScore ?? null;
+	const parentScore = lookupBenchmark(parentId)?.overallScore ?? null;
+	if (childScore == null || parentScore == null) {
+		const missing = [
+			childScore == null ? `"${modelName}"` : "",
+			parentScore == null ? "current model" : "",
+		]
+			.filter(Boolean)
+			.join(" and ");
+		return (
+			`Cannot verify Mentor model is at least as capable as the parent — no benchmark score for ${missing}. ` +
+			`Pick a model with a known ⚡ score from the available models list so the guard can verify it.`
+		);
+	}
+	if (childScore < parentScore) {
+		return (
+			`Mentor model "${modelName}" (⚡${childScore}) is weaker than the current model (⚡${parentScore}). ` +
+			`Mentor requires a model at least as capable as the parent (⚡${parentScore}+) — pick one from the available models list.`
+		);
+	}
+	return undefined;
+}
+
+async function resumeAgent(
+	manager: AgentManager,
+	id: string,
+	prompt: string,
+	signal: AbortSignal | undefined,
+	detailBase: DetailBase,
+) {
+	const existing = manager.getRecord(id);
+	if (!existing)
+		return textResult(
+			`Agent not found: "${id}". Only the last ${DEFAULT_MAX_RETAINED} finished agents are kept per session; older ones are evicted.`,
+		);
+	if (!existing.session) return textResult(`Agent "${id}" has no active session to resume.`);
+	const record = await manager.resume(id, prompt, signal);
+	if (!record) return textResult(`Failed to resume agent "${id}".`);
+	if (record === "busy")
+		return textResult(
+			`Agent "${id}" is still running (or still stopping). Use steer to redirect it, or wait for it to finish, then resume.`,
+		);
+	return textResult(
+		record.result?.trim() || record.error?.trim() || "No output.",
+		buildDetails(detailBase, record),
+	);
+}
+
+/** Valid subset of `allowed_tools`; unknown names become a tag, not an error. */
+function filterAllowedTools(
+	rawAllowed: string[] | undefined,
+	tags: string[],
+): string[] | undefined {
+	if (!rawAllowed) return undefined;
+	const knownSet = new Set([...BUILTIN_TOOL_NAMES]);
+	const unknown = rawAllowed.filter((t) => !knownSet.has(t));
+	if (unknown.length > 0) tags.push(`(unknown tool names ignored: ${unknown.join(", ")})`);
+	const valid = rawAllowed.filter((t) => knownSet.has(t));
+	return valid.length > 0 ? valid : undefined;
+}
+
+/** Background mode: spawn and return immediately. */
+function launchBackground(launch: AgentLaunch, remind: boolean) {
+	const { pi, ctx, manager, agentActivity, subagentType, prompt, detailBase } = launch;
+	const { state, callbacks } = createActivityTracker(launch.spawn.maxTurns, () => {
+		agentActivity.set(id, state);
+	});
+
+	let id: string;
+	try {
+		id = manager.spawn(pi, ctx, subagentType, prompt, {
+			...launch.spawn,
+			isBackground: true,
+			// Intentionally no `signal` here: the tool-call signal is aborted
+			// when the parent turn ends, which would kill the background agent
+			// prematurely — bg agents are meant to outlive the spawning turn.
+			...callbacks,
+		});
+	} catch (err) {
+		return textResult(getErrorMessage(err));
+	}
+
+	agentActivity.set(id, state);
+
+	// Mark as user-initiated background so the widget lingers the
+	// finished line (foreground results show inline in transcript).
+	const record = manager.getRecord(id);
+	if (record) record.isBackground = true;
+
+	return textResult(
+		`Launched ${id}. To steer or stop it while it runs: agent_control action:"steer"/"stop". ` +
+			`Its result is delivered automatically when it finishes — do NOT poll, sleep-wait, or call agent_control just to fetch it. ` +
+			`Idle continuation: remind:${remind ? "on" : "off"}. Stop is gentle by default: the agent summarizes its progress first, so partial work is never lost. Continue with other work or respond to the user.`,
+		{
+			...detailBase,
+			toolUses: 0,
+			context: "",
+			durationMs: 0,
+			status: "background",
+			agentId: id,
+		},
+	);
+}
+
+/** Live `running` details for one foreground progress tick. */
+function foregroundProgress(
+	detailBase: DetailBase,
+	act: AgentActivity | undefined,
+	startedAt: number,
+	spinnerFrame: number,
+): AgentDetails {
+	const contextUsage = act?.session ? getSessionContextUsage(act.session as SessionLike) : null;
+	return {
+		...detailBase,
+		toolUses: act?.toolUses ?? 0,
+		context: formatContext(contextUsage),
+		outputTokens: act?.lifetimeUsage.output,
+		streamingMs: act?.streamingMs,
+		durationMs: Date.now() - startedAt,
+		status: "running" as const,
+		activity: act ? describeActivity(act.activeTools, act.responseText) : "thinking…",
+		spinnerFrame,
+		turnCount: act?.turnCount,
+		maxTurns: act?.maxTurns,
+	};
+}
+
+/** Foreground mode (background: false): await inline with streaming progress. */
+async function runForeground(
+	launch: AgentLaunch,
+	signal: AbortSignal | undefined,
+	onUpdate: AgentUpdate | undefined,
+) {
+	const { pi, ctx, manager, agentActivity, subagentType, prompt, detailBase } = launch;
+	const maxTurns = launch.spawn.maxTurns;
+	let spinnerFrame = 0;
+	const startedAt = Date.now();
+	const progress = onUpdate
+		? setInterval(() => {
+				spinnerFrame++;
+				const details = foregroundProgress(
+					detailBase,
+					agentActivity.get(id),
+					startedAt,
+					spinnerFrame,
+				);
+				onUpdate(textResult("", details));
+			}, 80)
+		: undefined;
+
+	const { state, callbacks } = createActivityTracker(maxTurns, () => {
+		agentActivity.set(id, state);
+	});
+
+	let id: string;
+	try {
+		id = manager.spawn(pi, ctx, subagentType, prompt, {
+			...launch.spawn,
+			// Keep the manager record foreground so the widget does not render
+			// a second status line while this blocking tool call streams inline.
+			isBackground: false,
+			signal, // foreground: parent abort kills the agent
+			...callbacks,
+		});
+	} catch (err) {
+		if (progress) clearInterval(progress);
+		return textResult(getErrorMessage(err));
+	}
+
+	agentActivity.set(id, state);
+
+	// Emit initial partial so renderResult shows the live line immediately
+	onUpdate?.(
+		textResult("", {
+			...detailBase,
+			toolUses: 0,
+			context: "",
+			durationMs: 0,
+			status: "running" as const,
+			activity: "starting…",
+			spinnerFrame: 0,
+			turnCount: 0,
+			maxTurns,
+		}),
+	);
+
+	// Await the agent's promise — this blocks the tool call until the agent finishes
+	const record = manager.getRecord(id);
+	if (record?.promise) await record.promise;
+
+	if (progress) clearInterval(progress);
+
+	// Suppress the completion notification — result is returned inline
+	const finalRecord = manager.getRecord(id);
+	if (finalRecord) finalRecord.resultConsumed = true;
+
+	agentActivity.delete(id);
+
+	return textResult(
+		finalRecord?.result?.trim() || finalRecord?.error?.trim() || "No output.",
+		buildDetails(
+			detailBase,
+			finalRecord ?? {
+				toolUses: 0,
+				startedAt: Date.now(),
+				status: "error",
+				lifetimeUsage: { input: 0, output: 0, cacheWrite: 0 },
+			},
+			state,
+		),
+	);
 }
 
 /**

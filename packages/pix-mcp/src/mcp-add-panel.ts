@@ -54,6 +54,10 @@ function fg(style: (text: string) => string, text: string): string {
 	return style(text);
 }
 
+function italic(s: string): string {
+	return `\x1b[3m${s}\x1b[23m`;
+}
+
 function sanitizeDisplayText(text: string | null | undefined): string {
 	return (text ?? "")
 		.replace(/(?:\x1b\][\s\S]*?(?:\x07|\x1b\\)|\x9d[\s\S]*?(?:\x07|\x1b\\|\x9c))/g, "")
@@ -822,155 +826,26 @@ export class McpAddPanel {
 
 	render(width: number): string[] {
 		const mw = modalWidth(width);
-		const innerW = mw - 4;
-		const header: string[] = [];
-		const body: string[] = [];
-		const footer: string[] = [];
 		const t = this.t;
-		const bold = (s: string) => this.popupTheme.bold?.(s) ?? `\x1b[1m${s}\x1b[22m`;
-		const italic = (s: string) => `\x1b[3m${s}\x1b[23m`;
-		const row = (content: string) => sanitizeRowContent(content);
-		const emptyRow = () => "";
-
 		const title = this.options.edit ? "Edit MCP server" : "Add MCP server";
-		header.push(fg(t.title, `${icon("mcp")}  ${title}`));
-		header.push(fg(t.hint, stepLabel(this.step, this.selectedType, !!this.options.edit)));
-		header.push(emptyRow());
-
-		if (this.step === "pickType") {
-			for (let i = 0; i < TYPE_ITEMS.length; i++) {
-				const item = TYPE_ITEMS[i];
-				if (!item) continue;
-				const isCursor = i === this.typeCursor;
-				const marker = isCursor ? fg(t.selected, "▶") : " ";
-				const name = isCursor ? bold(fg(t.selected, item.label)) : item.label;
-				const desc = fg(t.muted, `— ${item.description}`);
-				body.push(row(`${marker} ${name} ${desc}`));
-			}
-			if (this.error) body.push(row(fg(t.error, sanitizeDisplayText(this.error))));
-		} else if (this.step === "form") {
-			for (let i = 0; i < this.fieldDefs.length; i++) {
-				const field = this.fieldDefs[i];
-				if (!field) continue;
-				const isFocused = i === this.fieldCursor;
-				const value = this.fieldValues[field.key] ?? "";
-				const cursor = isFocused ? fg(t.selected, "│") : "";
-				const label = isFocused ? bold(fg(t.selected, field.label)) : field.label;
-				const displayValue = displayFieldValue(
-					field,
-					value,
-					fg(t.muted, italic(field.placeholder)),
-				);
-				const marker = isFocused ? fg(t.selected, "▶") : " ";
-				const hint = field.hint ? fg(t.muted, ` — ${field.hint}`) : "";
-				body.push(row(`${marker} ${label}: ${displayValue}${cursor}${hint}`));
-			}
-			body.push(emptyRow());
-			body.push(
-				row(
-					fg(
-						t.hint,
-						italic(
-							"tab: next field · type to edit · space: toggle · backspace · enter: continue · esc: back",
-						),
-					),
-				),
-			);
-			if (this.error) {
-				body.push(emptyRow());
-				body.push(row(fg(t.error, sanitizeDisplayText(this.error))));
-			}
-		} else if (this.step === "pickScope") {
-			const scopes: Array<{ id: AddServerScope; label: string; path: string }> = [
-				{
-					id: "project",
-					label: "Project",
-					path: this.options.callbacks.resolveTargetPath("project"),
-				},
-				{ id: "global", label: "Global", path: this.options.callbacks.resolveTargetPath("global") },
-			];
-			for (const [i, scope] of scopes.entries()) {
-				const isCursor = i === this.scopeCursor;
-				const marker = isCursor ? fg(t.selected, "▶") : " ";
-				const name = isCursor ? bold(fg(t.selected, scope.label)) : scope.label;
-				const path = fg(t.muted, sanitizeDisplayText(scope.path));
-				body.push(row(`${marker} ${name}  ${path}`));
-			}
-			body.push(emptyRow());
-			body.push(
-				row(
-					fg(
-						t.muted,
-						"Project writes to .mcp.json in cwd · Global writes to ~/.config/mcp/mcp.json",
-					),
-				),
-			);
-			if (this.error) {
-				body.push(emptyRow());
-				body.push(row(fg(t.error, sanitizeDisplayText(this.error))));
-			}
-		} else if (this.step === "preview") {
-			if (this.preview) {
-				const diffLines = this.preview.diffText.split("\n");
-				for (const line of diffLines) {
-					if (line === "--- before" || line === "+++ after") continue; // drop diff headers
-					if (line.startsWith("+ ")) body.push(row(fg(t.success, line)));
-					else if (line.startsWith("- ")) body.push(row(fg(t.error, line)));
-					else body.push(row(fg(t.muted, line)));
-				}
-				body.push(emptyRow());
-				body.push(row(fg(t.hint, `Target: ${sanitizeDisplayText(this.preview.path)}`)));
-			}
-			if (this.error) {
-				body.push(emptyRow());
-				body.push(row(fg(t.error, sanitizeDisplayText(this.error))));
-			}
-		} else if (this.step === "connecting") {
-			body.push(row(fg(t.hint, this.connectStatus ?? "Working…")));
+		const header = [
+			fg(t.title, `${icon("mcp")}  ${title}`),
+			fg(t.hint, stepLabel(this.step, this.selectedType, !!this.options.edit)),
+			"",
+		];
+		const body = this.stepBody();
+		if (this.error && this.step !== "connecting") {
+			// pickType shows the error right under the list; other steps leave a gap.
+			if (this.step !== "pickType") body.push("");
+			body.push(sanitizeRowContent(fg(t.error, sanitizeDisplayText(this.error))));
 		}
-
-		// Footer hints
-		const guide = (key: string, action: string) =>
-			fg(t.selected, italic(key)) + fg(t.hint, ` ${action}`);
-		const hints =
-			this.step === "pickType"
-				? [guide("↑↓", "navigate"), guide("⏎", "select"), guide("esc", "cancel")]
-				: this.step === "form"
-					? [guide("tab", "next"), guide("⏎", "next"), guide("esc", "back")]
-					: this.step === "pickScope"
-						? [guide("↑↓", "pick"), guide("⏎", "preview"), guide("esc", "back")]
-						: this.step === "preview"
-							? [guide("⏎", "write & test"), guide("esc", "back")]
-							: [];
-		if (hints.length > 0) {
-			footer.push(emptyRow());
-			const gap = "  ";
-			const gapW = 2;
-			const maxW = innerW - 2;
-			let curLine = "";
-			let curW = 0;
-			for (const hint of hints) {
-				const hw = visibleWidth(hint);
-				const needed = curW === 0 ? hw : gapW + hw;
-				if (curW > 0 && curW + needed > maxW) {
-					footer.push(row(curLine));
-					curLine = hint;
-					curW = hw;
-				} else {
-					curLine += (curW > 0 ? gap : "") + hint;
-					curW += needed;
-				}
-			}
-			if (curLine) footer.push(row(curLine));
-		}
-
 		const result = frameModal({
 			width: mw,
 			maxHeight: terminalModalHeight(this.tui.terminal?.rows),
 			minHeight: MIN_MODAL_HEIGHT,
 			header,
 			body,
-			footer,
+			footer: this.footerRows(mw - 4),
 			bodyOffset: this.pager.bodyOffset,
 			selectedBodyLine: undefined,
 			color: t.border,
@@ -978,6 +853,131 @@ export class McpAddPanel {
 		});
 		this.pager.sync(result);
 		return result.lines;
+	}
+
+	private bold(s: string): string {
+		return this.popupTheme.bold?.(s) ?? `\x1b[1m${s}\x1b[22m`;
+	}
+
+	/** `▶ name` for the row under the cursor, `  name` otherwise. */
+	private pickRow(isCursor: boolean, label: string, rest: string): string {
+		const t = this.t;
+		const marker = isCursor ? fg(t.selected, "▶") : " ";
+		const name = isCursor ? this.bold(fg(t.selected, label)) : label;
+		return sanitizeRowContent(`${marker} ${name}${rest}`);
+	}
+
+	/** Body rows for the current step, without the trailing error row. */
+	private stepBody(): string[] {
+		const t = this.t;
+		switch (this.step) {
+			case "pickType":
+				return TYPE_ITEMS.map((item, i) =>
+					this.pickRow(
+						i === this.typeCursor,
+						item.label,
+						` ${fg(t.muted, `— ${item.description}`)}`,
+					),
+				);
+			case "form":
+				return this.formBody();
+			case "pickScope": {
+				const cb = this.options.callbacks;
+				const scopes: Array<{ label: string; path: string }> = [
+					{ label: "Project", path: cb.resolveTargetPath("project") },
+					{ label: "Global", path: cb.resolveTargetPath("global") },
+				];
+				return [
+					...scopes.map((scope, i) =>
+						this.pickRow(
+							i === this.scopeCursor,
+							scope.label,
+							`  ${fg(t.muted, sanitizeDisplayText(scope.path))}`,
+						),
+					),
+					"",
+					sanitizeRowContent(
+						fg(
+							t.muted,
+							"Project writes to .mcp.json in cwd · Global writes to ~/.config/mcp/mcp.json",
+						),
+					),
+				];
+			}
+			case "preview":
+				return this.previewBody();
+			case "connecting":
+				return [sanitizeRowContent(fg(t.hint, this.connectStatus ?? "Working…"))];
+			default:
+				return [];
+		}
+	}
+
+	private formBody(): string[] {
+		const t = this.t;
+		const body = this.fieldDefs.map((field, i) => {
+			const isFocused = i === this.fieldCursor;
+			const value = this.fieldValues[field.key] ?? "";
+			const cursor = isFocused ? fg(t.selected, "│") : "";
+			const label = isFocused ? this.bold(fg(t.selected, field.label)) : field.label;
+			const displayValue = displayFieldValue(field, value, fg(t.muted, italic(field.placeholder)));
+			const marker = isFocused ? fg(t.selected, "▶") : " ";
+			const hint = field.hint ? fg(t.muted, ` — ${field.hint}`) : "";
+			return sanitizeRowContent(`${marker} ${label}: ${displayValue}${cursor}${hint}`);
+		});
+		const help =
+			"tab: next field · type to edit · space: toggle · backspace · enter: continue · esc: back";
+		return [...body, "", sanitizeRowContent(fg(t.hint, italic(help)))];
+	}
+
+	private previewBody(): string[] {
+		if (!this.preview) return [];
+		const t = this.t;
+		const body: string[] = [];
+		for (const line of this.preview.diffText.split("\n")) {
+			if (line === "--- before" || line === "+++ after") continue; // drop diff headers
+			const color = line.startsWith("+ ") ? t.success : line.startsWith("- ") ? t.error : t.muted;
+			body.push(sanitizeRowContent(fg(color, line)));
+		}
+		body.push(
+			"",
+			sanitizeRowContent(fg(t.hint, `Target: ${sanitizeDisplayText(this.preview.path)}`)),
+		);
+		return body;
+	}
+
+	/** Key hints for the step, wrapped to the modal's inner width. */
+	private footerRows(innerW: number): string[] {
+		const t = this.t;
+		const guide = (key: string, action: string) =>
+			fg(t.selected, italic(key)) + fg(t.hint, ` ${action}`);
+		const hints: Record<string, string[]> = {
+			pickType: [guide("↑↓", "navigate"), guide("⏎", "select"), guide("esc", "cancel")],
+			form: [guide("tab", "next"), guide("⏎", "next"), guide("esc", "back")],
+			pickScope: [guide("↑↓", "pick"), guide("⏎", "preview"), guide("esc", "back")],
+			preview: [guide("⏎", "write & test"), guide("esc", "back")],
+		};
+		const list = hints[this.step] ?? [];
+		if (list.length === 0) return [];
+		const footer = [""];
+		const gap = "  ";
+		const maxW = innerW - 2;
+		let curLine = "";
+		let curW = 0;
+		for (const hint of list) {
+			const hw = visibleWidth(hint);
+			const needed = curW === 0 ? hw : gap.length + hw;
+			if (curW > 0 && curW + needed > maxW) {
+				footer.push(sanitizeRowContent(curLine));
+				curLine = hint;
+				curW = hw;
+			} else {
+				curLine += (curW > 0 ? gap : "") + hint;
+				curW += needed;
+			}
+		}
+		if (curLine) footer.push(sanitizeRowContent(curLine));
+		return footer;
 	}
 
 	invalidate(): void {}

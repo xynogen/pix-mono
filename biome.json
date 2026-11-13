@@ -35,7 +35,7 @@
 				"noExcessiveCognitiveComplexity": {
 					"level": "error",
 					"options": {
-						"maxAllowedComplexity": 100
+						"maxAllowedComplexity": 78
 					}
 				},
 				"noForEach": "off",
@@ -74,7 +74,7 @@
 					"complexity": {
 						"noExcessiveLinesPerFunction": {
 							"level": "error",
-							"options": { "maxLines": 339, "skipBlankLines": true }
+							"options": { "maxLines": 253, "skipBlankLines": true }
 						}
 					}
 				}
