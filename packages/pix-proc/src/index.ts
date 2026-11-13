@@ -16,13 +16,13 @@ import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
 import { truncateToWidth, visibleWidth } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage, makeActionResult, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
 import { type FSWatcher, watch } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
-import { fail, type ProcParams, runAction, textResult } from "./actions.ts";
+import { fail, type ProcParams, runAction } from "./actions.ts";
 import { MAX_LOG_LINES, type ProcMeta, procLabel, statusLine } from "./format.ts";
 import { PROC_DIR, ProcManager } from "./manager.ts";
 import { MODAL_LOG_LINES, ProcModal, type ProcModalResult } from "./modal.ts";
@@ -217,9 +217,9 @@ function register(pi: ExtensionAPI): void {
 			const p = params as ProcParams;
 			ui ??= ctx.ui;
 			try {
-				return textResult(await runAction(mgr, p, ctx.cwd, startPolling));
+				return makeActionResult(await runAction(mgr, p, ctx.cwd, startPolling));
 			} catch (err) {
-				return textResult(fail(p.action, getErrorMessage(err)));
+				return makeActionResult(fail(p.action, getErrorMessage(err)));
 			}
 		},
 	});

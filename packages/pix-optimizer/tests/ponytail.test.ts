@@ -8,7 +8,6 @@ import {
 	resolveLevel,
 	STATUS_LABELS,
 	STOP_ALIASES,
-	toggleLevel,
 } from "../src/ponytail.ts";
 
 // ── LEVELS ────────────────────────────────────────────────────────────────────
@@ -143,25 +142,6 @@ describe("buildHelp", () => {
 
 	it("mentions config", () => {
 		expect(buildHelp("off")).toContain("config");
-	});
-});
-
-// ── toggleLevel ───────────────────────────────────────────────────────────────
-
-describe("toggleLevel", () => {
-	it("off → full", () => {
-		expect(toggleLevel("off")).toBe("full");
-	});
-
-	it("full → off", () => {
-		expect(toggleLevel("full")).toBe("off");
-	});
-
-	it("any non-off level → off", () => {
-		const nonOff = LEVELS.filter((l) => l !== "off") as Level[];
-		for (const l of nonOff) {
-			expect(toggleLevel(l)).toBe("off");
-		}
 	});
 });
 

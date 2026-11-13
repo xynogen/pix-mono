@@ -986,6 +986,28 @@ export function makeTextResult<TDetails>(
 	};
 }
 
+/** Details of an action tool (download, proc): an outcome plus model-facing lines or an error. */
+export interface ActionResultDetails {
+	action: string;
+	ok: boolean;
+	lines: string[];
+	error?: string;
+}
+
+/** Tool result for an action: the error, else the lines, else `<action> ok`. */
+export function makeActionResult<TDetails extends ActionResultDetails>(details: TDetails) {
+	return {
+		content: [
+			{
+				type: "text" as const,
+				text: details.error ?? (details.lines.join("\n") || `${details.action} ok`),
+			},
+		],
+		details,
+		isError: !details.ok,
+	};
+}
+
 export function appendNotices(text: string, notices: string[]): string {
 	return notices.length ? `${text}\n\n[${notices.join(". ")}]` : text;
 }

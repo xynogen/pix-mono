@@ -8,7 +8,6 @@ import {
 	resolveLevel,
 	STATUS_LABELS,
 	STOP_ALIASES,
-	toggleLevel,
 } from "../src/caveman.ts";
 
 // ── LEVELS ────────────────────────────────────────────────────────────────────
@@ -144,25 +143,6 @@ describe("buildHelp", () => {
 
 	it("does not mention wenyan", () => {
 		expect(buildHelp("off").toLowerCase()).not.toContain("wenyan");
-	});
-});
-
-// ── toggleLevel ───────────────────────────────────────────────────────────────
-
-describe("toggleLevel", () => {
-	it("off → full", () => {
-		expect(toggleLevel("off")).toBe("full");
-	});
-
-	it("full → off", () => {
-		expect(toggleLevel("full")).toBe("off");
-	});
-
-	it("any non-off level → off", () => {
-		const nonOff = LEVELS.filter((l) => l !== "off") as Level[];
-		for (const l of nonOff) {
-			expect(toggleLevel(l)).toBe("off");
-		}
 	});
 });
 

@@ -6,11 +6,7 @@
  */
 
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
-import {
-	createMode,
-	resolveLevel as resolveLevelGeneric,
-	toggleLevel as toggleLevelGeneric,
-} from "./mode.ts";
+import { createMode, resolveLevel as resolveLevelGeneric } from "./mode.ts";
 import type { OptimizerHandle, OptimizerStatus } from "./status.ts";
 
 // ── Levels ────────────────────────────────────────────────────────────────────
@@ -87,13 +83,6 @@ export function buildHelp(current: Level): string {
 		"Other levels: micro",
 		"  config    - open settings dialog",
 	].join("\n");
-}
-
-/**
- * Toggle: off → full, anything else → off.
- */
-export function toggleLevel(current: Level): Level {
-	return toggleLevelGeneric(current);
 }
 
 // ── Pi extension ────────────────────────────────────────────────────────────

@@ -28,6 +28,7 @@ import {
 	getTextContent,
 	hideCollapsedToolCall,
 	linkedShortPath,
+	makeActionResult,
 	moreLines,
 	padIcon,
 	pluralize,
@@ -49,6 +50,19 @@ import {
 	widgetActivityRow,
 	widgetTitle,
 } from "../src/utils.ts";
+
+it("makeActionResult prefers the error, then the lines, then '<action> ok'", () => {
+	const base = { action: "add", ok: true, lines: [] as string[] };
+	expect(makeActionResult(base)).toEqual({
+		content: [{ type: "text", text: "add ok" }],
+		details: base,
+		isError: false,
+	});
+	expect(makeActionResult({ ...base, lines: ["a", "b"] }).content[0]?.text).toBe("a\nb");
+	const failed = makeActionResult({ ...base, ok: false, lines: ["x"], error: "boom" });
+	expect(failed.content[0]?.text).toBe("boom");
+	expect(failed.isError).toBe(true);
+});
 
 it("extracts ordered text blocks without trimming whitespace or mutating mixed content", () => {
 	const result = {

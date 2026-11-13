@@ -18,6 +18,7 @@ import {
 	BODY_PAD,
 	expandHint,
 	frameToolResult,
+	makeActionResult,
 	pluralize,
 	renderCall,
 	renderDimPreview,
@@ -170,19 +171,6 @@ interface DlResultDetails {
 	url?: string;
 	dir?: string;
 	downloads?: { handle: string; status: DlStatus }[];
-}
-
-function textResult(details: DlResultDetails) {
-	return {
-		content: [
-			{
-				type: "text" as const,
-				text: details.error ?? (details.lines.join("\n") || `${details.action} ok`),
-			},
-		],
-		details,
-		isError: !details.ok,
-	};
 }
 
 function ok(action: string, ...lines: string[]): DlResultDetails {
@@ -363,14 +351,14 @@ function register(pi: ExtensionAPI): void {
 			try {
 				const daemon = await abortable(mgr.connect(ctx), signal);
 				signal?.throwIfAborted();
-				if (p.action === "add") return textResult(await handleAdd(mgr, daemon, p));
-				if (p.action === "list") return textResult(await handleList(mgr, daemon));
+				if (p.action === "add") return makeActionResult(await handleAdd(mgr, daemon, p));
+				if (p.action === "list") return makeActionResult(await handleList(mgr, daemon));
 				if (p.action === "pause" || p.action === "resume" || p.action === "rm") {
-					return textResult(await handleGidOp(mgr, daemon, p.action, p.handle));
+					return makeActionResult(await handleGidOp(mgr, daemon, p.action, p.handle));
 				}
-				return textResult(fail(p.action, `unknown action ${p.action}`));
+				return makeActionResult(fail(p.action, `unknown action ${p.action}`));
 			} catch (err) {
-				return textResult(fail(p.action, errMessage(err)));
+				return makeActionResult(fail(p.action, errMessage(err)));
 			}
 		},
 	});

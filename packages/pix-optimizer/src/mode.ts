@@ -35,11 +35,6 @@ export function resolveLevel<L extends string>(
 	return null;
 }
 
-/** Toggle: off → full, anything else → off. */
-export function toggleLevel<L extends string>(current: L): L {
-	return (current === "off" ? "full" : "off") as L;
-}
-
 export interface ModeConfig<L extends string> {
 	/** Status-registry key + persistence key + `${name}-level` custom entry. */
 	name: OptimizerTool;

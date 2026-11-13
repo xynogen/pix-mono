@@ -25,19 +25,6 @@ export interface ProcParams {
 	tail?: number;
 }
 
-export function textResult(details: ProcResultDetails) {
-	return {
-		content: [
-			{
-				type: "text" as const,
-				text: details.error ?? (details.lines.join("\n") || `${details.action} ok`),
-			},
-		],
-		details,
-		isError: !details.ok,
-	};
-}
-
 const ok = (action: string, ...lines: string[]): ProcResultDetails => ({
 	_type: "procResult",
 	action,
