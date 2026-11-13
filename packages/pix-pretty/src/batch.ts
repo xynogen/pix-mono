@@ -34,6 +34,30 @@ export function sliceBatchTargets(targets: string[]): { targets: string[]; omitt
 	};
 }
 
+export type BatchOutcome<R> = { target: string; result: R } | { target: string; error: string };
+
+/**
+ * Run every target in parallel. One target's failure becomes its `error` (via `describe`), so
+ * the rest still report; an abort rethrows, so a cancelled batch stops as a whole.
+ */
+export function runBatch<R>(
+	targets: string[],
+	run: (target: string, index: number) => Promise<R>,
+	signal: AbortSignal | undefined,
+	describe: (error: unknown, target: string) => string | Promise<string>,
+): Promise<BatchOutcome<R>[]> {
+	return Promise.all(
+		targets.map(async (target, index) => {
+			try {
+				return { target, result: await run(target, index) };
+			} catch (error) {
+				if (signal?.aborted) throw error;
+				return { target, error: await describe(error, target) };
+			}
+		}),
+	);
+}
+
 /** Minimal JSON-schema object shape we touch when adding a batch field. */
 export interface SchemaObject {
 	properties: Record<string, unknown>;

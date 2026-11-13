@@ -5,9 +5,38 @@ import {
 	formatBatchIndex,
 	formatCallTargets,
 	resolveBatchStrings,
+	runBatch,
 	sliceBatchTargets,
 	withOptionalStringArray,
 } from "../src/batch";
+
+describe("runBatch", () => {
+	it("keeps order, isolates one failure, and describes it with its target", async () => {
+		const out = await runBatch(
+			["a", "b", "c"],
+			async (t, i) => {
+				if (t === "b") throw new Error("boom");
+				return `${t}${i}`;
+			},
+			undefined,
+			(error, t) => `${t}: ${(error as Error).message}`,
+		);
+		expect(out).toEqual([
+			{ target: "a", result: "a0" },
+			{ target: "b", error: "b: boom" },
+			{ target: "c", result: "c2" },
+		]);
+	});
+
+	it("rethrows once the signal is aborted, so a cancelled batch stops", async () => {
+		const ac = new AbortController();
+		ac.abort();
+		const fail = async () => {
+			throw new Error("aborted run");
+		};
+		await expect(runBatch(["a"], fail, ac.signal, () => "x")).rejects.toThrow("aborted run");
+	});
+});
 
 describe("resolveBatchStrings", () => {
 	it("merges singular + array, trims, and dedupes", () => {

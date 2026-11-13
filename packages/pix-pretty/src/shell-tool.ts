@@ -250,3 +250,143 @@ export function registerShellTool(
 		},
 	});
 }
+
+// ── Approval-gated command tools (ssh_run, sudo_run) ─────────────────────────
+
+/** Lifecycle of a command that waits for user approval, then runs once. */
+export type GatedCommandOutcome =
+	| "awaiting-approval"
+	| "running"
+	| "success"
+	| "denied"
+	| "timed-out"
+	| "cancelled"
+	| "error";
+
+/** The result fields every gated command tool reports. */
+export interface GatedCommandDetails {
+	command: string;
+	outcome: GatedCommandOutcome;
+	exitCode?: number;
+	lineCount?: number;
+	truncated?: boolean;
+	errorKind?: string;
+	_render?: string;
+}
+
+export type GatedCancellationKind = "denied" | "timeout" | "missing-password" | "aborted";
+
+/** A closed approval overlay (timeout, deny, or no password) as an outcome plus a message. */
+export function gatedCancellation(action: string): {
+	outcome: "timed-out" | "denied" | "cancelled";
+	cancellationKind: GatedCancellationKind;
+	text: string;
+} {
+	if (action === "timeout")
+		return {
+			outcome: "timed-out",
+			cancellationKind: "timeout",
+			text: "Cancelled — Timed out — auto-denied.",
+		};
+	if (action === "denied")
+		return { outcome: "denied", cancellationKind: "denied", text: "Cancelled — Denied by user." };
+	return {
+		outcome: "cancelled",
+		cancellationKind: "missing-password",
+		text: "Cancelled — Cancelled — no password entered.",
+	};
+}
+
+/** One line of untrusted text: controls and runs of whitespace fold to single spaces. */
+export function safeOneLine(value: string): string {
+	return value
+		.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+/** Collapsed-row meta: the terminal outcome, else exit code, extras, line count, truncation. */
+export function gatedCommandMeta(
+	details: GatedCommandDetails,
+	errorLabels: Record<string, string>,
+	extras: Array<string | false | undefined> = [],
+): string {
+	if (details.outcome === "denied") return "denied";
+	if (details.outcome === "timed-out") return "timed out";
+	if (details.outcome === "cancelled") return "cancelled";
+	const label = details.errorKind ? errorLabels[details.errorKind] : undefined;
+	if (label) return label;
+	const hasLines = typeof details.lineCount === "number" && details.lineCount > 0;
+	return dotJoin([
+		typeof details.exitCode === "number" && `exit ${details.exitCode}`,
+		...extras,
+		hasLines && `${details.lineCount} ${details.lineCount === 1 ? "line" : "lines"}`,
+		details.truncated && "truncated",
+	]);
+}
+
+/**
+ * Result card for a gated command once its details are known: collapsed row when finished,
+ * a muted status line while waiting or running, the diagnostic on failure, else the output.
+ */
+export function renderGatedCommandResult(
+	result: ToolResultLike,
+	details: GatedCommandDetails,
+	opts: { name: string; target: string; meta: string },
+	isPartial: boolean,
+	theme: ThemeLike,
+	renderCtx: RenderContextLike,
+) {
+	const text = reuseText(renderCtx.lastComponent);
+	const completed = (isError: boolean) => frameToolResult(text, theme, isError);
+	const status = details.outcome === "success" ? "success" : "error";
+	const running = details.outcome === "awaiting-approval" || details.outcome === "running";
+
+	if (
+		!isPartial &&
+		!running &&
+		tickCollapse(
+			opts.name,
+			renderCtx.state as CollapseState,
+			renderCtx.invalidate,
+			renderCtx.expanded,
+		)
+	) {
+		return collapsedCommandRow(
+			renderRow(theme, opts.name, opts.target, opts.meta, status).trimEnd(),
+			safeOneLine(details.command),
+			theme,
+		);
+	}
+
+	if (running) {
+		text.setText(
+			fillToolBackground(`${BODY_PAD}${theme.fg("muted", getTextContent(result) || "working")}`),
+		);
+		return text;
+	}
+
+	if (details.outcome !== "success" && details.errorKind !== "exit-code") {
+		const diagnostic = getTextContent(result) || "Error";
+		text.setText(
+			details.outcome === "error"
+				? renderToolError(diagnostic, theme)
+				: fillToolBackground(`${BODY_PAD}${theme.fg("warning", diagnostic)}`),
+		);
+		return isPartial ? text : completed(true);
+	}
+
+	const code = typeof details.exitCode === "number" ? details.exitCode : null;
+	const rendered = typeof details._render === "string" ? details._render : "";
+	if (!rendered) {
+		const { summary } = renderBashOutput(rendered, code, theme);
+		text.setText(fillToolBackground(`${BODY_PAD}${summary}`));
+		return isPartial ? text : completed(details.outcome !== "success");
+	}
+
+	// Every result (including single-line) is framed; the rules follow exit status: green ok,
+	// red failure. The `✓ exit N` header is dropped — the collapsed row already carries status.
+	const rows = outputBodyRows(rendered.split("\n"), theme, renderCtx, status, isPartial);
+	text.setText(fillToolBackground(rows.join("\n")));
+	return text;
+}

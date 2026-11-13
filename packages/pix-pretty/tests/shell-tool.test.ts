@@ -4,12 +4,49 @@ import { visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "../src/icon-catalog.ts";
 import {
 	collapseProgressFrames,
+	gatedCancellation,
+	gatedCommandMeta,
 	registerShellTool,
 	type ShellToolOptions,
+	safeOneLine,
 } from "../src/shell-tool.ts";
 import { capturePi, makeRenderCtx, makeTheme, makeToolContext } from "../src/test-utils.ts";
 import type { ThemeLike, ToolResultLike } from "../src/types.ts";
 import { renderCollapsed } from "../src/utils.ts";
+
+describe("gated command helpers", () => {
+	it("gatedCommandMeta: outcome first, then a mapped error, else exit/extras/lines", () => {
+		const base = { command: "ls", outcome: "success" as const };
+		expect(gatedCommandMeta({ ...base, outcome: "denied" }, {})).toBe("denied");
+		expect(gatedCommandMeta({ ...base, outcome: "error", errorKind: "x" }, { x: "boom" })).toBe(
+			"boom",
+		);
+		const meta = gatedCommandMeta({ ...base, exitCode: 0, lineCount: 1, truncated: true }, {}, [
+			"key auth",
+			false,
+		]);
+		expect(stripVTControlCharacters(meta)).toBe("exit 0 · key auth · 1 line · truncated");
+	});
+
+	it("gatedCancellation maps each overlay action to outcome, kind and message", () => {
+		expect(gatedCancellation("timeout")).toMatchObject({
+			outcome: "timed-out",
+			cancellationKind: "timeout",
+		});
+		expect(gatedCancellation("denied")).toMatchObject({
+			outcome: "denied",
+			cancellationKind: "denied",
+		});
+		expect(gatedCancellation("cancelled")).toMatchObject({
+			outcome: "cancelled",
+			cancellationKind: "missing-password",
+		});
+	});
+
+	it("safeOneLine folds controls and whitespace", () => {
+		expect(safeOneLine(" a\n\tb\u0007c  ")).toBe("a b c");
+	});
+});
 
 const okFactory = () => ({
 	execute: async () => ({ content: [{ type: "text" as const, text: "ok" }], details: undefined }),
