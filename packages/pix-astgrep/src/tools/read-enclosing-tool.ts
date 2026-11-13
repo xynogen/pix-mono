@@ -8,22 +8,14 @@
 
 import { relative, resolve } from "node:path";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { Text, type Theme } from "@xynogen/pix-pretty/tui";
-import {
-	frameToolResult,
-	hideCollapsedToolCall,
-	renderRow,
-	renderTitle,
-} from "@xynogen/pix-pretty/utils";
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import { languageForFile, parseWithGrammar, type SgNode } from "@xynogen/pix-runtime/ast";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
 import { defineTool } from "@xynogen/pix-runtime/host";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 import { Type } from "typebox";
 import { grammarErrorResult } from "../grammar-result.ts";
+import { astCall, astResult } from "../render.ts";
 
 const MAX_BYTES = 16 * 1024;
 
@@ -81,42 +73,10 @@ export function readEnclosingTool(deps: ReadEnclosingToolDeps) {
 			line: Type.Integer({ minimum: 1, description: "One-based line inside the symbol." }),
 		}),
 
-		renderCall(args, theme, context) {
-			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
-				return new Text("", 0, 0);
-			const t = theme as Theme;
-			const a = args as { path?: string; line?: number };
-			const title = renderTitle(t, "ast", context, "enclosing");
-			const loc = a.path ? t.fg("dim", `${a.path}:${a.line ?? ""}`) : "";
-			return new Text(`${title} ${loc}`.trimEnd(), 0, 0);
-		},
-
-		renderResult(result, options, theme, context) {
-			const t = theme as Theme;
-			const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
-			const details = result.details as { outcome?: string } | undefined;
-			const isError = context.isError || details?.outcome === "error";
-			if (
-				!options.isPartial &&
-				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
-			)
-				return new Text(
-					renderRow(
-						theme,
-						"ast · enclosing",
-						"",
-						`${text.split("\n").length} lines`,
-						isError ? "error" : "success",
-					),
-					0,
-					0,
-				);
-			const glyph = isError ? icon("status.error") : icon("status.ok");
-			const role = isError ? "error" : "success";
-			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial) return body;
-			return frameToolResult(body, theme, isError);
-		},
+		renderCall: astCall<{ path?: string; line?: number }>("enclosing", (a, t) =>
+			a.path ? t.fg("dim", `${a.path}:${a.line ?? ""}`) : "",
+		),
+		renderResult: astResult("enclosing"),
 
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			await cancellationCheckpoint(signal);

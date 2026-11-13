@@ -7,6 +7,7 @@ import {
 	formatCallTargets,
 	joinSectionBodies,
 	resolveBatchStrings,
+	runBatch,
 	sliceBatchTargets,
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
@@ -276,28 +277,21 @@ export function registerGrepTool(
 			}
 
 			// Batch: search every pattern in parallel, cap the combined output.
-			const settled = await Promise.all(
-				targets.map(async (pattern, i) => {
-					try {
-						return { pattern, result: await runOne(pattern, `${tid}:${i}`) };
-					} catch (error) {
-						if (sig?.aborted) throw error;
-						return { pattern, error: getErrorMessage(error) };
-					}
-				}),
+			const settled = await runBatch(
+				targets,
+				(pattern, i) => runOne(pattern, `${tid}:${i}`),
+				sig,
+				getErrorMessage,
 			);
 			const sections: BatchSection[] = settled.map((entry) => {
-				if ("error" in entry && entry.error) {
-					return { id: entry.pattern, body: "", units: 0, nouns: MATCH_NOUNS, error: entry.error };
+				if ("error" in entry) {
+					return { id: entry.target, body: "", units: 0, nouns: MATCH_NOUNS, error: entry.error };
 				}
-				const details = (entry as { result: ToolResultLike<GrepResultDetails> }).result.details;
-				const body =
-					details?._type === "grepResult"
-						? details.text
-						: getTextContent((entry as { result: ToolResultLike }).result);
+				const details = entry.result.details;
+				const body = details?._type === "grepResult" ? details.text : getTextContent(entry.result);
 				const units =
 					details?._type === "grepResult" ? details.matchCount : countRipgrepMatches(body);
-				return { id: entry.pattern, body, units, nouns: MATCH_NOUNS };
+				return { id: entry.target, body, units, nouns: MATCH_NOUNS };
 			});
 			const { text } = capSections(
 				sections,

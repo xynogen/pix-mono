@@ -16,14 +16,6 @@ import { relative, resolve } from "node:path";
 import { StringEnum } from "@xynogen/pix-data/ai";
 import { parseDiff } from "@xynogen/pix-pretty/diff";
 import { type ExecuteCtx, grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { Text, type Theme } from "@xynogen/pix-pretty/tui";
-import {
-	frameToolResult,
-	hideCollapsedToolCall,
-	renderRow,
-	renderTitle,
-} from "@xynogen/pix-pretty/utils";
 import { abortable, cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
 import {
 	ALL_LANGUAGES,
@@ -34,12 +26,12 @@ import {
 	type SgNode,
 } from "@xynogen/pix-runtime/ast";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import { defineTool } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
 import { grammarErrorResult } from "../grammar-result.ts";
+import { astCall, astResult } from "../render.ts";
 
 const MAX_LIMIT = 500;
 
@@ -110,43 +102,13 @@ export function replaceTool(deps: ReplaceToolDeps) {
 			),
 		}),
 
-		renderCall(args, theme, context) {
-			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
-				return new Text("", 0, 0);
-			const t = theme as Theme;
-			const a = args as { pattern?: string; rewrite?: string; apply?: boolean };
-			const title = renderTitle(t, "ast", context, "replace");
-			const rule = t.fg("dim", `${a.pattern ?? ""} → ${a.rewrite ?? ""}`);
-			const mode = t.fg("muted", a.apply ? " · apply" : " · preview");
-			return new Text(`${title} ${rule}${mode}`, 0, 0);
-		},
-
-		renderResult(result, options, theme, context) {
-			const t = theme as Theme;
-			const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
-			const details = result.details as { outcome?: string } | undefined;
-			const isError = context.isError || details?.outcome === "error";
-			if (
-				!options.isPartial &&
-				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
-			)
-				return new Text(
-					renderRow(
-						theme,
-						"ast · replace",
-						"",
-						`${text.split("\n").length} lines`,
-						isError ? "error" : "success",
-					),
-					0,
-					0,
-				);
-			const glyph = isError ? icon("status.error") : icon("status.ok");
-			const role = isError ? "error" : "success";
-			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial) return body;
-			return frameToolResult(body, theme, isError);
-		},
+		renderCall: astCall<{ pattern?: string; rewrite?: string; apply?: boolean }>(
+			"replace",
+			(a, t) =>
+				t.fg("dim", `${a.pattern ?? ""} → ${a.rewrite ?? ""}`) +
+				t.fg("muted", a.apply ? " · apply" : " · preview"),
+		),
+		renderResult: astResult("replace"),
 
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			signal?.throwIfAborted();

@@ -11,20 +11,12 @@
  */
 
 import { relative, resolve } from "node:path";
-import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { Text, type Theme } from "@xynogen/pix-pretty/tui";
-import {
-	frameToolResult,
-	hideCollapsedToolCall,
-	renderRow,
-	renderTitle,
-} from "@xynogen/pix-pretty/utils";
 import { cancellationCheckpoint } from "@xynogen/pix-runtime/abort";
-import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import { defineTool } from "@xynogen/pix-runtime/host";
 import { Type } from "typebox";
 import { collectCodeFiles } from "../files.ts";
+import { astCall, astResult } from "../render.ts";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -69,42 +61,8 @@ export function symbolSearchTool(deps: SymbolSearchToolDeps) {
 			),
 		}),
 
-		renderCall(args, theme, context) {
-			if (hideCollapsedToolCall(context.state as CollapseState, context.expanded, () => {}))
-				return new Text("", 0, 0);
-			const t = theme as Theme;
-			const a = args as { query?: string };
-			const title = renderTitle(t, "ast", context, "symbols");
-			const q = t.fg("dim", `“${a.query ?? ""}”`);
-			return new Text(`${title} ${q}`, 0, 0);
-		},
-
-		renderResult(result, options, theme, context) {
-			const t = theme as Theme;
-			const text = result.content.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("\n");
-			const details = result.details as { outcome?: string } | undefined;
-			const isError = context.isError || details?.outcome === "error";
-			if (
-				!options.isPartial &&
-				tickCollapse("ast", context.state as CollapseState, context.invalidate, options.expanded)
-			)
-				return new Text(
-					renderRow(
-						theme,
-						"ast · symbols",
-						"",
-						`${text.split("\n").length} lines`,
-						isError ? "error" : "success",
-					),
-					0,
-					0,
-				);
-			const glyph = isError ? icon("status.error") : icon("status.ok");
-			const role = isError ? "error" : "success";
-			const body = new Text(`${t.fg(role, glyph)} ${text}`, 0, 0);
-			if (options.isPartial) return body;
-			return frameToolResult(body, theme, isError);
-		},
+		renderCall: astCall<{ query?: string }>("symbols", (a, t) => t.fg("dim", `“${a.query ?? ""}”`)),
+		renderResult: astResult("symbols"),
 
 		async execute(_id, params, signal) {
 			signal?.throwIfAborted();

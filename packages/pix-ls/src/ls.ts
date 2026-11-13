@@ -6,6 +6,7 @@ import {
 	formatCallTargets,
 	joinSectionBodies,
 	resolveBatchStrings,
+	runBatch,
 	sliceBatchTargets,
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
@@ -110,28 +111,24 @@ export function registerLsTool(
 			}
 
 			// Batch: list every directory in parallel, cap the combined output.
-			const settled = await Promise.all(
-				targets.map(async (path, i) => {
-					try {
-						return { path, result: await runOne(path, `${tid}:${i}`) };
-					} catch (error) {
-						if (sig?.aborted) throw error;
-						return { path, error: getErrorMessage(error) };
-					}
-				}),
+			const settled = await runBatch(
+				targets,
+				(path, i) => runOne(path, `${tid}:${i}`),
+				sig,
+				getErrorMessage,
 			);
 			const sections: BatchSection[] = settled.map((entry) => {
-				if ("error" in entry && entry.error) {
-					return { id: entry.path, body: "", units: 0, nouns: ENTRY_NOUNS, error: entry.error };
+				if ("error" in entry) {
+					return { id: entry.target, body: "", units: 0, nouns: ENTRY_NOUNS, error: entry.error };
 				}
-				const result = (entry as { result: ToolResultLike }).result;
+				const result: ToolResultLike = entry.result;
 				const details = result.details as { _type?: string; text?: string; entryCount?: number };
 				const body = details?._type === "lsResult" ? (details.text ?? "") : getTextContent(result);
 				const units =
 					details?._type === "lsResult"
 						? (details.entryCount ?? 0)
 						: body.trim().split("\n").filter(Boolean).length;
-				return { id: entry.path, body, units, nouns: ENTRY_NOUNS };
+				return { id: entry.target, body, units, nouns: ENTRY_NOUNS };
 			});
 			const { text } = capSections(sections, BATCH_MAX_BYTES, params.limit, omitted);
 			const entryCount = sections.reduce((sum, s) => sum + (s.error ? 0 : s.units), 0);

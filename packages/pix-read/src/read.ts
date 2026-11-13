@@ -5,6 +5,7 @@ import {
 	capSections,
 	formatCallTargets,
 	resolveBatchStrings,
+	runBatch,
 	sliceBatchTargets,
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
@@ -255,20 +256,16 @@ export function registerReadTool(
 			}
 
 			// Batch: read all targets in parallel, cap the combined output.
-			const settled = await Promise.all(
-				targets.map(async (path, i) => {
-					try {
-						return { path, result: await runOne(path, `${tid}:${i}`) };
-					} catch (error) {
-						if (sig?.aborted) throw error;
-						return { path, error: await withHint(getErrorMessage(error), path) };
-					}
-				}),
+			const settled = await runBatch(
+				targets,
+				(path, i) => runOne(path, `${tid}:${i}`),
+				sig,
+				(error, path) => withHint(getErrorMessage(error), path),
 			);
 			const items: ReadItem[] = settled.map((entry) =>
-				"error" in entry && entry.error
-					? { _type: "readError", filePath: entry.path, message: entry.error }
-					: itemFromResult(entry.path, offset, entry.result as ToolResultLike),
+				"error" in entry
+					? { _type: "readError", filePath: entry.target, message: entry.error }
+					: itemFromResult(entry.target, offset, entry.result as ToolResultLike),
 			);
 			let budget = BATCH_MAX_BYTES;
 			let index = "";
