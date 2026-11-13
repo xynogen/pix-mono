@@ -1,4 +1,5 @@
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
+import { requireRouterBase, routerBaseUrl, routerKey } from "@xynogen/pix-runtime/nine-router";
 import { searchConfig } from "./search-config.ts";
 import type { SearchProvider, SearchRequest, SearchResultItem } from "./search-providers.ts";
 import { registerSearchProvider } from "./search-providers.ts";
@@ -367,24 +368,13 @@ const glm: SearchProvider = {
 
 // ── 9Router aggregator (provider IS the model) ──────────────────────────────
 
-/** Base URL from NINEROUTER_URL / ROUTER_API_BASE, with `/v1` appended. No default: an
- * unset URL means 9Router is not configured, so callers must not send a request. */
-function routerBaseUrl(): string | undefined {
-	const configured = (process.env.NINEROUTER_URL || process.env.ROUTER_API_BASE)?.trim();
-	if (!configured) return undefined;
-	const base = configured.replace(/\/+$/, "");
-	return base.endsWith("/v1") ? base : `${base}/v1`;
-}
-
 const nineRouter: SearchProvider = {
 	id: "9router",
 	env: ["NINEROUTER_URL", "NINEROUTER_KEY"],
-	isConfigured: () =>
-		Boolean(routerBaseUrl() && (process.env.NINEROUTER_KEY || process.env.ROUTER_API_KEY)),
+	isConfigured: () => Boolean(routerBaseUrl() && routerKey()),
 	async search(request: SearchRequest) {
-		const key = process.env.NINEROUTER_KEY || process.env.ROUTER_API_KEY;
-		const base = routerBaseUrl();
-		if (!base) throw new Error("9Router is not configured: set NINEROUTER_URL");
+		const key = routerKey();
+		const base = requireRouterBase();
 		const data = await jsonResponse(`${base}/search`, {
 			method: "POST",
 			headers: {

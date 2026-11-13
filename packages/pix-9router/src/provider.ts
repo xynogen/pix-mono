@@ -21,8 +21,9 @@ import {
 } from "@xynogen/pix-data/ai";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
+import { routerBaseUrl, routerKey } from "@xynogen/pix-runtime/nine-router";
 import type { RouterModel } from "./data.ts";
-import { routerBaseUrl, routerModels } from "./data.ts";
+import { routerModels } from "./data.ts";
 
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 const DEFAULT_MAX_TOKENS = 16_384;
@@ -131,7 +132,7 @@ export function getReasoning(model: RouterModel): boolean {
 }
 
 export default async function registerProvider(pi: ExtensionAPI): Promise<void> {
-	const apiKey = process.env.NINEROUTER_KEY || process.env.ROUTER_API_KEY;
+	const apiKey = routerKey();
 	const baseUrl = routerBaseUrl();
 
 	if (!apiKey || !baseUrl) {

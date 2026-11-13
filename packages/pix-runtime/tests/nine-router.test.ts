@@ -1,7 +1,25 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { routerBaseUrl } from "../src/data.ts";
+import { requireRouterBase, routerBaseUrl, routerKey } from "../src/nine-router.ts";
 
-// ── routerBaseUrl ────────────────────────────────────────────────────────────
+describe("routerKey", () => {
+	const saved = { a: process.env.NINEROUTER_KEY, b: process.env.ROUTER_API_KEY };
+	afterEach(() => {
+		if (saved.a === undefined) delete process.env.NINEROUTER_KEY;
+		else process.env.NINEROUTER_KEY = saved.a;
+		if (saved.b === undefined) delete process.env.ROUTER_API_KEY;
+		else process.env.ROUTER_API_KEY = saved.b;
+	});
+
+	it("prefers NINEROUTER_KEY, falls back to ROUTER_API_KEY, else empty", () => {
+		delete process.env.NINEROUTER_KEY;
+		delete process.env.ROUTER_API_KEY;
+		expect(routerKey()).toBe("");
+		process.env.ROUTER_API_KEY = "legacy";
+		expect(routerKey()).toBe("legacy");
+		process.env.NINEROUTER_KEY = "canon";
+		expect(routerKey()).toBe("canon");
+	});
+});
 
 describe("routerBaseUrl", () => {
 	const ORIGINAL_ROUTER_API_BASE = process.env.ROUTER_API_BASE;
@@ -37,5 +55,13 @@ describe("routerBaseUrl", () => {
 		delete process.env.NINEROUTER_URL;
 		process.env.ROUTER_API_BASE = "https://my.router.dev/v1/";
 		expect(routerBaseUrl()).toBe("https://my.router.dev/v1");
+	});
+
+	it("requireRouterBase throws when unset", () => {
+		delete process.env.ROUTER_API_BASE;
+		delete process.env.NINEROUTER_URL;
+		expect(() => requireRouterBase()).toThrow("set NINEROUTER_URL");
+		process.env.NINEROUTER_URL = "https://r.test";
+		expect(requireRouterBase()).toBe("https://r.test/v1");
 	});
 });

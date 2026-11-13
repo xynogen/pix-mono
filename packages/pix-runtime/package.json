@@ -38,6 +38,7 @@
 		"./io": "./src/io.ts",
 		"./lfid": "./src/lfid.ts",
 		"./net": "./src/net.ts",
+		"./nine-router": "./src/nine-router.ts",
 		"./once": "./src/once.ts",
 		"./os": "./src/os.ts",
 		"./output": "./src/output.ts",

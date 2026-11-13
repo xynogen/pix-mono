@@ -10,6 +10,7 @@
 
 import { basename } from "node:path";
 import { readFile } from "@xynogen/pix-runtime/fs";
+import { requireRouterBase, routerBaseUrl, routerKey } from "@xynogen/pix-runtime/nine-router";
 import {
 	bearer,
 	bytes,
@@ -19,9 +20,6 @@ import {
 	mimeType,
 	parseTranscriptionResponse,
 	request,
-	requireRouterBase,
-	routerBaseUrl,
-	routerKey,
 	splitModel,
 } from "./http.ts";
 import {
