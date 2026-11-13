@@ -224,6 +224,21 @@ describe("pix-prompts host-aware injection", () => {
 		expect(named.filter((n) => !core.has(n))).toEqual([]);
 	});
 
+	it("bundled SOP carries the rules mined from past session corrections", () => {
+		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
+		for (const rule of [
+			"Find the referent",
+			"Earlier instructions stay in force",
+			'A "why X?" is a review',
+			"Topic switches",
+			"After a context compaction",
+			"check that the diff touches only the intended files",
+			"never retry the same edit blind",
+		]) {
+			expect(sop).toContain(rule);
+		}
+	});
+
 	it("bundled SOP points the agent at package tool skills", () => {
 		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
 		const skills = sop.split("## 5. Skills\n")[1]?.split("## 6. Communication")[0];
