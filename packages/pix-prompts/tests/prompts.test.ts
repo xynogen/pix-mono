@@ -228,6 +228,7 @@ describe("pix-prompts host-aware injection", () => {
 		const sop = readFileSync(join(import.meta.dir, "..", "SOP.md"), "utf8");
 		for (const rule of [
 			"Find the referent",
+			"Read intent, not spelling",
 			"Earlier instructions stay in force",
 			'A "why X?" is a review',
 			"Topic switches",
