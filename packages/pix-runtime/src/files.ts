@@ -196,8 +196,12 @@ function badArgs(tool: string, rows: string[], footer: string): string {
 	return [head, ...rows.slice(0, 5), footer].join("\n");
 }
 
-/** Host-validate `args`; on failure throw a short field/fix list, not the full-argument echo. */
-function checkArgs(
+/**
+ * Host-validate a tool's `args` against `schema`. On failure throw a short list (at most five
+ * rows) naming each bad field, its value and `fix(path, problem, value)`, then `footer` — not
+ * the host's full-argument echo, which costs the model a large re-read.
+ */
+export function checkArgs(
 	tool: string,
 	schema: object,
 	args: unknown,
