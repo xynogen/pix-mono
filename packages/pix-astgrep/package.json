@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-astgrep",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "Pi extension — AST-aware structural search and symbol reads (ast-grep, opt-in)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -54,8 +54,8 @@
 	},
 	"dependencies": {
 		"@ast-grep/napi": "^0.45.0",
-		"@xynogen/pix-pretty": "^2.1.0",
-		"@xynogen/pix-runtime": "^0.20.0",
+		"@xynogen/pix-pretty": "^2.2.0",
+		"@xynogen/pix-runtime": "^0.21.0",
 		"@xynogen/pix-data": "^0.6.0"
 	}
 }

@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-web",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Provider-neutral web fetch and search tools with plain-text output for Pi",
 	"type": "module",
 	"main": "src/index.ts",
@@ -56,8 +56,8 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^2.1.0",
-		"@xynogen/pix-runtime": "^0.20.0",
+		"@xynogen/pix-pretty": "^2.2.0",
+		"@xynogen/pix-runtime": "^0.21.0",
 		"@xynogen/pix-data": "^0.6.0"
 	}
 }
