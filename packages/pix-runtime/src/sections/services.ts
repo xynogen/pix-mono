@@ -1,4 +1,4 @@
-import { boolOr, defineSection, isObj, strArr } from "../schema.ts";
+import { boolOrDefault, defineSection, isPlainObject, toStringArray } from "../schema.ts";
 
 export interface WebConfig {
 	provider: string;
@@ -7,7 +7,7 @@ export interface WebConfig {
 
 const webDefaults: WebConfig = { provider: "auto", nineRouterModel: "exa" };
 function parseWeb(raw: unknown): WebConfig {
-	const item = isObj(raw) ? raw : {};
+	const item = isPlainObject(raw) ? raw : {};
 	return {
 		provider: typeof item.provider === "string" ? item.provider : webDefaults.provider,
 		nineRouterModel:
@@ -37,10 +37,10 @@ export const voiceSection = defineSection({
 	key: "voice",
 	defaults: voiceDefaults,
 	parse(raw): VoiceConfig {
-		const item = isObj(raw) ? raw : {};
+		const item = isPlainObject(raw) ? raw : {};
 		const result = { ...voiceDefaults };
 		for (const key of Object.keys(result) as (keyof VoiceConfig)[]) {
-			if (key === "ttsPlay") result.ttsPlay = boolOr(item.ttsPlay, true);
+			if (key === "ttsPlay") result.ttsPlay = boolOrDefault(item.ttsPlay, true);
 			else if (typeof item[key] === "string" && item[key].trim()) result[key] = item[key].trim();
 		}
 		result.sttLanguage = result.sttLanguage.toLowerCase();
@@ -53,9 +53,9 @@ export const notifySection = defineSection({
 	key: "notify",
 	defaults: notifyDefaults,
 	parse(raw): NotifyConfig {
-		const item = isObj(raw) ? raw : {};
+		const item = isPlainObject(raw) ? raw : {};
 		const sound = typeof item.sound === "string" && item.sound.trim() ? item.sound.trim() : "auto";
-		return { enabled: boolOr(item.enabled, true), sound };
+		return { enabled: boolOrDefault(item.enabled, true), sound };
 	},
 });
 
@@ -69,13 +69,13 @@ export const toolboxSection = defineSection<"toolbox", ToolboxConfig>({
 	defaults: {},
 	parse(raw) {
 		const result: ToolboxConfig = {};
-		if (isObj(raw)) {
+		if (isPlainObject(raw)) {
 			for (const key of ["disabledTools", "loadedTools", "enabledTools"] as const) {
 				if (
 					Array.isArray(raw[key]) &&
 					raw[key].every((value: unknown) => typeof value === "string")
 				)
-					result[key] = strArr(raw[key]);
+					result[key] = toStringArray(raw[key]);
 			}
 		}
 		return result;

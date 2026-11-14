@@ -21,7 +21,7 @@ import type {
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
-import { fillToolBackground, termW } from "@xynogen/pix-pretty/utils";
+import { fillToolBackground, terminalWidth } from "@xynogen/pix-pretty/utils";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	type EditInput,
@@ -247,7 +247,7 @@ export function registerEditTool(
 			body({ d, result, text, theme, ctx: renderCtx }) {
 				// Single edit — full split diff
 				if (d?._type === "editInfo") {
-					const key = `ed:${diffThemeCacheKey(theme)}:${termW()}:${d.summary}:${(d.oldContent as string).length}:${(d.newContent as string).length}:${d.language ?? ""}`;
+					const key = `ed:${diffThemeCacheKey(theme)}:${terminalWidth()}:${d.summary}:${(d.oldContent as string).length}:${(d.newContent as string).length}:${d.language ?? ""}`;
 					if (renderCtx.toolCallId) trackInvalidator(renderCtx.toolCallId, renderCtx.invalidate);
 					if (renderCtx.state._edk !== key) {
 						renderCtx.state._edk = key;
@@ -278,7 +278,7 @@ export function registerEditTool(
 
 				// Multi-edit — stacked diffs
 				if (d?._type === "multiEditInfo") {
-					const key = `med:${diffThemeCacheKey(theme)}:${termW()}:${d.summary}:${d.editCount}:${d.diffLineCount}`;
+					const key = `med:${diffThemeCacheKey(theme)}:${terminalWidth()}:${d.summary}:${d.editCount}:${d.diffLineCount}`;
 					if (renderCtx.toolCallId) trackInvalidator(renderCtx.toolCallId, renderCtx.invalidate);
 					if (renderCtx.state._edk !== key) {
 						renderCtx.state._edk = key;

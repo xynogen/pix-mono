@@ -10,11 +10,11 @@ import { dirIcon, fileColor, fileIcon } from "./icons.ts";
 import { lang } from "./lang.ts";
 import { type FadeTheme, fadeRowsOf, normalizeLineEndings, pluralize } from "./text.ts";
 import type { FgTheme } from "./types.ts";
-import { lnum, termW } from "./utils.ts";
+import { lineNumber, terminalWidth } from "./utils.ts";
 
 /** Layout controls for {@link renderFileContent}. */
 export interface RenderFileContentOptions {
-	/** Total render width. Defaults to the live terminal width (`termW()`). */
+	/** Total render width. Defaults to the live terminal width (`terminalWidth()`). */
 	width?: number;
 	/**
 	 * Wrap over-wide code lines onto continuation rows instead of clipping the
@@ -45,7 +45,7 @@ export async function renderFileContent(
 	const codeRows = show.map((line, i) => hl[i] ?? line);
 	const body = theme && total > maxLines ? fadeTail(codeRows, theme) : codeRows;
 
-	const tw = options.width ?? termW();
+	const tw = options.width ?? terminalWidth();
 	const startLine = offset;
 	const endLine = startLine + show.length - 1;
 	const nw = Math.max(3, String(endLine).length);
@@ -64,13 +64,13 @@ export async function renderFileContent(
 			const rows = wrapTextWithAnsi(code, cw);
 			const pad = " ".repeat(nw);
 			rows.forEach((rowText, r) => {
-				const gutter = r === 0 ? lnum(ln, nw) : `${FG_LNUM}${pad}${RST}`;
+				const gutter = r === 0 ? lineNumber(ln, nw) : `${FG_LNUM}${pad}${RST}`;
 				out.push(`${gutter} ${FG_RULE}│${RST} ${rowText}${RST}`);
 			});
 			continue;
 		}
 		const display = truncateToWidth(code, cw, `${FG_DIM}›`);
-		out.push(`${lnum(ln, nw)} ${FG_RULE}│${RST} ${display}${RST}`);
+		out.push(`${lineNumber(ln, nw)} ${FG_RULE}│${RST} ${display}${RST}`);
 	}
 
 	out.push(rule(tw));
@@ -202,7 +202,7 @@ function renderLsGrid(
 	}
 
 	// Layout into columns that fit the terminal width
-	const tw = termW();
+	const tw = terminalWidth();
 	const GAP = 3; // spaces between columns
 	const rows = layoutGrid(cells, cellWidths, tw, GAP);
 

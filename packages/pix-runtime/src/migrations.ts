@@ -11,7 +11,12 @@
 
 import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { CONFIG_FORMAT_VERSION, isObj, type ParseContext, type RawDocument } from "./schema.ts";
+import {
+	CONFIG_FORMAT_VERSION,
+	isPlainObject,
+	type ParseContext,
+	type RawDocument,
+} from "./schema.ts";
 
 const LEGACY_PRETTY_COLOR_KEYS = ["theme", "syntaxTheme", "diffColors"] as const;
 const LEGACY_DIFF_COLOR_KEYS = [
@@ -59,7 +64,7 @@ export function migrate(input: RawDocument, ctx: ParseContext): MigrationResult 
 	let changed = false;
 
 	// Remove legacy color keys — active themes own all colors now.
-	if (isObj(doc.pretty)) {
+	if (isPlainObject(doc.pretty)) {
 		const pretty = { ...doc.pretty };
 		for (const key of LEGACY_PRETTY_COLOR_KEYS) {
 			if (key in pretty) {
@@ -67,7 +72,7 @@ export function migrate(input: RawDocument, ctx: ParseContext): MigrationResult 
 				changed = true;
 			}
 		}
-		if (isObj(pretty.diff)) {
+		if (isPlainObject(pretty.diff)) {
 			const diff = { ...pretty.diff };
 			for (const key of LEGACY_DIFF_COLOR_KEYS) {
 				if (key in diff) {
@@ -81,7 +86,7 @@ export function migrate(input: RawDocument, ctx: ParseContext): MigrationResult 
 	}
 
 	// TOON is now an on-demand pix-skills capability, not optimizer state.
-	if (isObj(doc.optimizer) && "toon" in doc.optimizer) {
+	if (isPlainObject(doc.optimizer) && "toon" in doc.optimizer) {
 		doc.optimizer = Object.fromEntries(
 			Object.entries(doc.optimizer).filter(([key]) => key !== "toon"),
 		);
@@ -136,7 +141,7 @@ function importSidecar(
 	let raw: Record<string, unknown>;
 	try {
 		const parsed = JSON.parse(readFileSync(sidecarPath, "utf-8")) as unknown;
-		if (!isObj(parsed)) throw new Error("not an object");
+		if (!isPlainObject(parsed)) throw new Error("not an object");
 		raw = parsed;
 	} catch (err) {
 		ctx.diagnostic({
@@ -149,7 +154,7 @@ function importSidecar(
 		return { changed: false };
 	}
 
-	const existing = isObj(doc[section]) ? { ...doc[section] } : {};
+	const existing = isPlainObject(doc[section]) ? { ...doc[section] } : {};
 	let changed = false;
 	for (const key of section === "optimizer" ? OPTIMIZER_KEYS : Object.keys(raw)) {
 		const value = raw[key];

@@ -1,4 +1,4 @@
-import { defineSection, isObj } from "../schema.ts";
+import { defineSection, isPlainObject } from "../schema.ts";
 
 /**
  * Custom compaction config. pix-core always replaces pi's built-in compaction
@@ -65,7 +65,7 @@ export const compactionSection = defineSection<"compaction", CompactionConfig>({
 	key: "compaction",
 	defaults: DEFAULTS,
 	parse(raw) {
-		if (!isObj(raw)) return { ...DEFAULTS };
+		if (!isPlainObject(raw)) return { ...DEFAULTS };
 		const rawMin = raw.minimumTokens;
 		const coercedMin =
 			typeof rawMin === "string" ? (parseTokenString(rawMin) ?? Number.NaN) : rawMin;

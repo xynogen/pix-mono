@@ -169,7 +169,7 @@ The shared layers exist so that 40 small packages look and behave like one produ
 | `/icon-catalog` | The catalog source. Consumers import it through `pix-pretty/icon-catalog`. |
 | `/testing` | `createIsolatedRuntime()`. A config runtime for tests that never touches the real agent dir. |
 
-Add a config section: define it with `defineSection({ key, defaults, parse })` in `packages/pix-runtime/src/sections/`, export it from `sections/index.ts`, and read it with `config(mySection)`. `parse` must never throw. Use the coercion helpers in `schema.ts` (`isObj`, `boolOr`, `posNumOr`, …).
+Add a config section: define it with `defineSection({ key, defaults, parse })` in `packages/pix-runtime/src/sections/`, export it from `sections/index.ts`, and read it with `config(mySection)`. `parse` must never throw. Use the coercion helpers in `schema.ts` (`isPlainObject`, `boolOrDefault`, `positiveNumberOrDefault`, …).
 
 ### 3.2 pix-pretty (L1) — rendering and display
 
@@ -179,7 +179,7 @@ Add a config section: define it with `defineSection({ key, defaults, parse })` i
 | `/frame` | Result chrome: `frameToolResult`, `frameToolSection`, `ruleFrame`, `sectionFrame`, `outputBodyRows`, `bodyLine`, `moreLines`, `reuseText`. |
 | `/result` | Tool results: `makeTextResult`, `makeActionResult`, `setResultDetails`, `getTextContent`. |
 | `/text` | Text helpers: `pluralize`, `humanSize` (IEC bytes), `normalizeLineEndings`, `trimToUndefined`, `appendNotices`, and the fade helpers. |
-| `/utils` | `fillToolBackground`, `viewportText`, `formatJson`, `termW`, `shortPath`, `linkedShortPath`, `lnum`. |
+| `/utils` | `fillToolBackground`, `viewportText`, `formatJson`, `terminalWidth`, `shortPath`, `linkedShortPath`, `lineNumber`. |
 | `/widget-format` | Live widgets: `SPINNER`, `formatMs`, `formatDuration`, `formatTokens`, `fmtTokenCount`, `formatContext`, `formatSpeed`, `describeActivity`, `getSessionContextUsage`. |
 | `/batch` | Shared batching for read/grep/find/ls: N targets, one result, one byte cap. |
 | `/diff`, `/diff-render` | Diff parsing and split/unified/word-level rendering. Colors follow the theme. |

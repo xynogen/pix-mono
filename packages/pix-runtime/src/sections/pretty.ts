@@ -1,4 +1,10 @@
-import { boolOr, defineSection, enumOr, isObj, posNumOr } from "../schema.ts";
+import {
+	boolOrDefault,
+	defineSection,
+	enumOrDefault,
+	isPlainObject,
+	positiveNumberOrDefault,
+} from "../schema.ts";
 
 export type IconMode = "nerd" | "unicode" | "ascii";
 export type LsStyle = "grid" | "tree";
@@ -82,26 +88,29 @@ export const prettySection = defineSection<"pretty", PrettyConfig>({
 	key: "pretty",
 	defaults: DEFAULTS,
 	parse(raw) {
-		if (!isObj(raw)) return structuredClone(DEFAULTS);
-		const rawDiff = isObj(raw.diff) ? raw.diff : {};
-		const rawFooter = isObj(raw.footer) ? raw.footer : {};
+		if (!isPlainObject(raw)) return structuredClone(DEFAULTS);
+		const rawDiff = isPlainObject(raw.diff) ? raw.diff : {};
+		const rawFooter = isPlainObject(raw.footer) ? raw.footer : {};
 		const footer = { ...DEFAULTS.footer };
 		for (const key of Object.keys(footer) as (keyof typeof footer)[]) {
-			footer[key] = boolOr(rawFooter[key], DEFAULTS.footer[key]);
+			footer[key] = boolOrDefault(rawFooter[key], DEFAULTS.footer[key]);
 		}
 		return {
 			footer,
-			icons: enumOr(raw.icons, ICON_MODES, DEFAULTS.icons),
-			lsStyle: enumOr(raw.lsStyle, LS_STYLES, DEFAULTS.lsStyle),
+			icons: enumOrDefault(raw.icons, ICON_MODES, DEFAULTS.icons),
+			lsStyle: enumOrDefault(raw.lsStyle, LS_STYLES, DEFAULTS.lsStyle),
 			maxRenderWidth: renderSizeOr(raw.maxRenderWidth, DEFAULTS.maxRenderWidth),
 			maxRenderHeight: renderSizeOr(raw.maxRenderHeight, DEFAULTS.maxRenderHeight),
-			maxPreviewLines: posNumOr(raw.maxPreviewLines, DEFAULTS.maxPreviewLines),
-			maxRenderLines: posNumOr(raw.maxRenderLines, DEFAULTS.maxRenderLines),
-			maxHighlightChars: posNumOr(raw.maxHighlightChars, DEFAULTS.maxHighlightChars),
-			cacheLimit: posNumOr(raw.cacheLimit, DEFAULTS.cacheLimit),
+			maxPreviewLines: positiveNumberOrDefault(raw.maxPreviewLines, DEFAULTS.maxPreviewLines),
+			maxRenderLines: positiveNumberOrDefault(raw.maxRenderLines, DEFAULTS.maxRenderLines),
+			maxHighlightChars: positiveNumberOrDefault(raw.maxHighlightChars, DEFAULTS.maxHighlightChars),
+			cacheLimit: positiveNumberOrDefault(raw.cacheLimit, DEFAULTS.cacheLimit),
 			diff: {
-				splitMinWidth: posNumOr(rawDiff.splitMinWidth, DEFAULTS.diff.splitMinWidth),
-				splitMinCodeWidth: posNumOr(rawDiff.splitMinCodeWidth, DEFAULTS.diff.splitMinCodeWidth),
+				splitMinWidth: positiveNumberOrDefault(rawDiff.splitMinWidth, DEFAULTS.diff.splitMinWidth),
+				splitMinCodeWidth: positiveNumberOrDefault(
+					rawDiff.splitMinCodeWidth,
+					DEFAULTS.diff.splitMinCodeWidth,
+				),
 			},
 		};
 	},

@@ -15,7 +15,7 @@ import {
 	unframeToolResult,
 } from "../src/frame.ts";
 import type { FgTheme } from "../src/types.ts";
-import { termW } from "../src/utils.ts";
+import { terminalWidth } from "../src/utils.ts";
 
 class MockTextComponent {
 	private text = "";
@@ -229,7 +229,7 @@ describe("bodyLine / moreLines", () => {
 	it("turns a section line into a full-width muted rule", () => {
 		const visible = bodyLine("=== x ===", tag).replace(/<\/?[a-z]+>/g, "");
 		expect(visible).toMatch(/^\t─{4} x ─+$/);
-		expect([...visible].length).toBe(termW() - 2); // 1 tab char = 3 cells
+		expect([...visible].length).toBe(terminalWidth() - 2); // 1 tab char = 3 cells
 	});
 
 	it("writes an aligned muted overflow footer with the expand hint", () => {

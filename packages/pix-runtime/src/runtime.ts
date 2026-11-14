@@ -34,7 +34,7 @@ import {
 	type DeepPartial,
 	deepMerge,
 	diffPaths,
-	isObj,
+	isPlainObject,
 	type ParseContext,
 	type RawDocument,
 	type SectionHandle,
@@ -303,7 +303,7 @@ class RuntimeImpl implements PixRuntime {
 	}
 
 	private defaultStrip(value: unknown, defaults: unknown): unknown {
-		if (!isObj(value) || !isObj(defaults)) {
+		if (!isPlainObject(value) || !isPlainObject(defaults)) {
 			return JSON.stringify(value) === JSON.stringify(defaults) ? undefined : value;
 		}
 		const copy = { ...value };

@@ -72,23 +72,23 @@ export function defineSection<const K extends string, T>(
 
 // ── Value coercion helpers (pure, never throw) ───────────────────────────────
 
-export function isObj(v: unknown): v is Record<string, unknown> {
+export function isPlainObject(v: unknown): v is Record<string, unknown> {
 	return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
-export function boolOr(v: unknown, fallback: boolean): boolean {
+export function boolOrDefault(v: unknown, fallback: boolean): boolean {
 	return typeof v === "boolean" ? v : fallback;
 }
 
-export function posNumOr(v: unknown, fallback: number): number {
+export function positiveNumberOrDefault(v: unknown, fallback: number): number {
 	return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : fallback;
 }
 
-export function enumOr<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
+export function enumOrDefault<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
 	return typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T) : fallback;
 }
 
-export function strArr(v: unknown): string[] {
+export function toStringArray(v: unknown): string[] {
 	if (!Array.isArray(v)) return [];
 	return v.filter((x): x is string => typeof x === "string");
 }
@@ -105,7 +105,7 @@ export function stripDefaults(
 ): number {
 	for (const [key, defaultValue] of Object.entries(defaults)) {
 		const value = section[key];
-		if (isObj(value) && isObj(defaultValue)) {
+		if (isPlainObject(value) && isPlainObject(defaultValue)) {
 			const nested = { ...value };
 			if (stripDefaults(nested, defaultValue) > 0) section[key] = nested;
 			else delete section[key];
@@ -148,12 +148,12 @@ export type DeepPartial<T> = T extends (infer U)[]
  */
 export function deepMerge<T>(base: T, patch: DeepPartial<T>): T {
 	// SAFETY: a non-object patch replaces base wholesale; DeepPartial<T> of a leaf is T.
-	if (!isObj(base) || !isObj(patch)) return (patch as unknown as T) ?? base;
+	if (!isPlainObject(base) || !isPlainObject(patch)) return (patch as unknown as T) ?? base;
 	const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
 	for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
 		if (value === undefined) continue;
 		const prev = out[key];
-		if (isObj(prev) && isObj(value)) {
+		if (isPlainObject(prev) && isPlainObject(value)) {
 			out[key] = deepMerge<Record<string, unknown>>(
 				prev,
 				value as DeepPartial<Record<string, unknown>>,
@@ -170,7 +170,7 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T>): T {
 /** Return dotted JSON paths that differ between two resolved section values. */
 export function diffPaths(prefix: string, a: unknown, b: unknown): string[] {
 	if (JSON.stringify(a) === JSON.stringify(b)) return [];
-	if (!isObj(a) || !isObj(b)) return [prefix];
+	if (!isPlainObject(a) || !isPlainObject(b)) return [prefix];
 	const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
 	const out: string[] = [];
 	for (const key of keys) {

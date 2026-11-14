@@ -1,4 +1,4 @@
-import { boolOr, defineSection, isObj } from "../schema.ts";
+import { boolOrDefault, defineSection, isPlainObject } from "../schema.ts";
 
 export interface EditConfig {
 	/** Restore the file and fail the edit when LSP reports new syntax errors after it. */
@@ -13,9 +13,12 @@ export const editSection = defineSection<"edit", EditConfig>({
 	key: "edit",
 	defaults: DEFAULTS,
 	parse(raw) {
-		if (!isObj(raw)) return { ...DEFAULTS };
+		if (!isPlainObject(raw)) return { ...DEFAULTS };
 		return {
-			rejectNewSyntaxErrors: boolOr(raw.rejectNewSyntaxErrors, DEFAULTS.rejectNewSyntaxErrors),
+			rejectNewSyntaxErrors: boolOrDefault(
+				raw.rejectNewSyntaxErrors,
+				DEFAULTS.rejectNewSyntaxErrors,
+			),
 		};
 	},
 });

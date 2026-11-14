@@ -13,7 +13,7 @@ function preserveToolBackground(ansi: string, bg: string): string {
 }
 
 export function fillToolBackground(text: string, bg = BG_BASE, width?: number): string {
-	const resolvedWidth = width ?? termW();
+	const resolvedWidth = width ?? terminalWidth();
 	return text
 		.split("\n")
 		.map((line) => {
@@ -209,7 +209,7 @@ function _bindTermWResize(): void {
 	if (_termWResizeBound) return;
 	_termWResizeBound = true;
 	// Persistent listeners: every SIGWINCH invalidates the cache so the next
-	// termW() re-reads. `.once` only caught the first resize, leaving width
+	// terminalWidth() re-reads. `.once` only caught the first resize, leaving width
 	// stale on subsequent resizes.
 	const invalidate = () => {
 		_cachedTermW = undefined;
@@ -221,7 +221,7 @@ function _bindTermWResize(): void {
 /** Read terminal width — checks all available sources in priority order.
  *  Falls back to querying the controlling tty via fd 1/2/stdin ioctl.
  *  Result is cached and invalidated on SIGWINCH / stdout resize. */
-export function termW(): number {
+export function terminalWidth(): number {
 	_bindTermWResize();
 	if (_cachedTermW !== undefined) return _cachedTermW;
 
@@ -286,7 +286,7 @@ export function linkedShortPath(cwd: string, home: string, p: string): string {
 	return hyperlink(text, pathToFileURL(resolve(cwd, p)).href);
 }
 
-export function lnum(n: number, w: number): string {
+export function lineNumber(n: number, w: number): string {
 	const v = String(n);
 	return `${FG_LNUM}${" ".repeat(Math.max(0, w - v.length))}${v}${RST}`;
 }

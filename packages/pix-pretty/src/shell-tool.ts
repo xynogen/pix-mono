@@ -96,7 +96,7 @@ export function registerShellTool(
 	pi.registerTool({
 		...origTool,
 		name,
-		// Full-width framing (rules + bg fill) baked at termW(); the default
+		// Full-width framing (rules + bg fill) baked at terminalWidth(); the default
 		// Box shell pads x by 1 and re-wraps at width-2, splitting every line.
 		renderShell: "self",
 

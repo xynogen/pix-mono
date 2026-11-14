@@ -87,7 +87,7 @@ describe("registerBashTool", () => {
 
 	it("combines a collapsed command and result into one compact row", () => {
 		const { pi, tool } = capturePi();
-		// Pin a wide width so the compact row isn't truncated by another test's termW mutation.
+		// Pin a wide width so the compact row isn't truncated by another test's terminalWidth mutation.
 		registerBashTool(pi, okFactory, makeToolContext({ terminalWidth: () => 120 }));
 		const theme = makeTheme({ tag: true });
 		const collapsedCtx = makeRenderCtx({ state: { collapsed: true } });

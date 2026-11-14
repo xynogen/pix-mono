@@ -1,4 +1,4 @@
-import { defineSection, enumOr, isObj, strArr } from "../schema.ts";
+import { defineSection, enumOrDefault, isPlainObject, toStringArray } from "../schema.ts";
 
 export type GateSeverity = "risky" | "dangerous" | "critical";
 
@@ -38,11 +38,11 @@ export const gateSection = defineSection<"gate", GateConfig>({
 	key: "gate",
 	defaults: DEFAULTS,
 	parse(raw, ctx) {
-		if (!isObj(raw)) return { guardrails: "on", autoApprove: [], extraRules: [] };
+		if (!isPlainObject(raw)) return { guardrails: "on", autoApprove: [], extraRules: [] };
 		const extraRules: GateRuleConfig[] = [];
 		if (Array.isArray(raw.extraRules)) {
 			raw.extraRules.forEach((r, i) => {
-				if (!isObj(r) || typeof r.pattern !== "string") return;
+				if (!isPlainObject(r) || typeof r.pattern !== "string") return;
 				const flags = typeof r.flags === "string" ? r.flags : undefined;
 				const err = regexError(r.pattern, flags);
 				if (err) {
@@ -64,8 +64,8 @@ export const gateSection = defineSection<"gate", GateConfig>({
 			});
 		}
 		return {
-			guardrails: enumOr(raw.guardrails, ["on", "off"], DEFAULTS.guardrails),
-			autoApprove: strArr(raw.autoApprove).filter((pattern, i) => {
+			guardrails: enumOrDefault(raw.guardrails, ["on", "off"], DEFAULTS.guardrails),
+			autoApprove: toStringArray(raw.autoApprove).filter((pattern, i) => {
 				const err = regexError(pattern);
 				if (err) {
 					ctx.diagnostic({

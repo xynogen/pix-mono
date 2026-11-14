@@ -15,7 +15,7 @@ import { dotJoin, renderCall, renderRow } from "@xynogen/pix-pretty/render-row";
 import { getTextContent } from "@xynogen/pix-pretty/result";
 import { Text, type ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
-import { termW } from "@xynogen/pix-pretty/utils";
+import { terminalWidth } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
@@ -123,7 +123,7 @@ export function renderTodoLines(items: TodoItem[], theme: TodoTheme): string {
 	});
 	const gutters = (cols.length - 1) * COL_SEP.length;
 	// Cap: even terminal split — the old fixed width, now an upper bound.
-	const cap = Math.max(MIN_COL_WIDTH, Math.floor((termW() - gutters) / cols.length));
+	const cap = Math.max(MIN_COL_WIDTH, Math.floor((terminalWidth() - gutters) / cols.length));
 	// Compact: shrink each column to its widest cell, but never past the cap.
 	const widths = cols.map((c) =>
 		Math.min(cap, Math.max(c.header.length, ...c.cards.map((s) => s.length))),

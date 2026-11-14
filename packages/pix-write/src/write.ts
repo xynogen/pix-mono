@@ -20,7 +20,7 @@ import type {
 	WriteParams,
 	WriteRenderState,
 } from "@xynogen/pix-pretty/types";
-import { fillToolBackground, termW } from "@xynogen/pix-pretty/utils";
+import { fillToolBackground, terminalWidth } from "@xynogen/pix-pretty/utils";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { editPath, writeText } from "@xynogen/pix-runtime/files";
 import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
@@ -164,7 +164,7 @@ export function registerWriteTool(
 			},
 			body({ d, result, text, theme, ctx: renderCtx }) {
 				if (d?._type === "diff") {
-					const key = `wd:${diffThemeCacheKey(theme)}:${termW()}:${d.summary}:${(d.newContent as string).length}:${d.language ?? ""}`;
+					const key = `wd:${diffThemeCacheKey(theme)}:${terminalWidth()}:${d.summary}:${(d.newContent as string).length}:${d.language ?? ""}`;
 					if (renderCtx.toolCallId) trackInvalidator(renderCtx.toolCallId, renderCtx.invalidate);
 					// No summary header above the diff — the collapsed row carries `+x -y`
 					// (matches edit). The diff itself is the body.

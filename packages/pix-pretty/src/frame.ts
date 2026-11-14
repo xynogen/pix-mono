@@ -3,7 +3,7 @@ import { FG_RULE, hasAnsi, RST } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { fadeRowsOf, pluralize } from "./text.ts";
 import type { TextComponentCtor, TextComponentLike } from "./types.ts";
-import { termW } from "./utils.ts";
+import { terminalWidth } from "./utils.ts";
 
 type ResultComponent = {
 	render(width: number): string[];
@@ -111,7 +111,7 @@ export function bodyLine(
 	paint: (line: string) => string = (s) => s,
 ): string {
 	// ponytail: 3 = pi-tui tab width. Use visibleWidth if BODY_PAD stops being one tab.
-	return `${BODY_PAD}${sectionRule(line, theme, termW() - 3) ?? paint(line)}`;
+	return `${BODY_PAD}${sectionRule(line, theme, terminalWidth() - 3) ?? paint(line)}`;
 }
 
 /** Renderer context slice that knows the user's expand key (Pi's `ToolRenderContext`). */
@@ -235,7 +235,7 @@ export function ruleFrame(
 	width?: number,
 	paint?: RulePaint,
 ): string[] {
-	return [...bodyLines, rule(width ?? termW(), paint), ...footerLines];
+	return [...bodyLines, rule(width ?? terminalWidth(), paint), ...footerLines];
 }
 
 /**
@@ -260,7 +260,7 @@ export function outputBodyRows(
 	);
 	return partial
 		? [...body, ...footer]
-		: ruleFrame(body, footer, termW(), fadeRulePaint(theme, status));
+		: ruleFrame(body, footer, terminalWidth(), fadeRulePaint(theme, status));
 }
 
 /** Explicit solid top/bottom frame for sections that need stronger separation. */
@@ -270,6 +270,6 @@ export function sectionFrame(
 	width?: number,
 	paint?: RulePaint,
 ): string[] {
-	const r = rule(width ?? termW(), paint);
+	const r = rule(width ?? terminalWidth(), paint);
 	return [r, ...bodyLines, r, ...footerLines];
 }

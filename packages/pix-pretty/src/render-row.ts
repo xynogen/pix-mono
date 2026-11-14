@@ -20,7 +20,7 @@ import {
 import { icon } from "./icon-catalog.ts";
 import { fadeLine, fadePaint, fadeRowsOf, fadeText, normalizeLineEndings } from "./text.ts";
 import type { FgTheme } from "./types.ts";
-import { fillToolBackground, termW } from "./utils.ts";
+import { fillToolBackground, terminalWidth } from "./utils.ts";
 export function renderToolError(error: string, theme: FgTheme): string {
 	return fillToolBackground(theme.fg("error", error), BG_ERROR);
 }
@@ -210,7 +210,7 @@ export function renderCollapsed(
 	width?: number,
 ): string {
 	return fillToolBackground(
-		renderRow(theme, tool, target, meta, status, width ?? termW()),
+		renderRow(theme, tool, target, meta, status, width ?? terminalWidth()),
 		BG_BASE,
 		width,
 	);

@@ -8,7 +8,7 @@ import {
 	formatJson,
 	linkedShortPath,
 	shortPath,
-	termW,
+	terminalWidth,
 	viewportText,
 } from "../src/utils.ts";
 
@@ -181,8 +181,8 @@ describe("viewportText", () => {
 
 // Strip ANSI escapes so assertions test content, not color codes.
 
-describe("termW", () => {
-	// termW() caches and invalidates on a stdout 'resize' event. Set columns then
+describe("terminalWidth", () => {
+	// terminalWidth() caches and invalidates on a stdout 'resize' event. Set columns then
 	// emit resize so the next call re-reads.
 	function setCols(cols: number): void {
 		(process.stdout as { columns?: number }).columns = cols;
@@ -193,7 +193,7 @@ describe("termW", () => {
 		const orig = process.stdout.columns;
 		try {
 			setCols(384); // wider than the old 210 cap
-			expect(termW()).toBe(384);
+			expect(terminalWidth()).toBe(384);
 		} finally {
 			setCols(orig ?? 80);
 		}
@@ -203,7 +203,7 @@ describe("termW", () => {
 		const orig = process.stdout.columns;
 		try {
 			setCols(0); // falsy — falls through resolution chain, never < 1
-			expect(termW()).toBeGreaterThanOrEqual(1);
+			expect(terminalWidth()).toBeGreaterThanOrEqual(1);
 		} finally {
 			setCols(orig ?? 80);
 		}

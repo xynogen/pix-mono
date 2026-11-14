@@ -15,7 +15,7 @@ import type { DiffLine, ParsedDiff } from "./diff.ts";
 import { BODY_PAD } from "./frame.ts";
 import { hlBlock } from "./highlight.ts";
 import type { BundledLanguage, FgTheme } from "./types.ts";
-import { termW as utilsTermW } from "./utils.ts";
+import { terminalWidth } from "./utils.ts";
 
 // ---------------------------------------------------------------------------
 // Env-overridable color/threshold helpers (mirror pi-diff)
@@ -171,7 +171,7 @@ export function diffThemeCacheKey(theme?: DiffTheme): string {
 // ---------------------------------------------------------------------------
 
 function adaptiveWrapRows(tw?: number): number {
-	const w = tw ?? termW();
+	const w = tw ?? diffWidth();
 	if (w >= 180) return MAX_WRAP_ROWS_WIDE;
 	if (w >= 120) return MAX_WRAP_ROWS_MED;
 	return MAX_WRAP_ROWS_NARROW;
@@ -185,11 +185,11 @@ function tabs(s: string): string {
 	return s.replace(/\t/g, "  ");
 }
 
-function termW(): number {
-	// Single source of truth: utils.termW caches, falls back to tty ioctl, and
+function diffWidth(): number {
+	// Single source of truth: utils.terminalWidth caches, falls back to tty ioctl, and
 	// invalidates on resize. Diff layout needs a hard floor of 80 cols for the
 	// split-view column math (no ceiling — fill the true width on ultrawide).
-	return Math.max(80, utilsTermW());
+	return Math.max(80, terminalWidth());
 }
 
 /** Pad/truncate `s` to exactly `w` visible chars. ANSI-aware. */
@@ -529,7 +529,7 @@ export async function renderUnified(
 	if (!diff.lines.length) return "";
 
 	const vis = diff.lines.slice(0, max);
-	const tw = termW();
+	const tw = diffWidth();
 	const nw = Math.max(2, String(Math.max(...vis.map((l) => l.oldNum ?? l.newNum ?? 0), 0)).length);
 	const gw = nw + 5;
 	const cw = Math.max(20, tw - gw);
@@ -684,7 +684,7 @@ export async function renderSplit(
 	max = MAX_PREVIEW_LINES,
 	dc: DiffColors = DEFAULT_DIFF_COLORS,
 ): Promise<string> {
-	const tw = termW();
+	const tw = diffWidth();
 	if (!shouldUseSplit(diff, tw, max)) return renderUnified(diff, language, max, dc);
 	if (!diff.lines.length) return "";
 

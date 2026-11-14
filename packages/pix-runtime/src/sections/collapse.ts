@@ -1,4 +1,4 @@
-import { boolOr, defineSection, isObj, posNumOr } from "../schema.ts";
+import { boolOrDefault, defineSection, isPlainObject, positiveNumberOrDefault } from "../schema.ts";
 
 export interface CollapseConfig {
 	/** Master toggle. `false` = never collapse any tool. Default `true`. */
@@ -19,16 +19,16 @@ export const collapseSection = defineSection<"collapse", CollapseConfig>({
 	key: "collapse",
 	defaults: DEFAULTS,
 	parse(raw) {
-		if (!isObj(raw)) return { ...DEFAULTS, tools: {} };
+		if (!isPlainObject(raw)) return { ...DEFAULTS, tools: {} };
 		const tools: Partial<Record<string, boolean>> = {};
-		if (isObj(raw.tools)) {
+		if (isPlainObject(raw.tools)) {
 			for (const [k, v] of Object.entries(raw.tools)) {
 				if (typeof v === "boolean") tools[k] = v;
 			}
 		}
 		return {
-			enabled: boolOr(raw.enabled, DEFAULTS.enabled),
-			delaySec: posNumOr(raw.delaySec, DEFAULTS.delaySec),
+			enabled: boolOrDefault(raw.enabled, DEFAULTS.enabled),
+			delaySec: positiveNumberOrDefault(raw.delaySec, DEFAULTS.delaySec),
 			tools,
 		};
 	},

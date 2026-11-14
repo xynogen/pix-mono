@@ -25,7 +25,7 @@ import {
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-import { formatJson, termW, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
+import { formatJson, terminalWidth, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { formatMs } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { AgentToolResult, ToolDefinition } from "@xynogen/pix-runtime/host";
@@ -51,7 +51,7 @@ export function compactRow(
 	call: Pick<Call, "name" | "args" | "status" | "durationMs" | "cost">,
 	theme: Pick<ThemeLike, "fg"> | Parameters<NonNullable<ToolDefinition["renderCall"]>>[1],
 	expanded = false,
-	width = termW(),
+	width = terminalWidth(),
 ) {
 	const [key, role] = {
 		ok: ["status.ok", "success"],
@@ -289,7 +289,7 @@ function callRows(calls: Call[], expanded: boolean, theme: ThemeLike) {
 	if (shown.length < calls.length)
 		rows.push(`    ${theme.fg("muted", `… +${calls.length - shown.length} earlier calls`)}`);
 	for (const call of shown) {
-		rows.push(`    ${compactRow(call, theme, expanded, termW() - 4)}`);
+		rows.push(`    ${compactRow(call, theme, expanded, terminalWidth() - 4)}`);
 		if (expanded && call.result) {
 			const nestedOutput = output(
 				(call.name === "bash" || call.name === "powershell") && call.result.structuredContent

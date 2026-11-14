@@ -1,4 +1,4 @@
-import { defineSection, isObj, posNumOr } from "../schema.ts";
+import { defineSection, isPlainObject, positiveNumberOrDefault } from "../schema.ts";
 
 export interface IoConfig {
 	/** Default timeout in seconds for Pix network requests. */
@@ -13,9 +13,9 @@ export const ioSection = defineSection<"io", IoConfig>({
 	key: "io",
 	defaults: DEFAULTS,
 	parse(raw) {
-		if (!isObj(raw)) return { ...DEFAULTS };
+		if (!isPlainObject(raw)) return { ...DEFAULTS };
 		return {
-			timeoutSec: posNumOr(raw.timeoutSec, DEFAULTS.timeoutSec),
+			timeoutSec: positiveNumberOrDefault(raw.timeoutSec, DEFAULTS.timeoutSec),
 		};
 	},
 });

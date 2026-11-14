@@ -157,7 +157,7 @@ export function registerReadTool(
 			"Known files to read in one call (each capped, one combined result). Use instead of `path` for multiple known files.",
 			["path"],
 		),
-		// Full-width framing baked at termW(); default Box shell pads x by 1
+		// Full-width framing baked at terminalWidth(); default Box shell pads x by 1
 		// and re-wraps at width-2, splitting every line into a padding row.
 		renderShell: "self",
 

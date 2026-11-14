@@ -1,4 +1,4 @@
-import { defineSection, enumOr, isObj } from "../schema.ts";
+import { defineSection, enumOrDefault, isPlainObject } from "../schema.ts";
 
 export type CavemanLevel = "off" | "lite" | "full" | "ultra" | "micro";
 export type PonytailLevel = "off" | "lite" | "full" | "ultra";
@@ -24,11 +24,11 @@ export const optimizerSection = defineSection<"optimizer", OptimizerConfig>({
 	key: "optimizer",
 	defaults: DEFAULTS,
 	parse(raw) {
-		if (!isObj(raw)) return { ...DEFAULTS };
+		if (!isPlainObject(raw)) return { ...DEFAULTS };
 		return {
-			caveman: enumOr(raw.caveman, CAVEMAN, DEFAULTS.caveman),
-			rtk: enumOr(raw.rtk, TOGGLE, DEFAULTS.rtk),
-			ponytail: enumOr(raw.ponytail, PONYTAIL, DEFAULTS.ponytail),
+			caveman: enumOrDefault(raw.caveman, CAVEMAN, DEFAULTS.caveman),
+			rtk: enumOrDefault(raw.rtk, TOGGLE, DEFAULTS.rtk),
+			ponytail: enumOrDefault(raw.ponytail, PONYTAIL, DEFAULTS.ponytail),
 		};
 	},
 });

@@ -277,7 +277,7 @@ function register(pi: ExtensionAPI): void {
 			"sudo_run: LOCAL root only — never raw `sudo` in bash. Use `bash` for non-root local, `ssh_run` (`sudo: true`) for remote. Prefer plain bash; use only when root is strictly required. Set `reason` to a short why-root sentence.",
 		],
 
-		// Full-width framing (rules + bg fill) baked at termW(), like pix-bash.
+		// Full-width framing (rules + bg fill) baked at terminalWidth(), like pix-bash.
 		renderShell: "self",
 
 		parameters: Type.Object({

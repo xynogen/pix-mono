@@ -121,7 +121,7 @@ mock.module("../src/lib.ts", () => {
 });
 
 import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/render-row";
-import { termW } from "@xynogen/pix-pretty/utils";
+import { terminalWidth } from "@xynogen/pix-pretty/utils";
 import registerSudo from "../src/index.ts";
 
 // Minimal theme stub: returns text unchanged so assertions match plain strings.
@@ -221,10 +221,10 @@ function makeHost(onState?: (state: string) => void) {
 }
 
 function rendered(component: RenderComponent): string {
-	// Rows are padded to termW() by fillToolBackground; render at the same width
-	// so the baked line fits exactly (a fixed width wider/narrower than termW()
+	// Rows are padded to terminalWidth() by fillToolBackground; render at the same width
+	// so the baked line fits exactly (a fixed width wider/narrower than terminalWidth()
 	// would wrap or clip, flaking the one-line assertions under a real tty).
-	return component.render(termW()).join("\n");
+	return component.render(terminalWidth()).join("\n");
 }
 
 function renderResult(
