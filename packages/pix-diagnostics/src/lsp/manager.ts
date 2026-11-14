@@ -13,8 +13,8 @@
  */
 
 import { fileURLToPath } from "node:url";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { readFile } from "@xynogen/pix-runtime/fs";
 import { projectRel } from "@xynogen/pix-runtime/paths";
 import type { DiagnosticSnapshot, PixDiagnostic } from "../types.ts";

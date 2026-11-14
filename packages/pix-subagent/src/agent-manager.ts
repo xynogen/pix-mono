@@ -8,8 +8,8 @@
 
 import { isAbsolute } from "node:path";
 import type { Api, Model } from "@xynogen/pix-data/ai";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { onAbort } from "@xynogen/pix-runtime/abort";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { statSync } from "@xynogen/pix-runtime/fs";
 import type { AgentSession, ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { uniqueLfid } from "@xynogen/pix-runtime/lfid";

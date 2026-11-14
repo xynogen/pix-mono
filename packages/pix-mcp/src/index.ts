@@ -1,6 +1,7 @@
+import { pluralize } from "@xynogen/pix-pretty/text";
 import { showTransientError, showTransientMessage } from "@xynogen/pix-pretty/transient-error";
-import { getErrorMessage, pluralize } from "@xynogen/pix-pretty/utils";
 import { registerPackageSettings } from "@xynogen/pix-runtime";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionAPI,

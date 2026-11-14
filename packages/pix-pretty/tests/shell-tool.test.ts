@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "../src/icon-catalog.ts";
+import { renderCollapsed } from "../src/render-row.ts";
 import {
 	collapseProgressFrames,
 	gatedCancellation,
@@ -12,7 +13,6 @@ import {
 } from "../src/shell-tool.ts";
 import { capturePi, makeRenderCtx, makeTheme, makeToolContext } from "../src/test-utils.ts";
 import type { ThemeLike, ToolResultLike } from "../src/types.ts";
-import { renderCollapsed } from "../src/utils.ts";
 
 describe("gated command helpers", () => {
 	it("gatedCommandMeta: outcome first, then a mapped error, else exit/extras/lines", () => {

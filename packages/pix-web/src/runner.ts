@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	type FetchProvider,
 	type FetchRequest,

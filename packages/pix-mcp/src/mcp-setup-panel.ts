@@ -8,7 +8,7 @@ import {
 	wrapTextWithAnsi,
 } from "@xynogen/pix-pretty/modal-frame";
 import { matchesKey } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { projectRel } from "@xynogen/pix-runtime/paths";
 import type { ConfigWritePreview, McpDiscoverySummary } from "./config.ts";
 import type { McpOnboardingState } from "./onboarding-state.ts";

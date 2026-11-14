@@ -132,7 +132,7 @@ export default function pixLsExtension(pi: ExtensionAPI): void {
 }
 ```
 
-The tool file (`ls.ts`) then builds on shared pieces only: `frameToolResult`, `renderToolError`, `getErrorMessage` (`pix-pretty/utils`), batching (`pix-pretty/batch`), tree rendering (`pix-pretty/renderers`), and the collapse timer (`pix-runtime/collapse`). The package-local code is only what makes `ls` different from `read` or `grep`.
+The tool file (`ls.ts`) then builds on shared pieces only: `frameToolResult` (`pix-pretty/frame`), `renderToolError` (`pix-pretty/render-row`), `getErrorMessage` (`pix-runtime/errors`), batching (`pix-pretty/batch`), tree rendering (`pix-pretty/renderers`), and the collapse timer (`pix-runtime/collapse`). The package-local code is only what makes `ls` different from `read` or `grep`.
 
 ### 2.5 How imports resolve
 
@@ -175,7 +175,11 @@ Add a config section: define it with `defineSection({ key, defaults, parse })` i
 
 | Subpath | Use it for |
 |---|---|
-| `/utils` | `frameToolResult`, `renderToolError`, `renderCollapsedToolRow`, `shortPath`, `dotJoin`, `pluralize`, `humanSize` (IEC bytes), `getErrorMessage`, `makeTextResult`, `termW`. |
+| `/render-row` | Call and collapsed rows: `renderCall`, `renderTitle`, `renderRow`, `renderCollapsed`, `renderToolError`, `renderDimPreview`, `dotJoin`, `padIcon`, `clickToggle`. |
+| `/frame` | Result chrome: `frameToolResult`, `frameToolSection`, `ruleFrame`, `sectionFrame`, `outputBodyRows`, `bodyLine`, `moreLines`, `reuseText`. |
+| `/result` | Tool results: `makeTextResult`, `makeActionResult`, `setResultDetails`, `getTextContent`. |
+| `/text` | Text helpers: `pluralize`, `humanSize` (IEC bytes), `normalizeLineEndings`, `trimToUndefined`, `appendNotices`, and the fade helpers. |
+| `/utils` | `fillToolBackground`, `viewportText`, `formatJson`, `termW`, `shortPath`, `linkedShortPath`, `lnum`. |
 | `/widget-format` | Live widgets: `SPINNER`, `formatMs`, `formatDuration`, `formatTokens`, `fmtTokenCount`, `formatContext`, `formatSpeed`, `describeActivity`, `getSessionContextUsage`. |
 | `/batch` | Shared batching for read/grep/find/ls: N targets, one result, one byte cap. |
 | `/diff`, `/diff-render` | Diff parsing and split/unified/word-level rendering. Colors follow the theme. |

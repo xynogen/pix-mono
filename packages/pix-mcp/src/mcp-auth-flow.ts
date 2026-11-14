@@ -4,7 +4,7 @@
  * High-level OAuth flow management using the MCP SDK's built-in auth functions.
  */
 import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import open from "open";
 import { resolveOAuthSecret } from "./config-value.ts";
 import { logger } from "./logger.ts";

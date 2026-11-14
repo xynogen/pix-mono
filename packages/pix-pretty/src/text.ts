@@ -154,3 +154,27 @@ export function fadeRowsOf(
 	}
 	return shown;
 }
+
+export function normalizeLineEndings(text: string): string {
+	return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+export function pluralize(count: number, noun: string, plural?: string): string {
+	return `${count} ${count === 1 ? noun : (plural ?? `${noun}s`)}`;
+}
+
+export function humanSize(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+	if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+	return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GiB`;
+}
+
+export function appendNotices(text: string, notices: string[]): string {
+	return notices.length ? `${text}\n\n[${notices.join(". ")}]` : text;
+}
+
+export function trimToUndefined(value: string | undefined): string | undefined {
+	const trimmed = value?.trim();
+	return trimmed ? trimmed : undefined;
+}

@@ -1,8 +1,8 @@
 // config.ts - Config loading with import support
 
 import { dirname, join, resolve } from "node:path";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import { homeDir, projectDir, projectRel } from "@xynogen/pix-runtime/paths";
 import { getAgentPath } from "./agent-dir.ts";

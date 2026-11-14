@@ -18,7 +18,7 @@ import {
 	type TUI,
 } from "@xynogen/pix-pretty/tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 const MAX_VISIBLE = 10;

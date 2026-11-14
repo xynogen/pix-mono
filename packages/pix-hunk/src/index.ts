@@ -1,13 +1,9 @@
+import { frameToolResult } from "@xynogen/pix-pretty/frame";
+import { dotJoin, renderCall, renderRow } from "@xynogen/pix-pretty/render-row";
 import { reportToolStatus, type ToolStatusUI } from "@xynogen/pix-pretty/tool-status";
 import { Text } from "@xynogen/pix-pretty/tui";
-import {
-	dotJoin,
-	frameToolResult,
-	getErrorMessage,
-	renderCall,
-	renderRow,
-} from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";

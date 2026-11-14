@@ -1,6 +1,6 @@
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
 import { createHash } from "@xynogen/pix-runtime/crypto";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	AgentToolResult,
 	AgentToolUpdateCallback,

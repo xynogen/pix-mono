@@ -2,7 +2,7 @@ import { describe, expect, jest, test } from "bun:test";
 import type { Theme, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { rgbColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { padIcon } from "@xynogen/pix-pretty/utils";
+import { padIcon } from "@xynogen/pix-pretty/render-row";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { roleTheme, semanticRow, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerTodo, { type TodoItem } from "../src/todo.ts";

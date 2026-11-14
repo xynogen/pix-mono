@@ -2,9 +2,11 @@
 
 import { basename, dirname, extname, join } from "node:path";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { renderCall } from "@xynogen/pix-pretty/render-row";
+import { humanSize } from "@xynogen/pix-pretty/text";
 import { formatToolStatus } from "@xynogen/pix-pretty/tool-status";
-import { getErrorMessage, humanSize, renderCall } from "@xynogen/pix-pretty/utils";
 import { randomUUID } from "@xynogen/pix-runtime/crypto";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { mkdir, writeFile } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { tempDir } from "@xynogen/pix-runtime/paths";

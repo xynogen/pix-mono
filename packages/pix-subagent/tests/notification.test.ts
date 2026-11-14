@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/render-row";
 import type { NotificationDetails } from "../src/types.ts";
 import { formatNotificationLine, registerNotificationRenderer } from "../src/ui/notification.ts";
 

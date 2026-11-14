@@ -11,9 +11,10 @@
  * custom ENTRY (no model context). Both render through `nudgeCard`.
  */
 
+import { bodyLine } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { clickToggle, padIcon } from "@xynogen/pix-pretty/render-row";
 import { Text, wrapTextWithAnsi } from "@xynogen/pix-pretty/tui";
-import { bodyLine, clickToggle, padIcon } from "@xynogen/pix-pretty/utils";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 
 export const NUDGE_ENTRY = "pix-nudge";

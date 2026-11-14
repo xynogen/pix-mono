@@ -5,13 +5,14 @@ import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-captu
 import { confirmOverlay } from "../src/confirm.ts";
 import { parseDiff } from "../src/diff.ts";
 import { renderSplit, renderUnified } from "../src/diff-render.ts";
+import { frameToolResult } from "../src/frame.ts";
 import { showOverlay } from "../src/gate-overlay.ts";
 import { frameLines } from "../src/modal-frame.ts";
 import { openProgress } from "../src/progress.ts";
 import { showSettingsPicker } from "../src/provider-picker.ts";
 import { registerShellTool } from "../src/shell-tool.ts";
 import { capturePi, makeRenderCtx, makeToolContext } from "../src/test-utils.ts";
-import { frameToolResult, viewportTextConstructor } from "../src/utils.ts";
+import { viewportTextConstructor } from "../src/utils.ts";
 
 const theme = roleTheme();
 test("shared shell completed, error, partial, collapsed and expanded captures", async () => {

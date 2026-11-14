@@ -12,20 +12,18 @@
  */
 
 import { dirname, isAbsolute, join, relative, resolve, win32 } from "node:path";
-import { type FadeTheme, fadeTextRow } from "@xynogen/pix-pretty/text";
-import { Text } from "@xynogen/pix-pretty/tui";
+import { frameToolResult, moreLines } from "@xynogen/pix-pretty/frame";
 import {
 	dotJoin,
-	frameToolResult,
-	getErrorMessage,
-	getTextContent,
 	hideCollapsedToolCall,
-	humanSize,
-	moreLines,
 	renderRow,
 	renderTitle,
-} from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
+import { type FadeTheme, fadeTextRow, humanSize } from "@xynogen/pix-pretty/text";
+import { Text } from "@xynogen/pix-pretty/tui";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	copyFile,
 	existsSync,

@@ -5,8 +5,13 @@
  * the bounded result preview and diagnostic retained in the message details.
  */
 
+import {
+	COLLAPSED_TOOL_GLYPH,
+	clickToggle,
+	dotJoin,
+	padIcon,
+} from "@xynogen/pix-pretty/render-row";
 import { Text } from "@xynogen/pix-pretty/tui";
-import { COLLAPSED_TOOL_GLYPH, clickToggle, dotJoin, padIcon } from "@xynogen/pix-pretty/utils";
 import {
 	formatContext,
 	formatMs,

@@ -12,9 +12,10 @@ import * as Diff from "diff";
 import { BG_BASE, BOLD, FG_DIM, FG_GREEN, FG_LNUM, FG_RED, FG_RULE, RST } from "./ansi.ts";
 import { MAX_HL_CHARS, MAX_RENDER_LINES, WORD_DIFF_MIN_SIM } from "./config.ts";
 import type { DiffLine, ParsedDiff } from "./diff.ts";
+import { BODY_PAD } from "./frame.ts";
 import { hlBlock } from "./highlight.ts";
 import type { BundledLanguage, FgTheme } from "./types.ts";
-import { BODY_PAD, termW as utilsTermW } from "./utils.ts";
+import { termW as utilsTermW } from "./utils.ts";
 
 // ---------------------------------------------------------------------------
 // Env-overridable color/threshold helpers (mirror pi-diff)

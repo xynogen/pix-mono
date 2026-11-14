@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/client";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { randomUUID } from "@xynogen/pix-runtime/crypto";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { isGlimpseAvailable, openGlimpseWindow } from "./glimpse-ui.ts";
 import { logger } from "./logger.ts";
 import { isUrlElicitationRequired } from "./sdk.ts";

@@ -2,7 +2,7 @@
 
 import { chipTag } from "@xynogen/pix-pretty/chips";
 import type { CustomEditor, TUI } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 
 /** Picked paths use the shared `<path>` chip tag. pix-display renders it as a chip. */
 export function pathToken(path: string): string {

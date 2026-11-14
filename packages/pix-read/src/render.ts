@@ -3,21 +3,15 @@
 import { formatCallTargets } from "@xynogen/pix-pretty/batch";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import { BODY_PAD, fadeRulePaint, ruleFrame } from "@xynogen/pix-pretty/frame";
 import { fileIcon } from "@xynogen/pix-pretty/icons";
+import { dotJoin, renderDimPreview, renderToolError } from "@xynogen/pix-pretty/render-row";
 import { renderFileContent } from "@xynogen/pix-pretty/renderers";
+import { humanSize } from "@xynogen/pix-pretty/text";
 import type { RenderContextLike, TextComponentLike, ThemeLike } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	dotJoin,
-	fadeRulePaint,
-	fillToolBackground,
-	getErrorMessage,
-	humanSize,
-	renderDimPreview,
-	renderToolError,
-	ruleFrame,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
 import { createHash } from "@xynogen/pix-runtime/crypto";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 
 export type ReadFileDetails = {
 	_type: "readFile";

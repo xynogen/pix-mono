@@ -10,6 +10,15 @@
 import { Box, Markdown } from "@earendil-works/pi-tui";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { resolveBaseBackground } from "./ansi.ts";
+import { BODY_PAD, bodyLine, frameToolResult, moreLines, reuseText } from "./frame.ts";
+import {
+	type CollapsedToolStatus,
+	hideCollapsedToolCall,
+	renderCollapsed,
+	renderRow,
+	renderToolError,
+} from "./render-row.ts";
+import { getTextContent } from "./result.ts";
 import { fadeRowsOf } from "./text.ts";
 import { getMarkdownTheme } from "./tui.ts";
 import type {
@@ -19,19 +28,6 @@ import type {
 	ThemeLike,
 	ToolResultLike,
 } from "./types.ts";
-import {
-	BODY_PAD,
-	bodyLine,
-	type CollapsedToolStatus,
-	frameToolResult,
-	getTextContent,
-	hideCollapsedToolCall,
-	moreLines,
-	renderCollapsed,
-	renderRow,
-	renderToolError,
-	reuseText,
-} from "./utils.ts";
 
 type RenderState = Record<string, string | undefined>;
 

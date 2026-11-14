@@ -3,7 +3,7 @@
  * Provides structured errors with context and recovery hints.
  */
 
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 
 export interface McpUiErrorContext {
 	server?: string;

@@ -11,6 +11,10 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import { fadeRulePaint } from "@xynogen/pix-pretty/frame";
+import { renderDimPreview, renderTitle } from "@xynogen/pix-pretty/render-row";
+import { getTextContent, makeTextResult, setResultDetails } from "@xynogen/pix-pretty/result";
+import { appendNotices, pluralize } from "@xynogen/pix-pretty/text";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	FindParams,
@@ -19,18 +23,8 @@ import type {
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
-import {
-	appendNotices,
-	fadeRulePaint,
-	fillToolBackground,
-	getErrorMessage,
-	getTextContent,
-	makeTextResult,
-	pluralize,
-	renderDimPreview,
-	renderTitle,
-	setResultDetails,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,

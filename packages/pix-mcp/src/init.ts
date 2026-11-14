@@ -1,5 +1,5 @@
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { existsSync } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";

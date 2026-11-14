@@ -23,8 +23,9 @@
 
 import { type OverlayResult, type OverlayUI, showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { getErrorMessage, normalizeLineEndings } from "@xynogen/pix-pretty/utils";
+import { normalizeLineEndings } from "@xynogen/pix-pretty/text";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { AgentToolUpdateCallback, EventBus, ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { truncateOutput } from "@xynogen/pix-runtime/output";

@@ -1,5 +1,15 @@
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
+import { frameToolResult } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import {
+	dotJoin,
+	hideCollapsedToolCall,
+	padIcon,
+	renderCollapsed,
+	renderTitle,
+} from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
+import { pluralize } from "@xynogen/pix-pretty/text";
 import {
 	Text,
 	type ToolRenderResultOptions,
@@ -8,17 +18,7 @@ import {
 	wrapTextWithAnsi,
 } from "@xynogen/pix-pretty/tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-import {
-	dotJoin,
-	fillToolBackground,
-	frameToolResult,
-	getTextContent,
-	hideCollapsedToolCall,
-	padIcon,
-	pluralize,
-	renderCollapsed,
-	renderTitle,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { AgentToolResult } from "@xynogen/pix-runtime/host";
 

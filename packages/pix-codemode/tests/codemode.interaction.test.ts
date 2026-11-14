@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, jest, test } from "bun:test";
 import { Text } from "@earendil-works/pi-tui";
+import { frameToolResult, unframeToolResult } from "@xynogen/pix-pretty/frame";
 import { makeTheme } from "@xynogen/pix-pretty/test-utils";
-import { frameToolResult, unframeToolResult } from "@xynogen/pix-pretty/utils";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { withUiFixture } from "../../../scripts/ui-capture.ts";
 import { renderCall, renderResult } from "../src/codemode.ts";

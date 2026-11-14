@@ -1,10 +1,10 @@
 /** /model picker rows: chat models ranked by benchmark, classifier/image models in list order. */
 
 import { benchScoreColor, lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
+import { dotJoin } from "@xynogen/pix-pretty/render-row";
 import type { SelectItem } from "@xynogen/pix-pretty/tui";
 import { visibleWidth } from "@xynogen/pix-pretty/tui";
 import type { FgTheme } from "@xynogen/pix-pretty/types";
-import { dotJoin } from "@xynogen/pix-pretty/utils";
 import {
 	benchStars,
 	CLASSIFIER_VALUE_PREFIX,

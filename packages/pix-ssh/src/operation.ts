@@ -1,7 +1,7 @@
 /** ssh_run parameters → one normalized operation, plus its approval text. */
 
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { requireTool } from "@xynogen/pix-runtime/binaries";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { prepareEditArguments, readText } from "@xynogen/pix-runtime/files";
 import { initHashline } from "@xynogen/pix-runtime/hashline";
 import { sftpPath } from "@xynogen/pix-runtime/sftp";

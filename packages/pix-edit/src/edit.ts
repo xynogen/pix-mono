@@ -8,7 +8,10 @@ import {
 	resolveDiffColors,
 	summarize,
 } from "@xynogen/pix-pretty/diff-render";
+import { BODY_PAD } from "@xynogen/pix-pretty/frame";
 import { lang } from "@xynogen/pix-pretty/lang";
+import { dotJoin, renderTitle } from "@xynogen/pix-pretty/render-row";
+import { isTextContent, setResultDetails } from "@xynogen/pix-pretty/result";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	EditOperation,
@@ -18,16 +21,8 @@ import type {
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	dotJoin,
-	fillToolBackground,
-	getErrorMessage,
-	isTextContent,
-	renderTitle,
-	setResultDetails,
-	termW,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground, termW } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	type EditInput,
 	editPath,

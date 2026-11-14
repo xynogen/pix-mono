@@ -1,18 +1,16 @@
 /** proc tool card: call header and result body. */
 
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
-import { stripTerminalSequences, Text, type Theme } from "@xynogen/pix-pretty/tui";
-import type { RenderContextLike, ToolResultLike } from "@xynogen/pix-pretty/types";
+import { BODY_PAD, expandHint, frameToolResult } from "@xynogen/pix-pretty/frame";
 import {
-	BODY_PAD,
-	expandHint,
-	frameToolResult,
 	hideCollapsedToolCall,
-	pluralize,
 	renderDimPreview,
 	renderRow,
 	renderTitle,
-} from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-pretty/render-row";
+import { pluralize } from "@xynogen/pix-pretty/text";
+import { stripTerminalSequences, Text, type Theme } from "@xynogen/pix-pretty/tui";
+import type { RenderContextLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ProcResultDetails } from "./actions.ts";
 import { processRow } from "./widget.ts";

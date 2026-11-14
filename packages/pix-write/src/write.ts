@@ -7,8 +7,11 @@ import {
 	resolveDiffColors,
 	summarize,
 } from "@xynogen/pix-pretty/diff-render";
+import { BODY_PAD } from "@xynogen/pix-pretty/frame";
 import { lang } from "@xynogen/pix-pretty/lang";
+import { renderTitle } from "@xynogen/pix-pretty/render-row";
 import { renderFileContent } from "@xynogen/pix-pretty/renderers";
+import { isTextContent, setResultDetails } from "@xynogen/pix-pretty/result";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	PiPrettyApi,
@@ -17,15 +20,8 @@ import type {
 	WriteParams,
 	WriteRenderState,
 } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	fillToolBackground,
-	getErrorMessage,
-	isTextContent,
-	renderTitle,
-	setResultDetails,
-	termW,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground, termW } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { editPath, writeText } from "@xynogen/pix-runtime/files";
 import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import type {

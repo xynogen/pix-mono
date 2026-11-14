@@ -1,19 +1,17 @@
 /** Rendering for the `graph` tool: call line, live build progress, query trees and results. */
 
+import { BODY_PAD, expandHint, frameToolResult } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { Text, type ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
-import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
-	BODY_PAD,
 	dotJoin,
-	expandHint,
-	frameToolResult,
 	hideCollapsedToolCall,
-	pluralize,
 	renderDimPreview,
 	renderRow,
 	renderTitle,
-} from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-pretty/render-row";
+import { pluralize } from "@xynogen/pix-pretty/text";
+import { Text, type ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
+import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import { formatDuration, SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { BuildProgress } from "./pipeline.ts";

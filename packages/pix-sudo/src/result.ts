@@ -2,7 +2,7 @@
 
 import type { OverlayResult } from "@xynogen/pix-pretty/gate-overlay";
 import { gatedCancellation } from "@xynogen/pix-pretty/shell-tool";
-import { normalizeLineEndings } from "@xynogen/pix-pretty/utils";
+import { normalizeLineEndings } from "@xynogen/pix-pretty/text";
 import type { AgentToolUpdateCallback } from "@xynogen/pix-runtime/host";
 
 export type SudoOutcome =

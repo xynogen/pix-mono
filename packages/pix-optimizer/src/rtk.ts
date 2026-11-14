@@ -8,8 +8,8 @@
 
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { showTransientError } from "@xynogen/pix-pretty/transient-error";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { ensureTool, type ResolvedTool, resolveTool } from "@xynogen/pix-runtime/binaries";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	ExtensionAPI,
 	ExtensionCommandContext,

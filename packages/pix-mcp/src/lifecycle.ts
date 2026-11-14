@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { logger } from "./logger.ts";
 import type { McpServerManager } from "./server-manager.ts";
 import type { ServerDefinition } from "./types.ts";

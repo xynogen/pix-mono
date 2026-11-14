@@ -3,7 +3,7 @@
  * daemon so they are unit-testable without spawning aria2 or a TUI.
  */
 
-import { humanSize } from "@xynogen/pix-pretty/utils";
+import { humanSize } from "@xynogen/pix-pretty/text";
 import type { Aria2DownloadStatus } from "maria2";
 
 /** aria2 status shape we actually read (fields are strings — bytes can exceed 2^53). */

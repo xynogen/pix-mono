@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { renderCollapsed } from "@xynogen/pix-pretty/render-row";
 import {
 	capturePi,
 	makeRenderCtx,
@@ -9,7 +10,6 @@ import {
 	makeToolContext,
 } from "@xynogen/pix-pretty/test-utils";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-import { renderCollapsed } from "@xynogen/pix-pretty/utils";
 import { registerWriteTool } from "../src/write";
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });

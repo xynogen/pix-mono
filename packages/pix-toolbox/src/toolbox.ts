@@ -17,6 +17,7 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
+import { padIcon } from "@xynogen/pix-pretty/render-row";
 import {
 	fuzzyFilter,
 	Input,
@@ -29,7 +30,6 @@ import {
 	type TUI,
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
-import { padIcon } from "@xynogen/pix-pretty/utils";
 import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { config, pixRuntime, updateConfig } from "@xynogen/pix-runtime/config";
 import { createHash } from "@xynogen/pix-runtime/crypto";

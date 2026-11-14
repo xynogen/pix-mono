@@ -8,17 +8,17 @@
  * Ported from tintinweb/pi-subagents (MIT), adapted for pix-mono.
  */
 
+import { rule } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { fadeLine, fadePaint } from "@xynogen/pix-pretty/text";
-import { visibleWidth } from "@xynogen/pix-pretty/tui";
 import {
 	COLLAPSED_TOOL_GLYPH,
 	dotJoin,
 	padIcon,
-	rule,
 	widgetActivityRow,
 	widgetTitle,
-} from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-pretty/render-row";
+import { fadeLine, fadePaint } from "@xynogen/pix-pretty/text";
+import { visibleWidth } from "@xynogen/pix-pretty/tui";
 import {
 	describeActivity,
 	formatContext,

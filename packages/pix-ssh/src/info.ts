@@ -1,6 +1,6 @@
 /** The read-only `info` action: SSH config report, no connection, no approval. */
 
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	type HostAlias,
 	type HostInfo,

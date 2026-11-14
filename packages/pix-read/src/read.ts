@@ -10,6 +10,15 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import { BODY_PAD } from "@xynogen/pix-pretty/frame";
+import { renderTitle } from "@xynogen/pix-pretty/render-row";
+import {
+	getTextContent,
+	isImageContent,
+	isTextContent,
+	setResultDetails,
+} from "@xynogen/pix-pretty/result";
+import { normalizeLineEndings } from "@xynogen/pix-pretty/text";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	PiPrettyApi,
@@ -17,17 +26,8 @@ import type {
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	fillToolBackground,
-	getErrorMessage,
-	getTextContent,
-	isImageContent,
-	isTextContent,
-	normalizeLineEndings,
-	renderTitle,
-	setResultDetails,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { DEFAULT_READ_LIMIT, readText } from "@xynogen/pix-runtime/files";
 import { access, constants, readdir, readFile } from "@xynogen/pix-runtime/fs";
 import {

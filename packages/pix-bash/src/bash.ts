@@ -1,7 +1,7 @@
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import { dotJoin } from "@xynogen/pix-pretty/render-row";
 import { registerShellTool } from "@xynogen/pix-pretty/shell-tool";
 import type { PiPrettyApi, ToolFactory } from "@xynogen/pix-pretty/types";
-import { dotJoin } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import type { BashToolInput } from "@xynogen/pix-runtime/host";
 

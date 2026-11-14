@@ -2,6 +2,14 @@
 
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
+import { BODY_PAD, frameToolResult, reuseText } from "@xynogen/pix-pretty/frame";
+import {
+	hideCollapsedToolCall,
+	renderCollapsed,
+	renderTitle,
+	renderToolError,
+} from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
 import {
 	gatedCommandMeta,
 	renderGatedCommandResult,
@@ -13,17 +21,7 @@ import type {
 	ThemeLike,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	fillToolBackground,
-	frameToolResult,
-	getTextContent,
-	hideCollapsedToolCall,
-	renderCollapsed,
-	renderTitle,
-	renderToolError,
-	reuseText,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { HostAlias, HostInfo } from "./lib.ts";
 import { normalizeOperation, type SshParams } from "./operation.ts";

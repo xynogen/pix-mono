@@ -21,7 +21,7 @@ import {
 	type Theme,
 	type TUI,
 } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { humanUptime, type ProcMeta, procLabel, statusWord } from "./format.ts";
 
 export type ProcModalResult = { kind: "stop"; handle: string } | { kind: "rm"; handle: string };

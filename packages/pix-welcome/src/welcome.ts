@@ -17,8 +17,8 @@
 import { join, resolve } from "node:path";
 import { confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { padIcon } from "@xynogen/pix-pretty/render-row";
 import { parseColor, type TextStyle, truncateToWidth } from "@xynogen/pix-pretty/tui";
-import { padIcon } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import { existsSync, readdirSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";

@@ -1,6 +1,7 @@
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { getErrorMessage, padIcon } from "@xynogen/pix-pretty/utils";
+import { padIcon } from "@xynogen/pix-pretty/render-row";
 import { abortable } from "@xynogen/pix-runtime/abort";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { AgentToolResult, ToolInfo } from "@xynogen/pix-runtime/host";
 import { requireFrom } from "@xynogen/pix-runtime/paths";
 import { currentPlatform } from "@xynogen/pix-runtime/platform";

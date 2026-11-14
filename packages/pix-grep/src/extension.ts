@@ -8,11 +8,8 @@ import {
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { Text } from "@xynogen/pix-pretty/tui";
 import type { OptionalFffModule } from "@xynogen/pix-pretty/types";
-import {
-	getErrorMessage,
-	linkedShortPath,
-	viewportTextConstructor,
-} from "@xynogen/pix-pretty/utils";
+import { linkedShortPath, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { mkdirSync } from "@xynogen/pix-runtime/fs";
 import {
 	createGrepToolDefinition,

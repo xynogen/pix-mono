@@ -2,7 +2,7 @@
 
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
 import { ownerRel } from "@xynogen/pix-runtime/paths";
 import type { GraphData } from "./analyzer.ts";

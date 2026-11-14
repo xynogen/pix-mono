@@ -1,7 +1,8 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { stripTerminalSequences } from "@earendil-works/pi-tui";
+import { rule } from "./frame.ts";
 import { icon } from "./icon-catalog.ts";
-import { rule, widgetActivityRow, widgetTitle } from "./utils.ts";
+import { widgetActivityRow, widgetTitle } from "./render-row.ts";
 
 export const TRANSIENT_ERROR_TTL_MS = 30_000;
 const WIDGET_KEY = "pix-transient-error";

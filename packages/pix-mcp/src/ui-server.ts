@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { CallToolRequest, CallToolResult } from "@modelcontextprotocol/client";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { randomUUID } from "@xynogen/pix-runtime/crypto";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { readFile } from "@xynogen/pix-runtime/fs";
 import {
 	createHttpServer,

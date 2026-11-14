@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/render-row";
 import {
 	createAgentControlTool,
 	createAgentInfoTool,

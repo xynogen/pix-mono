@@ -37,9 +37,10 @@ import {
 	showOverlay,
 } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { getErrorMessage, normalizeLineEndings } from "@xynogen/pix-pretty/utils";
+import { normalizeLineEndings } from "@xynogen/pix-pretty/text";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { getUnattendedMode, type UnattendedMode } from "@xynogen/pix-runtime";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { editSchema } from "@xynogen/pix-runtime/files";
 import type { AgentToolUpdateCallback, EventBus, ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";

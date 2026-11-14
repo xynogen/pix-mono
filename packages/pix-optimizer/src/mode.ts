@@ -9,7 +9,7 @@
  */
 
 import { showTransientError } from "@xynogen/pix-pretty/transient-error";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	ExtensionAPI,
 	ExtensionCommandContext,

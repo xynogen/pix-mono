@@ -18,7 +18,7 @@
 import { StringEnum } from "@xynogen/pix-data/ai";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { renderCall } from "@xynogen/pix-pretty/utils";
+import { renderCall } from "@xynogen/pix-pretty/render-row";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";

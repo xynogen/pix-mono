@@ -1,7 +1,7 @@
 import { isAbsolute, join, relative } from "node:path";
 import { confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { rm } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime/host";
 import { cacheDir, tempDir } from "@xynogen/pix-runtime/paths";

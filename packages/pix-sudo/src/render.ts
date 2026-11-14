@@ -2,18 +2,16 @@
 
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
-import { gatedCommandMeta, renderGatedCommandResult } from "@xynogen/pix-pretty/shell-tool";
-import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
+import { BODY_PAD, frameToolResult, reuseText } from "@xynogen/pix-pretty/frame";
 import {
-	BODY_PAD,
-	fillToolBackground,
-	frameToolResult,
-	getTextContent,
 	hideCollapsedToolCall,
 	renderTitle,
 	renderToolError,
-	reuseText,
-} from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
+import { gatedCommandMeta, renderGatedCommandResult } from "@xynogen/pix-pretty/shell-tool";
+import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
 import type { CollapseState } from "@xynogen/pix-runtime/collapse";
 import type { SudoResultDetails } from "./result.ts";
 

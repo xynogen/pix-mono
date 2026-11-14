@@ -4,7 +4,8 @@
  */
 
 import { basename, dirname, isAbsolute, resolve } from "node:path";
-import { getErrorMessage, renderCall } from "@xynogen/pix-pretty/utils";
+import { renderCall } from "@xynogen/pix-pretty/render-row";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { mkdir, writeFile } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";

@@ -2,8 +2,8 @@
 
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	findAvailableImportConfigs,
 	getConfigDiscoveryPaths,

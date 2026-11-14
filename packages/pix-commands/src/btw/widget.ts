@@ -7,9 +7,10 @@
  * linger, overflow) for a consistent look across pix's concurrent-work UIs.
  */
 
+import { rule } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { dotJoin, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/render-row";
 import { truncateToWidth } from "@xynogen/pix-pretty/tui";
-import { dotJoin, rule, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/utils";
 import {
 	type ContextUsageLike,
 	describeActivity,

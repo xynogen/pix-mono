@@ -1,8 +1,9 @@
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+import { padIcon } from "@xynogen/pix-pretty/render-row";
 import type { FgTheme } from "@xynogen/pix-pretty/types";
-import { getErrorMessage, padIcon } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import {
 	ensureCompatibilityImports,

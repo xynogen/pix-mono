@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { dirname, resolve } from "node:path";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { mkdirSync, readFileSync, writeFileSync } from "@xynogen/pix-runtime/fs";
 import { analyzeGraph, type GraphData, renderPatternReport } from "./analyzer.ts";
 

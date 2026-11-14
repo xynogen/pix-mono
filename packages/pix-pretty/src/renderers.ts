@@ -4,21 +4,13 @@ import { prettySection } from "@xynogen/pix-runtime/sections";
 
 import { FG_DIM, FG_LNUM, FG_RULE, RST } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
+import { BODY_PAD, type ExpandHintCtx, expandHint, rule } from "./frame.ts";
 import { hlBlock } from "./highlight.ts";
 import { dirIcon, fileColor, fileIcon } from "./icons.ts";
 import { lang } from "./lang.ts";
-import { type FadeTheme, fadeRowsOf } from "./text.ts";
+import { type FadeTheme, fadeRowsOf, normalizeLineEndings, pluralize } from "./text.ts";
 import type { FgTheme } from "./types.ts";
-import {
-	BODY_PAD,
-	type ExpandHintCtx,
-	expandHint,
-	lnum,
-	normalizeLineEndings,
-	pluralize,
-	rule,
-	termW,
-} from "./utils.ts";
+import { lnum, termW } from "./utils.ts";
 
 /** Layout controls for {@link renderFileContent}. */
 export interface RenderFileContentOptions {

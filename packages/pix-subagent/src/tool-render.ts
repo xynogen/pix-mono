@@ -1,13 +1,8 @@
+import { frameToolResult } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { COLLAPSED_TOOL_GLYPH, dotJoin, padIcon, renderRow } from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
 import { Text, wrapTextWithAnsi } from "@xynogen/pix-pretty/tui";
-import {
-	COLLAPSED_TOOL_GLYPH,
-	dotJoin,
-	frameToolResult,
-	getTextContent,
-	padIcon,
-	renderRow,
-} from "@xynogen/pix-pretty/utils";
 import {
 	formatMs,
 	formatSpeed,

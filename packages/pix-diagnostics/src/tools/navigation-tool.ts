@@ -13,14 +13,10 @@
 
 import { relative, resolve } from "node:path";
 import { StringEnum } from "@xynogen/pix-data/ai";
+import { frameToolResult } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { hideCollapsedToolCall, renderRow, renderTitle } from "@xynogen/pix-pretty/render-row";
 import { Text, type Theme } from "@xynogen/pix-pretty/tui";
-import {
-	frameToolResult,
-	hideCollapsedToolCall,
-	renderRow,
-	renderTitle,
-} from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
 import { defineTool } from "@xynogen/pix-runtime/host";

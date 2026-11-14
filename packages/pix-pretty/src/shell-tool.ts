@@ -10,9 +10,19 @@
 
 import type { AgentToolUpdateCallback, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { resolveBaseBackground } from "./ansi.ts";
 import { collapsedCommandRow, commandPreview } from "./command-preview.ts";
+import { BODY_PAD, bodyLine, frameToolResult, outputBodyRows, reuseText } from "./frame.ts";
+import {
+	dotJoin,
+	hideCollapsedToolCall,
+	renderRow,
+	renderTitle,
+	renderToolError,
+} from "./render-row.ts";
 import { renderBashOutput } from "./renderers.ts";
+import { getTextContent, isTextContent, setResultDetails } from "./result.ts";
 import type { ToolContext } from "./tools/context.ts";
 import type {
 	BashParams,
@@ -22,23 +32,7 @@ import type {
 	ToolFactory,
 	ToolResultLike,
 } from "./types.ts";
-import {
-	BODY_PAD,
-	bodyLine,
-	dotJoin,
-	fillToolBackground,
-	frameToolResult,
-	getErrorMessage,
-	getTextContent,
-	hideCollapsedToolCall,
-	isTextContent,
-	outputBodyRows,
-	renderRow,
-	renderTitle,
-	renderToolError,
-	reuseText,
-	setResultDetails,
-} from "./utils.ts";
+import { fillToolBackground } from "./utils.ts";
 import { formatDuration } from "./widget-format.ts";
 
 export interface ShellToolOptions {

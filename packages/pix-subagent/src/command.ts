@@ -5,7 +5,7 @@
  * result lands as a display-only card: it never steers or wakes the main agent.
  */
 
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime/host";
 import type { AgentManager } from "./agent-manager.ts";
 import { normalizeMaxTurns } from "./agent-runner.ts";

@@ -14,27 +14,29 @@
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { collapsedCommandRow } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
-import { renderFileContent } from "@xynogen/pix-pretty/renderers";
-import { Text, truncateToWidth } from "@xynogen/pix-pretty/tui";
-import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	BODY_PAD,
 	bodyLine,
-	dotJoin,
-	fillToolBackground,
 	frameToolResult,
-	getErrorMessage,
-	getTextContent,
-	hideCollapsedToolCall,
 	moreLines,
-	normalizeLineEndings,
+	reuseText,
+} from "@xynogen/pix-pretty/frame";
+import {
+	dotJoin,
+	hideCollapsedToolCall,
 	renderRow,
 	renderTitle,
 	renderToolError,
-	reuseText,
-} from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-pretty/render-row";
+import { renderFileContent } from "@xynogen/pix-pretty/renderers";
+import { getTextContent } from "@xynogen/pix-pretty/result";
+import { normalizeLineEndings } from "@xynogen/pix-pretty/text";
+import { Text, truncateToWidth } from "@xynogen/pix-pretty/tui";
+import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	type AgentToolUpdateCallback,
 	DEFAULT_MAX_BYTES,

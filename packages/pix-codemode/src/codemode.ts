@@ -1,8 +1,23 @@
 import { resolveBaseBackground } from "@xynogen/pix-pretty/ansi";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
+import { expandHint, frameToolResult, reuseText } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { type FadeTheme, fadePaint, fadeRowsOf, fadeText } from "@xynogen/pix-pretty/text";
+import {
+	dotJoin,
+	hideCollapsedToolCall,
+	padIcon,
+	renderCollapsed,
+	renderTitle,
+} from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
+import {
+	type FadeTheme,
+	fadePaint,
+	fadeRowsOf,
+	fadeText,
+	pluralize,
+} from "@xynogen/pix-pretty/text";
 import {
 	type Component,
 	Text,
@@ -10,21 +25,7 @@ import {
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
 import type { ThemeLike } from "@xynogen/pix-pretty/types";
-import {
-	dotJoin,
-	expandHint,
-	formatJson,
-	frameToolResult,
-	getTextContent,
-	hideCollapsedToolCall,
-	padIcon,
-	pluralize,
-	renderCollapsed,
-	renderTitle,
-	reuseText,
-	termW,
-	viewportTextConstructor,
-} from "@xynogen/pix-pretty/utils";
+import { formatJson, termW, viewportTextConstructor } from "@xynogen/pix-pretty/utils";
 import { formatMs } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { AgentToolResult, ToolDefinition } from "@xynogen/pix-runtime/host";

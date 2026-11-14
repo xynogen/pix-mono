@@ -12,18 +12,12 @@
  * shared-daemon reuse yet — those are the named next steps.
  */
 
+import { BODY_PAD, expandHint, frameToolResult } from "@xynogen/pix-pretty/frame";
+import { renderCall, renderDimPreview, renderRow } from "@xynogen/pix-pretty/render-row";
+import { makeActionResult } from "@xynogen/pix-pretty/result";
+import { pluralize } from "@xynogen/pix-pretty/text";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { Text } from "@xynogen/pix-pretty/tui";
-import {
-	BODY_PAD,
-	expandHint,
-	frameToolResult,
-	makeActionResult,
-	pluralize,
-	renderCall,
-	renderDimPreview,
-	renderRow,
-} from "@xynogen/pix-pretty/utils";
 import { abortable } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";

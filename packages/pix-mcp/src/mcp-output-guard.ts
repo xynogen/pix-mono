@@ -1,6 +1,7 @@
 import { join } from "node:path";
-import { getErrorMessage, humanSize } from "@xynogen/pix-pretty/utils";
+import { humanSize } from "@xynogen/pix-pretty/text";
 import { randomBytes } from "@xynogen/pix-runtime/crypto";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { mkdtemp, writeFile } from "@xynogen/pix-runtime/fs";
 import { truncateOutput } from "@xynogen/pix-runtime/output";
 import { tempDir } from "@xynogen/pix-runtime/paths";

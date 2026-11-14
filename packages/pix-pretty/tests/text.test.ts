@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { colorToRgb, rgbColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
-import { fadeLine, fadeRowsOf, fadeText, fadeTextRow } from "../src/text.ts";
+import { fadeLine, fadeRowsOf, fadeText, fadeTextRow, pluralize } from "../src/text.ts";
 
 describe("fadeTextRow", () => {
 	const theme = { fg: (key: string, text: string) => `<${key}>${text}</${key}>` };
@@ -177,5 +177,21 @@ describe("fadeLine", () => {
 		expect(levels).toEqual([0.25, 0.5, 0.75, 1]);
 		for (let width = 0; width < 25; width++)
 			expect(visibleWidth(fadeLine(line, width, (t) => t))).toBeLessThanOrEqual(width);
+	});
+});
+
+describe("pluralize", () => {
+	test("uses singular for count of 1", () => {
+		expect(pluralize(1, "match", "matches")).toBe("1 match");
+	});
+
+	test("uses plural for count != 1", () => {
+		expect(pluralize(0, "match", "matches")).toBe("0 matches");
+		expect(pluralize(2, "match", "matches")).toBe("2 matches");
+	});
+
+	test("defaults plural to noun + s", () => {
+		expect(pluralize(1, "line")).toBe("1 line");
+		expect(pluralize(3, "line")).toBe("3 lines");
 	});
 });

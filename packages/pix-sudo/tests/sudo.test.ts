@@ -120,7 +120,8 @@ mock.module("../src/lib.ts", () => {
 	};
 });
 
-import { COLLAPSED_TOOL_GLYPH, padIcon, termW } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, padIcon } from "@xynogen/pix-pretty/render-row";
+import { termW } from "@xynogen/pix-pretty/utils";
 import registerSudo from "../src/index.ts";
 
 // Minimal theme stub: returns text unchanged so assertions match plain strings.

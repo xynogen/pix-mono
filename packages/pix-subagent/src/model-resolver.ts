@@ -4,7 +4,7 @@
 
 import { formatCost, lookupBenchmark, lookupModelsDev } from "@xynogen/pix-data";
 import type { Api, Model } from "@xynogen/pix-data/ai";
-import { dotJoin } from "@xynogen/pix-pretty/utils";
+import { dotJoin } from "@xynogen/pix-pretty/render-row";
 
 export interface ModelEntry {
 	id: string;

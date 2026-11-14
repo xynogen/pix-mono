@@ -4,7 +4,9 @@
  * and add the text to the prompt editor. A live widget shows the input level.
  */
 
+import { rule } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/render-row";
 import { reportToolStatus } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import {
@@ -16,7 +18,7 @@ import {
 	parseKey,
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage, rule, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { rm } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { listMicrophones, type Recording, startRecording } from "./audio.ts";

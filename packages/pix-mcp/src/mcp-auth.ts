@@ -9,9 +9,9 @@
  */
 
 import { join } from "node:path";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { createHash } from "@xynogen/pix-runtime/crypto";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	existsSync,
 	mkdirSync,

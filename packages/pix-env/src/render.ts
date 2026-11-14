@@ -1,17 +1,12 @@
 /** render.ts — the `read_env` result card. */
 
+import { BODY_PAD, expandHint, frameToolResult } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { renderDimPreview, renderRow } from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
+import { pluralize } from "@xynogen/pix-pretty/text";
 import { Text, type ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	expandHint,
-	frameToolResult,
-	getTextContent,
-	pluralize,
-	renderDimPreview,
-	renderRow,
-} from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 
 export interface ReadEnvDetails {

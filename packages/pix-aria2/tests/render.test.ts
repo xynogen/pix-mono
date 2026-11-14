@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/render-row";
 import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerDownload from "../src/index.ts";

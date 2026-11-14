@@ -17,6 +17,7 @@ import {
 	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
@@ -25,7 +26,6 @@ import {
 	modalWidth,
 	terminalModalHeight,
 } from "./modal-frame.ts";
-import { getErrorMessage } from "./utils.ts";
 
 export interface ProviderPickerRow {
 	id: string;

@@ -11,7 +11,9 @@
  */
 
 import { basename, resolve } from "node:path";
+import { rule } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { dotJoin, widgetTitle } from "@xynogen/pix-pretty/render-row";
 import { fadeLine } from "@xynogen/pix-pretty/text";
 import {
 	mixColors,
@@ -19,7 +21,6 @@ import {
 	type Theme,
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
-import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { config } from "@xynogen/pix-runtime/config";
 import { readFileSync, realpathSync, statSync } from "@xynogen/pix-runtime/fs";

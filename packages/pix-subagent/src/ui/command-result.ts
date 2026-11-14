@@ -7,8 +7,9 @@
  */
 
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { clickToggle, dotJoin } from "@xynogen/pix-pretty/render-row";
+import { pluralize } from "@xynogen/pix-pretty/text";
 import { Box, getMarkdownTheme, Markdown, Spacer, Text } from "@xynogen/pix-pretty/tui";
-import { clickToggle, dotJoin, pluralize } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import type { AgentRecord, TerminalAgentStatus } from "../types.ts";

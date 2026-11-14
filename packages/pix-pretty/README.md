@@ -135,7 +135,10 @@ The package exposes its sub-modules via `exports`:
 @xynogen/pix-pretty/renderers
 @xynogen/pix-pretty/fff
 @xynogen/pix-pretty/types
-@xynogen/pix-pretty/utils
+@xynogen/pix-pretty/utils        (viewport text, terminal width, paths, JSON preview)
+@xynogen/pix-pretty/frame        (result frames, rules, body rows)
+@xynogen/pix-pretty/render-row   (call rows, collapsed rows, dim previews)
+@xynogen/pix-pretty/result       (tool result builders and readers)
 @xynogen/pix-pretty/text         (text fade helpers for previews and widgets)
 @xynogen/pix-pretty/widget-format
 @xynogen/pix-pretty/resize

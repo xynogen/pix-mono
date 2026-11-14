@@ -1,6 +1,6 @@
 // config-value.ts - Pi mcp.json `!command` config values.
 
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { runTool } from "@xynogen/pix-runtime/exec";
 import type { ServerEntry } from "./types.ts";
 import { interpolateEnvRecord } from "./utils.ts";

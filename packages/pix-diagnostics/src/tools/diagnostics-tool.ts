@@ -11,15 +11,9 @@
 
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { StringEnum } from "@xynogen/pix-data/ai";
+import { fadeRulePaint, frameToolResult, rule } from "@xynogen/pix-pretty/frame";
+import { hideCollapsedToolCall, renderRow, renderTitle } from "@xynogen/pix-pretty/render-row";
 import { Text, type Theme, wrapTextWithAnsi } from "@xynogen/pix-pretty/tui";
-import {
-	fadeRulePaint,
-	frameToolResult,
-	hideCollapsedToolCall,
-	renderRow,
-	renderTitle,
-	rule,
-} from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { defineTool } from "@xynogen/pix-runtime/host";
 import { truncateOutput } from "@xynogen/pix-runtime/output";

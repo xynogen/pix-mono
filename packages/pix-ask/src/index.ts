@@ -1,15 +1,15 @@
+import { frameToolResult } from "@xynogen/pix-pretty/frame";
 import { createOverlayLifecycle } from "@xynogen/pix-pretty/overlay-lifecycle";
-import { Text } from "@xynogen/pix-pretty/tui";
-import { withUserPrompt } from "@xynogen/pix-pretty/user-prompt";
 import {
 	dotJoin,
-	frameToolResult,
-	getTextContent,
 	hideCollapsedToolCall,
-	pluralize,
 	renderRow,
 	renderTitle,
-} from "@xynogen/pix-pretty/utils";
+} from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
+import { pluralize } from "@xynogen/pix-pretty/text";
+import { Text } from "@xynogen/pix-pretty/tui";
+import { withUserPrompt } from "@xynogen/pix-pretty/user-prompt";
 import { onAbort } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";

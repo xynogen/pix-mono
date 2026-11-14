@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { rgbColor } from "@earendil-works/pi-tui";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/render-row";
 import registerRunner from "../src/index.ts";
 
 type Component = { render(width: number): string[] };

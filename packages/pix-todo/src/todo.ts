@@ -9,17 +9,13 @@
  * checklist is seeded by the model via the tool's `set` action.
  */
 
+import { frameToolResult } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { dotJoin, renderCall, renderRow } from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
 import { Text, type ToolRenderResultOptions } from "@xynogen/pix-pretty/tui";
 import type { RenderContextLike, ThemeLike, ToolResultLike } from "@xynogen/pix-pretty/types";
-import {
-	dotJoin,
-	frameToolResult,
-	getTextContent,
-	renderCall,
-	renderRow,
-	termW,
-} from "@xynogen/pix-pretty/utils";
+import { termW } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";

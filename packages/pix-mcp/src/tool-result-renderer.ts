@@ -1,17 +1,10 @@
 import { MAX_PREVIEW_LINES } from "@xynogen/pix-pretty/config";
+import { BODY_PAD, expandHint, frameToolResult } from "@xynogen/pix-pretty/frame";
 import { hlBlock } from "@xynogen/pix-pretty/highlight";
-import { type FadeTheme, fadeRowsOf } from "@xynogen/pix-pretty/text";
+import { renderCollapsed, renderDimPreview, renderTitle } from "@xynogen/pix-pretty/render-row";
+import { type FadeTheme, fadeRowsOf, pluralize } from "@xynogen/pix-pretty/text";
 import { Text, type ToolRenderResultOptions, truncateToWidth } from "@xynogen/pix-pretty/tui";
-import {
-	BODY_PAD,
-	expandHint,
-	formatJson,
-	frameToolResult,
-	pluralize,
-	renderCollapsed,
-	renderDimPreview,
-	renderTitle,
-} from "@xynogen/pix-pretty/utils";
+import { formatJson } from "@xynogen/pix-pretty/utils";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { AgentToolResult } from "@xynogen/pix-runtime/host";
 

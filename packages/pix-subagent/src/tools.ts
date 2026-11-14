@@ -20,17 +20,13 @@
 
 import { lookupBenchmark } from "@xynogen/pix-data";
 import { commandPreview } from "@xynogen/pix-pretty/command-preview";
+import { frameToolResult } from "@xynogen/pix-pretty/frame";
+import { hideCollapsedToolCall, renderCall, renderTitle } from "@xynogen/pix-pretty/render-row";
+import { getTextContent } from "@xynogen/pix-pretty/result";
 import { Text, truncateToWidth } from "@xynogen/pix-pretty/tui";
-import {
-	frameToolResult,
-	getErrorMessage,
-	getTextContent,
-	hideCollapsedToolCall,
-	renderCall,
-	renderTitle,
-} from "@xynogen/pix-pretty/utils";
 import { describeActivity, formatContext } from "@xynogen/pix-pretty/widget-format";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { defineTool } from "@xynogen/pix-runtime/host";
 import { agentDir, projectRel } from "@xynogen/pix-runtime/paths";
 import { Type } from "typebox";

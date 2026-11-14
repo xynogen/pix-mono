@@ -2,9 +2,9 @@
 
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { getUnattendedMode } from "@xynogen/pix-runtime";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { existsSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { validateOutputPath } from "@xynogen/pix-runtime/safe-path";

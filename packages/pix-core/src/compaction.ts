@@ -32,8 +32,8 @@ import {
 	retryAssistantCall,
 	type ThinkingLevel,
 } from "@xynogen/pix-data/ai";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { config } from "@xynogen/pix-runtime/config";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	type ContextEditableContent,
 	convertToLlm,

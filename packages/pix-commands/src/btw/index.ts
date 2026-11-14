@@ -1,7 +1,7 @@
 import { Text, type Theme, type TUI } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { getSessionContextUsage } from "@xynogen/pix-pretty/widget-format";
 import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	AgentSession,
 	ExtensionAPI,

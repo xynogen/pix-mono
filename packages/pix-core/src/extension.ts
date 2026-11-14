@@ -14,7 +14,7 @@
  * reported on session_start instead of stopping Pi from starting.
  */
 
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";

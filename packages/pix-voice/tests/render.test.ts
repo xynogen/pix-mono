@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { COLLAPSED_TOOL_GLYPH, renderCall, renderTitle } from "@xynogen/pix-pretty/utils";
+import { COLLAPSED_TOOL_GLYPH, renderCall, renderTitle } from "@xynogen/pix-pretty/render-row";
 import { makeRenderResult } from "../src/render.ts";
 
 const theme = {

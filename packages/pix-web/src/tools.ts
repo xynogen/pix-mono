@@ -1,5 +1,5 @@
 import { StringEnum } from "@xynogen/pix-data/ai";
-import { renderCall } from "@xynogen/pix-pretty/utils";
+import { renderCall } from "@xynogen/pix-pretty/render-row";
 import { defineTool } from "@xynogen/pix-runtime/host";
 import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";

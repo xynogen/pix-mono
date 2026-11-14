@@ -1,8 +1,9 @@
 import { Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { type ExpandHintCtx, expandHint } from "./frame.ts";
 import { hlBlock } from "./highlight.ts";
+import type { renderRow } from "./render-row.ts";
 import { fadePaint, fadeRowsOf, fadeText } from "./text.ts";
 import type { ThemeLike } from "./types.ts";
-import { type ExpandHintCtx, expandHint, type renderRow } from "./utils.ts";
 
 export function commandPreview(
 	header: string,

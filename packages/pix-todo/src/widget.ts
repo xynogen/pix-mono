@@ -1,7 +1,8 @@
+import { rule } from "@xynogen/pix-pretty/frame";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { dotJoin, widgetTitle } from "@xynogen/pix-pretty/render-row";
 import { fadeLine, fadeText } from "@xynogen/pix-pretty/text";
 import { mixColors, type Theme, visibleWidth } from "@xynogen/pix-pretty/tui";
-import { dotJoin, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import type { TodoItem } from "./todo.ts";
 
 export function renderTodoWidget(

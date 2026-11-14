@@ -12,6 +12,15 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import { fadeRulePaint } from "@xynogen/pix-pretty/frame";
+import { renderDimPreview, renderTitle } from "@xynogen/pix-pretty/render-row";
+import {
+	getTextContent,
+	isTextContent,
+	makeTextResult,
+	setResultDetails,
+} from "@xynogen/pix-pretty/result";
+import { appendNotices, normalizeLineEndings, pluralize } from "@xynogen/pix-pretty/text";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	GrepParams,
@@ -20,20 +29,8 @@ import type {
 	ToolFactory,
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
-import {
-	appendNotices,
-	fadeRulePaint,
-	fillToolBackground,
-	getErrorMessage,
-	getTextContent,
-	isTextContent,
-	makeTextResult,
-	normalizeLineEndings,
-	pluralize,
-	renderDimPreview,
-	renderTitle,
-	setResultDetails,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { readFile, stat } from "@xynogen/pix-runtime/fs";
 import { anchor, decodeLines, initHashline, type SourceLine } from "@xynogen/pix-runtime/hashline";
 import type {

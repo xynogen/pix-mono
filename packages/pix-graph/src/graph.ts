@@ -15,8 +15,8 @@
 
 import { dirname, join, resolve } from "node:path";
 import { grammarConsent } from "@xynogen/pix-pretty/grammar-consent";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	existsSync,
 	mkdirSync,

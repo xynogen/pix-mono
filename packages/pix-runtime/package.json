@@ -28,6 +28,7 @@
 		"./collapse": "./src/collapse.ts",
 		"./config": "./src/runtime.ts",
 		"./crypto": "./src/crypto.ts",
+		"./errors": "./src/errors.ts",
 		"./exec": "./src/exec.ts",
 		"./files": "./src/files.ts",
 		"./fs": "./src/fs.ts",

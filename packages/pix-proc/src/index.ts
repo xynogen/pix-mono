@@ -12,12 +12,15 @@
  * pix-gate for command gating on proc, same as bash.
  */
 
+import { rule } from "@xynogen/pix-pretty/frame";
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+import { widgetTitle } from "@xynogen/pix-pretty/render-row";
+import { makeActionResult } from "@xynogen/pix-pretty/result";
 import { truncateToWidth, visibleWidth } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage, makeActionResult, rule, widgetTitle } from "@xynogen/pix-pretty/utils";
 import { collapseDelayMs } from "@xynogen/pix-runtime/collapse";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { type FSWatcher, watch } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";

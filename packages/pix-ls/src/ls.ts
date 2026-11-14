@@ -11,19 +11,14 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
+import { BODY_PAD, fadeRulePaint, ruleFrame } from "@xynogen/pix-pretty/frame";
+import { renderTitle } from "@xynogen/pix-pretty/render-row";
 import { renderTree } from "@xynogen/pix-pretty/renderers";
+import { getTextContent, setResultDetails } from "@xynogen/pix-pretty/result";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type { LsParams, PiPrettyApi, ToolFactory, ToolResultLike } from "@xynogen/pix-pretty/types";
-import {
-	BODY_PAD,
-	fadeRulePaint,
-	fillToolBackground,
-	getErrorMessage,
-	getTextContent,
-	renderTitle,
-	ruleFrame,
-	setResultDetails,
-} from "@xynogen/pix-pretty/utils";
+import { fillToolBackground } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,

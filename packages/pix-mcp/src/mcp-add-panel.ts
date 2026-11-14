@@ -7,7 +7,7 @@ import {
 	terminalModalHeight,
 } from "@xynogen/pix-pretty/modal-frame";
 import { matchesKey, visibleWidth } from "@xynogen/pix-pretty/tui";
-import { getErrorMessage } from "@xynogen/pix-pretty/utils";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { AddServerScope, AddServerType, ConfigWritePreview } from "./config.ts";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
 import { printableChar, sanitizeDisplayText, sanitizeRowContent } from "./panel-text.ts";
