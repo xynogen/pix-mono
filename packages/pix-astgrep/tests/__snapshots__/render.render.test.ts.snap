@@ -1,0 +1,3 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`astResult collapses a finished result to one row with the line count 1`] = `"✓  ast · search · 2 lines"`;
