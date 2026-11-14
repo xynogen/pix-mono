@@ -1,13 +1,7 @@
 import {
-	BATCH_MAX_BYTES,
-	type BatchSection,
-	capSections,
-	formatBatchIndex,
 	formatCallTargets,
-	joinSectionBodies,
 	resolveBatchStrings,
-	runBatch,
-	sliceBatchTargets,
+	runBatchTool,
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
@@ -18,7 +12,6 @@ import { getTextContent, setResultDetails } from "@xynogen/pix-pretty/result";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type { LsParams, PiPrettyApi, ToolFactory, ToolResultLike } from "@xynogen/pix-pretty/types";
 import { fillToolBackground } from "@xynogen/pix-pretty/utils";
-import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,
@@ -85,59 +78,37 @@ export function registerLsTool(
 				return result;
 			};
 
-			const { targets, omitted } = sliceBatchTargets(
-				resolveBatchStrings(params.path, params.paths),
-			);
-
-			// Single directory (or default cwd) → preserve the original single result shape.
-			if (targets.length <= 1 && omitted === 0) {
-				const fp = targets[0] ?? params.path ?? cwd;
-				try {
-					return await runOne(targets[0] ?? params.path ?? cwd, tid);
-				} catch (error) {
-					const text = getErrorMessage(error);
-					if (sig?.aborted || /aborted/i.test(text)) throw error;
-					return {
-						content: [{ type: "text" as const, text }],
-						details: { _type: "lsResult" as const, text, path: fp, entryCount: 0 },
-						isError: true,
-					};
-				}
-			}
-
-			// Batch: list every directory in parallel, cap the combined output.
-			const settled = await runBatch(
-				targets,
-				(path, i) => runOne(path, `${tid}:${i}`),
-				sig,
-				getErrorMessage,
-			);
-			const sections: BatchSection[] = settled.map((entry) => {
-				if ("error" in entry) {
-					return { id: entry.target, body: "", units: 0, nouns: ENTRY_NOUNS, error: entry.error };
-				}
-				const result: ToolResultLike = entry.result;
-				const details = result.details as { _type?: string; text?: string; entryCount?: number };
-				const body = details?._type === "lsResult" ? (details.text ?? "") : getTextContent(result);
-				const units =
-					details?._type === "lsResult"
-						? (details.entryCount ?? 0)
-						: body.trim().split("\n").filter(Boolean).length;
-				return { id: entry.target, body, units, nouns: ENTRY_NOUNS };
+			// No path: list cwd with the single-result shape.
+			const targets = resolveBatchStrings(params.path, params.paths);
+			const outcome = await runBatchTool<ToolResultLike>({
+				targets: targets.length ? targets : [cwd],
+				signal: sig,
+				nouns: ENTRY_NOUNS,
+				maxUnits: params.limit,
+				run: (path, i) => runOne(path, i === undefined ? tid : `${tid}:${i}`),
+				singleError: (path, text) => ({
+					content: [{ type: "text" as const, text }],
+					details: { _type: "lsResult" as const, text, path, entryCount: 0 },
+					isError: true,
+				}),
+				section: (result) => {
+					const details = result.details as { _type?: string; text?: string; entryCount?: number };
+					if (details?._type === "lsResult")
+						return { body: details.text ?? "", units: details.entryCount ?? 0 };
+					const body = getTextContent(result);
+					return { body, units: body.trim().split("\n").filter(Boolean).length };
+				},
 			});
-			const { text } = capSections(sections, BATCH_MAX_BYTES, params.limit, omitted);
-			const entryCount = sections.reduce((sum, s) => sum + (s.error ? 0 : s.units), 0);
-			const full = [formatBatchIndex(sections, omitted), joinSectionBodies(sections)]
-				.filter(Boolean)
-				.join("\n\n");
+			if ("single" in outcome) return outcome.single;
+			const { text, full, units } = outcome.batch;
 			return {
 				content: [{ type: "text" as const, text }],
 				details: {
 					_type: "lsResult" as const,
 					text: full,
-					path: targets.join(", "),
-					paths: targets,
-					entryCount,
+					path: outcome.batch.targets.join(", "),
+					paths: outcome.batch.targets,
+					entryCount: units,
 				},
 			};
 		},

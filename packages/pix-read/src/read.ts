@@ -27,6 +27,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import { fillToolBackground } from "@xynogen/pix-pretty/utils";
+import { isAbortError } from "@xynogen/pix-runtime/abort";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { DEFAULT_READ_LIMIT, readText } from "@xynogen/pix-runtime/files";
 import { access, constants, readdir, readFile } from "@xynogen/pix-runtime/fs";
@@ -239,7 +240,7 @@ export function registerReadTool(
 					return await runOne(fp, tid);
 				} catch (error) {
 					const raw = getErrorMessage(error);
-					if (sig?.aborted || /aborted/i.test(raw)) throw error;
+					if (isAbortError(error, sig)) throw error;
 					const text = await withHint(raw, fp);
 					return {
 						content: [{ type: "text" as const, text }],

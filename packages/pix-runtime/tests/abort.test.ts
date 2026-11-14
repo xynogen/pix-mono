@@ -1,5 +1,14 @@
 import { expect, test } from "bun:test";
-import { abortable, cancellationCheckpoint, onAbort } from "../src/abort.ts";
+import { abortable, cancellationCheckpoint, isAbortError, onAbort } from "../src/abort.ts";
+
+test("isAbortError matches a fired signal or an aborted message only", () => {
+	const fired = new AbortController();
+	fired.abort();
+	expect(isAbortError(new Error("disk full"), fired.signal)).toBe(true);
+	expect(isAbortError(new Error("Operation aborted"))).toBe(true);
+	expect(isAbortError("Aborted by user", new AbortController().signal)).toBe(true);
+	expect(isAbortError(new Error("disk full"), new AbortController().signal)).toBe(false);
+});
 
 test("onAbort handles existing cancellation and detaches completed work", () => {
 	const cancelled = AbortSignal.abort();

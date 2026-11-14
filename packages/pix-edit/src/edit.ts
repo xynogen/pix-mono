@@ -22,6 +22,7 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import { fillToolBackground, terminalWidth } from "@xynogen/pix-pretty/utils";
+import { isAbortError } from "@xynogen/pix-runtime/abort";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import {
 	type EditInput,
@@ -146,7 +147,7 @@ export function registerEditTool(
 				};
 			} catch (error) {
 				const text = getErrorMessage(error);
-				if (sig?.aborted || /aborted/i.test(text)) throw error;
+				if (isAbortError(error, sig)) throw error;
 				return {
 					content: [{ type: "text" as const, text }],
 					details: {

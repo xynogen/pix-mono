@@ -1,14 +1,8 @@
 import { join, resolve } from "node:path";
 import {
-	BATCH_MAX_BYTES,
-	type BatchSection,
-	capSections,
-	formatBatchIndex,
 	formatCallTargets,
-	joinSectionBodies,
 	resolveBatchStrings,
-	runBatch,
-	sliceBatchTargets,
+	runBatchTool,
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
@@ -30,7 +24,6 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import { fillToolBackground } from "@xynogen/pix-pretty/utils";
-import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { readFile, stat } from "@xynogen/pix-runtime/fs";
 import { anchor, decodeLines, initHashline, type SourceLine } from "@xynogen/pix-runtime/hashline";
 import type {
@@ -236,9 +229,7 @@ export function registerGrepTool(
 				return result as ToolResultLike<GrepResultDetails>;
 			};
 
-			const { targets, omitted } = sliceBatchTargets(
-				resolveBatchStrings(params.pattern, params.patterns),
-			);
+			const targets = resolveBatchStrings(params.pattern, params.patterns);
 			if (targets.length === 0) {
 				return makeTextResult<GrepResultDetails>("pattern or patterns required", {
 					_type: "grepResult",
@@ -249,63 +240,42 @@ export function registerGrepTool(
 				});
 			}
 
-			// Single pattern → preserve the original single-search result shape.
-			if (targets.length === 1 && omitted === 0) {
-				try {
-					return await runOne(targets[0] ?? "", tid);
-				} catch (error) {
-					const text = getErrorMessage(error);
-					if (sig?.aborted || /aborted/i.test(text)) throw error;
-					return {
-						content: [{ type: "text" as const, text }],
-						details: {
-							_type: "grepResult" as const,
-							text,
-							pattern: params.pattern ?? "",
-							path: params.path,
-							matchCount: 0,
-							literal: params.literal,
-							ignoreCase: params.ignoreCase,
-						},
-						isError: true,
-					};
-				}
-			}
-
-			// Batch: search every pattern in parallel, cap the combined output.
-			const settled = await runBatch(
+			const outcome = await runBatchTool<ToolResultLike>({
 				targets,
-				(pattern, i) => runOne(pattern, `${tid}:${i}`),
-				sig,
-				getErrorMessage,
-			);
-			const sections: BatchSection[] = settled.map((entry) => {
-				if ("error" in entry) {
-					return { id: entry.target, body: "", units: 0, nouns: MATCH_NOUNS, error: entry.error };
-				}
-				const details = entry.result.details;
-				const body = details?._type === "grepResult" ? details.text : getTextContent(entry.result);
-				const units =
-					details?._type === "grepResult" ? details.matchCount : countRipgrepMatches(body);
-				return { id: entry.target, body, units, nouns: MATCH_NOUNS };
+				signal: sig,
+				nouns: MATCH_NOUNS,
+				maxUnits: params.limit ?? DEFAULT_GREP_LIMIT,
+				run: (pattern, i) => runOne(pattern, i === undefined ? tid : `${tid}:${i}`),
+				singleError: (_pattern, text) => ({
+					content: [{ type: "text" as const, text }],
+					details: {
+						_type: "grepResult" as const,
+						text,
+						pattern: params.pattern ?? "",
+						path: params.path,
+						matchCount: 0,
+						literal: params.literal,
+						ignoreCase: params.ignoreCase,
+					},
+					isError: true,
+				}),
+				section: (result) => {
+					const details = result.details as GrepResultDetails | undefined;
+					if (details?._type === "grepResult")
+						return { body: details.text, units: details.matchCount };
+					const body = getTextContent(result);
+					return { body, units: countRipgrepMatches(body) };
+				},
 			});
-			const { text } = capSections(
-				sections,
-				BATCH_MAX_BYTES,
-				params.limit ?? DEFAULT_GREP_LIMIT,
-				omitted,
-			);
-			const matchCount = sections.reduce((sum, s) => sum + (s.error ? 0 : s.units), 0);
-			const full = [formatBatchIndex(sections, omitted), joinSectionBodies(sections)]
-				.filter(Boolean)
-				.join("\n\n");
+			if ("single" in outcome) return outcome.single;
+			const { text, full, units } = outcome.batch;
 			return makeTextResult<GrepResultDetails>(text, {
 				_type: "grepResult",
 				text: full,
-				pattern: targets.join(", "),
-				patterns: targets,
+				pattern: outcome.batch.targets.join(", "),
+				patterns: outcome.batch.targets,
 				path: params.path,
-				matchCount,
+				matchCount: units,
 			});
 		},
 

@@ -1,5 +1,7 @@
 /** Shared batching for read/grep/find/ls — N known targets, one tool result. */
 
+import { isAbortError } from "@xynogen/pix-runtime/abort";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 
 export const BATCH_MAX_TARGETS = 20;
@@ -188,4 +190,59 @@ export function formatCallTargets(ids: string[], max = 3, noun = "files"): strin
 	if (ids.length === 0) return "";
 	if (ids.length <= max) return ids.join(", ");
 	return `${ids.length} ${noun}`;
+}
+
+export interface BatchToolOptions<R> {
+	/** Targets already resolved from the singular and plural params. */
+	targets: string[];
+	signal: AbortSignal | undefined;
+	nouns: readonly [string, string];
+	maxUnits?: number;
+	/** `index` is undefined for a single target, so it keeps the caller's call id. */
+	run: (target: string, index?: number) => Promise<R>;
+	/** Result when one target fails outside a batch: keeps the single-call shape. */
+	singleError: (target: string, message: string) => R;
+	/** Body and unit count of one successful target. */
+	section: (result: R) => { body: string; units: number };
+}
+
+export interface BatchToolResult {
+	/** Capped model-facing text. */
+	text: string;
+	/** Uncapped index + every body, for the expanded view. */
+	full: string;
+	targets: string[];
+	/** Units summed over successful targets. */
+	units: number;
+}
+
+/**
+ * Run a multi-target tool call. One target returns its own result (`R`), so the single-call
+ * shape stays the same. Two or more run in parallel and return capped batch text.
+ */
+export async function runBatchTool<R>(
+	opts: BatchToolOptions<R>,
+): Promise<{ single: R } | { batch: BatchToolResult }> {
+	const { targets, omitted } = sliceBatchTargets(opts.targets);
+	if (targets.length === 1 && omitted === 0) {
+		const target = targets[0] ?? "";
+		try {
+			return { single: await opts.run(target) };
+		} catch (error) {
+			if (isAbortError(error, opts.signal)) throw error;
+			return { single: opts.singleError(target, getErrorMessage(error)) };
+		}
+	}
+	const settled = await runBatch(targets, opts.run, opts.signal, getErrorMessage);
+	const sections: BatchSection[] = settled.map((entry) =>
+		"error" in entry
+			? { id: entry.target, body: "", units: 0, nouns: opts.nouns, error: entry.error }
+			: { id: entry.target, nouns: opts.nouns, ...opts.section(entry.result) },
+	);
+	const { text } = capSections(sections, BATCH_MAX_BYTES, opts.maxUnits, omitted);
+	const full = [formatBatchIndex(sections, omitted), joinSectionBodies(sections)]
+		.filter(Boolean)
+		.join("\n\n");
+	const units = sections.reduce((sum, s) => sum + (s.error ? 0 : s.units), 0);
+	return { batch: { text, full, targets, units } };
 }

@@ -6,9 +6,64 @@ import {
 	formatCallTargets,
 	resolveBatchStrings,
 	runBatch,
+	runBatchTool,
 	sliceBatchTargets,
 	withOptionalStringArray,
 } from "../src/batch";
+
+describe("runBatchTool", () => {
+	const base = {
+		signal: undefined,
+		nouns: ["match", "matches"] as const,
+		singleError: (target: string, message: string) => `${target}: ${message}`,
+		section: (result: string) => ({ body: result, units: result.split("\n").length }),
+	};
+
+	it("keeps the single shape, the caller's call id, and maps a single failure", async () => {
+		const seen: (number | undefined)[] = [];
+		const ok = await runBatchTool({
+			...base,
+			targets: ["a"],
+			run: async (t, i) => {
+				seen.push(i);
+				return t;
+			},
+		});
+		expect(ok).toEqual({ single: "a" });
+		expect(seen).toEqual([undefined]);
+		const failed = await runBatchTool({
+			...base,
+			targets: ["a"],
+			run: () => Promise.reject(new Error("boom")),
+		});
+		expect(failed).toEqual({ single: "a: boom" });
+	});
+
+	it("rethrows a single abort", async () => {
+		const controller = new AbortController();
+		controller.abort();
+		const run = () => Promise.reject(new Error("disk full"));
+		await expect(
+			runBatchTool({ ...base, signal: controller.signal, targets: ["a"], run }),
+		).rejects.toThrow("disk full");
+	});
+
+	it("batches several targets, sums units of successes, and keeps errors in the index", async () => {
+		const out = await runBatchTool({
+			...base,
+			targets: ["a", "b", "c"],
+			run: async (t) => {
+				if (t === "b") throw new Error("bad");
+				return `${t}1\n${t}2`;
+			},
+		});
+		if (!("batch" in out)) throw new Error("expected a batch");
+		expect(out.batch.units).toBe(4);
+		expect(out.batch.targets).toEqual(["a", "b", "c"]);
+		expect(out.batch.text).toStartWith("a 2 matches · b error · c 2 matches");
+		expect(out.batch.full).toContain("===== b =====\nbad");
+	});
+});
 
 describe("runBatch", () => {
 	it("keeps order, isolates one failure, and describes it with its target", async () => {

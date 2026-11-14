@@ -1,4 +1,5 @@
 import { setImmediate } from "node:timers/promises";
+import { getErrorMessage } from "./errors.ts";
 
 /** Subscribe once, including signals aborted before subscription. Always release on completion. */
 export function onAbort(signal: AbortSignal | undefined, cancel: () => void): () => void {
@@ -30,4 +31,10 @@ export async function cancellationCheckpoint(signal?: AbortSignal): Promise<void
 	signal?.throwIfAborted();
 	await setImmediate(undefined, { signal });
 	signal?.throwIfAborted();
+}
+
+/** True when `signal` fired or `error` reads as an abort (hosts reject with plain "aborted" errors). */
+export function isAbortError(error: unknown, signal?: AbortSignal): boolean {
+	if (signal?.aborted) return true;
+	return /aborted/i.test(getErrorMessage(error));
 }
