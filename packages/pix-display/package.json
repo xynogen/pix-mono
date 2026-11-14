@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-display",
-	"version": "0.3.9",
+	"version": "0.3.10",
 	"description": "Pi core extension — inline chips, thinking blocks, and framed code rendering",
 	"type": "module",
 	"main": "src/index.ts",
@@ -38,8 +38,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^2.1.0",
-		"@xynogen/pix-runtime": "^0.21.0"
+		"@xynogen/pix-pretty": "^3.0.0",
+		"@xynogen/pix-runtime": "^0.22.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",

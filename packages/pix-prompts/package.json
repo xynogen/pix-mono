@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-prompts",
-	"version": "0.5.19",
+	"version": "0.5.20",
 	"description": "Pi extension — system-prompt injection (SOP.md + repo directives)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -46,6 +46,6 @@
 		"@earendil-works/pi-coding-agent": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.21.0"
+		"@xynogen/pix-runtime": "^0.22.0"
 	}
 }

@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-graph",
-	"version": "0.5.1",
+	"version": "0.5.2",
 	"description": "Pi extension — native code knowledge graph (TS/JS exact, other languages via ast-grep)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -57,8 +57,8 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^2.1.0",
-		"@xynogen/pix-runtime": "^0.21.0",
+		"@xynogen/pix-pretty": "^3.0.0",
+		"@xynogen/pix-runtime": "^0.22.0",
 		"typescript": "^5.7.0",
 		"@ast-grep/napi": "^0.45.0"
 	}
