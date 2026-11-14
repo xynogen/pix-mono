@@ -1012,13 +1012,6 @@ export function appendNotices(text: string, notices: string[]): string {
 	return notices.length ? `${text}\n\n[${notices.join(". ")}]` : text;
 }
 
-export function countRipgrepMatches(text: string): number {
-	return text
-		.trim()
-		.split("\n")
-		.filter((line) => /^.+?[:-]\d+[:-]/.test(line)).length;
-}
-
 export function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }

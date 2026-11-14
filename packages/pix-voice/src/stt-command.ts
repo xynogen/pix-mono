@@ -17,9 +17,9 @@ import {
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
 import { getErrorMessage, rule, widgetActivityRow, widgetTitle } from "@xynogen/pix-pretty/utils";
-import { listMicrophones, type Recording, startRecording } from "@xynogen/pix-runtime/audio";
 import { rm } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
+import { listMicrophones, type Recording, startRecording } from "./audio.ts";
 import { cleanTranscript, cleanupModel, hasSlip } from "./cleanup.ts";
 import { voiceConfig } from "./config.ts";
 import { transcribeAudioFile } from "./transcribe.ts";

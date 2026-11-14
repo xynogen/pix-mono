@@ -8,14 +8,20 @@
  * built-in PowerShell MediaPlayer. No other audio binary exists.
  */
 
-import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { type EnsureOptions, ensureTool, type ToolStatus } from "./binaries/ensure.ts";
-import { BinaryMissingError, lookupTool, resolveTool } from "./binaries/resolve.ts";
-import { runTool, runToolSync, spawnTool } from "./exec.ts";
-import type { OsOptions } from "./os.ts";
-import { tempDir } from "./paths.ts";
-import { currentPlatform, type HostPlatform } from "./platform.ts";
+import {
+	BinaryMissingError,
+	type EnsureOptions,
+	ensureTool,
+	lookupTool,
+	resolveTool,
+	type ToolStatus,
+} from "@xynogen/pix-runtime/binaries";
+import { randomUUID } from "@xynogen/pix-runtime/crypto";
+import { runTool, runToolSync, spawnTool } from "@xynogen/pix-runtime/exec";
+import type { OsOptions } from "@xynogen/pix-runtime/os";
+import { tempDir } from "@xynogen/pix-runtime/paths";
+import { currentPlatform, type HostPlatform } from "@xynogen/pix-runtime/platform";
 
 export interface Microphone {
 	/** Device id for {@link startRecording}. "default" follows the system default. */

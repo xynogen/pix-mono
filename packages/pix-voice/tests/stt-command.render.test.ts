@@ -7,9 +7,9 @@ import {
 	stripTerminalSequences,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
-import * as audio from "@xynogen/pix-runtime/audio";
 import { voiceSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
+import * as audio from "../src/audio.ts";
 
 // ponytail: intercept audio/discovery before import. Never open a device, save settings, or call a provider.
 async function captureStt(onStage = (_stage: string) => {}) {

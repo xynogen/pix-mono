@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { HostPlatform } from "@xynogen/pix-runtime/platform";
 import {
 	microphoneInput,
 	microphoneLabel,
@@ -9,7 +10,6 @@ import {
 	playCommand,
 	recordArgs,
 } from "../src/audio.ts";
-import type { HostPlatform } from "../src/platform.ts";
 
 const linux: HostPlatform = {
 	os: "linux",

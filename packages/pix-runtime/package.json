@@ -24,7 +24,6 @@
 		"./action-tool": "./src/action-tool.ts",
 		"./ast": "./src/ast/index.ts",
 		"./atomic-write": "./src/atomic-write.ts",
-		"./audio": "./src/audio.ts",
 		"./binaries": "./src/binaries/index.ts",
 		"./collapse": "./src/collapse.ts",
 		"./config": "./src/runtime.ts",

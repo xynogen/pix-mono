@@ -12,7 +12,6 @@ import {
 	withOptionalStringArray,
 } from "@xynogen/pix-pretty/batch";
 import type { ToolContext } from "@xynogen/pix-pretty/context";
-import { fffFormatGrepText } from "@xynogen/pix-pretty/fff";
 import { toolCallRenderer, toolCardRenderer } from "@xynogen/pix-pretty/tool-card";
 import type {
 	GrepParams,
@@ -23,7 +22,6 @@ import type {
 } from "@xynogen/pix-pretty/types";
 import {
 	appendNotices,
-	countRipgrepMatches,
 	fadeRulePaint,
 	fillToolBackground,
 	getErrorMessage,
@@ -43,6 +41,7 @@ import type {
 	ExtensionContext,
 	GrepToolInput,
 } from "@xynogen/pix-runtime/host";
+import { countRipgrepMatches, fffFormatGrepText } from "./lib.ts";
 
 export const DEFAULT_GREP_LIMIT = 30;
 

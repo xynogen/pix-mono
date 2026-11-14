@@ -194,22 +194,6 @@ session, pointing at the `/pix` Binaries tab.
 `scripts/binaries.test.ts` fails CI when a package starts a catalogued binary
 by bare name.
 
-### Audio — `./audio`
-
-One job per function. Callers never see a program name or an OS branch.
-ffmpeg does every job it can on Linux (PulseAudio/PipeWire), macOS
-(AVFoundation/AudioToolbox) and Windows (DirectShow). ffmpeg has no audio
-output on Windows, so playback there uses the built-in PowerShell MediaPlayer.
-
-```ts
-import { listMicrophones, playAudio, startRecording } from "@xynogen/pix-runtime/audio";
-
-const mics = await listMicrophones();    // first entry is "default". No ffmpeg: only "default"
-const rec = startRecording("default", { onLevel, onExit, onStatus }); // mono 16 kHz wav
-await rec.stop();                         // rec.path is the wav. { meterOnly: true } writes nothing
-await playAudio(file, { signal });        // resolves when the sound ends
-```
-
 ### Safe output paths — `./safe-path`
 
 `validateOutputPath(absPath)` checks a model-chosen write target before the
