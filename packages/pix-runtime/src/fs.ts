@@ -39,3 +39,13 @@ export {
 	stat,
 	writeFile,
 } from "node:fs/promises";
+
+import { readdirSync } from "node:fs";
+
+/** Top-level folders of `root` as `name/`: for home or `/`, which are too broad to walk. */
+export function topLevelDirs(root: string, limit = Number.POSITIVE_INFINITY): string[] {
+	return readdirSync(root, { withFileTypes: true })
+		.filter((e) => e.isDirectory())
+		.slice(0, limit)
+		.map((e) => `${e.name}/`);
+}

@@ -9,8 +9,10 @@
 import { warnBinaryMissing } from "@xynogen/pix-pretty/tool-status";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
 import { CustomEditor } from "@xynogen/pix-pretty/tui";
+import { topLevelDirs } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
+import { isHomeOrFsRoot } from "@xynogen/pix-runtime/paths";
 import { attachPicker } from "./editor.ts";
 import { FilePicker } from "./picker.ts";
 import { withDirectories } from "./rank.ts";
@@ -50,9 +52,12 @@ function register(pi: ExtensionAPI): void {
 						done,
 						onChange: () => tui.requestRender(),
 					});
-					void rgFiles(cwd, controller.signal).then((files) =>
-						picker.setFiles(withDirectories(files)),
-					);
+					// Home or `/`: top-level folders only; `rg --files` there lists every file on disk.
+					if (isHomeOrFsRoot(cwd)) picker.setFiles(topLevelDirs(cwd));
+					else
+						void rgFiles(cwd, controller.signal).then((files) =>
+							picker.setFiles(withDirectories(files)),
+						);
 					return {
 						render: (width: number) => picker.render(width),
 						handleInput: (data: string) => picker.handleInput(data),

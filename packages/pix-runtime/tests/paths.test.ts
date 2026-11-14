@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, parse, resolve } from "node:path";
 import {
 	agentDir,
 	binDir,
 	cacheDir,
 	expandHome,
 	homeDir,
+	isHomeOrFsRoot,
 	moduleFile,
 	ownerDir,
 	ownerRel,
@@ -24,6 +25,13 @@ describe("paths", () => {
 	test("homeDir reads the platform home variable, else os.homedir()", () => {
 		expect(homeDir({ [HOME_KEY]: home })).toBe(home);
 		expect(homeDir({})).toBe(homedir());
+	});
+
+	test("isHomeOrFsRoot flags home and the filesystem root only", () => {
+		const env = { [HOME_KEY]: home };
+		expect(isHomeOrFsRoot(home, env)).toBe(true);
+		expect(isHomeOrFsRoot(parse(resolve(home)).root, env)).toBe(true);
+		expect(isHomeOrFsRoot(join(home, "proj"), env)).toBe(false);
 	});
 
 	test("agentDir honours PI_CODING_AGENT_DIR with tilde expansion", () => {

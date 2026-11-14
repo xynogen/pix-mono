@@ -11,7 +11,7 @@
 
 import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, parse, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -33,6 +33,13 @@ export function expandHome(path: string, env: NodeJS.ProcessEnv = process.env): 
 	if (path === "~") return homeDir(env);
 	if (path.startsWith("~/") || path.startsWith("~\\")) return join(homeDir(env), path.slice(2));
 	return path;
+}
+
+/** True for the user home or a filesystem root: too broad to index or walk recursively. */
+export function isHomeOrFsRoot(dir: string, env: NodeJS.ProcessEnv = process.env): boolean {
+	const abs = resolve(dir);
+	// relative() ignores case on win32, so `c:\users\x` matches `C:\Users\X`.
+	return relative(abs, homeDir(env)) === "" || abs === parse(abs).root;
 }
 
 /** Pi agent dir: `PI_CODING_AGENT_DIR` (tilde-expanded) or `~/.pi/agent`. */

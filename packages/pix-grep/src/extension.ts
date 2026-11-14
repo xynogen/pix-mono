@@ -18,7 +18,7 @@ import {
 	type ExtensionContext,
 } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
-import { homeDir } from "@xynogen/pix-runtime/paths";
+import { homeDir, isHomeOrFsRoot } from "@xynogen/pix-runtime/paths";
 import { registerGrepTool } from "./grep.ts";
 
 export default function pixGrepExtension(pi: ExtensionAPI): void {
@@ -47,7 +47,8 @@ export default function pixGrepExtension(pi: ExtensionAPI): void {
 
 		pi.on("session_start", async (_event: unknown, ctx: ExtensionContext) => {
 			// Load-time init above is the only attempt; fffDestroy() keeps module and dbDir.
-			if (!fffState.module) return;
+			// FFF refuses home/root; find lists one level there and grep uses ripgrep.
+			if (!fffState.module || isHomeOrFsRoot(ctx.cwd)) return;
 
 			try {
 				await fffEnsureFinder(ctx.cwd);

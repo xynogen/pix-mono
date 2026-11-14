@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import {
 	formatCallTargets,
 	resolveBatchStrings,
@@ -18,11 +19,13 @@ import type {
 	ToolResultLike,
 } from "@xynogen/pix-pretty/types";
 import { fillToolBackground } from "@xynogen/pix-pretty/utils";
+import { topLevelDirs } from "@xynogen/pix-runtime/fs";
 import type {
 	AgentToolUpdateCallback,
 	ExtensionContext,
 	FindToolInput,
 } from "@xynogen/pix-runtime/host";
+import { isHomeOrFsRoot } from "@xynogen/pix-runtime/paths";
 
 export const DEFAULT_FIND_LIMIT = 200;
 
@@ -53,6 +56,9 @@ export function globHighlight(pattern: string): RegExp | undefined {
 		return undefined;
 	}
 }
+
+export const TOP_LEVEL_NOTICE =
+	"Home or filesystem root: top-level folders only. Pass one as `path` to search inside it.";
 
 export function registerFindTool(
 	pi: PiPrettyApi,
@@ -89,6 +95,19 @@ export function registerFindTool(
 			): Promise<ToolResultLike<FindResultDetails>> => {
 				const { patterns: _patterns, ...rest } = params;
 				const effectiveParams = applyFindDefaults({ ...rest, pattern });
+
+				const root = resolve(cwd, effectiveParams.path ?? ".");
+				if (isHomeOrFsRoot(root)) {
+					const names = topLevelDirs(root, effectiveParams.limit ?? DEFAULT_FIND_LIMIT);
+					const textContent = appendNotices(names.join("\n"), [TOP_LEVEL_NOTICE]);
+					return makeTextResult<FindResultDetails>(textContent, {
+						_type: "findResult",
+						text: textContent,
+						pattern,
+						path: effectiveParams.path,
+						matchCount: names.length,
+					});
+				}
 
 				// Try FFF first (frecency-ranked, SIMD-accelerated)
 				if (fffState.finder && !fffState.finder.isDestroyed) {
