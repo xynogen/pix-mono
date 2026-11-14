@@ -17,9 +17,9 @@ const spawnGuard = mock(() => {
 });
 mock.module("@xynogen/pix-runtime/exec", () => ({
 	...exec,
-	spawnTool: spawnGuard,
-	runTool: spawnGuard,
-	runToolSync: spawnGuard,
+	spawnBinary: spawnGuard,
+	runBinary: spawnGuard,
+	runBinarySync: spawnGuard,
 }));
 let cached = false;
 const runner = mock(async () => ({ stdout: "done", stderr: "", code: 0 }));

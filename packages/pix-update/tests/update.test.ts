@@ -304,7 +304,7 @@ describe("stalePackages", () => {
 });
 
 it("preserves package version changes, unchanged/offline summaries and warnings", async () => {
-	const runner = spyOn(exec, "runTool");
+	const runner = spyOn(exec, "runBinary");
 	try {
 		for (const [output, level] of [
 			["npm:foo 1.2.0 -> 1.3.0", "info"],

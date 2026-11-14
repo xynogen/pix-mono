@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join, posix } from "node:path";
 import type { EditOperations, WriteOperations } from "@earendil-works/pi-coding-agent";
-import { runTool } from "./exec.ts";
+import { runBinary } from "./exec.ts";
 import { ioTimeoutMs } from "./io.ts";
 import { tempDir } from "./paths.ts";
 
@@ -42,7 +42,7 @@ export async function runSftp(opts: SftpOptions, commands: string[]) {
 		"--",
 		opts.host,
 	];
-	return runTool(
+	return runBinary(
 		opts.loginPassword ? "sshpass" : "sftp",
 		opts.loginPassword ? ["-e", "sftp", ...args] : args,
 		{

@@ -22,7 +22,7 @@ import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { runTool } from "../exec.ts";
+import { runBinary } from "../exec.ts";
 import { agentDir } from "../paths.ts";
 import { isBundled, loadEngine, parse, parseDynamic, type SgNode } from "./engine.ts";
 
@@ -160,7 +160,7 @@ export async function installGrammar(
 			const { writeFile } = await import("node:fs/promises");
 			await writeFile(pkgJson, JSON.stringify({ name: "pix-astgrep-grammars", private: true }));
 		}
-		const result = await runTool("npm", ["install", "--save", "--prefix", dir, pkg], {
+		const result = await runBinary("npm", ["install", "--save", "--prefix", dir, pkg], {
 			cwd: dir,
 			timeoutMs: 120_000,
 			signal,

@@ -18,7 +18,7 @@ import {
 	type ToolStatus,
 } from "@xynogen/pix-runtime/binaries";
 import { randomUUID } from "@xynogen/pix-runtime/crypto";
-import { runTool, runToolSync, spawnTool } from "@xynogen/pix-runtime/exec";
+import { runBinary, runBinarySync, spawnBinary } from "@xynogen/pix-runtime/exec";
 import type { OsOptions } from "@xynogen/pix-runtime/os";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 import { currentPlatform, type HostPlatform } from "@xynogen/pix-runtime/platform";
@@ -108,7 +108,7 @@ export async function listMicrophones(opts: OsOptions = {}): Promise<Microphone[
 	const host = opts.host ?? currentPlatform();
 	const args = LIST[host.os];
 	if (!args || !resolveTool("ffmpeg", { ...opts, host })) return [SYSTEM_DEFAULT];
-	const r = await runTool("ffmpeg", args, { env: opts.env, host, timeoutMs: 5000 });
+	const r = await runBinary("ffmpeg", args, { env: opts.env, host, timeoutMs: 5000 });
 	// -sources prints to stdout. The dshow and avfoundation lists exit 1 and print to stderr.
 	if (host.os === "linux") return r.code === 0 ? parsePulseSources(r.stdout) : [SYSTEM_DEFAULT];
 	return host.os === "win32" ? parseDshowDevices(r.stderr) : parseAvfoundationDevices(r.stderr);
@@ -129,7 +129,7 @@ export function microphoneInput(device: string, opts: OsOptions = {}): string[] 
 	if (host.os !== "win32") throw new Error(`microphone recording is not supported on ${host.os}`);
 	let name = device;
 	if (name === "default") {
-		const r = runToolSync("ffmpeg", LIST.win32 ?? [], { env: opts.env, host, timeoutMs: 5000 });
+		const r = runBinarySync("ffmpeg", LIST.win32 ?? [], { env: opts.env, host, timeoutMs: 5000 });
 		name = parseDshowDevices(r.stderr)[1]?.id ?? "";
 		if (!name) throw new Error("no microphone found (ffmpeg dshow lists no audio input)");
 	}
@@ -206,11 +206,15 @@ const STDERR_TAIL = 4096;
 export function startRecording(device: string, opts: RecordOptions = {}): Recording {
 	requireFfmpeg(opts.meterOnly ? "The microphone test" : "Microphone recording", opts);
 	const path = opts.meterOnly ? "" : join(tempDir(), `pix-stt-${randomUUID()}.wav`);
-	const child = spawnTool("ffmpeg", recordArgs(microphoneInput(device, opts), path || undefined), {
-		env: opts.env,
-		host: opts.host,
-		stdio: ["pipe", "ignore", "pipe"],
-	});
+	const child = spawnBinary(
+		"ffmpeg",
+		recordArgs(microphoneInput(device, opts), path || undefined),
+		{
+			env: opts.env,
+			host: opts.host,
+			stdio: ["pipe", "ignore", "pipe"],
+		},
+	);
 	let stderr = "";
 	let lastLevel: number | undefined;
 	child.stderr.on("data", (data) => {
@@ -293,7 +297,7 @@ export async function playAudio(path: string, opts: PlayOptions = {}): Promise<v
 	const host = opts.host ?? currentPlatform();
 	const [name, ...args] = playCommand(path, host) ?? [];
 	if (!name) throw new Error(`audio playback is not supported on ${host.os}`);
-	const r = await runTool(name, args, {
+	const r = await runBinary(name, args, {
 		env: opts.env,
 		host,
 		signal: opts.signal,

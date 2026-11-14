@@ -44,7 +44,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-runtime": "^0.20.0"
+		"@xynogen/pix-runtime": "^0.21.0"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-ai": "*",

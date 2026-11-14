@@ -4,14 +4,14 @@ import { join } from "node:path";
 import { tempDir } from "@xynogen/pix-runtime/paths";
 
 const exec = await import("@xynogen/pix-runtime/exec");
-const runTool = exec.runTool;
+const runBinary = exec.runBinary;
 let stderr = "";
 let publicKey = "";
 const calls: string[][] = [];
 mock.module("@xynogen/pix-runtime/exec", () => ({
 	...exec,
-	runTool: async (name: string, args: string[], opts: Parameters<typeof exec.runTool>[2]) => {
-		if (name !== "ssh") return runTool(name, args, opts);
+	runBinary: async (name: string, args: string[], opts: Parameters<typeof exec.runBinary>[2]) => {
+		if (name !== "ssh") return runBinary(name, args, opts);
 		calls.push(args);
 		const captured = args.find((arg) => arg.startsWith("UserKnownHostsFile="));
 		if (captured)
@@ -38,7 +38,7 @@ test("reset pins verified fingerprint, preserves other hosts and backs up before
 	const dir = mkdtempSync(join(tempDir(), "pix-ssh-key-test-"));
 	try {
 		const key = join(dir, "key");
-		const generated = await exec.runTool("ssh-keygen", [
+		const generated = await exec.runBinary("ssh-keygen", [
 			"-q",
 			"-t",
 			"ed25519",
@@ -49,7 +49,7 @@ test("reset pins verified fingerprint, preserves other hosts and backs up before
 		]);
 		expect(generated.code).toBe(0);
 		publicKey = readFileSync(`${key}.pub`, "utf8").trim();
-		const info = await exec.runTool("ssh-keygen", ["-l", "-E", "sha256", "-f", `${key}.pub`]);
+		const info = await exec.runBinary("ssh-keygen", ["-l", "-E", "sha256", "-f", `${key}.pub`]);
 		const fingerprint = info.stdout.trim().split(/\s+/)[1]!;
 		const file = join(dir, "known_hosts");
 		const original = `# keep comment\nnode.invalid ${publicKey}\nother.invalid ${publicKey}\n`;

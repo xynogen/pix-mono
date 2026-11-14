@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 import {
+	makeFailureResult,
 	runToolExecution,
 	type ToolExecutionContext,
-	toolFailureResult,
 } from "../src/tool-execution.ts";
 
 test("pre-cancelled execution never starts or publishes updates", async () => {
@@ -107,7 +107,7 @@ test.each([
 	[undefined, "undefined"],
 	[null, "null"],
 ])("standard failure preserves the error message (%s)", (error, text) => {
-	expect(toolFailureResult(error, false, "https://example.test", "Fetch cancelled.")).toEqual({
+	expect(makeFailureResult(error, false, "https://example.test", "Fetch cancelled.")).toEqual({
 		content: [{ type: "text", text }],
 		details: { outcome: "error", target: "https://example.test", meta: "failed" },
 		isError: true,
@@ -116,7 +116,7 @@ test.each([
 
 test("standard cancellation uses tool wording without exposing the abort reason", () => {
 	expect(
-		toolFailureResult(new Error("private reason"), true, "test query", "Search cancelled."),
+		makeFailureResult(new Error("private reason"), true, "test query", "Search cancelled."),
 	).toEqual({
 		content: [{ type: "text", text: "Search cancelled." }],
 		details: { outcome: "cancelled", target: "test query", meta: "cancelled" },

@@ -4,7 +4,7 @@
  * A bare `spawn("ssh", …)` / `execFile("git", …)` / `pi.exec("npm", …)` skips
  * binary.json, Pi's bin dir and known install dirs, fails on Windows `.cmd`
  * shims, and reports a bare ENOENT instead of the install hint. Use
- * `@xynogen/pix-runtime/exec` (runTool/spawnTool/runToolSync) or
+ * `@xynogen/pix-runtime/exec` (runBinary/spawnBinary/runBinarySync) or
  * `@xynogen/pix-runtime/os` (openTarget, runGit, readClipboardImage).
  */
 

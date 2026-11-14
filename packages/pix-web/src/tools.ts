@@ -1,7 +1,7 @@
 import { StringEnum } from "@xynogen/pix-data/ai";
 import { renderCall } from "@xynogen/pix-pretty/render-row";
 import { defineTool } from "@xynogen/pix-runtime/host";
-import { runToolExecution, toolFailureResult } from "@xynogen/pix-runtime/tool-execution";
+import { makeFailureResult, runToolExecution } from "@xynogen/pix-runtime/tool-execution";
 import { Type } from "typebox";
 import { fetchConfig } from "./config.ts";
 import type { FetchFormat } from "./providers.ts";
@@ -63,7 +63,7 @@ export function fetchTool() {
 				signal,
 				onUpdate,
 				onError: (error, cancelled) =>
-					toolFailureResult(error, cancelled, params.url, "Fetch cancelled."),
+					makeFailureResult(error, cancelled, params.url, "Fetch cancelled."),
 				execute: async ({ update }) => {
 					update({
 						content: [{ type: "text", text: `Fetching: ${params.url}...` }],

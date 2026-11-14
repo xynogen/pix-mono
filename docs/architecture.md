@@ -157,7 +157,7 @@ The shared layers exist so that 40 small packages look and behave like one produ
 | `/collapse` | `shouldCollapse`, `collapseDelayMs`, `tickCollapse`. The auto-collapse policy for tool cards. |
 | `/io` | `ioTimeoutMs()`, `ioTimeoutSignal(signal?)`. Every network call uses the user's `io.timeoutSec`. |
 | `/paths` | `homeDir`, `expandHome`, `agentDir`, `binDir`, `projectDir`, `tempDir`, `cacheDir`. |
-| `/exec` | `runTool`, `spawnTool`, `runToolSync`. Start a catalogued binary by name on any OS. |
+| `/exec` | `runBinary`, `spawnBinary`, `runBinarySync`. Start a catalogued binary by name on any OS. |
 | `/binaries` | `resolveTool`, `requireTool`, `ensureTool`. Path lookup and download. |
 | `/os` | Per-OS jobs: `openTarget`, `runGit`, `readClipboardImage`. |
 | `/which`, `/platform` | Executable lookup (PATHEXT-aware). Host description (glibc, WSL). |

@@ -4,7 +4,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { openProgress, type ProgressHandle } from "@xynogen/pix-pretty/progress";
 import { SPINNER } from "@xynogen/pix-pretty/widget-format";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import type { ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime/host";
 import { ioTimeoutMs } from "@xynogen/pix-runtime/io";
 // ─── Pure logic (exported for tests) ─────────────────────────────────────────
@@ -141,7 +141,7 @@ export type Exec = (
 ) => Promise<ExecOutput>;
 
 export const runtimeExec: Exec = (command, args, opts) =>
-	runTool(command, args, { timeoutMs: opts.timeout });
+	runBinary(command, args, { timeoutMs: opts.timeout });
 
 /** Pi's ExtensionAPI (tests) or an Exec; both end up as an Exec. */
 function asExec(runner: ExtensionAPI | Exec): Exec {

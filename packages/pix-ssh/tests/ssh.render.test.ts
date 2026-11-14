@@ -19,9 +19,9 @@ const spawnGuard = mock(() => {
 });
 mock.module("@xynogen/pix-runtime/exec", () => ({
 	...exec,
-	spawnTool: spawnGuard,
-	runTool: spawnGuard,
-	runToolSync: spawnGuard,
+	spawnBinary: spawnGuard,
+	runBinary: spawnGuard,
+	runBinarySync: spawnGuard,
 }));
 mock.module("@xynogen/pix-runtime/binaries", () => ({
 	...binaries,

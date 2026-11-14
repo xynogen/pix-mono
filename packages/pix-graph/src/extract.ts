@@ -1,5 +1,5 @@
 import { basename, extname, join, relative, sep } from "node:path";
-import { runToolSync } from "@xynogen/pix-runtime/exec";
+import { runBinarySync } from "@xynogen/pix-runtime/exec";
 import { existsSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import ts from "typescript";
 import type { GraphLink, GraphNode } from "./analyzer.ts";
@@ -59,7 +59,7 @@ export function collectFiles(root: string, accept: (path: string) => boolean = i
 	const args = ["--no-config", "--files", "--hidden", "--no-require-git", "--glob", "!.git"];
 	for (const glob of GENERATED_GLOBS) args.push("--glob", `!${glob}`);
 	if (existsSync(join(root, ".dockerignore"))) args.push("--ignore-file", ".dockerignore");
-	const r = runToolSync("rg", args, { cwd: root, timeoutMs: 30_000 });
+	const r = runBinarySync("rg", args, { cwd: root, timeoutMs: 30_000 });
 	// rg exits 1 when no file matches.
 	if (r.code === 1 && !r.stderr.trim()) return [];
 	if (r.code !== 0) throw new Error(`rg --files failed in ${root}: ${r.stderr.trim() || r.code}`);

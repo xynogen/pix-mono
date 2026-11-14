@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import si from "systeminformation";
-import { runTool } from "./exec.ts";
+import { runBinary } from "./exec.ts";
 
 export interface SystemStats {
 	cpu?: number;
@@ -58,7 +58,7 @@ export async function readSystemStats(): Promise<SystemStats> {
 		(process.platform === "win32" || process.platform === "linux") &&
 		controllers.some((controller) => /nvidia/i.test(controller.vendor))
 	) {
-		const result = await runTool(
+		const result = await runBinary(
 			"nvidia-smi",
 			["--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
 			{ timeoutMs: 2_000, maxBuffer: 4096 },

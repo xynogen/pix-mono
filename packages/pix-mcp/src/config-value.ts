@@ -1,7 +1,7 @@
 // config-value.ts - Pi mcp.json `!command` config values.
 
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import type { ServerEntry } from "./types.ts";
 import { interpolateEnvRecord } from "./utils.ts";
 
@@ -21,7 +21,7 @@ export function resolveCommandValue(
 ): Promise<string> {
 	let pending = commandValueCache.get(value);
 	if (!pending) {
-		pending = runTool("bash", ["-c", value.slice(1)], {
+		pending = runBinary("bash", ["-c", value.slice(1)], {
 			timeoutMs: COMMAND_VALUE_TIMEOUT_MS,
 		}).then((result) => {
 			if (result.timedOut) throw new Error("timed out");

@@ -7,7 +7,7 @@ import {
 	registerPackageSettings,
 } from "@xynogen/pix-runtime";
 import { config, pixRuntime } from "@xynogen/pix-runtime/config";
-import { spawnTool } from "@xynogen/pix-runtime/exec";
+import { spawnBinary } from "@xynogen/pix-runtime/exec";
 import { existsSync, readdirSync } from "@xynogen/pix-runtime/fs";
 import type { EventBus, ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
@@ -113,7 +113,7 @@ export function playArgs(file: string, host: HostPlatform): string[] | undefined
 }
 
 function startDetached(name: string, args: string[]): void {
-	const child = spawnTool(name, args, { stdio: "ignore", detached: true });
+	const child = spawnBinary(name, args, { stdio: "ignore", detached: true });
 	child.on("error", () => {});
 	child.unref();
 }

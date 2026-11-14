@@ -3,7 +3,7 @@
  * unit-tested without spawning real sudo or loading the Pi extension host.
  */
 
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@xynogen/pix-runtime/host";
 
 // Pi's own tool-output limits (50KB / 2000 lines), so every tool caps the same way.
@@ -57,7 +57,7 @@ export function validateSudoPassword(password: string, signal?: AbortSignal): Pr
  */
 export async function hasValidTicket(signal?: AbortSignal): Promise<boolean> {
 	try {
-		const result = await runTool("sudo", ["-n", "true"], { signal });
+		const result = await runBinary("sudo", ["-n", "true"], { signal });
 		return result.code === 0;
 	} catch {
 		signal?.throwIfAborted();
@@ -87,6 +87,6 @@ async function spawnSudo(
 	password: string,
 	signal?: AbortSignal,
 ): Promise<SudoResult> {
-	const result = await runTool("sudo", args, { signal, input: `${password}\n` });
+	const result = await runBinary("sudo", args, { signal, input: `${password}\n` });
 	return { stdout: result.stdout, stderr: filterSudoPrompt(result.stderr), code: result.code ?? 1 };
 }

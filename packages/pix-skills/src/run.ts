@@ -1,6 +1,6 @@
 /** Bounded, shell-free command execution for directive interpolation. */
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import { truncateStringToBytes } from "@xynogen/pix-runtime/utf8";
 
 export interface RunOptions {
@@ -15,7 +15,7 @@ export async function runArgv(argv: string[], opts: RunOptions): Promise<string>
 	if (!argv.length) return "(empty command)";
 	const maxBytes = opts.maxBytes ?? 16_384;
 	try {
-		const result = await runTool(argv[0]!, argv.slice(1), {
+		const result = await runBinary(argv[0]!, argv.slice(1), {
 			cwd: opts.cwd,
 			signal: opts.signal,
 			timeoutMs: opts.timeoutMs ?? 10_000,

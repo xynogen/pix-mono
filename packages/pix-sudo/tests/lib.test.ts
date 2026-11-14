@@ -5,7 +5,7 @@ import * as exec from "@xynogen/pix-runtime/exec";
 const calls: { args: readonly string[]; input: unknown }[] = [];
 mock.module("@xynogen/pix-runtime/exec", () => ({
 	...exec,
-	runTool: async (_name: string, args: readonly string[], opts: { input?: unknown }) => {
+	runBinary: async (_name: string, args: readonly string[], opts: { input?: unknown }) => {
 		calls.push({ args, input: opts.input });
 		return { stdout: "", stderr: "", code: 0 };
 	},

@@ -57,7 +57,7 @@ export async function runToolExecution<R, U, E>(options: {
 }
 
 /** Standard text failure for tools using outcome/target/meta details. */
-export function toolFailureResult(
+export function makeFailureResult(
 	error: unknown,
 	cancelled: boolean,
 	target: string,

@@ -87,7 +87,7 @@ export function commandLine(
 
 // ── Runners ─────────────────────────────────────────────────────────────────
 
-export interface ToolExecOptions {
+export interface BinaryExecOptions {
 	cwd?: string;
 	/** Child environment; also where PATH is read for the lookup. Default process.env. */
 	env?: NodeJS.ProcessEnv;
@@ -106,7 +106,7 @@ export interface ToolExecOptions {
 	verbatim?: boolean;
 }
 
-export interface ToolRunResult {
+export interface BinaryRunResult {
 	/** Exit code, or null when killed by a signal/timeout. */
 	code: number | null;
 	stdout: string;
@@ -124,14 +124,14 @@ const MAX_BUFFER = 50 * 1024 * 1024;
 /** Time between SIGTERM and SIGKILL, and then before open pipes are dropped. */
 const KILL_GRACE_MS = 1500;
 
-function lookupOpts(opts: ToolExecOptions): LookupOptions {
+function lookupOpts(opts: BinaryExecOptions): LookupOptions {
 	return { env: opts.env, host: opts.host };
 }
 
 /**
  * Kill a child and its descendants. Windows: `taskkill /T /F` (a cmd.exe wrapper
  * leaves the shim running otherwise). POSIX: signal the child's process group
- * (runTool starts it as a group leader), because a descendant that keeps
+ * (runBinary starts it as a group leader), because a descendant that keeps
  * stdout open would otherwise delay "close" past the timeout.
  */
 function killTree(
@@ -173,22 +173,22 @@ type Piped<I, O, E> = ChildProcess & {
  * Start a resolved binary with Node's spawn options (stdio, detached, …).
  * Sync lookup, no download; throws {@link BinaryMissingError} when missing.
  */
-export function spawnTool<I extends Pipe | Null, O extends Pipe | Null, E extends Pipe | Null>(
+export function spawnBinary<I extends Pipe | Null, O extends Pipe | Null, E extends Pipe | Null>(
 	name: string,
 	args: readonly string[],
 	options: SpawnOptionsWithStdioTuple<I, O, E> & HostOpt,
 ): Piped<I, O, E>;
-export function spawnTool(
+export function spawnBinary(
 	name: string,
 	args?: readonly string[],
 	options?: Omit<SpawnOptions, "stdio"> & HostOpt,
 ): ChildProcessWithoutNullStreams;
-export function spawnTool(
+export function spawnBinary(
 	name: string,
 	args: readonly string[],
 	options: SpawnOptions & HostOpt,
 ): ChildProcess;
-export function spawnTool(
+export function spawnBinary(
 	name: string,
 	args: readonly string[] = [],
 	options: SpawnOptions & HostOpt = {},
@@ -225,12 +225,12 @@ export function spawnShell(command: string, options: SpawnOptions = {}): ChildPr
 function collect(
 	child: ChildProcess,
 	tool: ResolvedTool,
-	opts: ToolExecOptions,
+	opts: BinaryExecOptions,
 	host: HostPlatform,
 ) {
 	const env = opts.env ?? process.env;
 	const cap = opts.maxBuffer ?? MAX_BUFFER;
-	return new Promise<ToolRunResult>((resolve, reject) => {
+	return new Promise<BinaryRunResult>((resolve, reject) => {
 		const out: Buffer[] = [];
 		const err: Buffer[] = [];
 		let outLen = 0;
@@ -313,11 +313,11 @@ function collect(
  * `onStatus`). Rejects with {@link BinaryMissingError} when it cannot be found.
  * A non-zero exit resolves normally — check `code`.
  */
-export async function runTool(
+export async function runBinary(
 	name: string,
 	args: readonly string[],
-	opts: ToolExecOptions = {},
-): Promise<ToolRunResult> {
+	opts: BinaryExecOptions = {},
+): Promise<BinaryRunResult> {
 	opts.signal?.throwIfAborted();
 	const host = opts.host ?? currentPlatform();
 	const ensure: EnsureOptions = {
@@ -339,8 +339,8 @@ export async function runTool(
 		// POSIX: own process group, so killTree reaches descendants. On Windows
 		// `detached` opens a new console, and taskkill /T covers the tree.
 		// ponytail: the group also has no controlling terminal, so a tool cannot
-		// prompt on /dev/tty. runTool is for captured, non-interactive runs.
-		// Interactive tools use spawnTool.
+		// prompt on /dev/tty. runBinary is for captured, non-interactive runs.
+		// Interactive tools use spawnBinary.
 		detached: host.os !== "win32",
 		windowsHide: true,
 		windowsVerbatimArguments: line.windowsVerbatimArguments,
@@ -351,14 +351,14 @@ export async function runTool(
 }
 
 /**
- * Blocking {@link runTool} for startup probes and sync call sites. Never
+ * Blocking {@link runBinary} for startup probes and sync call sites. Never
  * downloads; throws {@link BinaryMissingError} when missing.
  */
-export function runToolSync(
+export function runBinarySync(
 	name: string,
 	args: readonly string[],
-	opts: Omit<ToolExecOptions, "signal" | "onStatus"> = {},
-): ToolRunResult {
+	opts: Omit<BinaryExecOptions, "signal" | "onStatus"> = {},
+): BinaryRunResult {
 	const host = opts.host ?? currentPlatform();
 	const env = opts.env ?? process.env;
 	const tool = requireTool(name, lookupOpts({ ...opts, host }));

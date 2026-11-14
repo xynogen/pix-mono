@@ -124,11 +124,11 @@ test("captures actual update confirmation and fixed spinner footer statuses with
 test("captures registered update progress and completion with a guarded runner spy", async () => {
 	const fixture = await withUiFixture({ hostTheme: true });
 	jest.useFakeTimers();
-	const original = exec.runTool;
+	const original = exec.runBinary;
 	const guard = spyOn(binaries, "ensureTool").mockImplementation(() => {
 		throw new Error("UNSAFE runner was reached");
 	});
-	const runner = spyOn(exec, "runTool");
+	const runner = spyOn(exec, "runBinary");
 	let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
 	let pending: Promise<void> | undefined;
 	const overlays: Promise<unknown>[] = [];
@@ -265,5 +265,5 @@ test("captures registered update progress and completion with a guarded runner s
 			await fixture.restore();
 		}
 	}
-	expect(exec.runTool).toBe(original);
+	expect(exec.runBinary).toBe(original);
 });

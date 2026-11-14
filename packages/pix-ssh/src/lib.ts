@@ -17,7 +17,7 @@ import { isAbsolute, join, resolve as resolvePath } from "node:path";
 import type { UnattendedMode } from "@xynogen/pix-runtime";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { createHash } from "@xynogen/pix-runtime/crypto";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import { type EditInput, editText, readText, writeText } from "@xynogen/pix-runtime/files";
 import { globSync, mkdtempSync, readFileSync, rmSync, statSync } from "@xynogen/pix-runtime/fs";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@xynogen/pix-runtime/host";
@@ -139,7 +139,7 @@ export async function resolveSshHost(spec: HostSpec, signal?: AbortSignal): Prom
 	args.push(hostTarget(spec));
 
 	try {
-		const result = await runTool("ssh", args, { signal });
+		const result = await runBinary("ssh", args, { signal });
 		return result.code === 0 ? (parseSshConfig(result.stdout) ?? spec) : spec;
 	} catch {
 		signal?.throwIfAborted();
@@ -270,7 +270,7 @@ export async function resolveHostInfo(spec: HostSpec, signal?: AbortSignal): Pro
 	if (spec.port !== undefined) args.push("-p", String(spec.port));
 	args.push(hostTarget(spec));
 	try {
-		const result = await runTool("ssh", args, { signal });
+		const result = await runBinary("ssh", args, { signal });
 		return result.code === 0 ? parseHostInfo(result.stdout) : {};
 	} catch {
 		signal?.throwIfAborted();
@@ -444,10 +444,10 @@ export async function resetKnownHost(
 		];
 		if (spec.port !== undefined) options.push(`Port=${spec.port}`);
 		// An auth rejection is expected: only the unauthenticated host key is needed.
-		await runTool("ssh", [...options.flatMap((o) => ["-o", o]), hostTarget(spec), "true"], {
+		await runBinary("ssh", [...options.flatMap((o) => ["-o", o]), hostTarget(spec), "true"], {
 			signal,
 		});
-		const keys = await runTool("ssh-keygen", ["-l", "-E", "sha256", "-f", captured], { signal });
+		const keys = await runBinary("ssh-keygen", ["-l", "-E", "sha256", "-f", captured], { signal });
 		const fingerprints = keys.stdout
 			.trim()
 			.split("\n")
@@ -457,7 +457,7 @@ export async function resetKnownHost(
 				"Host key changed again or could not be verified. known_hosts was not changed.",
 			);
 		}
-		const found = await runTool("ssh-keygen", ["-F", reset.host, "-f", captured], { signal });
+		const found = await runBinary("ssh-keygen", ["-F", reset.host, "-f", captured], { signal });
 		if (found.code !== 0)
 			throw new Error(
 				"Captured host does not match the reset target. known_hosts was not changed.",
@@ -466,7 +466,7 @@ export async function resetKnownHost(
 		const mode = statSync(reset.file).mode & 0o777;
 		const snapshot = join(dir, "known_hosts");
 		writeFileAtomicSync(snapshot, original);
-		const removed = await runTool("ssh-keygen", ["-R", reset.host, "-f", snapshot], { signal });
+		const removed = await runBinary("ssh-keygen", ["-R", reset.host, "-f", snapshot], { signal });
 		if (removed.code !== 0) throw new Error(`Could not reset host key: ${removed.stderr}`);
 		const cleaned = readFileSync(snapshot, "utf8");
 		if (cleaned === original)
@@ -507,7 +507,7 @@ export async function probeKeyAuth(
 ): Promise<ProbeResult> {
 	const args = [...baseSshArgs(spec, controlPath), "-o", "BatchMode=yes", hostTarget(spec), "true"];
 	try {
-		const result = await runTool("ssh", args, { signal });
+		const result = await runBinary("ssh", args, { signal });
 		if (result.code !== 0 && detectHostKeyFailure(result.stderr))
 			throw new HostKeyError(result.stderr);
 		return result.code === 0 ? "ok" : isUnreachable(result.stderr) ? "unreachable" : "auth";
@@ -532,7 +532,7 @@ export async function closeMaster(
 	signal?: AbortSignal,
 ): Promise<void> {
 	try {
-		await runTool("ssh", closeMasterArgs(spec, controlPath), { signal });
+		await runBinary("ssh", closeMasterArgs(spec, controlPath), { signal });
 	} catch {
 		signal?.throwIfAborted();
 	}
@@ -571,7 +571,7 @@ export async function probePasswordAuth(
 		"true",
 	];
 	try {
-		const result = await runTool("sshpass", args, {
+		const result = await runBinary("sshpass", args, {
 			signal,
 			env: { ...process.env, SSHPASS: password },
 		});
@@ -603,7 +603,7 @@ export async function probeSudoNoPassword(
 		"sudo -n true",
 	];
 	try {
-		return (await runTool("ssh", args, { signal })).code === 0;
+		return (await runBinary("ssh", args, { signal })).code === 0;
 	} catch {
 		signal?.throwIfAborted();
 		return false;
@@ -771,7 +771,7 @@ async function spawnResult(
 	filterStderr?: (value: string) => string,
 	stdin?: string,
 ): Promise<SshResult> {
-	const result = await runTool(bin, args, { env, signal: sig, input: stdin });
+	const result = await runBinary(bin, args, { env, signal: sig, input: stdin });
 	return {
 		stdout: result.stdout,
 		stderr: filterStderr ? filterStderr(result.stderr) : result.stderr,

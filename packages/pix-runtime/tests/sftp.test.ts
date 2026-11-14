@@ -69,7 +69,7 @@ const runner = mock(
 		};
 	},
 );
-mock.module("../src/exec.ts", () => ({ ...exec, runTool: runner }));
+mock.module("../src/exec.ts", () => ({ ...exec, runBinary: runner }));
 const { sftpPath, sftpQuote, withSftp } = await import("../src/sftp.ts");
 const opts = { host: "alias", args: ["-P", "2222"] };
 

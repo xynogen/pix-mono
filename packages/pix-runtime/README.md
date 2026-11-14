@@ -153,17 +153,17 @@ Packages never start a catalogued binary by bare name. `./exec` resolves it
 through the order above, then runs it:
 
 ```ts
-import { runTool, runToolSync, spawnTool } from "@xynogen/pix-runtime/exec";
+import { runBinary, runBinarySync, spawnBinary } from "@xynogen/pix-runtime/exec";
 
-const r = await runTool("git", ["status", "--porcelain"], { cwd, timeoutMs: 2_000 });
+const r = await runBinary("git", ["status", "--porcelain"], { cwd, timeoutMs: 2_000 });
 // { code, stdout, stderr, stdoutBytes, timedOut, tool: { path, source } }
 
-const child = spawnTool("ssh", args, { stdio: ["ignore", "pipe", "pipe"] }); // Node ChildProcess
-const sync = runToolSync("npm", ["root", "-g"], { timeoutMs: 10_000 });
+const child = spawnBinary("ssh", args, { stdio: ["ignore", "pipe", "pipe"] }); // Node ChildProcess
+const sync = runBinarySync("npm", ["root", "-g"], { timeoutMs: 10_000 });
 ```
 
-- `runTool` downloads first when the binary is missing and has a recipe
-  (progress via `onStatus`). `spawnTool` and `runToolSync` never download.
+- `runBinary` downloads first when the binary is missing and has a recipe
+  (progress via `onStatus`). `spawnBinary` and `runBinarySync` never download.
 - A missing binary throws `BinaryMissingError` with the install hint. A
   non-zero exit resolves normally, so check `code`.
 - Windows `.cmd`/`.bat` shims (`npm`, `npx`, `pi`) run through

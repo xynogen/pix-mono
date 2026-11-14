@@ -20,7 +20,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { padIcon } from "@xynogen/pix-pretty/render-row";
 import { parseColor, type TextStyle, truncateToWidth } from "@xynogen/pix-pretty/tui";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import { existsSync, readdirSync, readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { runGit, username } from "@xynogen/pix-runtime/os";
@@ -90,7 +90,7 @@ function missingDetail(err: unknown): string | undefined {
 
 async function checkPiVersion(): Promise<CheckResult> {
 	try {
-		const localRes = await runTool("pi", ["--version"], { timeoutMs: 2_000 });
+		const localRes = await runBinary("pi", ["--version"], { timeoutMs: 2_000 });
 		const local = (localRes.stdout.trim() || localRes.stderr.trim()).replace(/^v/, "");
 		return { label: "PI", status: "ok", detail: local || "installed" };
 	} catch (err) {

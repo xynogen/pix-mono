@@ -4,7 +4,7 @@ import { reportToolStatus, type ToolStatusUI } from "@xynogen/pix-pretty/tool-st
 import { Text } from "@xynogen/pix-pretty/tui";
 import { type CollapseState, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { Type } from "typebox";
@@ -34,11 +34,11 @@ export type HunkRunner = (
 /**
  * Default runner: resolve hunk via pix-runtime (binary.json → agent bin →
  * PATH), downloading the official release on first use with a visible status.
- * runTool also runs the npm `hunk.cmd` shim on Windows. A missing binary
+ * runBinary also runs the npm `hunk.cmd` shim on Windows. A missing binary
  * throws BinaryMissingError carrying the install hint.
  */
 export const runHunk: HunkRunner = async (args, signal, ui) => {
-	const r = await runTool("hunk", args, {
+	const r = await runBinary("hunk", args, {
 		signal,
 		onStatus: reportToolStatus(ui),
 		maxBuffer: MAX_OUTPUT_BYTES,

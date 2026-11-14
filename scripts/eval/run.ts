@@ -26,7 +26,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import { agentDir, ownerDir, tempDir } from "@xynogen/pix-runtime/paths";
 import { cacheRatio, collectMetrics, parseJsonl, type RunMetrics } from "./metrics.ts";
 import { FIXTURE, TASKS } from "./tasks.ts";
@@ -104,7 +104,7 @@ async function runTask(
 		args.push("--", task.prompt, ...(task.followUps ?? []));
 		const started = performance.now();
 		const env = opts.agentDir ? { ...process.env, PI_CODING_AGENT_DIR: opts.agentDir } : undefined;
-		const res = await runTool("pi", args, { cwd: dir, env, timeoutMs: opts.timeoutMs });
+		const res = await runBinary("pi", args, { cwd: dir, env, timeoutMs: opts.timeoutMs });
 		const durationMs = Math.round(performance.now() - started);
 		// Raw stream kept for inspection: what the agent read, ran and changed.
 		writeFileSync(join(opts.logDir, `${task.id}-${run}.jsonl`), res.stdout);
@@ -285,7 +285,7 @@ async function main(): Promise<void> {
 	const overlay = values.pix ? overlayAgentDir(JSON.parse(values.pix)) : undefined;
 
 	const commit = (
-		await runTool("git", ["rev-parse", "--short", "HEAD"], { cwd: root })
+		await runBinary("git", ["rev-parse", "--short", "HEAD"], { cwd: root })
 	).stdout.trim();
 	const file: EvalFile = {
 		label: values.label,

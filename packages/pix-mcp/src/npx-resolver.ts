@@ -2,7 +2,7 @@
 
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
-import { runToolSync, spawnTool } from "@xynogen/pix-runtime/exec";
+import { runBinarySync, spawnBinary } from "@xynogen/pix-runtime/exec";
 import {
 	closeSync,
 	existsSync,
@@ -245,7 +245,7 @@ function resolveFromNpmCache(packageSpec: string, binName?: string): NpxCacheEnt
 async function forceNpxCache(packageSpec: string): Promise<void> {
 	try {
 		await new Promise<void>((resolve, reject) => {
-			const proc = spawnTool(
+			const proc = spawnBinary(
 				"npm",
 				["exec", "--yes", "--package", packageSpec, "--", "node", "-e", "1"],
 				{ stdio: "ignore" },
@@ -370,7 +370,7 @@ function getNpmCacheDir(): string | null {
 		return npmCacheDirCached;
 	}
 	try {
-		const result = runToolSync("npm", ["config", "get", "cache"], { timeoutMs: 10_000 });
+		const result = runBinarySync("npm", ["config", "get", "cache"], { timeoutMs: 10_000 });
 		if (result.code === 0) {
 			const path = String(result.stdout).trim();
 			npmCacheDirCached = path || null;

@@ -11,7 +11,7 @@ import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { userInfo } from "node:os";
 import { join } from "node:path";
 import { resolveTool } from "./binaries/resolve.ts";
-import { quoteForCmd, runTool, runToolSync } from "./exec.ts";
+import { quoteForCmd, runBinary, runBinarySync } from "./exec.ts";
 import { tempDir } from "./paths.ts";
 import { currentPlatform, type HostPlatform } from "./platform.ts";
 
@@ -71,7 +71,7 @@ export async function openTarget(target: string, opts: OpenOptions = {}): Promis
 	let cmd = openCommand(target, host, opts.app);
 	if (cmd.name === "wslview" && !resolveTool("wslview", opts))
 		cmd = openCommand(target, { ...host, wsl: false });
-	const result = await runTool(cmd.name, cmd.args, {
+	const result = await runBinary(cmd.name, cmd.args, {
 		cwd: cmd.cwd,
 		env: opts.env,
 		host,
@@ -97,7 +97,7 @@ export interface GitOptions extends OsOptions {
  * so the caller can surface the install hint once (pix-pretty warnBinaryMissing).
  */
 export async function runGit(args: readonly string[], opts: GitOptions): Promise<string | null> {
-	const r = await runTool("git", args, {
+	const r = await runBinary("git", args, {
 		cwd: opts.cwd,
 		env: opts.env,
 		host: opts.host,
@@ -151,7 +151,7 @@ function probe(
 ): Buffer | null {
 	if (!resolveTool(name, opts)) return null;
 	try {
-		const r = runToolSync(name, args, { env: opts.env, host: opts.host, timeoutMs, cwd });
+		const r = runBinarySync(name, args, { env: opts.env, host: opts.host, timeoutMs, cwd });
 		return r.code === 0 ? r.stdoutBytes : null;
 	} catch {
 		return null;

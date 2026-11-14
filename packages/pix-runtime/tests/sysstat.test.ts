@@ -17,7 +17,7 @@ test("systeminformation keeps five readings separate and rejects unavailable val
 	const memory = spyOn(si, "mem").mockResolvedValue({ total: 1000, available: 420 } as never);
 	const directories = spyOn(fs, "readdir").mockResolvedValue([] as never);
 	const files = spyOn(fs, "readFile").mockResolvedValue("");
-	const nvidia = spyOn(exec, "runTool").mockResolvedValue({
+	const nvidia = spyOn(exec, "runBinary").mockResolvedValue({
 		code: 0,
 		stdout: "0\n",
 		timedOut: false,

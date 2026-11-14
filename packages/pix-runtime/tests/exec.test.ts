@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BinaryMissingError } from "../src/binaries/resolve.ts";
 import { setBinaryChoice } from "../src/binaries/store.ts";
-import { commandLine, quoteForCmd, runTool, runToolSync, spawnTool } from "../src/exec.ts";
+import { commandLine, quoteForCmd, runBinary, runBinarySync, spawnBinary } from "../src/exec.ts";
 import { openCommand } from "../src/os.ts";
 import { tempDir } from "../src/paths.ts";
 import type { HostPlatform } from "../src/platform.ts";
@@ -83,7 +83,7 @@ describe("commandLine", () => {
 	});
 });
 
-describe("runTool / runToolSync", () => {
+describe("runBinary / runBinarySync", () => {
 	test("runs the binary.json choice, not PATH, and reports where it came from", async () => {
 		const s = sandbox();
 		echoTool(s.pathDir, "pixecho");
@@ -91,7 +91,7 @@ describe("runTool / runToolSync", () => {
 		mkdirSync(mineDir);
 		const mine = echoTool(mineDir, "pixecho");
 		setBinaryChoice("pixecho", mine, s.env);
-		const r = await runTool("pixecho", ["one"], { env: s.env });
+		const r = await runBinary("pixecho", ["one"], { env: s.env });
 		expect(r.code).toBe(0);
 		expect(r.tool).toMatchObject({ source: "user", path: mine });
 	});
@@ -100,10 +100,10 @@ describe("runTool / runToolSync", () => {
 		const s = sandbox();
 		echoTool(s.pathDir, "pixecho");
 		const args = ["plain", "two words", "a&b|c", "100%", "(paren)", 'say "hi"', "^caret"];
-		const r = await runTool("pixecho", args, { env: s.env });
+		const r = await runBinary("pixecho", args, { env: s.env });
 		expect(r.code).toBe(0);
 		expect(r.stdout.split(/\r?\n/).filter(Boolean)).toEqual(args);
-		const sync = runToolSync("pixecho", args, { env: s.env });
+		const sync = runBinarySync("pixecho", args, { env: s.env });
 		expect(sync.stdout.split(/\r?\n/).filter(Boolean)).toEqual(args);
 	});
 
@@ -116,16 +116,16 @@ describe("runTool / runToolSync", () => {
 			chmodSync(join(s.pathDir, name), 0o755);
 		}
 		// 8 MiB is far past any pipe buffer, so the write outlives the child.
-		const r = await runTool(name, [], { env: s.env, input: Buffer.alloc(8 << 20) });
+		const r = await runBinary(name, [], { env: s.env, input: Buffer.alloc(8 << 20) });
 		expect(r.code).toBe(0);
 	});
 
 	test("output past maxBuffer is flagged truncated", async () => {
 		const s = sandbox();
 		echoTool(s.pathDir, "pixecho");
-		const r = await runTool("pixecho", ["abcdefgh"], { env: s.env, maxBuffer: 3 });
+		const r = await runBinary("pixecho", ["abcdefgh"], { env: s.env, maxBuffer: 3 });
 		expect(r).toMatchObject({ stdout: "abc", truncated: true });
-		const full = await runTool("pixecho", ["ab"], { env: s.env });
+		const full = await runBinary("pixecho", ["ab"], { env: s.env });
 		expect(full.truncated).toBe(false);
 	});
 
@@ -135,7 +135,7 @@ describe("runTool / runToolSync", () => {
 		writeFileSync(join(s.pathDir, name), "#!/bin/sh\nexec yes\n");
 		chmodSync(join(s.pathDir, name), 0o755);
 		const started = Date.now();
-		const r = await runTool(name, [], { env: s.env, maxBuffer: 1024 });
+		const r = await runBinary(name, [], { env: s.env, maxBuffer: 1024 });
 		expect(r).toMatchObject({ truncated: true, timedOut: false });
 		expect(r.stdout.length).toBe(1024);
 		expect(Date.now() - started).toBeLessThan(5_000);
@@ -148,7 +148,7 @@ describe("runTool / runToolSync", () => {
 		writeFileSync(join(s.pathDir, name), "#!/bin/sh\ntrap '' TERM\nsleep 30 &\nwait\n");
 		chmodSync(join(s.pathDir, name), 0o755);
 		const started = Date.now();
-		const r = await runTool(name, [], { env: s.env, timeoutMs: 100 });
+		const r = await runBinary(name, [], { env: s.env, timeoutMs: 100 });
 		expect(r.timedOut).toBe(true);
 		// timeout + SIGTERM-to-SIGKILL grace, with margin for a slow CI host.
 		expect(Date.now() - started).toBeLessThan(5_000);
@@ -156,11 +156,11 @@ describe("runTool / runToolSync", () => {
 
 	test("a missing tool is a BinaryMissingError with the catalog hint", async () => {
 		const s = sandbox();
-		await expect(runTool("sshpass-nope", [], { env: s.env })).rejects.toBeInstanceOf(
+		await expect(runBinary("sshpass-nope", [], { env: s.env })).rejects.toBeInstanceOf(
 			BinaryMissingError,
 		);
-		expect(() => runToolSync("hunk", [], { env: s.env })).toThrow(/hunk not found — install: /);
-		expect(() => spawnTool("hunk", [], { env: s.env })).toThrow(BinaryMissingError);
+		expect(() => runBinarySync("hunk", [], { env: s.env })).toThrow(/hunk not found — install: /);
+		expect(() => spawnBinary("hunk", [], { env: s.env })).toThrow(BinaryMissingError);
 	});
 
 	test("timeouts kill the child and flag timedOut", async () => {
@@ -172,7 +172,7 @@ describe("runTool / runToolSync", () => {
 			chmodSync(join(s.pathDir, name), 0o755);
 		}
 		const started = Date.now();
-		const r = await runTool(name, [], { env: s.env, timeoutMs: 300 });
+		const r = await runBinary(name, [], { env: s.env, timeoutMs: 300 });
 		expect(r.timedOut).toBe(true);
 		expect(r.code).toBeNull();
 		expect(Date.now() - started).toBeLessThan(10_000);
@@ -201,7 +201,7 @@ describe("openCommand", () => {
 
 test("pre-cancelled execution never resolves or starts a binary", async () => {
 	await expect(
-		runTool("missing-cancelled-tool", [], { signal: AbortSignal.abort(new Error("stopped")) }),
+		runBinary("missing-cancelled-tool", [], { signal: AbortSignal.abort(new Error("stopped")) }),
 	).rejects.toThrow("stopped");
 });
 
@@ -211,7 +211,7 @@ test.skipIf(isWin)("abort stops a SIGTERM-resistant process tree before rejectin
 	writeFileSync(join(s.pathDir, name), "#!/bin/sh\ntrap '' TERM\nsleep 30 &\nwait\n");
 	chmodSync(join(s.pathDir, name), 0o755);
 	const controller = new AbortController();
-	const pending = runTool(name, [], { env: s.env, signal: controller.signal });
+	const pending = runBinary(name, [], { env: s.env, signal: controller.signal });
 	const timer = setTimeout(() => controller.abort(new Error("user cancelled")), 100);
 	try {
 		await expect(pending).rejects.toThrow("user cancelled");

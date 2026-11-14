@@ -4,7 +4,7 @@
  */
 
 import { isAbsolute, join, resolve } from "node:path";
-import { runTool } from "@xynogen/pix-runtime/exec";
+import { runBinary } from "@xynogen/pix-runtime/exec";
 import { existsSync, statSync } from "@xynogen/pix-runtime/fs";
 import {
 	type PathAccess,
@@ -84,13 +84,13 @@ export async function ensureVenv(
 		throw new Error(`${step} failed (exit ${r.code}):\n${tail}`);
 	};
 	if (!venvPython(dir, win))
-		check("venv creation", await runTool(base, ["-m", "venv", dir], { cwd, signal }));
+		check("venv creation", await runBinary(base, ["-m", "venv", dir], { cwd, signal }));
 	const py = venvPython(dir, win);
 	if (!py) throw new Error(`no Python interpreter in ${dir} after venv creation`);
 	if (packages.length)
 		check(
 			"pip install",
-			await runTool(
+			await runBinary(
 				py,
 				["-m", "pip", "install", "--disable-pip-version-check", ...packages.map((p) => p.trim())],
 				{ cwd, signal },
@@ -100,7 +100,7 @@ export async function ensureVenv(
 }
 
 /**
- * Resolve the `python` parameter to what runTool should start:
+ * Resolve the `python` parameter to what runBinary should start:
  * - omitted → the managed venv ({@link venvDir}) when it exists, else `python3`
  *   (binary.json → PATH, the catalog lookup)
  * - a folder (`.venv`, `~/envs/x`, conda prefix) → its interpreter
@@ -140,7 +140,7 @@ export async function runPython(
 	decide?: (access: PathAccess) => Promise<PathDecision>,
 ): Promise<PythonRun> {
 	const run = async (args: string[]) => {
-		const r = await runTool(interpreter, args, {
+		const r = await runBinary(interpreter, args, {
 			cwd,
 			input: `${code}\n`,
 			signal,
