@@ -76,6 +76,18 @@ describe("LspTransport", () => {
 		}
 	});
 
+	test("confirms a clean recheck when the server stays silent after didChange", async () => {
+		const client = await startClient(["--unversioned", "--empty", "--quiet-change"]);
+		try {
+			await client.open(filePath, "typescript", "const x = 1;\n", 1);
+			expect(await client.waitForDiagnostics(filePath, 1, 2_000)).toEqual([]);
+			await client.open(filePath, "typescript", "const x = 2;\n", 2);
+			expect(await client.waitForDiagnostics(filePath, 2, 2_000)).toEqual([]);
+		} finally {
+			await client.stop();
+		}
+	});
+
 	test("sends only the changed span to an incremental server", async () => {
 		const client = await startClient(["--incremental"]);
 		try {

@@ -6,7 +6,9 @@
  * version. It has NO real language intelligence. Flags mimic real servers:
  * `--incremental` (ranged didChange), `--unversioned` (no publish version, like
  * typescript-language-server), `--delay=<ms>` (late publish), `--echo` (the
- * message is the document text). `pix/text` returns the text the server holds.
+ * message is the document text), `--quiet-change` (no publish on didChange and
+ * `[]` on didClose, like typescript-language-server when a clean file stays clean).
+ * `pix/text` returns the text the server holds.
  * Tests launch it with the Bun runtime.
  *
  * This file is a fixture, not a production module. It is not exported by the
@@ -118,7 +120,7 @@ connection.onNotification(
 		}
 		versions.set(uri, version);
 		texts.set(uri, text);
-		publish(uri, version);
+		if (!has("--quiet-change")) publish(uri, version);
 	},
 );
 
@@ -127,6 +129,7 @@ connection.onRequest("pix/text", (params: { uri: string }) => texts.get(params.u
 connection.onNotification("textDocument/didClose", (params: { textDocument: { uri: string } }) => {
 	versions.delete(params.textDocument.uri);
 	texts.delete(params.textDocument.uri);
+	if (has("--quiet-change")) sendPublish(params.textDocument.uri, 0);
 });
 
 connection.onRequest("textDocument/definition", (params: { textDocument: { uri: string } }) => [

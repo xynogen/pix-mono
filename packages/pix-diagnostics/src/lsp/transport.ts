@@ -74,6 +74,8 @@ const STDERR_CAP = 8 * 1024;
 // only advisory, so both deadlines are enforced locally.
 export const INIT_TIMEOUT_MS = 15_000;
 export const REQUEST_TIMEOUT_MS = 30_000;
+/** Bound on waiting for a close-time publish. A server without one costs this per recheck. */
+const CLOSE_PUBLISH_MS = 2_000;
 
 /** Reject `p` after `ms`; `onTimeout` runs first so callers can tear down. */
 function withDeadline<T>(
@@ -333,8 +335,16 @@ export class LspTransport {
 	async open(filePath: string, languageId: string, text: string, version: number): Promise<void> {
 		const uri = this.uriFor(filePath);
 		if (this.openLanguage.has(uri)) {
-			await this.change(filePath, text, version);
-			return;
+			if (!this.maySkipPublish(uri)) {
+				await this.change(filePath, text, version);
+				return;
+			}
+			// typescript-language-server sends nothing when empty diagnostics stay empty,
+			// so a clean file never confirms after didChange. A fresh open always publishes.
+			const before = this.seq;
+			await this.close(filePath);
+			// Its close also publishes []; wait for it so it is not read as the reopen result.
+			await this.nextPublish(uri, before, CLOSE_PUBLISH_MS);
 		}
 		this.versions.set(uri, version);
 		this.openLanguage.set(uri, languageId);
@@ -380,6 +390,31 @@ export class LspTransport {
 		this.diagnostics.delete(uri);
 		this.texts.delete(uri);
 		this.sentSeq.delete(uri);
+	}
+
+	/** Unversioned empty last publish: the server may stay silent after didChange. */
+	private maySkipPublish(uri: string): boolean {
+		const last = this.diagnostics.get(uri);
+		return last !== undefined && last.version === undefined && last.diagnostics.length === 0;
+	}
+
+	/** Resolve on the first publish for `uri` after `afterSeq`, at `ms`, or when the server dies. */
+	private nextPublish(uri: string, afterSeq: number, ms: number): Promise<void> {
+		return new Promise((resolve) => {
+			const done = (): void => {
+				this.waiters.delete(check);
+				clearTimeout(timer);
+				resolve();
+			};
+			const check = (): void => {
+				const seq = this.diagnostics.get(uri)?.seq ?? 0;
+				if (seq > afterSeq || this.stateValue === "failed" || this.stateValue === "stopped") done();
+			};
+			const timer = setTimeout(done, ms);
+			timer.unref?.();
+			this.waiters.add(check);
+			check();
+		});
 	}
 
 	openCount(): number {
