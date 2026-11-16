@@ -138,7 +138,7 @@
 					}
 				}
 			},
-			"plugins": ["./biome/no-platform-env.grit"]
+			"plugins": ["./scripts/no-platform-env.grit"]
 		}
 	]
 }

@@ -169,6 +169,3 @@ bun-debug.log*
 graphify-out/
 todo.md
 .playwright-mcp/
-
-# ── npm pack artifacts ──
-*.tgz
