@@ -43,12 +43,10 @@ describe("capabilityReminder", () => {
 	});
 
 	test("names only registered discovery tools", () => {
-		expect(capabilityReminder(new Set(["read_skills", "tool_search", "mcp"]))).toMatch(
-			/check available tools and relevant skills, read_skills\(\), tool_search, mcp; ask the user only if needed\.$/,
+		expect(capabilityReminder(new Set(["read_skills", "tool_search", "mcp"]))).toBe(
+			"Reminder — tool_search the task before a bash workaround; before you improvise, check available tools and relevant skills, read_skills(), mcp; ask the user only if needed.",
 		);
-		expect(capabilityReminder(new Set(["tool_search"]))).toMatch(
-			/check available tools and relevant skills, tool_search; ask the user only if needed\.$/,
-		);
+		expect(capabilityReminder(new Set(["read_skills"]))).not.toMatch(/tool_search/);
 	});
 });
 
@@ -205,7 +203,7 @@ describe("buildOrientation", () => {
 			["read", "grep", "tool_search"], // active set: 2 gated out
 		);
 		expect(out).toMatch(
-			/2 are deferred \(.*\): load with tool_search\("<tool name or task>"\) before the first call\./,
+			/2 are deferred \(.*\)\. Before a bash workaround or manual multi-step work, search by task: tool_search\("<what you need to do>"\)\./,
 		);
 	});
 
@@ -215,7 +213,7 @@ describe("buildOrientation", () => {
 			[],
 			["read", "tool_search"],
 		);
-		expect(out).toMatch(/1 is deferred \(.*\): load with tool_search/);
+		expect(out).toMatch(/1 is deferred \(.*\)\. Before a bash workaround/);
 	});
 
 	test("no tool_search registered: never tells the model to call it", () => {

@@ -37,13 +37,16 @@ export const CAPABILITY_REMINDER =
  */
 export function capabilityReminder(registered: Set<string> | undefined): string {
 	if (!registered) return CAPABILITY_REMINDER;
+	// Sessions searched by known tool name, rarely by task; ask for the task search at the bash fork.
+	const search = registered.has("tool_search")
+		? "tool_search the task before a bash workaround; "
+		: "";
 	const checks = [
 		"available tools and relevant skills",
 		registered.has("read_skills") && "read_skills()",
-		registered.has("tool_search") && "tool_search",
 		registered.has("mcp") && "mcp",
 	].filter(Boolean);
-	return `Reminder — before you improvise, check ${checks.join(", ")}; ask the user only if needed.`;
+	return `Reminder — ${search}before you improvise, check ${checks.join(", ")}; ask the user only if needed.`;
 }
 
 /**
@@ -194,7 +197,7 @@ export function buildOrientation(
 	const canLoad = tools?.some((t) => t.name === "tool_search") ?? false;
 	const lines = [
 		gated && canLoad
-			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context): load with tool_search("<tool name or task>") before the first call.`
+			? `${head} ${gated} ${gated === 1 ? "is" : "are"} deferred (schemas kept out of context). Before a bash workaround or manual multi-step work, search by task: tool_search("<what you need to do>"). A deferred tool often does it already.`
 			: head,
 	];
 	// Names, not schemas: a count alone never tells the model that ast exists.
