@@ -171,9 +171,10 @@ describe("pix-prompts host-aware injection", () => {
 			"Never bypass a tool approval gate",
 			"using the whole conversation, not just the latest sentence",
 			"inspect its relevant conventions before choosing changes",
-			"Resolve short follow-ups from context and inspect available evidence before asking",
+			"Resolve short follow-ups from evidence in the conversation and the workspace before asking",
+			"An assumption needs proof",
 			"Make routine implementation decisions yourself",
-			"only when a remaining uncertainty materially changes the goal, scope, cost, or safety",
+			"Ask one focused question when the goal, referent, or scope has no evidence",
 			"Do not invent a task when context provides none",
 			"successful tool calls alone do not establish completion",
 			"even when no tool approval gate is present",
@@ -235,6 +236,9 @@ describe("pix-prompts host-aware injection", () => {
 			"After a context compaction",
 			"check that the diff touches only the intended files",
 			"never retry the same edit blind",
+			"An assumption needs proof",
+			"the host injects the value at run time, so it never enters the context",
+			"If the reference fails (unknown name, not resolved, denied), ask the user",
 		]) {
 			expect(sop).toContain(rule);
 		}
