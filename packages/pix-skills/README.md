@@ -11,7 +11,7 @@ Pi coding agent extension — skill loader tool + skills bundle.
 | Resource | Type | Description |
 |---|---|---|
 | `read_skills` | tool | Browse local skills, search Skills.sh, explicitly fetch/cache a selected public GitHub skill, read references, and copy bundled resources. |
-| `skills/` | skills | 36 bundled skills (off-context by default — discovered on demand via `read_skills`) |
+| `skills/` | skills | 37 bundled skills (off-context by default — discovered on demand via `read_skills`) |
 
 ## New: Skills.sh search and remote skill cache
 
@@ -179,6 +179,7 @@ as `/skill:<name>` slash commands.
 | `search` | Deep code discovery and project context mapping with grep, graph, and LSP |
 | `subagent` | Decompose work and fan out independent units to parallel `agent` workers |
 | `suggest` | Ranked optimization and improvement recommendations |
+| `swamp` | Save a repeating task as a `.pi/workflows/` codemode script: code runs it, the agent judges and patches only the failing step |
 | `task` | Task orchestration and ambiguity resolution |
 | `tdd` | Test-first development: red, green, refactor |
 | `test` | Run tests, analyze failures, and fix them |
