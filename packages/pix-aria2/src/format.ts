@@ -39,6 +39,20 @@ function humanEta(secs: number | undefined): string {
 	return `${Math.floor(secs / 3600)}h${Math.floor((secs % 3600) / 60)}m`;
 }
 
+/**
+ * Filename from the requested URL, not the redirect target: HF/CDN redirects end in
+ * a hash path, which aria2 would otherwise use as the filename. Undefined = let aria2 decide.
+ */
+export function outName(url: string): string | undefined {
+	if (!/^https?:\/\//i.test(url)) return undefined;
+	try {
+		const name = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
+		return name && name !== ".." && name !== "." && !/[\\/]/.test(name) ? name : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 /** Best-effort human name for a download: file basename, else first URI, else gid. */
 export function downloadName(s: DlStatus): string {
 	const path = s.files?.[0]?.path;

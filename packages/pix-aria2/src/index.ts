@@ -26,7 +26,7 @@ import { once } from "@xynogen/pix-runtime/once";
 import { aria2 } from "maria2/dist/index.js";
 import { Type } from "typebox";
 import { Aria2MissingError, type DaemonHandle, startDaemon } from "./daemon.ts";
-import { type DlStatus, downloadName, fraction, progressLine } from "./format.ts";
+import { type DlStatus, downloadName, fraction, outName, progressLine } from "./format.ts";
 import { renderDownloadWidget } from "./widget.ts";
 
 const WIDGET_KEY = "pix-aria2:progress";
@@ -187,7 +187,8 @@ async function handleAdd(
 	p: { url?: string; dir?: string },
 ): Promise<DlResultDetails> {
 	if (!p.url) return fail("add", "add requires a url");
-	const opts = p.dir ? { dir: p.dir } : undefined;
+	const out = outName(p.url);
+	const opts = p.dir || out ? { ...(p.dir && { dir: p.dir }), ...(out && { out }) } : undefined;
 	const gid = (await aria2.addUri(daemon.conn, [p.url], opts)) as string;
 	const handle = mgr.track(gid);
 	mgr.startPolling();

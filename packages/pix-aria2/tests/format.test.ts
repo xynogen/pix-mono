@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { type DlStatus, downloadName, etaSeconds, fraction, progressLine } from "../src/format.ts";
+import {
+	type DlStatus,
+	downloadName,
+	etaSeconds,
+	fraction,
+	outName,
+	progressLine,
+} from "../src/format.ts";
 
 function status(over: Partial<DlStatus> = {}): DlStatus {
 	return {
@@ -68,5 +75,18 @@ describe("progressLine", () => {
 		expect(line).toContain("25%");
 		expect(line).not.toContain("/s");
 		expect(line).not.toContain("eta");
+	});
+});
+
+describe("outName", () => {
+	test("uses the requested URL basename", () => {
+		expect(
+			outName("https://huggingface.co/a/b/resolve/main/x/model%20v1.safetensors?download=true"),
+		).toBe("model v1.safetensors");
+	});
+	test("rejects non-http, empty and traversal names", () => {
+		expect(outName("magnet:?xt=urn:btih:abc")).toBeUndefined();
+		expect(outName("https://h/dir/")).toBeUndefined();
+		expect(outName("https://h/a/..%2Fevil")).toBeUndefined();
 	});
 });
