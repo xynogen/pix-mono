@@ -32,7 +32,7 @@
     },
     "packages/pix-aria2": {
       "name": "@xynogen/pix-aria2",
-      "version": "0.2.12",
+      "version": "0.2.13",
       "dependencies": {
         "@xynogen/pix-pretty": "^3.0.0",
         "@xynogen/pix-runtime": "^0.22.0",
@@ -423,7 +423,7 @@
     },
     "packages/pix-proc": {
       "name": "@xynogen/pix-proc",
-      "version": "0.2.16",
+      "version": "0.2.17",
       "dependencies": {
         "@xynogen/pix-pretty": "^3.0.0",
         "@xynogen/pix-runtime": "^0.22.0",
