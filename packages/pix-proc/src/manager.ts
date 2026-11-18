@@ -33,7 +33,7 @@ import {
 	writeFileSync,
 	writeSync,
 } from "@xynogen/pix-runtime/fs";
-import { generateLfid } from "@xynogen/pix-runtime/lfid";
+import { uniqueLfid } from "@xynogen/pix-runtime/lfid";
 import { cacheDir } from "@xynogen/pix-runtime/paths";
 import { type LogView, logSince, MAX_LOG_LINES, type ProcMeta, tailLines } from "./format.ts";
 
@@ -138,11 +138,9 @@ export class ProcManager {
 
 	/** Unique handle across the cache dir — a crashed session's handle is never reissued. */
 	private freshHandle(): string {
-		for (let i = 0; i < 64; i++) {
-			const h = generateLfid({ prefix: "proc" });
-			if (!this.procs.has(h) && !existsSync(join(PROC_DIR, `${h}.log`))) return h;
-		}
-		throw new Error("runner: handle namespace exhausted");
+		return uniqueLfid((h) => this.procs.has(h) || existsSync(join(PROC_DIR, `${h}.log`)), {
+			prefix: "proc",
+		});
 	}
 
 	private pidPath(handle: string): string {

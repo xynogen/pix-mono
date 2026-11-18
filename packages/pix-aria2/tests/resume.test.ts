@@ -49,7 +49,7 @@ test("W1 capture: resume restarts progress polling after paused downloads clear 
 		}));
 		let nextHandle = 42;
 		mock.module("@xynogen/pix-runtime/lfid", () => ({
-			generateLfid: () => `dl-fixed-otter-${nextHandle++}`,
+			uniqueLfid: () => `dl-fixed-otter-${nextHandle++}`,
 		}));
 		const { default: registerDownload } = await import("../src/index.ts");
 		let tool: { execute: (...args: unknown[]) => Promise<unknown> } | undefined;

@@ -21,7 +21,7 @@ import { Text } from "@xynogen/pix-pretty/tui";
 import { abortable } from "@xynogen/pix-runtime/abort";
 import { type CollapseState, collapseDelayMs, tickCollapse } from "@xynogen/pix-runtime/collapse";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
-import { generateLfid } from "@xynogen/pix-runtime/lfid";
+import { uniqueLfid } from "@xynogen/pix-runtime/lfid";
 import { once } from "@xynogen/pix-runtime/once";
 import { aria2 } from "maria2/dist/index.js";
 import { Type } from "typebox";
@@ -72,7 +72,7 @@ class DownloadManager {
 
 	/** Map a fresh LFID to a GID and remember both directions. */
 	track(gid: string): string {
-		const handle = generateLfid({ prefix: "dl" });
+		const handle = uniqueLfid((h) => this.gidByHandle.has(h), { prefix: "dl" });
 		this.gidByHandle.set(handle, gid);
 		this.handleByGid.set(gid, handle);
 		return handle;
