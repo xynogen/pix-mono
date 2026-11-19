@@ -14,7 +14,8 @@
  *
  * Security notes:
  *   - Password never leaves JS memory; never written to disk.
- *   - Every command still requires explicit per-call confirmation in the UI.
+ *   - Every command still requires explicit per-call confirmation in the UI,
+ *     except under /nuclear after the user picks "Allow root for this session".
  *   - PAM timestamp cache is honoured (no `-k`): within the system sudoers
  *     timeout a repeat call skips the password prompt but NOT the confirm.
  *   - No UI (RPC / JSON mode) = blocked with isError immediately.
@@ -59,6 +60,13 @@ const ROOT_PROMPT_TIMEOUT_MS = 60_000;
 const MAX_PASSWORD_ATTEMPTS = 3;
 
 type SudoParams = { command: string; reason?: string };
+/** Root allowed for this session. Only under /nuclear; dropped when it turns off or on /new. */
+type RootSession = { allowed: boolean; password: string };
+const SESSION_CHOICE = {
+	value: "session",
+	label: "Allow root for this session",
+	description: "No root prompt until /nuclear is off or /new",
+};
 type SudoUI = OverlayUI & { notify(message: string, type?: "info" | "warning" | "error"): void };
 type SudoToolResult = {
 	content: { type: "text"; text: string }[];
@@ -88,6 +96,7 @@ function askApproval(
 	events: EventBus,
 	{ reason }: SudoParams,
 	cached: boolean,
+	nuclear: boolean,
 	signal: AbortSignal | undefined,
 	validation: { error?: unknown },
 ): Promise<OverlayResult> {
@@ -99,11 +108,13 @@ function askApproval(
 		title: intent || "Root Command Request",
 		accent: "error",
 		timeoutMs: ROOT_PROMPT_TIMEOUT_MS,
+		approveValue: ["yes", "session"],
 	} as const;
 	const body = [
 		"Review the command in the tool card below.",
 		...(intent ? [] : ["No reason provided by AI"]),
 	];
+	const sessionChoices = nuclear ? [SESSION_CHOICE] : [];
 	if (cached) {
 		return showOverlay(ui, {
 			...common,
@@ -111,6 +122,7 @@ function askApproval(
 			body: [...body, "(sudo session active — no password needed)"],
 			choices: [
 				{ value: "yes", label: "Allow", description: "Run the command" },
+				...sessionChoices,
 				{ value: "no", label: "Deny", description: "Block the command" },
 			],
 		});
@@ -134,6 +146,7 @@ function askApproval(
 		},
 		choices: [
 			{ value: "yes", label: "Allow — enter password", description: "Proceed to password prompt" },
+			...sessionChoices,
 			{
 				value: "no",
 				label: "Deny — block command",
@@ -194,10 +207,13 @@ async function runSudo(
 	update: AgentToolUpdateCallback<SudoResultDetails> | undefined,
 	ctx: { hasUI: boolean; ui: SudoUI },
 	events: EventBus,
+	session: RootSession,
 ): Promise<SudoToolResult> {
 	const { command, reason } = params;
 	const mode = getUnattendedMode(events);
 	const yolo = mode === "yolo" || mode === "nuclear";
+	// The session allowance is nuclear-only: leaving nuclear forgets it and the password.
+	if (mode !== "nuclear") Object.assign(session, { allowed: false, password: "" });
 	if (mode === "afk")
 		return fail(params, "sudo_run denied immediately — AFK mode is active.", {
 			outcome: "denied",
@@ -219,11 +235,16 @@ async function runSudo(
 	// the password cannot be auto-typed, so a no-ticket run still prompts.
 	const validation: { error?: unknown } = {};
 	let overlayResult: OverlayResult;
-	if (yolo && cached) {
+	const sessionReady = session.allowed && (cached || session.password !== "");
+	if (mode === "nuclear" && sessionReady) {
+		ctx.ui.notify("NUCLEAR — root allowed for this session.", "warning");
+		overlayResult = { action: "approved", password: cached ? "" : session.password };
+	} else if (yolo && cached) {
 		ctx.ui.notify(`${mode.toUpperCase()} — root command auto-approved (cached ticket).`, "warning");
 		overlayResult = { action: "approved", password: "" };
 	} else {
-		overlayResult = await askApproval(ctx.ui, events, params, cached, signal, validation);
+		const nuclear = mode === "nuclear";
+		overlayResult = await askApproval(ctx.ui, events, params, cached, nuclear, signal, validation);
 	}
 
 	signal?.throwIfAborted();
@@ -246,10 +267,18 @@ async function runSudo(
 			errorKind: "authentication",
 		});
 
+	if (overlayResult.choice === "session") {
+		Object.assign(session, { allowed: true, password: overlayResult.password ?? "" });
+		ctx.ui.notify("Root allowed for this session — until /nuclear is off or /new.", "warning");
+	}
+
 	updatePresentation(update, command, reason, "running");
 	// Password validation (`sudo -v`) only gates the overlay; its ticket may not
 	// carry over to a new process, so the command gets the password again.
-	return commandResult(params, await runWithSudo(command, overlayResult.password ?? "", signal));
+	const result = await runWithSudo(command, overlayResult.password ?? "", signal);
+	// A stored password that sudo now rejects is dropped, so the next call prompts.
+	if (detectAuthFailure(result.code, result.stderr)) session.password = "";
+	return commandResult(params, result);
 }
 
 export default function pixSudo(pi: ExtensionAPI): void {
@@ -257,6 +286,8 @@ export default function pixSudo(pi: ExtensionAPI): void {
 }
 
 function register(pi: ExtensionAPI): void {
+	// Lives in the factory like pix-ssh's sessionHosts: Pi hands each session a fresh `pi`, so /new resets it.
+	const session: RootSession = { allowed: false, password: "" };
 	// sudo does not exist on Windows (catalog: UNIX only). Registering the tool
 	// there only offers the model a command that can never run.
 	if (currentPlatform().os === "win32") return;
@@ -313,7 +344,7 @@ function register(pi: ExtensionAPI): void {
 					),
 					isError: !cancelled,
 				}),
-				execute: ({ update }) => runSudo(params, signal, update, ctx, pi.events),
+				execute: ({ update }) => runSudo(params, signal, update, ctx, pi.events, session),
 			});
 		},
 

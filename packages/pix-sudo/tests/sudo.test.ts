@@ -273,6 +273,8 @@ function makeCtx(
 		overlayResult?: OverlayResult;
 		overlayResults?: OverlayResult[];
 		onCustom?: (lines: string[]) => void;
+		/** Keys sent before the first Enter, e.g. arrow-down to pick a later choice. */
+		selectKeys?: string;
 	} = {},
 ) {
 	const overlayResults = opts.overlayResults ?? [opts.overlayResult ?? { action: "denied" }];
@@ -307,6 +309,7 @@ function makeCtx(
 						(overlayResults[0]?.action === "approved" &&
 							Boolean(overlayResults[0].password?.trim()))
 					) {
+						if (opts.selectKeys) comp.handleInput(opts.selectKeys);
 						comp.handleInput("\r");
 						for (const result of overlayResults) {
 							if (result.action !== "approved") return result as T;
@@ -434,6 +437,68 @@ describe("sudo_run tool execute()", () => {
 		expect(opened).toBe(true); // no ticket => cannot auto-type password => overlay shown
 		expect(states).toEqual(["blocked", "idle"]);
 		expect(text(result)).toContain("Denied by user");
+	});
+
+	test("session root choice is offered only under nuclear", async () => {
+		const seen: Record<string, string> = {};
+		for (const mode of ["off", "yolo", "nuclear"] as const) {
+			const host = makeHost();
+			setUnattendedMode(host.events, mode);
+			await host.execute(
+				"id",
+				{ command: "whoami" },
+				undefined,
+				undefined,
+				makeCtx({
+					onCustom: (lines) => {
+						seen[mode] = lines.join("\n");
+					},
+				}),
+			);
+		}
+		expect(seen.off).not.toContain("Allow root for this session");
+		expect(seen.yolo).not.toContain("Allow root for this session");
+		expect(seen.nuclear).toContain("Allow root for this session");
+	});
+
+	test("nuclear session root: one prompt, then no prompt until nuclear is off", async () => {
+		validationMock = async () => ({ stdout: "", stderr: "", code: 0 });
+		const runs: string[] = [];
+		sudoMock = async (command, password) => {
+			runs.push(`${command}:${password}`);
+			return { stdout: "root", stderr: "", code: 0 };
+		};
+		const host = makeHost();
+		setUnattendedMode(host.events, "nuclear");
+		let opened = 0;
+		const run = (command: string, overlayResult?: OverlayResult, selectKeys?: string) =>
+			host.execute(
+				"id",
+				{ command },
+				undefined,
+				undefined,
+				makeCtx({
+					...(overlayResult ? { overlayResult } : {}),
+					...(selectKeys ? { selectKeys } : {}),
+					onCustom: () => {
+						opened += 1;
+					},
+				}),
+			);
+
+		// Arrow-down picks "Allow root for this session", then the password.
+		await run("first", { action: "approved", password: "pw" }, "\x1b[B");
+		await run("second");
+		expect(opened).toBe(1);
+		expect(runs).toEqual(["first:pw", "second:pw"]);
+
+		// Leaving nuclear forgets the allowance: the next call prompts again.
+		setUnattendedMode(host.events, "off");
+		await run("third", { action: "denied" });
+		setUnattendedMode(host.events, "nuclear");
+		await run("fourth", { action: "denied" });
+		expect(opened).toBe(3);
+		expect(runs).toHaveLength(2);
 	});
 
 	test("action=denied => cancelled", async () => {

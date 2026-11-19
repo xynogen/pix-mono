@@ -346,7 +346,9 @@ export async function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise
 						}
 
 						// ── event wiring ─────────────────────────────────────────────────
+						let picked: string | undefined;
 						selectList.onSelect = (item) => {
+							picked = item.value;
 							if (!approveVals.includes(item.value)) {
 								finish({ action: "denied", choice: item.value });
 							} else if (config.mode === "sudo") {
@@ -360,7 +362,7 @@ export async function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise
 
 						maskedInput.onSubmit = async (pw) => {
 							if (config.mode !== "sudo" || !config.validatePassword) {
-								finish({ action: "approved", password: pw });
+								finish({ action: "approved", password: pw, choice: picked });
 								return;
 							}
 							if (!pw.trim() || validatingPassword) return;
@@ -378,7 +380,7 @@ export async function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise
 							if (lifecycle.closed) return;
 							validatingPassword = false;
 							if (valid) {
-								finish({ action: "approved", password: pw });
+								finish({ action: "approved", password: pw, choice: picked });
 								return;
 							}
 

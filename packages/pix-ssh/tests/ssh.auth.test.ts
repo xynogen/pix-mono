@@ -238,6 +238,49 @@ test("nuclear skips command and transfer approval but still prompts for missing 
 	expect(overlay).toHaveBeenCalledTimes(2);
 });
 
+test("nuclear offers 'Allow root for this session' for sudo; later sudo calls skip the popup", async () => {
+	const { pi, tool } = capturePi();
+	const events = createEventBus();
+	register({ ...pi, events } as unknown as ExtensionAPI);
+	const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+	const screens: string[] = [];
+	const overlay = mock<OverlayUI["custom"]>(async (factory) =>
+		custom((tui, theme, kb, done) => {
+			const component = factory(tui, theme, kb, done);
+			screens.push(component.render(100).join("\n"));
+			return component;
+		}),
+	);
+	const notify = mock(() => {});
+	const ctx = { hasUI: true, ui: { custom: overlay, notify } };
+	keyWorks = true;
+	const call = () =>
+		execute(
+			"root",
+			{ action: "command", host: "nuclear-root", command: "id", sudo: true, reason: "r" },
+			undefined,
+			undefined,
+			ctx,
+		);
+
+	setUnattendedMode(events, "nuclear");
+	allowSession = true;
+	try {
+		expect((await call()).details).toMatchObject({ outcome: "success" });
+	} finally {
+		allowSession = false;
+	}
+	expect(screens[0]).toContain("Allow root for this session");
+	expect(notify).toHaveBeenCalledWith(
+		"ssh_run: root on nuclear-root allowed for this session",
+		"warning",
+	);
+	expect(runs.at(-1)?.sudoPassword).toBe("pw");
+
+	expect((await call()).details).toMatchObject({ outcome: "success" });
+	expect(overlay).toHaveBeenCalledTimes(1);
+});
+
 test("host key mismatch: red menu defaults to Cancel even in YOLO; reset reconnects only after explicit approval", async () => {
 	const { pi, tool } = capturePi();
 	const events = createEventBus();

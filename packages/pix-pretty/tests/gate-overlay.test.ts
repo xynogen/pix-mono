@@ -335,7 +335,7 @@ describe("showOverlay — sudo mode", () => {
 		component?.handleInput("correct");
 		component?.handleInput(ENTER);
 
-		expect(await pending).toEqual({ action: "approved", password: "correct" });
+		expect(await pending).toEqual({ action: "approved", password: "correct", choice: "yes" });
 		expect(attempts).toEqual(["wrong", "correct"]);
 		expect(overlayCount).toBe(1);
 	});

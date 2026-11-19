@@ -114,6 +114,14 @@ const SPINNER_INTERVAL_MS = 120;
 const SESSION_CHOICE: OverlayChoice[] = [
 	{ value: "session", label: "Allow for this session", description: "Host, until /new; sudo asks" },
 ];
+/** Nuclear-only root choice: keep the remote sudo password so later sudo calls skip the popup. */
+const ROOT_SESSION_CHOICE: OverlayChoice[] = [
+	{
+		value: "session",
+		label: "Allow root for this session",
+		description: "No root prompt on this host until /new",
+	},
+];
 
 type ToolText = { type: "text"; text: string };
 type SshToolResult = {
@@ -342,7 +350,12 @@ async function runOverlay(
 		...approvalBody(operation, host, spec.port),
 		...(approval.keyOk && !call.creds.loginPassword ? ["Auth: SSH key (no password)"] : []),
 	];
-	const sessionChoices = action === "command" && !privileged ? SESSION_CHOICE : [];
+	const sessionChoices =
+		action === "command" && !privileged
+			? SESSION_CHOICE
+			: call.mode === "nuclear" && privileged
+				? ROOT_SESSION_CHOICE
+				: [];
 	const common = {
 		state: { events: call.events, source: "ssh_run" },
 		signal: sig,
@@ -707,11 +720,16 @@ async function execute(
 			overlayResult.action,
 		);
 
-	// Plain "Allow" approves this call only. "session" (offered only for
-	// non-privileged commands) is the sole way to skip later prompts.
+	// Plain "Allow" approves this call only. "session" is the sole way to skip later prompts:
+	// for non-privileged commands it remembers the host; under /nuclear, for root it relies on the
+	// cached sudo password below (nuclear skips the confirm once no password is missing).
 	if (overlayResult.choice === "session") {
-		sessionHosts.add(key);
-		ctx.ui.notify(`ssh_run: ${host} allowed for this session (sudo still asks)`, "info");
+		if (approval.privileged) {
+			ctx.ui.notify(`ssh_run: root on ${host} allowed for this session`, "warning");
+		} else {
+			sessionHosts.add(key);
+			ctx.ui.notify(`ssh_run: ${host} allowed for this session (sudo still asks)`, "info");
+		}
 	}
 
 	// Persist newly-entered passwords in the session cache.
