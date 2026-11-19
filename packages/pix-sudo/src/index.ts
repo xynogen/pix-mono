@@ -15,7 +15,7 @@
  * Security notes:
  *   - Password never leaves JS memory; never written to disk.
  *   - Every command still requires explicit per-call confirmation in the UI,
- *     except under /nuclear after the user picks "Allow root for this session".
+ *     except under /nuclear after the user picks "Allow — root this session".
  *   - PAM timestamp cache is honoured (no `-k`): within the system sudoers
  *     timeout a repeat call skips the password prompt but NOT the confirm.
  *   - No UI (RPC / JSON mode) = blocked with isError immediately.
@@ -64,7 +64,7 @@ type SudoParams = { command: string; reason?: string };
 type RootSession = { allowed: boolean; password: string };
 const SESSION_CHOICE = {
 	value: "session",
-	label: "Allow root for this session",
+	label: "Allow — root this session",
 	description: "No root prompt until /nuclear is off or /new",
 };
 type SudoUI = OverlayUI & { notify(message: string, type?: "info" | "warning" | "error"): void };
@@ -121,9 +121,9 @@ function askApproval(
 			mode: "confirm",
 			body: [...body, "(sudo session active — no password needed)"],
 			choices: [
-				{ value: "yes", label: "Allow", description: "Run the command" },
+				{ value: "yes", label: "Allow — run command", description: "Run the command" },
 				...sessionChoices,
-				{ value: "no", label: "Deny", description: "Block the command" },
+				{ value: "no", label: "Deny — block command", description: "Block the command" },
 			],
 		});
 	}
@@ -145,7 +145,7 @@ function askApproval(
 			}
 		},
 		choices: [
-			{ value: "yes", label: "Allow — enter password", description: "Proceed to password prompt" },
+			{ value: "yes", label: "Allow — run command", description: "Proceed to password prompt" },
 			...sessionChoices,
 			{
 				value: "no",

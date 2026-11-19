@@ -70,7 +70,9 @@ describe("/clear", () => {
 	test("asks first, names the target dir, and deletes nothing on cancel", async () => {
 		const { c, notes, body } = ctx(false);
 		await handler()("", c as never);
-		expect(body()).toMatch(/Clear the Pi cache\?[\s\S]*This deletes:[\s\S]*Delete[\s\S]*Cancel/);
+		expect(body()).toMatch(
+			/Clear the Pi cache\?[\s\S]*This deletes:[\s\S]*Allow — delete cache[\s\S]*Deny +— keep cache/,
+		);
 		expect(body()).toContain(cacheDir());
 		expect(existsSync(cacheDir())).toBe(true);
 		expect(notes).toEqual(["Clear cancelled."]);

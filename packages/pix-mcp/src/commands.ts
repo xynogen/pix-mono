@@ -621,8 +621,12 @@ export async function openMcpPanel(
 			],
 			accent: "error",
 			choices: [
-				{ value: "yes", label: "Delete", description: `Remove ${wantsDelete} and its saved auth` },
-				{ value: "no", label: "Cancel", description: "Keep the server" },
+				{
+					value: "yes",
+					label: "Allow — delete server",
+					description: `Remove ${wantsDelete} and its saved auth`,
+				},
+				{ value: "no", label: "Deny — keep server", description: "Keep the server" },
 			],
 		});
 		if (result.action !== "approved") return openMcpPanel(state, pi, ctx, configOverridePath);

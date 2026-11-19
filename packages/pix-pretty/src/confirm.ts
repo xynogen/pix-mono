@@ -15,6 +15,7 @@ import {
 	terminalModalHeight,
 } from "./modal-frame.ts";
 import { createOverlayLifecycle } from "./overlay-lifecycle.ts";
+import { alignDashLabels } from "./text.ts";
 import { type UserPromptOptions, type UserPromptState, withUserPrompt } from "./user-prompt.ts";
 
 // Minimal structural type for the `ctx.ui.custom` host call.
@@ -52,9 +53,9 @@ export interface ConfirmOptions {
 	title: string;
 	/** Optional body lines rendered under the title. */
 	body?: string[];
-	/** Label for the confirm choice. Default "Yes". */
+	/** Label for the confirm choice. Default "Allow — proceed". */
 	confirmLabel?: string;
-	/** Label for the deny choice. Default "No". */
+	/** Label for the deny choice. Default "Deny — cancel". */
 	denyLabel?: string;
 	/** Accent colour for border + selection. Default "accent". */
 	accent?: string;
@@ -88,18 +89,18 @@ export async function confirmOverlay(ui: ConfirmUI, opts: ConfirmOptions): Promi
 						lifecycle.onCleanup(() => clearInterval(ticker));
 						lifecycle.bind(done);
 
-						const choices: SelectItem[] = [
+						const choices: SelectItem[] = alignDashLabels([
 							{
 								value: "yes",
-								label: opts.confirmLabel ?? "Yes",
+								label: opts.confirmLabel ?? "Allow — proceed",
 								description: "Proceed",
 							},
 							{
 								value: "no",
-								label: opts.denyLabel ?? "No",
+								label: opts.denyLabel ?? "Deny — cancel",
 								description: "Cancel",
 							},
-						];
+						]);
 
 						const selectList = new SelectList(
 							choices,

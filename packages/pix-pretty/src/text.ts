@@ -178,3 +178,14 @@ export function trimToUndefined(value: string | undefined): string | undefined {
 	const trimmed = value?.trim();
 	return trimmed ? trimmed : undefined;
 }
+
+/** Pad each `Head — rest` label so the dashes line up in one column; labels without a dash stay as-is. */
+export function alignDashLabels<T extends { label: string }>(items: T[]): T[] {
+	const heads = items.map((item) => item.label.indexOf(" — "));
+	const width = Math.max(-1, ...heads);
+	return items.map((item, i) => {
+		const at = heads[i] ?? -1;
+		if (at < 0) return item;
+		return { ...item, label: item.label.slice(0, at).padEnd(width) + item.label.slice(at) };
+	});
+}

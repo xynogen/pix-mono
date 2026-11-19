@@ -456,9 +456,9 @@ describe("sudo_run tool execute()", () => {
 				}),
 			);
 		}
-		expect(seen.off).not.toContain("Allow root for this session");
-		expect(seen.yolo).not.toContain("Allow root for this session");
-		expect(seen.nuclear).toContain("Allow root for this session");
+		expect(seen.off).not.toContain("Allow — root this session");
+		expect(seen.yolo).not.toContain("Allow — root this session");
+		expect(seen.nuclear).toContain("Allow — root this session");
 	});
 
 	test("nuclear session root: one prompt, then no prompt until nuclear is off", async () => {
@@ -486,7 +486,7 @@ describe("sudo_run tool execute()", () => {
 				}),
 			);
 
-		// Arrow-down picks "Allow root for this session", then the password.
+		// Arrow-down picks "Allow — root this session", then the password.
 		await run("first", { action: "approved", password: "pw" }, "\x1b[B");
 		await run("second");
 		expect(opened).toBe(1);

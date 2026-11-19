@@ -110,15 +110,19 @@ const PROMPT_TIMEOUT_MS = 60_000;
 const MAX_PASSWORD_ATTEMPTS = 3;
 const SPINNER_INTERVAL_MS = 120;
 
-/** "Allow for this session" choice. Offered only for non-privileged commands. */
+/** "Allow — host this session" choice. Offered only for non-privileged commands. */
 const SESSION_CHOICE: OverlayChoice[] = [
-	{ value: "session", label: "Allow for this session", description: "Host, until /new; sudo asks" },
+	{
+		value: "session",
+		label: "Allow — host this session",
+		description: "Host, until /new; sudo asks",
+	},
 ];
 /** Nuclear-only root choice: keep the remote sudo password so later sudo calls skip the popup. */
 const ROOT_SESSION_CHOICE: OverlayChoice[] = [
 	{
 		value: "session",
-		label: "Allow root for this session",
+		label: "Allow — root this session",
 		description: "No root prompt on this host until /new",
 	},
 ];
@@ -211,12 +215,16 @@ async function handleHostKeyError(
 		timeoutMs: PROMPT_TIMEOUT_MS,
 		approveValue: "reset",
 		choices: [
-			{ value: "cancel", label: "Cancel", description: "Keep known_hosts unchanged" },
+			{
+				value: "cancel",
+				label: "Deny — keep host key",
+				description: "Keep known_hosts unchanged",
+			},
 			...(reset
 				? [
 						{
 							value: "reset",
-							label: "Reset known host and reconnect",
+							label: "Allow — reset host key",
 							description: "I verified the new fingerprint through a trusted source",
 						},
 					]
@@ -374,14 +382,14 @@ async function runOverlay(
 			choices: [
 				{
 					value: "yes",
-					label: "Allow",
+					label: action === "file" ? "Allow — copy file" : "Allow — run command",
 					description:
 						action === "file" ? "Copy to destination (may overwrite)" : "Run the command",
 				},
 				...sessionChoices,
 				{
 					value: "no",
-					label: "Deny",
+					label: action === "file" ? "Deny — block copy" : "Deny — block command",
 					description: action === "file" ? "Cancel transfer" : "Block the command",
 				},
 			],
@@ -403,9 +411,13 @@ async function runOverlay(
 			// it keeps the non-empty check and surfaces failures on the run.
 			validatePassword: validatorFor(stage, spec, call.controlPath, sig, call.fileAction),
 			choices: [
-				{ value: "yes", label: "Allow", description: `Enter ${label.toLowerCase()}` },
+				{
+					value: "yes",
+					label: "Allow — run command",
+					description: `Enter ${label.toLowerCase()}`,
+				},
 				...sessionChoices,
-				{ value: "no", label: "Deny", description: "Block the command" },
+				{ value: "no", label: "Deny — block command", description: "Block the command" },
 			],
 		});
 		if (last.action !== "approved" || !last.password?.trim()) return last;
@@ -720,7 +732,7 @@ async function execute(
 			overlayResult.action,
 		);
 
-	// Plain "Allow" approves this call only. "session" is the sole way to skip later prompts:
+	// Plain "Allow — …" approves this call only. "session" is the sole way to skip later prompts:
 	// for non-privileged commands it remembers the host; under /nuclear, for root it relies on the
 	// cached sudo password below (nuclear skips the confirm once no password is missing).
 	if (overlayResult.choice === "session") {
@@ -748,7 +760,7 @@ export default function pixSsh(pi: ExtensionAPI): void {
 }
 
 function register(pi: ExtensionAPI): void {
-	// "Allow for this session" hosts. Lives in the factory: Pi hands each new session a fresh `pi`,
+	// "Allow — host this session" hosts. Lives in the factory: Pi hands each new session a fresh `pi`,
 	// so this resets on /new. Privileged commands never use it (see planApproval).
 	const sessionHosts = new Set<string>();
 	pi.registerTool({

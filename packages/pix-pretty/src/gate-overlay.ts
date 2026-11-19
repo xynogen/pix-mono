@@ -28,6 +28,7 @@ import {
 	terminalModalHeight,
 } from "./modal-frame.ts";
 import { createOverlayLifecycle } from "./overlay-lifecycle.ts";
+import { alignDashLabels } from "./text.ts";
 import { type UserPromptOptions, type UserPromptState, withUserPrompt } from "./user-prompt.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ interface BaseConfig {
 	/**
 	 * Choices shown in the SelectList.
 	 * A choice whose value is in approveValue counts as approval.
-	 * Default: [{ value:"yes", label:"Allow" }, { value:"no", label:"Deny" }]
+	 * Default: [{ value:"yes", label:"Allow — proceed" }, { value:"no", label:"Deny — cancel" }]
 	 */
 	choices?: OverlayChoice[];
 	/** Choice value(s) that mean "approved". Default "yes". `OverlayResult.choice` tells them apart. */
@@ -132,8 +133,8 @@ export interface OverlayUI {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_CHOICES: OverlayChoice[] = [
-	{ value: "yes", label: "Allow", description: "Proceed" },
-	{ value: "no", label: "Deny", description: "Block" },
+	{ value: "yes", label: "Allow — proceed", description: "Proceed" },
+	{ value: "no", label: "Deny — cancel", description: "Cancel" },
 ];
 
 function asPageKeybindings(value: unknown): ModalPageKeybindings | undefined {
@@ -251,8 +252,8 @@ function buildSections(opts: {
  *   accent: "warning",
  *   timeoutMs: 30_000,
  *   choices: [
- *     { value: "yes", label: "Allow", description: "Run the command" },
- *     { value: "no",  label: "Deny",  description: "Block it"        },
+ *     { value: "yes", label: "Allow — run command", description: "Run the command" },
+ *     { value: "no",  label: "Deny — block command", description: "Block the command"        },
  *   ],
  * });
  * ```
@@ -306,11 +307,9 @@ export async function showOverlay(ui: OverlayUI, config: OverlayConfig): Promise
 						};
 
 						// ── components ──────────────────────────────────────────────────
-						const selectItems: SelectItem[] = choices.map((c) => ({
-							value: c.value,
-							label: c.label,
-							description: c.description,
-						}));
+						const selectItems: SelectItem[] = alignDashLabels(
+							choices.map((c) => ({ value: c.value, label: c.label, description: c.description })),
+						);
 
 						const selectList = new SelectList(
 							selectItems,

@@ -205,8 +205,8 @@ export default function pixEnvExtension(pi: ExtensionAPI): void {
 				accent: "warning",
 				timeoutMs: 30_000,
 				choices: [
-					{ value: "yes", label: "Inject", description: "Resolve and run" },
-					{ value: "no", label: "Deny", description: "Block the tool call" },
+					{ value: "yes", label: "Allow — inject secret", description: "Resolve and run" },
+					{ value: "no", label: "Deny — block secret", description: "Block the tool call" },
 				],
 			});
 

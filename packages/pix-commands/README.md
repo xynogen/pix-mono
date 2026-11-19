@@ -11,7 +11,7 @@ Pi extension providing focused slash commands:
 
 ## `/clear`
 
-Deletes `~/.cache/pi` and the jiti transpile cache (`<tmpdir>/jiti`) to flush stale model data and compiled extensions. Other files in the temp dir stay. A confirm dialog lists the exact paths first. Choose **Delete** to go on, or **Cancel** / `esc` to stop. After it deletes, it prompts you to run `/reload`. Without a TUI (headless or RPC) it deletes with no prompt.
+Deletes `~/.cache/pi` and the jiti transpile cache (`<tmpdir>/jiti`) to flush stale model data and compiled extensions. Other files in the temp dir stay. A confirm dialog lists the exact paths first. Choose **Allow — delete cache** to go on, or **Deny — keep cache** / `esc` to stop. After it deletes, it prompts you to run `/reload`. Without a TUI (headless or RPC) it deletes with no prompt.
 
 ## `/btw`
 

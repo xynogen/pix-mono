@@ -25,8 +25,8 @@ async function clearCache(_pi: ExtensionAPI, ctx: ExtensionCommandContext) {
 			icon: icon("status.warn"),
 			title: "Clear the Pi cache?",
 			body: ["This deletes:", ...targets.map((t) => `  ${t}`), "Run /reload after to apply."],
-			confirmLabel: "Delete",
-			denyLabel: "Cancel",
+			confirmLabel: "Allow — delete cache",
+			denyLabel: "Deny — keep cache",
 		});
 		if (!ok) {
 			ctx.ui.notify("Clear cancelled.", "info");

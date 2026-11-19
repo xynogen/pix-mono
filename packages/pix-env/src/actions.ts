@@ -86,8 +86,8 @@ export async function writeEnv(
 			accent: "warning",
 			timeoutMs: 30_000,
 			choices: [
-				{ value: "no", label: "Deny", description: "Keep file unchanged" },
-				{ value: "yes", label: "Write", description: `Save ${params.name}` },
+				{ value: "no", label: "Deny — keep file", description: "Keep file unchanged" },
+				{ value: "yes", label: "Allow — write file", description: `Save ${params.name}` },
 			],
 			approveValue: "yes",
 		});
@@ -156,8 +156,8 @@ export async function readEnv(
 		accent: "error",
 		timeoutMs: 30_000,
 		choices: [
-			{ value: "no", label: "Deny", description: "Keep values hidden" },
-			{ value: "yes", label: "Reveal", description: `Expose only ${list}` },
+			{ value: "no", label: "Deny — hide values", description: "Keep values hidden" },
+			{ value: "yes", label: "Allow — reveal values", description: `Expose only ${list}` },
 		],
 		approveValue: "yes",
 	});

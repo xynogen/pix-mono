@@ -238,7 +238,7 @@ test("nuclear skips command and transfer approval but still prompts for missing 
 	expect(overlay).toHaveBeenCalledTimes(2);
 });
 
-test("nuclear offers 'Allow root for this session' for sudo; later sudo calls skip the popup", async () => {
+test("nuclear offers 'Allow — root this session' for sudo; later sudo calls skip the popup", async () => {
 	const { pi, tool } = capturePi();
 	const events = createEventBus();
 	register({ ...pi, events } as unknown as ExtensionAPI);
@@ -270,7 +270,7 @@ test("nuclear offers 'Allow root for this session' for sudo; later sudo calls sk
 	} finally {
 		allowSession = false;
 	}
-	expect(screens[0]).toContain("Allow root for this session");
+	expect(screens[0]).toContain("Allow — root this session");
 	expect(notify).toHaveBeenCalledWith(
 		"ssh_run: root on nuclear-root allowed for this session",
 		"warning",

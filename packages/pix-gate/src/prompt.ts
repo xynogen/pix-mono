@@ -89,24 +89,24 @@ export async function promptPathDecision(
 			? [
 					{
 						value: "no",
-						label: "No, block it",
+						label: "Deny — block file",
 						description: "Deny this file access",
 					},
 					{
 						value: "yes",
-						label: "Yes, I know what I'm doing",
+						label: "Allow — access file (risky)",
 						description: "Allow once",
 					},
 				]
 			: [
 					{
 						value: "yes",
-						label: "Yes, allow",
+						label: "Allow — access file",
 						description: "Proceed with file access",
 					},
 					{
 						value: "no",
-						label: "No, block it",
+						label: "Deny — block file",
 						description: "Deny this file access",
 					},
 				];
@@ -196,20 +196,20 @@ export async function promptMergedGateDecision(
 		? [
 				{
 					value: "no",
-					label: "No, block it",
+					label: "Deny — block command",
 					description: "Prevent this command from running",
 				},
 				{
 					value: "yes",
-					label: "Yes, I understand the risk",
+					label: "Allow — run command (risky)",
 					description: "Allow once",
 				},
 			]
 		: [
-				{ value: "yes", label: "Yes, allow", description: "Run the command" },
+				{ value: "yes", label: "Allow — run command", description: "Run the command" },
 				{
 					value: "no",
-					label: "No, block it",
+					label: "Deny — block command",
 					description: "Prevent this command from running",
 				},
 			];
@@ -255,20 +255,20 @@ export async function promptGateDecision(
 			? [
 					{
 						value: "no",
-						label: "No, block it",
+						label: "Deny — block command",
 						description: "Prevent this command from running",
 					},
 					{
 						value: "yes",
-						label: "Yes, I understand the risk",
+						label: "Allow — run command (risky)",
 						description: "Allow once",
 					},
 				]
 			: [
-					{ value: "yes", label: "Yes, allow", description: "Run the command" },
+					{ value: "yes", label: "Allow — run command", description: "Run the command" },
 					{
 						value: "no",
-						label: "No, block it",
+						label: "Deny — block command",
 						description: "Prevent this command from running",
 					},
 				];

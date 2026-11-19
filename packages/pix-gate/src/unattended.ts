@@ -66,10 +66,10 @@ export async function confirmYoloConsent(events: EventBus, ctx: ModelCtx): Promi
 			"You accept all risk; AS IS, no liability (MIT).",
 		],
 		choices: [
-			{ value: "no", label: "Cancel", description: "Keep approval prompts" },
+			{ value: "no", label: "Deny — keep prompts", description: "Keep approval prompts" },
 			{
 				value: "yes",
-				label: "Accept all risk",
+				label: "Allow — accept all risk",
 				description: "Enable YOLO this session",
 			},
 		],
@@ -230,10 +230,10 @@ export default function registerUnattended(pi: ExtensionAPI): void {
 					"Only this session. /nuclear disables it; /new resets it.",
 				],
 				choices: [
-					{ value: "no", label: "Cancel", description: "Keep current protections" },
+					{ value: "no", label: "Deny — keep gates", description: "Keep current protections" },
 					{
 						value: "yes",
-						label: "Accept all risk",
+						label: "Allow — accept all risk",
 						description: "Disable Pix approval gates this session",
 					},
 				],

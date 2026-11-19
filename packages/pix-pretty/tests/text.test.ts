@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { colorToRgb, rgbColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
-import { fadeLine, fadeRowsOf, fadeText, fadeTextRow, pluralize } from "../src/text.ts";
+import {
+	alignDashLabels,
+	fadeLine,
+	fadeRowsOf,
+	fadeText,
+	fadeTextRow,
+	pluralize,
+} from "../src/text.ts";
 
 describe("fadeTextRow", () => {
 	const theme = { fg: (key: string, text: string) => `<${key}>${text}</${key}>` };
@@ -193,5 +200,16 @@ describe("pluralize", () => {
 	test("defaults plural to noun + s", () => {
 		expect(pluralize(1, "line")).toBe("1 line");
 		expect(pluralize(3, "line")).toBe("3 lines");
+	});
+});
+
+describe("alignDashLabels", () => {
+	test("lines up the dash column and leaves dashless labels alone", () => {
+		const labels = alignDashLabels([
+			{ label: "Allow — run command" },
+			{ label: "Deny — block command" },
+			{ label: "Cancel" },
+		]).map((c) => c.label);
+		expect(labels).toEqual(["Allow — run command", "Deny  — block command", "Cancel"]);
 	});
 });
