@@ -38,7 +38,7 @@ Both passwords are cached in memory per host for the session (keyed by `user@hos
 
 OpenSSH ControlMaster multiplexing keeps one authenticated connection per host alive for a short `ControlPersist` window, so repeat `ssh_run` calls to the same host skip re-auth. Host-key policy is `accept-new` and `ConnectTimeout` is 10s.
 
-While the approval dialog is open, `ssh_run` holds the shared agent-state coordinator in `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so [`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify), when installed, alerts an away user that a command is waiting on approval. `/afk` (pix-commands) denies `ssh_run` immediately; `/yolo` auto-approves it only when no password is missing (a password prompt can't be auto-typed).
+While the approval dialog is open, `ssh_run` holds the shared agent-state coordinator in `blocked` (via `withAgentBlock` from [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime)), so [`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify), when installed, alerts an away user that a command is waiting on approval. `/afk` (pix-gate) denies `ssh_run` immediately; `/yolo` auto-approves it only when no password is missing (a password prompt can't be auto-typed).
 
 Completed calls collapse after the configured Pix delay into a status row such as `✓ ssh deploy@10.0.0.5  apt update · exit 0 · 12 lines`. Configure the delay with `collapse.delaySec` and the per-tool toggle with `collapse.tools.ssh` in `~/.pi/agent/pix.json`. Overlays are never collapsed, and passwords are never included in result metadata or render state.
 

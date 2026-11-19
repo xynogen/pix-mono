@@ -44,7 +44,7 @@ call input, cannot be brokered.
 ## Unattended modes (AFK / YOLO)
 
 pix-env reads the shared unattended mode from `@xynogen/pix-runtime`, like
-pix-sudo and pix-ssh (set with `/afk` and `/yolo` from pix-commands):
+pix-sudo and pix-ssh (set with `/afk` and `/yolo` from pix-gate):
 
 - **AFK** (and not YOLO) — injection is auto-denied. No secret is resolved
   while you are away.

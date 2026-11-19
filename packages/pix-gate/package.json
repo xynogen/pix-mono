@@ -41,6 +41,7 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@xynogen/pix-data": "^0.6.1",
 		"@xynogen/pix-pretty": "^3.0.0",
 		"@xynogen/pix-runtime": "^0.22.0"
 	},

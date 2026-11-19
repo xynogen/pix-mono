@@ -35,7 +35,7 @@ function fixture(opts: { approved?: boolean; hasUI?: boolean; mode?: "afk" | "nu
 	roots.push(root);
 	writeFileSync(join(root, ".env"), "secret-value");
 	const events = createEventBus();
-	registerGate({ events, on() {} } as unknown as ExtensionAPI);
+	registerGate({ events, on() {}, registerCommand() {} } as unknown as ExtensionAPI);
 	if (opts.mode) setUnattendedMode(events, opts.mode);
 	const states: string[] = [];
 	events.on("pix:agent-state", (raw) => states.push((raw as { state: string }).state));

@@ -18,6 +18,7 @@ async function run(
 	const handlers: Array<(event: any, ctx: any) => Promise<unknown>> = [];
 	const pi = {
 		events: createEventBus(),
+		registerCommand() {},
 		getAllTools: () => (opts.tools ?? []).map((name) => ({ name })),
 		on(event: string, handler: (event: any, ctx: any) => Promise<unknown>) {
 			if (event === "tool_call") handlers.push(handler);
@@ -140,6 +141,7 @@ describe("gate agent state", () => {
 		const handlers: Array<(event: any, ctx: any) => Promise<unknown>> = [];
 		registerGate({
 			events,
+			registerCommand() {},
 			on(event: string, handler: (event: any, ctx: any) => Promise<unknown>) {
 				if (event === "tool_call") handlers.push(handler);
 			},
@@ -184,6 +186,7 @@ describe("gate agent state", () => {
 		const handlers: Array<(event: any, ctx: any) => Promise<unknown>> = [];
 		const pi = {
 			events,
+			registerCommand() {},
 			on(event: string, handler: (event: any, ctx: any) => Promise<unknown>) {
 				if (event === "tool_call") handlers.push(handler);
 			},
@@ -211,6 +214,7 @@ describe("gate agent state", () => {
 		const handlers: Array<(event: any, ctx: any) => Promise<unknown>> = [];
 		const pi = {
 			events,
+			registerCommand() {},
 			getAllTools: () => [{ name: "ssh_run" }],
 			on(event: string, handler: (event: any, ctx: any) => Promise<unknown>) {
 				if (event === "tool_call") handlers.push(handler);
@@ -245,6 +249,7 @@ describe("gate agent state", () => {
 		const handlers: Array<(event: any, ctx: any) => Promise<unknown>> = [];
 		const pi = {
 			events,
+			registerCommand() {},
 			getAllTools: () => [],
 			on(event: string, handler: (event: any, ctx: any) => Promise<unknown>) {
 				if (event === "tool_call") handlers.push(handler);

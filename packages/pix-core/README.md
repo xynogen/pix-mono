@@ -22,7 +22,7 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 | `pix-footer` | Status bar: mode / git branch / model / cost / live TPS |
 | `pix-models` | `/model` — enhanced model picker with coding score/rank, context, cost |
 | `pix-update` | `/update` — self-update Pi + refresh extensions |
-| `pix-commands` | Slash commands — `/clear`, concurrent `/btw` side questions, and `/afk` / `/yolo` unattended modes |
+| `pix-commands` | Slash commands — `/clear` and concurrent `/btw` side questions |
 | `pix-diagnostics` | Compact LSP diagnostic widget; shows the age of the last check, and `stale · Nm ago` after 5 minutes |
 | `pix-display` | Paste chip rendering + thinking block display |
 | `pix-prompts` | System-prompt injection (AGENTS.md + repo directive files) |

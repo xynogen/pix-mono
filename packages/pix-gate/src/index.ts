@@ -46,6 +46,7 @@ import {
 	SEVERITY_ICON,
 } from "./prompt.ts";
 import { registerProjectTrust } from "./trust.ts";
+import registerUnattended from "./unattended.ts";
 
 export default function pixGate(pi: ExtensionAPI): void {
 	once(pi, "pix-gate", () => register(pi));
@@ -54,6 +55,8 @@ export default function pixGate(pi: ExtensionAPI): void {
 function register(pi: ExtensionAPI): void {
 	// Two-choice project-trust prompt (Trust / Do not trust) replacing Pi's five.
 	registerProjectTrust(pi);
+	// /afk, /yolo, /nuclear: the session modes these gates read.
+	registerUnattended(pi);
 
 	const { rules, autoApprove, pathRules } = buildRules(loadUserConfig());
 
