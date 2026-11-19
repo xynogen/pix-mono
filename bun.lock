@@ -408,7 +408,7 @@
     },
     "packages/pix-pretty": {
       "name": "@xynogen/pix-pretty",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "dependencies": {
         "@ff-labs/fff-node": "^0.10.6",
         "@xynogen/pix-runtime": "^0.22.0",
@@ -518,7 +518,7 @@
     },
     "packages/pix-ssh": {
       "name": "@xynogen/pix-ssh",
-      "version": "0.7.5",
+      "version": "0.8.0",
       "dependencies": {
         "@xynogen/pix-pretty": "^3.0.0",
         "@xynogen/pix-runtime": "^0.22.0",
@@ -546,7 +546,7 @@
     },
     "packages/pix-sudo": {
       "name": "@xynogen/pix-sudo",
-      "version": "0.4.12",
+      "version": "0.5.0",
       "dependencies": {
         "@xynogen/pix-pretty": "^3.0.0",
         "@xynogen/pix-runtime": "^0.22.0",
