@@ -23,18 +23,31 @@ function coordinators(): WeakMap<EventBus, Coordinator> {
 	return global.__pixAgentState;
 }
 
+const STATE_QUERY = "pix:agent-state:shared";
+
+/**
+ * Pi hands every extension its own `pi.events` wrapper over one shared bus, so the
+ * WeakMap key differs per package. The first caller answers a bus query; later
+ * wrappers adopt its state, so standalone packages see the same unattended mode.
+ */
 function coordinator(events: EventBus): Coordinator {
 	const registry = coordinators();
-	let state = registry.get(events);
-	if (!state) {
-		state = {
-			activities: new Map(),
-			blocks: new Map(),
-			unattendedMode: "off",
-			yoloConsent: false,
-		};
-		registry.set(events, state);
-	}
+	const known = registry.get(events);
+	if (known) return known;
+	const query: { state?: Coordinator } = {};
+	events.emit(STATE_QUERY, query);
+	const state = query.state ?? {
+		activities: new Map(),
+		blocks: new Map(),
+		unattendedMode: "off",
+		yoloConsent: false,
+	};
+	if (!query.state)
+		events.on(STATE_QUERY, (q) => {
+			const target = q as { state?: Coordinator };
+			target.state ??= state;
+		});
+	registry.set(events, state);
 	return state;
 }
 

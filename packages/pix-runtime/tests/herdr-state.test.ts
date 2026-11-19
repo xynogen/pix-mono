@@ -52,6 +52,17 @@ describe("unattended session state", () => {
 		expect(hasYoloConsent(first)).toBe(false);
 		expect(getUnattendedMode(second)).toBe("yolo");
 	});
+
+	test("shares mode across per-extension wrappers of one bus", () => {
+		const bus = createEventBus();
+		// Pi gives each extension a distinct `events` object over the same bus.
+		const wrap = () => ({ emit: bus.emit, on: bus.on });
+		const commands = wrap();
+		const sudo = wrap();
+		getUnattendedMode(commands);
+		setUnattendedMode(commands, "nuclear");
+		expect(getUnattendedMode(sudo)).toBe("nuclear");
+	});
 });
 
 describe("agent state coordinator", () => {
