@@ -73,7 +73,9 @@ test("narrow adapters match installed host shell source and real Box geometry", 
 		"utf8",
 	);
 	expect(host).toContain("new Box(1, 1,");
-	expect(host).toMatch(/lines\.push\(""\);\s*lines\.push\(\.\.\.contentLines\);/);
+	expect(host).toMatch(
+		/lines\.push\(""\);[\s\S]{0,200}?for \(const line of contentLines\)\s*lines\.push\(line\);/,
+	);
 	for (const width of [3, 80]) {
 		const text = new Text("x".repeat(81), 0, 0);
 		const box = new Box(1, 1);
@@ -163,7 +165,7 @@ const hostThemeKeys = [
 ];
 
 test("opt-in fixture checks installed host reads and real Markdown semantic roles", async () => {
-	expect(VERSION).toBe("1.5.2");
+	expect(VERSION).toBe("1.6.0");
 	const source = readFileSync(
 		new URL(
 			"./modes/interactive/theme/theme.js",

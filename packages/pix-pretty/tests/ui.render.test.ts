@@ -113,7 +113,9 @@ test("frame, result close and unified/split diff actual captures", async () => {
 test("picker, gate, confirm and progress actual component captures", async () => {
 	const fixture = await withUiFixture();
 	jest.useFakeTimers();
-	let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+	let component:
+		| { render(width: number): readonly string[]; handleInput(data: string): void }
+		| undefined;
 	const ui = {
 		custom: <T>(
 			factory: (

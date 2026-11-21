@@ -385,7 +385,7 @@ describe("/pix → Tools", () => {
 					notify() {},
 					custom: (
 						build: (...args: any[]) => {
-							render(w: number): string[];
+							render(w: number): readonly string[];
 							handleInput(d: string): void;
 						},
 					) =>
@@ -441,7 +441,7 @@ describe("/pix → Tools", () => {
 
 	test("picker: tabs split tools and MCP, ctrl keys set state, selection stays", async () => {
 		const host = await boot([...ALL, "hunk", "ctx_docs"], ["hunk"], ["ctx_docs"]);
-		type View = { render(w: number): string[]; handleInput(d: string): void };
+		type View = { render(w: number): readonly string[]; handleInput(d: string): void };
 		let view: View | undefined;
 		const theme = {
 			fg: (_c: string, s: string) => s,

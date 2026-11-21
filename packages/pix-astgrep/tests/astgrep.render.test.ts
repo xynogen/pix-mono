@@ -15,7 +15,7 @@ test("AST captures the six actions of the default host-box ast tool without exec
 		const tool = tools[0]!;
 		expect((tool as { renderShell?: string }).renderShell).toBeUndefined();
 		const theme = roleTheme();
-		const rows = (component: { render(width: number): string[] } | undefined) => {
+		const rows = (component: { render(width: number): readonly string[] } | undefined) => {
 			if (!component) throw new Error("Missing AST renderer");
 			return captureRows(component, { width: 80, surface: "host-box" }).join("\n");
 		};

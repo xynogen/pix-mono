@@ -21,13 +21,13 @@ type Renderer = {
 		args: unknown,
 		theme: unknown,
 		context: unknown,
-	) => { render(width: number): string[] };
+	) => { render(width: number): readonly string[] };
 	renderResult: (
 		result: unknown,
 		options: unknown,
 		theme: unknown,
 		context: unknown,
-	) => { render(width: number): string[] };
+	) => { render(width: number): readonly string[] };
 };
 
 // The merged `lsp` tool routes rendering by `args.action`, as the host passes it.

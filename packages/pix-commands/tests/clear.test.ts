@@ -54,7 +54,7 @@ function ctx(answer: boolean) {
 		hasUI: true,
 		ui: {
 			notify: (m: string) => notes.push(m),
-			custom: async (factory: (...a: unknown[]) => { render(w: number): string[] }) => {
+			custom: async (factory: (...a: unknown[]) => { render(w: number): readonly string[] }) => {
 				const tui = { requestRender() {}, terminal: { rows: 40 } };
 				body = factory(tui, theme, { matches: () => false }, () => {})
 					.render(100)

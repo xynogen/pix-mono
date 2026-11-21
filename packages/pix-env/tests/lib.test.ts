@@ -63,7 +63,7 @@ type EnvReadTool = {
 		options: { isPartial: boolean },
 		theme: { fg: (color: string, text: string) => string },
 		ctx: { isError: boolean },
-	) => { render: (width: number) => string[] };
+	) => { render: (width: number) => readonly string[] };
 };
 
 function captureEnvRead(): EnvReadTool {
@@ -367,7 +367,7 @@ describe("read_env tool", () => {
 							(value: T) => {
 								answer = value;
 							},
-						) as { render(width: number): string[]; handleInput(data: string): void };
+						) as { render(width: number): readonly string[]; handleInput(data: string): void };
 						component.render(80);
 						component.handleInput("\x1b[B");
 						component.handleInput("\r");
@@ -526,7 +526,7 @@ function approvalUi(approve = true, beforeAnswer = () => {}) {
 				(value: T) => {
 					answer = value;
 				},
-			) as { render(width: number): string[]; handleInput(data: string): void };
+			) as { render(width: number): readonly string[]; handleInput(data: string): void };
 			component.render(80);
 			beforeAnswer();
 			if (approve) component.handleInput("\x1b[B");

@@ -450,7 +450,7 @@ interface OverlayTheme {
 }
 
 interface EmbeddedPanel {
-	render(width: number): string[];
+	render(width: number): readonly string[];
 	handleInput(data: string): void;
 	dispose?(): void;
 }
@@ -514,7 +514,7 @@ class PixSettingsView {
 		this.mountPanel();
 	}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		const { runtime, theme, tui } = this.d;
 		const frame: ModalFrame = {
 			width,
@@ -804,8 +804,8 @@ class PixSettingsView {
 		}
 		const panelWidth = visibleWidth(lines[0] ?? "");
 		const bar = frameRows(panelWidth, [this.tabBar(Math.max(1, panelWidth - 4))], frame);
-		lines.splice(1, 0, ...bar.slice(1, -1));
-		return lines;
+		// render() output may be the panel's cached array (pi-tui 1.6): build a new one.
+		return [lines[0] ?? "", ...bar.slice(1, -1), ...lines.slice(1)];
 	}
 
 	private renderSettings(width: number, frame: ModalFrame): string[] {

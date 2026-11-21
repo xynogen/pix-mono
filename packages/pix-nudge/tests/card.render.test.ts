@@ -47,7 +47,10 @@ test("entry and capability message share the card renderer", async () => {
 		} as never);
 		const theme = roleTheme() as never;
 		const rows = (c: unknown) =>
-			captureRows(c as { render(w: number): string[] }, { width: 80, surface: "component" });
+			captureRows(c as { render(w: number): readonly string[] }, {
+				width: 80,
+				surface: "component",
+			});
 
 		const entry = rows(
 			renderers[NUDGE_ENTRY]?.({ data: card } as never, { expanded: false } as never, theme),
@@ -95,7 +98,7 @@ test("a left click on a rendered nudge card toggles its body", async () => {
 			{ expanded: false } as never,
 			roleTheme() as never,
 		) as {
-			render(w: number): string[];
+			render(w: number): readonly string[];
 			handleMouse(e: unknown): unknown;
 		};
 		const click = (button: string) => c.handleMouse({ type: "click", button, x: 0, y: 0 } as never);

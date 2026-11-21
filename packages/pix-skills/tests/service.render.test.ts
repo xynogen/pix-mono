@@ -28,7 +28,10 @@ test("captures registered skill Text output and complete expanded instructions",
 		expect([tool.name, tool.renderShell]).toEqual(["read_skills", "self"]);
 		const theme = roleTheme();
 		const output: string[] = [];
-		const rows = (label: string, component: { render(width: number): string[] } | undefined) => {
+		const rows = (
+			label: string,
+			component: { render(width: number): readonly string[] } | undefined,
+		) => {
 			if (!component) throw new Error("Missing skill component");
 			const rendered = captureRows(component, { width: 80, surface: "host-self" });
 			output.push(label, ...rendered);

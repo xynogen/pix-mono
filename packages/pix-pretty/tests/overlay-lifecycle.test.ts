@@ -10,7 +10,7 @@ const theme = {
 	bg: (_role: string, text: string) => text,
 	bold: (text: string) => text,
 };
-type Component = { render(width: number): string[]; handleInput(data: string): void };
+type Component = { render(width: number): readonly string[]; handleInput(data: string): void };
 
 function harness(options: { delayed?: boolean; throwOnOpen?: Error } = {}) {
 	let component!: Component;

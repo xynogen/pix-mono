@@ -769,7 +769,7 @@ export class McpAddPanel {
 		}
 	}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		const mw = modalWidth(width);
 		const t = this.t;
 		const title = this.options.edit ? "Edit MCP server" : "Add MCP server";

@@ -23,7 +23,10 @@ it("captures registered find scopes, highlights, batch and result states", async
 		);
 		expect(tool.renderShell).toBe("self");
 		const theme = roleTheme();
-		const rows = (component: { render(width: number): string[] } | undefined, width = 80) => {
+		const rows = (
+			component: { render(width: number): readonly string[] } | undefined,
+			width = 80,
+		) => {
 			if (!component) throw new Error("Missing find renderer");
 			return captureRows(component, { width, surface: "host-self" });
 		};

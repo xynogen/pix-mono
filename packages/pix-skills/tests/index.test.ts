@@ -274,7 +274,7 @@ describe("skill renderer", () => {
 			on() {},
 		} as never);
 		const renderResult = registered.renderResult as (...args: unknown[]) => {
-			render: (width: number) => string[];
+			render: (width: number) => readonly string[];
 		};
 		const rendered = renderResult(
 			{
@@ -313,7 +313,7 @@ describe("skill renderer", () => {
 			on() {},
 		} as never);
 		const renderResult = registered.renderResult as (...args: unknown[]) => {
-			render: (width: number) => string[];
+			render: (width: number) => readonly string[];
 		};
 		const rendered = renderResult(
 			{
@@ -341,7 +341,7 @@ describe("skill renderer", () => {
 			on() {},
 		} as never);
 		const renderResult = registered.renderResult as (...args: unknown[]) => {
-			render: (width: number) => string[];
+			render: (width: number) => readonly string[];
 		};
 		const rendered = renderResult(
 			{
@@ -380,7 +380,7 @@ describe("skill renderer", () => {
 			on() {},
 		} as never);
 		const renderResult = registered.renderResult as (...args: unknown[]) => {
-			render: (width: number) => string[];
+			render: (width: number) => readonly string[];
 		};
 		const error = renderResult(
 			{ content: [{ type: "text", text: "Skill not found" }], details: undefined },

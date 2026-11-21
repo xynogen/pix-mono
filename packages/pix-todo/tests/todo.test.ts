@@ -57,10 +57,14 @@ function makeHost(
 				options: unknown,
 				theme: unknown,
 				context: unknown,
-		  ) => { render(width: number): string[] })
+		  ) => { render(width: number): readonly string[] })
 		| null = null;
 	let capturedRenderCall:
-		| ((args: unknown, theme: unknown, context: unknown) => { render(width: number): string[] })
+		| ((
+				args: unknown,
+				theme: unknown,
+				context: unknown,
+		  ) => { render(width: number): readonly string[] })
 		| null = null;
 
 	const pi = {

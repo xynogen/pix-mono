@@ -24,12 +24,12 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.16",
-		"@earendil-works/pi-ai": "1.5.2",
-		"@earendil-works/pi-coding-agent": "1.5.2",
-		"@earendil-works/pi-tui": "1.5.2",
+		"@earendil-works/pi-ai": "1.6.0",
+		"@earendil-works/pi-coding-agent": "1.6.0",
+		"@earendil-works/pi-tui": "1.6.0",
 		"@types/bun": "latest",
 		"@types/node": "^22",
-		"@xynogen/pix-runtime": "^0.22.0",
+		"@xynogen/pix-runtime": "^0.22.2",
 		"typebox": "^1.1.38",
 		"typescript": "^5.7.0",
 		"typescript-language-server": "^6.0.1"
@@ -42,7 +42,7 @@
 		"fast-uri": "3.1.9",
 		"hono": "4.13.13",
 		"brace-expansion": "5.0.12",
-		"undici": "8.12.3",
+		"undici": "8.12.4",
 		"@modelcontextprotocol/sdk": "1.32.1",
 		"@modelcontextprotocol/server": "2.3.1",
 		"proxy-addr": "2.0.8"

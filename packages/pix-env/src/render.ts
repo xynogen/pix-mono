@@ -83,7 +83,7 @@ export function renderReadEnvResult(
 			options.expanded,
 		);
 	const component = {
-		render(width: number): string[] {
+		render(width: number): readonly string[] {
 			// The call row carries the title; the heading only stands in once collapsed hides it.
 			if (collapsed)
 				return [

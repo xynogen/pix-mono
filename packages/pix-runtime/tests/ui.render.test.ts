@@ -24,7 +24,9 @@ test("Settings and Footer actual overlay captures", async () => {
 			once(pi, key, () => {});
 		registerPixCommand(pi, fixture.runtime);
 		if (!handler) throw new Error("Missing pix command");
-		let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+		let component:
+			| { render(width: number): readonly string[]; handleInput(data: string): void }
+			| undefined;
 		let rows = 24;
 		await handler("", {
 			ui: {

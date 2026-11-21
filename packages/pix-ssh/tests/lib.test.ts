@@ -339,7 +339,7 @@ describe("ssh call renderer", () => {
 	it("exposes upload and download as actions without a direction parameter", () => {
 		let tool!: {
 			parameters: { properties: Record<string, any> };
-			renderCall: (...args: any[]) => { render(width: number): string[] };
+			renderCall: (...args: any[]) => { render(width: number): readonly string[] };
 		};
 		registerSsh({
 			registerTool(value: typeof tool) {
@@ -365,7 +365,7 @@ describe("ssh call renderer", () => {
 		}
 	});
 	it("separates the host and wraps highlighted commands at the viewport width", async () => {
-		let call: ((...args: unknown[]) => { render(width: number): string[] }) | undefined;
+		let call: ((...args: unknown[]) => { render(width: number): readonly string[] }) | undefined;
 		registerSsh({
 			registerTool(tool: unknown) {
 				call = (tool as { renderCall: typeof call }).renderCall;
@@ -393,7 +393,9 @@ describe("ssh result renderer", () => {
 		bold: (text: string) => text,
 	};
 	const register = () => {
-		let renderer: ((...args: unknown[]) => { render(width: number): string[] }) | undefined;
+		let renderer:
+			| ((...args: unknown[]) => { render(width: number): readonly string[] })
+			| undefined;
 		registerSsh({
 			registerTool(tool: unknown) {
 				renderer = (tool as { renderResult: typeof renderer }).renderResult;
@@ -403,7 +405,7 @@ describe("ssh result renderer", () => {
 		return renderer;
 	};
 	const render = (
-		renderer: (...args: unknown[]) => { render(width: number): string[] },
+		renderer: (...args: unknown[]) => { render(width: number): readonly string[] },
 		details: Record<string, unknown> | undefined,
 		isError = false,
 		isPartial = false,

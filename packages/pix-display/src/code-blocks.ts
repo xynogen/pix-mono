@@ -19,7 +19,7 @@ type RenderMode = "tui" | "rpc" | "json" | "print";
 
 type PatchablePrototype = {
 	[PATCHED]?: boolean;
-	render(width: number): string[];
+	render(width: number): readonly string[];
 	invalidate(): void;
 };
 
@@ -96,7 +96,11 @@ function bodyLine(line: string, width: number, layoutIndent: number): string {
  * Replace native Markdown fence rows with a themed code frame while preserving
  * the syntax-highlighted ANSI content produced by Pi for every language.
  */
-export function renderCodeFences(lines: string[], width: number, theme: CodeFrameTheme): string[] {
+export function renderCodeFences(
+	lines: readonly string[],
+	width: number,
+	theme: CodeFrameTheme,
+): readonly string[] {
 	if (width < 12) return lines;
 
 	const out = [...lines];
@@ -144,15 +148,15 @@ function patchAssistantRenderer(): void {
 		{
 			width: number;
 			theme: CodeFrameTheme;
-			input: string[];
-			output: string[];
+			input: readonly string[];
+			output: readonly string[];
 		}
 	>();
 	prototype.invalidate = function invalidateCodeFrames(): void {
 		cache.delete(this);
 		nativeInvalidate.call(this);
 	};
-	prototype.render = function renderWithCodeFrames(width: number): string[] {
+	prototype.render = function renderWithCodeFrames(width: number): readonly string[] {
 		const lines = nativeRender.call(this, width);
 		if (!activeTheme) return lines;
 		const previous = cache.get(this);

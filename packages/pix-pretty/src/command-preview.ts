@@ -43,9 +43,9 @@ export function commandPreview(
 	let replacement: string | undefined;
 	const text = new Text("", 0, 0);
 	let memo:
-		| { width: number; styled: string; replacement: string | undefined; lines: string[] }
+		| { width: number; styled: string; replacement: string | undefined; lines: readonly string[] }
 		| undefined;
-	const layout = (width: number): string[] => {
+	const layout = (width: number): readonly string[] => {
 		if (replacement !== undefined) {
 			text.setText(replacement);
 			return replacement ? text.render(width) : [];
@@ -78,7 +78,7 @@ export function commandPreview(
 			memo = undefined;
 			text.invalidate();
 		},
-		render(width: number): string[] {
+		render(width: number): readonly string[] {
 			if (
 				memo?.width === width &&
 				memo.styled === current.styled &&
@@ -102,7 +102,9 @@ export function collapsedCommandRow(
 	let text = `${prefix}${theme.fg("dim", plain)}`;
 	let replaced = false;
 	const replacementText = new Text("", 0, 0);
-	let memo: { width: number; text: string; replaced: boolean; lines: string[] } | undefined;
+	let memo:
+		| { width: number; text: string; replaced: boolean; lines: readonly string[] }
+		| undefined;
 	return {
 		setText(value: string) {
 			text = value;
@@ -113,7 +115,7 @@ export function collapsedCommandRow(
 			memo = undefined;
 			replacementText.invalidate();
 		},
-		render(width: number): string[] {
+		render(width: number): readonly string[] {
 			if (memo?.width === width && memo.text === text && memo.replaced === replaced)
 				return memo.lines;
 			if (replaced) {

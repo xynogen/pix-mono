@@ -174,7 +174,11 @@ export interface JoinColumnsOptions {
  * padded with blanks. Pure: no wrapping, no color; callers style the cells and
  * the optional `sep`.
  */
-export function joinColumns(left: string[], right: string[], opts: JoinColumnsOptions): string[] {
+export function joinColumns(
+	left: readonly string[],
+	right: readonly string[],
+	opts: JoinColumnsOptions,
+): string[] {
 	const divider = opts.sep ?? " ".repeat(Math.max(0, opts.gap ?? 2));
 	const height = Math.max(left.length, right.length);
 	const rows: string[] = [];

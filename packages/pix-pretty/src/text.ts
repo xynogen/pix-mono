@@ -132,12 +132,12 @@ export function fadeTextRow(
  *
  * Blank rows never take a fade step: the steps go to the last rows with text.
  */
-export function fadeRowsOf(
-	lines: string[],
+export function fadeRowsOf<T extends readonly string[]>(
+	lines: T,
 	theme: FadeTheme,
 	maxLines: number,
 	fadeRows = 3,
-): string[] {
+): T | string[] {
 	if (lines.length <= maxLines) return lines;
 	const paint = fadePaint(theme);
 	// At most a third of the preview fades, so short previews stay readable.

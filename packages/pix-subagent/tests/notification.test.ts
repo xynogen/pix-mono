@@ -45,7 +45,7 @@ function renderNotification(value: NotificationDetails, expanded: boolean): stri
 		{ details: value, content: value.resultPreview },
 		{ expanded },
 		theme,
-	) as { render(width: number): string[] };
+	) as { render(width: number): readonly string[] };
 	return component.render(200).join("\n");
 }
 

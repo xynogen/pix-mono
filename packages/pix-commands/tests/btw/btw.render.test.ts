@@ -13,7 +13,7 @@ test("captures BTW card and widget with fixed settings, clock, and spinner", asy
 			entry: unknown,
 			options: unknown,
 			theme: unknown,
-		) => { render(width: number): string[] };
+		) => { render(width: number): readonly string[] };
 		registerBtwRenderer({
 			registerEntryRenderer: (_name: string, callback: typeof renderer) => {
 				renderer = callback;

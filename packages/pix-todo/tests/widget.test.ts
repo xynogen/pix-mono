@@ -20,7 +20,7 @@ const items: TodoItem[] = [
 	{ id: 3, text: "Run checks", status: "pending" },
 ];
 
-const plain = (rows: string[]) => rows.map(stripTerminalSequences);
+const plain = (rows: readonly string[]) => rows.map(stripTerminalSequences);
 const title = `${padIcon(icon("status.ok"), 3)} Todo     │ `;
 
 describe("todo progress widget", () => {
@@ -92,7 +92,7 @@ describe("todo progress widget", () => {
 		jest.useFakeTimers();
 		const handlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
 		let tool!: ToolDefinition;
-		let widget: { render(width: number): string[] } | undefined;
+		let widget: { render(width: number): readonly string[] } | undefined;
 		const entries = [
 			{ type: "custom", customType: "todo-state", data: { todos: items, ordered: true } },
 		];

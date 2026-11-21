@@ -291,7 +291,7 @@ function register(pi: ExtensionAPI): void {
 					options.expanded,
 				);
 			const component = {
-				render(width: number): string[] {
+				render(width: number): readonly string[] {
 					const heading = renderRow(
 						theme,
 						details?.action ? `download · ${details.action}` : "download",

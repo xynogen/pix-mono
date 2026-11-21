@@ -16,7 +16,7 @@ import {
 type WidgetFactory = (
 	tui: unknown,
 	theme: { fg: (_color: string, text: string) => string },
-) => { render(width: number): string[]; invalidate(): void };
+) => { render(width: number): readonly string[]; invalidate(): void };
 
 type WidgetCall = {
 	key: string;

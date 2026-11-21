@@ -161,7 +161,7 @@ export class ProcModal {
 		else this.list.handleInput(data);
 	}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		const t = this.theme;
 		const mw = modalWidth(width);
 		const inner = mw - 4;

@@ -66,7 +66,7 @@ export interface ProviderPickerUI {
 			keybindings: KeybindingsManager,
 			done: (value: T) => void,
 		) => {
-			render(width: number): string[];
+			render(width: number): readonly string[];
 			invalidate(): void;
 			handleInput(data: string): void;
 			dispose?(): void;
@@ -90,7 +90,11 @@ function defaultExample(name: string): string {
 export function renderProviderRows(
 	opts: ProviderPickerOptions,
 	theme: Pick<PickerTheme, "fg">,
-	state: { cursor: number; expanded: Set<string>; field?: { render(width: number): string[] } },
+	state: {
+		cursor: number;
+		expanded: Set<string>;
+		field?: { render(width: number): readonly string[] };
+	},
 	width: number,
 ): { lines: string[]; nodes: Node[]; selected: { start: number; end: number } } {
 	const aliases = opts.envAliases ?? {};
@@ -196,7 +200,7 @@ export function renderSettingsRows(
 	rows: SettingsRow[],
 	theme: Pick<PickerTheme, "fg">,
 	selected: number,
-	field?: { render(width: number): string[] },
+	field?: { render(width: number): readonly string[] },
 	width = 80,
 	list?: { choices: SettingsChoice[]; cursor: number; query: string; max?: number },
 ): { lines: string[]; rowLines: number[]; listLine?: number } {

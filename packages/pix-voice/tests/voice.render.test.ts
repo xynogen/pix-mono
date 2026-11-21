@@ -21,7 +21,10 @@ test("captures registered voice self shells without audio or provider execution"
 		]);
 		const theme = roleTheme();
 		const output: string[] = [];
-		const rows = (label: string, component: { render(width: number): string[] } | undefined) => {
+		const rows = (
+			label: string,
+			component: { render(width: number): readonly string[] } | undefined,
+		) => {
 			if (!component) throw new Error("Missing voice renderer");
 			const rendered = captureRows(component, { width: 80, surface: "host-self" });
 			output.push(label, ...rendered);

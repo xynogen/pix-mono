@@ -57,7 +57,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 		const catalogSpy = spyOn(reasoningCatalog, "get").mockResolvedValue([]);
 		restores.push(catalogSpy);
 		type Component = {
-			render(width: number): string[];
+			render(width: number): readonly string[];
 			handleInput(data: string): void | Promise<void>;
 		};
 		let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;

@@ -392,7 +392,7 @@ function blockToLines(block: McpToolContentBlock): string[] {
 class ClippedLines {
 	constructor(private readonly text: string) {}
 	invalidate(): void {}
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		const lines = this.text.split("\n");
 		if (width <= 0) return lines;
 		return lines.map((line) => truncateToWidth(line, width, "›"));
@@ -520,7 +520,7 @@ function renderManagementResult(
 		theme.bold &&
 		tickCollapse("mcp", context.state, context.invalidate, options.expanded);
 	const component = {
-		render(width: number): string[] {
+		render(width: number): readonly string[] {
 			if (collapsed) {
 				const title = renderTitle(
 					theme,

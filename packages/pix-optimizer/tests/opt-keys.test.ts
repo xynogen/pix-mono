@@ -37,7 +37,7 @@ const ENCODINGS = ["legacy", "kitty"] as const;
 // ── Harness ───────────────────────────────────────────────────────────────────
 
 interface Overlay {
-	render(width: number): string[];
+	render(width: number): readonly string[];
 	invalidate(): void;
 	handleInput(data: string): void;
 }

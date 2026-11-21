@@ -1,6 +1,6 @@
 import { Box, CURSOR_MARKER, visibleWidth } from "@earendil-works/pi-tui";
 
-// Not re-exported from the pi-tui index; values are fixed in tui.ts (1.5.2).
+// Not re-exported from the pi-tui index; values are fixed in tui.ts (1.6.0).
 const FAKE_CURSOR_START = "\x1b_pi:fc\x07";
 const FAKE_CURSOR_END = "\x1b_pi:/fc\x07";
 
@@ -214,7 +214,7 @@ export function semanticRow(line: string, options: { osc133?: boolean } | number
 }
 
 export function captureRows(
-	component: { render(width: number): string[] },
+	component: { render(width: number): readonly string[] },
 	options: {
 		width: number;
 		surface: "component" | "host-self" | "host-box";
@@ -229,10 +229,10 @@ export function captureRows(
 	if (surface === "host-box") {
 		const box = new Box(1, 1);
 		box.addChild({ render: (childWidth) => component.render(childWidth), invalidate() {} });
-		rows = box.render(width);
+		rows = [...box.render(width)];
 		if (rows.length) rows.unshift("");
 	} else {
-		rows = component.render(width);
+		rows = [...component.render(width)];
 		if (surface === "host-self" && rows.length) rows = ["", ...rows];
 	}
 	if (options.osc133) {
@@ -256,9 +256,9 @@ export function captureRows(
 export async function withUiFixture(
 	options: { icons?: "unicode" | "ascii"; hostTheme?: boolean } = {},
 ) {
-	// ponytail: checked structural adapter for host 1.5.2 only. Recheck host reads before supporting another version.
+	// ponytail: checked structural adapter for host 1.6.0 only. Recheck host reads before supporting another version.
 	const host = options.hostTheme ? await import("@earendil-works/pi-coding-agent") : undefined;
-	if (host && host.VERSION !== "1.5.2")
+	if (host && host.VERSION !== "1.6.0")
 		throw new Error(`Unsupported capture host version: ${host.VERSION}`);
 	const hostThemes = host
 		? [

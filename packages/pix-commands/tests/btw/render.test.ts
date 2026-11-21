@@ -33,7 +33,7 @@ function render(details: BtwMessageDetails, expanded = false): string {
 		{ expanded },
 		theme,
 	) as {
-		render(width: number): string[];
+		render(width: number): readonly string[];
 	};
 	return stripAnsi(component.render(80).join("\n"));
 }

@@ -120,7 +120,7 @@ export function renderProcResult(
 		tickCollapse("proc", context.state as CollapseState, context.invalidate, options.expanded);
 	// The call row shows title and target; the heading only replaces it once collapsed hides it.
 	const component = {
-		render(width: number): string[] {
+		render(width: number): readonly string[] {
 			if (collapsed)
 				return [renderRow(theme, title, target, meta, failed ? "error" : "success", width)];
 			const rows = bodyRows(details, fallback, options.expanded, width, theme, context);

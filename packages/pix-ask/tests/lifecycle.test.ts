@@ -18,7 +18,7 @@ const theme = {
 	bg: (_role: string, text: string) => text,
 	bold: (text: string) => text,
 };
-type Component = { handleInput?(data: string): void; render(width: number): string[] };
+type Component = { handleInput?(data: string): void; render(width: number): readonly string[] };
 type Factory = (
 	tui: never,
 	theme: never,

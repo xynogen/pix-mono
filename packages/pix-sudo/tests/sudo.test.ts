@@ -144,7 +144,7 @@ type CustomCb<T> = (
 	kb: undefined,
 	done: (v: T) => void,
 ) => {
-	render: (w: number) => string[];
+	render: (w: number) => readonly string[];
 	invalidate: () => void;
 	handleInput: (d: string) => void;
 };
@@ -173,7 +173,7 @@ type ExecuteFn = (
 ) => Promise<SudoToolResult>;
 
 type RenderComponent = {
-	render: (width: number) => string[];
+	render: (width: number) => readonly string[];
 };
 
 type SudoToolDefinition = {
@@ -272,7 +272,7 @@ function makeCtx(
 		hasUI?: boolean;
 		overlayResult?: OverlayResult;
 		overlayResults?: OverlayResult[];
-		onCustom?: (lines: string[]) => void;
+		onCustom?: (lines: readonly string[]) => void;
 		/** Keys sent before the first Enter, e.g. arrow-down to pick a later choice. */
 		selectKeys?: string;
 	} = {},

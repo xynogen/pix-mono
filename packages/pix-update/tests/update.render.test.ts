@@ -16,7 +16,9 @@ test("captures actual update confirmation and fixed spinner footer statuses with
 		Symbol.for("@mariozechner/pi-coding-agent:theme"),
 	];
 	const previous = keys.map((key) => globals[key]);
-	let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+	let component:
+		| { render(width: number): readonly string[]; handleInput(data: string): void }
+		| undefined;
 	let pending: Promise<void> | undefined;
 	try {
 		for (const key of keys) globals[key] = roleTheme();
@@ -129,7 +131,9 @@ test("captures registered update progress and completion with a guarded runner s
 		throw new Error("UNSAFE runner was reached");
 	});
 	const runner = spyOn(exec, "runBinary");
-	let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+	let component:
+		| { render(width: number): readonly string[]; handleInput(data: string): void }
+		| undefined;
 	let pending: Promise<void> | undefined;
 	const overlays: Promise<unknown>[] = [];
 	try {

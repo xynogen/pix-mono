@@ -14,7 +14,10 @@ test("captures web fetch and search Markdown without links or external execution
 		expect([tool.name, tool.renderShell]).toEqual(["web", "self"]);
 		const theme = roleTheme();
 		const output: string[] = [];
-		const rows = (label: string, component: { render(width: number): string[] } | undefined) => {
+		const rows = (
+			label: string,
+			component: { render(width: number): readonly string[] } | undefined,
+		) => {
 			if (!component) throw new Error("Missing web renderer");
 			const rendered = captureRows(component, { width: 80, surface: "host-self" });
 			output.push(label, ...rendered);
@@ -204,7 +207,7 @@ test("captures actual web command rows with fixed provider maps and no saves", a
 							theme: unknown,
 							kb: unknown,
 							done: unknown,
-						) => { render(width: number): string[]; dispose?(): void },
+						) => { render(width: number): readonly string[]; dispose?(): void },
 					) => {
 						const component = factory(
 							{ requestRender() {}, terminal: { rows: 40 } },

@@ -33,7 +33,9 @@ function options(): ProviderPickerOptions {
 
 /** Drive showSettingsPicker with key presses. Returns the result and the last frame. */
 function harness() {
-	let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+	let component:
+		| { render(width: number): readonly string[]; handleInput(data: string): void }
+		| undefined;
 	const ui: ProviderPickerUI = {
 		custom: (factory) =>
 			new Promise((resolve) => {

@@ -14,7 +14,7 @@ exports[`native assistant thinking hooks and code frames 1`] = `
     "<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
     "                                                                                ",
     "<borderMuted>──</borderMuted><accent+bold> json </accent+bold><borderMuted>────────────────────────────────────────────────────────────────────────</borderMuted>",
-    "{<syntaxVariable>"ok"</syntaxVariable>: <syntaxNumber>true</syntaxNumber>}",
+    "<text>{</text><syntaxVariable>"ok"</syntaxVariable><text>: </text><syntaxNumber>true</syntaxNumber><text>}</text>",
     "<osc133:B/><osc133:C/><borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
   ],
   "long code / 80": [
@@ -39,7 +39,7 @@ exports[`native assistant thinking hooks and code frames 1`] = `
   "stream fence / 80": [
     "<osc133:A/>",
     "<borderMuted>──</borderMuted><accent+bold> python </accent+bold><borderMuted>──────────────────────────────────────────────────────────────────────</borderMuted>",
-    "<syntaxType>print</syntaxType>(<syntaxNumber>1</syntaxNumber>)",
+    "<syntaxType>print</syntaxType><text>(</text><syntaxNumber>1</syntaxNumber><text>)</text>",
     "<osc133:B/><osc133:C/><borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
   ],
   "stream thinking / 80": [
@@ -58,7 +58,7 @@ exports[`native assistant thinking hooks and code frames 1`] = `
     "<borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
     "                                                                                ",
     "<borderMuted>──</borderMuted><accent+bold> json </accent+bold><borderMuted>────────────────────────────────────────────────────────────────────────</borderMuted>",
-    "{<syntaxVariable>"ok"</syntaxVariable>: <syntaxNumber>true</syntaxNumber>}",
+    "<text>{</text><syntaxVariable>"ok"</syntaxVariable><text>: </text><syntaxNumber>true</syntaxNumber><text>}</text>",
     "<osc133:B/><osc133:C/><borderMuted>────────────────────────────────────────────────────────────────────────────────</borderMuted>",
   ],
 }

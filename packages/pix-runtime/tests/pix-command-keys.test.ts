@@ -45,7 +45,7 @@ const ENCODINGS = ["legacy", "kitty"] as const;
 // ── Harness ───────────────────────────────────────────────────────────────────
 
 interface Overlay {
-	render(width: number): string[];
+	render(width: number): readonly string[];
 	invalidate(): void;
 	handleInput(data: string): void;
 }
@@ -54,7 +54,7 @@ interface Driver {
 	feed(data: string): void;
 	/** Wait for fire-and-forget runtime.update() calls to land. */
 	settle(): Promise<void>;
-	lines(): string[];
+	lines(): readonly string[];
 	cursorLine(): string | undefined;
 	closed(): boolean;
 	iconsValue(): string;
@@ -429,7 +429,7 @@ describe("/pix tabs", () => {
 		expect(after.join("\n")).toMatch(detail);
 		// No per-row expansion: the cursor sits on the next list line, and no
 		// "used by" line appears inside the list.
-		const cursorAt = (ls: string[]) => ls.findIndex((l) => /│ → /.test(l));
+		const cursorAt = (ls: readonly string[]) => ls.findIndex((l) => /│ → /.test(l));
 		expect(cursorAt(after)).toBe(cursorAt(before) + 1);
 		expect(after.filter((l) => /used by/.test(l)).length).toBe(1);
 	});

@@ -17,7 +17,7 @@ const theme = {
 };
 
 interface Wired {
-	render(w: number): string[];
+	render(w: number): readonly string[];
 	invalidate(): void;
 	handleInput(d: string): void;
 }
@@ -144,7 +144,7 @@ describe("showOverlay — confirm mode", () => {
 	});
 
 	test("renders title and body lines", async () => {
-		let captured: string[] = [];
+		let captured: readonly string[] = [];
 		await showOverlay(
 			makeUI((comp) => {
 				captured = comp.render(80);
@@ -163,7 +163,7 @@ describe("showOverlay — confirm mode", () => {
 	});
 
 	test("prepends the icon to the title when provided", async () => {
-		let captured: string[] = [];
+		let captured: readonly string[] = [];
 		await showOverlay(
 			makeUI((comp) => {
 				captured = comp.render(80);
@@ -182,7 +182,7 @@ describe("showOverlay — confirm mode", () => {
 			bg: (_color: string, text: string) => text,
 			bold: (text: string) => text,
 		};
-		let captured: string[] = [];
+		let captured: readonly string[] = [];
 		await showOverlay(
 			makeUI(
 				(comp) => {
@@ -231,7 +231,7 @@ describe("showOverlay — confirm mode", () => {
 			bg: (_color: string, text: string) => text,
 			bold: (text: string) => text,
 		};
-		let captured: string[] = [];
+		let captured: readonly string[] = [];
 		await showOverlay(
 			makeUI(
 				(comp) => {
@@ -261,7 +261,7 @@ describe("showOverlay — confirm mode", () => {
 	test("wraps a long body command instead of truncating it", async () => {
 		// A command far wider than any modal width — must survive in full, wrapped.
 		const longCmd = `echo ${"pix-gate-installed-or-linked ".repeat(8)}done`;
-		let captured: string[] = [];
+		let captured: readonly string[] = [];
 		await showOverlay(
 			makeUI((comp) => {
 				captured = comp.render(80);
@@ -413,7 +413,7 @@ describe("showOverlay — sudo mode", () => {
 	});
 
 	test("password is masked in render (● not plaintext)", async () => {
-		let pwFrame: string[] = [];
+		let pwFrame: readonly string[] = [];
 		await showOverlay(
 			makeUI((comp) => {
 				comp.handleInput(ENTER); // to password stage

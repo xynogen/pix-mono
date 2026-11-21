@@ -55,7 +55,7 @@ test("actual footer factory flags, stream decay and subscriptions without Git", 
 	const tz = process.env.TZ;
 	process.env.TZ = "UTC";
 	const hooks = new Map<string, (event: unknown, ctx?: unknown) => Promise<void> | void>();
-	let component: { render(width: number): string[]; dispose(): void } | undefined;
+	let component: { render(width: number): readonly string[]; dispose(): void } | undefined;
 	let branch = "main";
 	let branchChanged: (() => void) | undefined;
 	let branchDisposed = 0;

@@ -83,7 +83,7 @@ test("standalone settings render directly in /pix without a second overlay and d
 						theme: unknown,
 						kb: unknown,
 						done: (value: unknown) => void,
-					) => { render(width: number): string[]; handleInput(data: string): void },
+					) => { render(width: number): readonly string[]; handleInput(data: string): void },
 				) =>
 					new Promise((resolve) => {
 						// A class instance like Pi's TUI: requestRender lives on the prototype.
@@ -120,7 +120,7 @@ test("standalone settings render directly in /pix without a second overlay and d
 		let direct = "";
 		await pix.handler("voice", {
 			ui: {
-				custom: async (factory: (...a: unknown[]) => { render(w: number): string[] }) => {
+				custom: async (factory: (...a: unknown[]) => { render(w: number): readonly string[] }) => {
 					direct = factory(
 						{ requestRender() {}, terminal: { rows: 40 } },
 						theme,
@@ -184,7 +184,10 @@ test("all package tabs keep their active name visible in a narrow overlay", asyn
 			await commands.get("pix").handler(label.toLowerCase(), {
 				ui: {
 					custom: async (
-						factory: (...args: unknown[]) => { render(w: number): string[]; dispose(): void },
+						factory: (...args: unknown[]) => {
+							render(w: number): readonly string[];
+							dispose(): void;
+						},
 					) => {
 						const component = factory(
 							{ requestRender() {}, terminal: { rows: 40 } },

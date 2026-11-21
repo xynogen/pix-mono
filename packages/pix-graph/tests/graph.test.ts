@@ -18,7 +18,7 @@ type ToolDef = {
 		args: { action: string; question?: string },
 		theme: { fg: (role: string, text: string) => string; bold: (text: string) => string },
 		context: { state: { collapsed: boolean }; expanded: boolean },
-	) => { render: (width: number) => string[] };
+	) => { render: (width: number) => readonly string[] };
 	execute: ExecuteFn;
 	renderResult: (
 		result: { content: Array<{ type: "text"; text: string }>; details?: unknown },
@@ -30,7 +30,7 @@ type ToolDef = {
 			expanded?: boolean;
 			invalidate?: () => void;
 		},
-	) => { render: (width: number) => string[] };
+	) => { render: (width: number) => readonly string[] };
 };
 
 type CommandDef = {

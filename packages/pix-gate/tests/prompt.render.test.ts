@@ -15,7 +15,9 @@ import {
 test("captures actual gate severity, path and merged approval components", async () => {
 	const fixture = await withUiFixture();
 	jest.useFakeTimers();
-	let component: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+	let component:
+		| { render(width: number): readonly string[]; handleInput(data: string): void }
+		| undefined;
 	const captures: Record<string, string[]> = {};
 	const ui: OverlayUI = {
 		custom: (factory) =>

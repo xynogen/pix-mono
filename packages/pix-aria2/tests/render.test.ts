@@ -5,7 +5,7 @@ import { collapseSection } from "@xynogen/pix-runtime/sections";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerDownload from "../src/index.ts";
 
-type Component = { render(width: number): string[] };
+type Component = { render(width: number): readonly string[] };
 type Tool = {
 	renderCall(args: unknown, theme: unknown, context: unknown): Component;
 	renderResult(result: unknown, options: unknown, theme: unknown, context: unknown): Component;

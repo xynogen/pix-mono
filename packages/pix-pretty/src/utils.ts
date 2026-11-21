@@ -43,7 +43,7 @@ export function viewportText(
 }
 
 type ViewportComponent = {
-	render(width: number): string[];
+	render(width: number): readonly string[];
 	invalidate(): void;
 };
 
@@ -55,7 +55,7 @@ type ViewportEntry = {
 	/** Raw line → line fitted to this width. */
 	lines: Map<string, string>;
 	/** Inner render output for the current text at this width. */
-	rendered: string[] | undefined;
+	rendered: readonly string[] | undefined;
 };
 
 class ViewportText implements TextComponentLike, ViewportComponent {
@@ -84,7 +84,7 @@ class ViewportText implements TextComponentLike, ViewportComponent {
 		return this.text;
 	}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		let entry = this.widths.get(width);
 		if (entry) {
 			// Refresh recency: Map keeps insertion order, so re-insert moves it to the end.

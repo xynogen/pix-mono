@@ -23,7 +23,7 @@ it("captures registered ls calls, grid, tree, batch and result states", async ()
 		);
 		expect(tool.renderShell).toBe("self");
 		const theme = roleTheme();
-		const rows = (component: { render(width: number): string[] } | undefined) => {
+		const rows = (component: { render(width: number): readonly string[] } | undefined) => {
 			if (!component) throw new Error("Missing ls renderer");
 			return captureRows(component, { width: 80, surface: "host-self" });
 		};

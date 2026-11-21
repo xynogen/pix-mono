@@ -64,7 +64,7 @@ async function captureBtw(onStage = (_stage: string) => {}) {
 				if (event === "session_shutdown") shutdown = callback;
 			},
 		} as never);
-		let widget: { render(width: number): string[] } | undefined;
+		let widget: { render(width: number): readonly string[] } | undefined;
 		let reads = 0;
 		const ctx = {
 			cwd: "/fixture-project",

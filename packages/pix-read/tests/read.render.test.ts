@@ -33,7 +33,7 @@ it("captures registered read pending, completed, expanded and non-text states", 
 		);
 		expect(tool.renderShell).toBe("self");
 		const theme = roleTheme();
-		const rows = (component: { render(width: number): string[] } | undefined) => {
+		const rows = (component: { render(width: number): readonly string[] } | undefined) => {
 			if (!component) throw new Error("Missing read renderer");
 			return captureRows(component, { width: 80, surface: "host-self" });
 		};

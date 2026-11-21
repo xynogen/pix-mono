@@ -61,7 +61,7 @@ function record(status: AgentRecord["status"] = "running"): AgentRecord {
 // Ceiling: local components and the checked self shell only. Full-screen composition needs a host integration test.
 function capture(
 	label: string,
-	component: { render(width: number): string[] } | undefined,
+	component: { render(width: number): readonly string[] } | undefined,
 	width = 80,
 	surface: "component" | "host-self" = "host-self",
 ) {
@@ -450,7 +450,7 @@ test("captures registered notification summaries and bounded expansion", async (
 					message: { details?: NotificationDetails },
 					options: { expanded: boolean },
 					theme: unknown,
-			  ) => { render(width: number): string[] } | undefined)
+			  ) => { render(width: number): readonly string[] } | undefined)
 			| undefined;
 		registerNotificationRenderer({
 			registerMessageRenderer(name: string, callback: typeof renderer) {
@@ -755,7 +755,7 @@ test("captures registered lifecycle delivery and consumption without a real runn
 		clock.mockReturnValue(NOW);
 		hooks.get("turn_start")?.({}, context);
 		const rows = (
-			component: { render(width: number): string[] } | undefined,
+			component: { render(width: number): readonly string[] } | undefined,
 			surface: "component" | "host-self" = "component",
 		) => {
 			if (!component) throw new Error("Missing lifecycle component");

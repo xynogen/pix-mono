@@ -123,7 +123,7 @@ export class ModelPickerView {
 		void this.reload(false);
 	}
 
-	render(w: number): string[] {
+	render(w: number): readonly string[] {
 		const { theme, tui } = this.d;
 		const mw = modalWidth(w);
 		const inner = mw - 4; // CHROME = 2 border + 2 padding

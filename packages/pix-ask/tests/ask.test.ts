@@ -268,8 +268,8 @@ describe("registerAsk", () => {
 		let tool:
 			| {
 					renderShell?: unknown;
-					renderCall: (...args: any[]) => { render: (width: number) => string[] };
-					renderResult: (...args: any[]) => { render: (width: number) => string[] };
+					renderCall: (...args: any[]) => { render: (width: number) => readonly string[] };
+					renderResult: (...args: any[]) => { render: (width: number) => readonly string[] };
 			  }
 			| undefined;
 		const pi = {
@@ -347,7 +347,7 @@ describe("registerAsk", () => {
 
 	test("frames expanded errors red but keeps cancellation compact", async () => {
 		let tool:
-			| { renderResult: (...args: any[]) => { render: (width: number) => string[] } }
+			| { renderResult: (...args: any[]) => { render: (width: number) => readonly string[] } }
 			| undefined;
 		const pi = {
 			registerTool(definition: typeof tool) {
@@ -436,7 +436,7 @@ describe("registerAsk", () => {
 			hasUI: true,
 			ui: {
 				custom: async (
-					factory: (...args: any[]) => { render: (width: number) => string[] },
+					factory: (...args: any[]) => { render: (width: number) => readonly string[] },
 					options: unknown,
 				) => {
 					expect(options).toEqual({

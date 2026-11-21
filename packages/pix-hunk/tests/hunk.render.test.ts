@@ -20,7 +20,10 @@ test("hunk captures local self-shell states without running commands", async () 
 			},
 		);
 		const theme = roleTheme();
-		const rows = (component: { render(width: number): string[] } | undefined, width = 80) => {
+		const rows = (
+			component: { render(width: number): readonly string[] } | undefined,
+			width = 80,
+		) => {
 			if (!component) throw new Error("Missing hunk renderer");
 			return captureRows(component, { width, surface: "host-self" }).join("\n");
 		};

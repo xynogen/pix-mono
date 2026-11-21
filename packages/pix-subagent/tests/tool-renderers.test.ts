@@ -46,7 +46,7 @@ async function execute(tool: unknown, params: Record<string, unknown>, context: 
 function render(tool: unknown, result: unknown, expanded = false): string {
 	const component = (
 		tool as {
-			renderResult: (...args: unknown[]) => { render(width: number): string[] };
+			renderResult: (...args: unknown[]) => { render(width: number): readonly string[] };
 		}
 	).renderResult(result, { expanded, isPartial: false }, theme, {
 		state: { collapsed: true },
@@ -71,10 +71,10 @@ function renderFramed(
 	expanded: boolean,
 	isPartial = false,
 	isError = false,
-): string[] {
+): readonly string[] {
 	return (
 		tool as {
-			renderResult: (...args: unknown[]) => { render(width: number): string[] };
+			renderResult: (...args: unknown[]) => { render(width: number): readonly string[] };
 		}
 	)
 		.renderResult(result, { expanded, isPartial }, frameTheme, {
@@ -86,12 +86,12 @@ function renderFramed(
 		.render(40);
 }
 
-function expectFrame(lines: string[], color: "success" | "error") {
+function expectFrame(lines: readonly string[], color: "success" | "error") {
 	expect(lines.length).toBeGreaterThan(1);
 	expect(lines.at(-1)).toBe(`<${color}>${"─".repeat(40)}</${color}>`);
 }
 
-function expectUnframed(lines: string[]) {
+function expectUnframed(lines: readonly string[]) {
 	expect(lines.some((line) => line.trim().length > 0)).toBe(true);
 	expect(lines).not.toContain(`${"─".repeat(40)}`);
 }
@@ -104,7 +104,7 @@ function renderCall(
 ): string {
 	const component = (
 		tool as {
-			renderCall: (...args: unknown[]) => { render(width: number): string[] };
+			renderCall: (...args: unknown[]) => { render(width: number): readonly string[] };
 		}
 	).renderCall(args, theme, {
 		state: { collapsed },
@@ -286,7 +286,7 @@ describe("subagent utility compact renderers", () => {
 		};
 		const rows = (
 			tool as unknown as {
-				renderResult: (...args: unknown[]) => { render(width: number): string[] };
+				renderResult: (...args: unknown[]) => { render(width: number): readonly string[] };
 			}
 		)
 			.renderResult(result, { expanded: true, isPartial: false }, theme, {

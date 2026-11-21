@@ -33,7 +33,11 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 		void promise.catch(() => {});
 		return { promise, resolve };
 	}
-	function capture(name: string, component: { render(width: number): string[] }, width = 80) {
+	function capture(
+		name: string,
+		component: { render(width: number): readonly string[] },
+		width = 80,
+	) {
 		fixture.setWidth(width);
 		captures[name] = captureRows(component, { width, surface: "component" });
 	}

@@ -100,7 +100,7 @@ function codeCard(
 			replacement = value;
 		},
 		invalidate() {},
-		render(width: number): string[] {
+		render(width: number): readonly string[] {
 			if (replacement !== undefined)
 				return replacement ? new Text(replacement, 0, 0).render(width) : [];
 			const head = truncateToWidth(header, width, "…");

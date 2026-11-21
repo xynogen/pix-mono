@@ -4,7 +4,7 @@ import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { COLLAPSED_TOOL_GLYPH } from "@xynogen/pix-pretty/render-row";
 import registerRunner from "../src/index.ts";
 
-type Component = { render(width: number): string[] };
+type Component = { render(width: number): readonly string[] };
 type Tool = {
 	renderCall(args: unknown, theme: unknown, context: unknown): Component;
 	renderResult(result: unknown, options: unknown, theme: unknown, context: unknown): Component;

@@ -30,7 +30,7 @@ export type TransientMessageLevel = "error" | "warning" | "info";
 type WidgetFactory = (
 	tui: unknown,
 	theme: TransientMessageTheme,
-) => { render(width: number): string[]; invalidate(): void };
+) => { render(width: number): readonly string[]; invalidate(): void };
 
 export type TransientErrorUI = {
 	setWidget(

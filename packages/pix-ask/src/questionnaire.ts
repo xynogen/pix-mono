@@ -491,7 +491,7 @@ export class AskQuestionnaire extends Container {
 		return lines;
 	}
 
-	private renderPreview(width: number): string[] {
+	private renderPreview(width: number): readonly string[] {
 		const item = this.selectedItem;
 		if (item?.kind !== "option" || !item.option?.preview) {
 			return [this.theme.fg("muted", "No preview")];

@@ -23,13 +23,13 @@ type ToolDef = {
 		args: { ops: Array<Record<string, unknown>> },
 		theme: RenderTheme,
 		context: RenderContext,
-	) => { render: (width: number) => string[] };
+	) => { render: (width: number) => readonly string[] };
 	renderResult: (
 		result: { content: Array<{ type: "text"; text: string }>; details: unknown },
 		options: { expanded: boolean; isPartial: boolean },
 		theme: RenderTheme,
 		context: RenderContext,
-	) => { render: (width: number) => string[] };
+	) => { render: (width: number) => readonly string[] };
 	execute: (
 		id: string,
 		params: { ops: Array<Record<string, unknown>>; maxCharacters?: number },
@@ -51,7 +51,7 @@ const renderContext = (expanded = false, collapsed = false): RenderContext => ({
 	invalidate: () => {},
 });
 
-function rendered(component: { render: (width: number) => string[] }): string {
+function rendered(component: { render: (width: number) => readonly string[] }): string {
 	return component.render(240).join("\n");
 }
 

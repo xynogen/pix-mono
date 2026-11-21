@@ -248,7 +248,7 @@ function updateWidget(
 							tui: unknown,
 							theme: Theme,
 					  ) => {
-							render(width: number): string[];
+							render(width: number): readonly string[];
 							invalidate(): void;
 							dispose?(): void;
 					  }),

@@ -434,7 +434,7 @@ export class McpSetupPanel {
 		}
 	}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		const mw = modalWidth(width);
 		const innerW = mw - 4;
 		const guide = (key: string, action: string) =>

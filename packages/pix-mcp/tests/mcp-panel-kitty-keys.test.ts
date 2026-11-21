@@ -73,7 +73,8 @@ function makeDirty(panel: ReturnType<typeof openPanel>): void {
 	panel.handleInput("\r"); // toggle direct → dirty
 }
 
-const plain = (lines: string[]): string => lines.join("\n").replace(/\u001b\[[0-9;]*m/g, "");
+const plain = (lines: readonly string[]): string =>
+	lines.join("\n").replace(/\u001b\[[0-9;]*m/g, "");
 
 for (const { name, enc } of ENCODINGS) {
 	describe(`mcp-panel printable keys (${name} encoding)`, () => {

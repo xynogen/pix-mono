@@ -56,7 +56,7 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 			({ ...makeRenderCtx(overrides), args }) as never;
 		const rows = (
 			label: string,
-			component: { render(width: number): string[] } | undefined,
+			component: { render(width: number): readonly string[] } | undefined,
 			width = 80,
 			surface: "host-self" | "component" = "host-self",
 		) => {
@@ -165,7 +165,10 @@ test("captures registered diagnostics tools and the subscribed widget without a 
 				{} as never,
 			);
 			if (typeof widget !== "function") throw new Error("Missing subscribed widget");
-			const component = widget({}, theme) as { render(width: number): string[]; dispose?(): void };
+			const component = widget({}, theme) as {
+				render(width: number): readonly string[];
+				dispose?(): void;
+			};
 			rows(label, component, width, "component");
 			component.dispose?.();
 		};

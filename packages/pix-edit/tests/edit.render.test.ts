@@ -42,7 +42,7 @@ test("edit captures anchored/exact calls, pending/completed diffs and result sta
 			() => {},
 		);
 		const theme = roleTheme();
-		const rows = (component: { render(width: number): string[] } | undefined) => {
+		const rows = (component: { render(width: number): readonly string[] } | undefined) => {
 			if (!component) throw new Error("Missing edit renderer");
 			return captureRows(component, { width: 80, surface: "host-self" }).join("\n");
 		};

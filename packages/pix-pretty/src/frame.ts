@@ -6,7 +6,7 @@ import type { TextComponentCtor, TextComponentLike } from "./types.ts";
 import { terminalWidth } from "./utils.ts";
 
 type ResultComponent = {
-	render(width: number): string[];
+	render(width: number): readonly string[];
 	invalidate(): void;
 	handleInput?(data: string): void;
 	wantsKeyRelease?: boolean;
@@ -230,8 +230,8 @@ export function reuseText(
  * footer lines. Existing callers inherit this distro-wide presentation.
  */
 export function ruleFrame(
-	bodyLines: string[],
-	footerLines: string[] = [],
+	bodyLines: readonly string[],
+	footerLines: readonly string[] = [],
 	width?: number,
 	paint?: RulePaint,
 ): string[] {
@@ -265,8 +265,8 @@ export function outputBodyRows(
 
 /** Explicit solid top/bottom frame for sections that need stronger separation. */
 export function sectionFrame(
-	bodyLines: string[],
-	footerLines: string[] = [],
+	bodyLines: readonly string[],
+	footerLines: readonly string[] = [],
 	width?: number,
 	paint?: RulePaint,
 ): string[] {

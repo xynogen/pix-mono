@@ -604,7 +604,7 @@ export default function (pi: ExtensionAPI) {
 					requestRender = null;
 				},
 				invalidate() {},
-				render(width: number): string[] {
+				render(width: number): readonly string[] {
 					// One column of breathing room against the terminal edge on both sides.
 					const pad = " ".repeat(FOOTER_PAD);
 					return footer.row(Math.max(0, width - 2 * FOOTER_PAD)).map((line) => pad + line + pad);

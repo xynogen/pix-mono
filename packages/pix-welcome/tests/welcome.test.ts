@@ -40,7 +40,7 @@ describe("welcome lifecycle", () => {
 	])("uses the header with bundle version %j, dismisses on the first turn, and skips reload", (version) => {
 		let onStart: ((event: { reason: "reload" | "new" }, ctx: unknown) => void) | undefined;
 		let onTurn: typeof onStart;
-		let renderHeader: ((width: number) => string[]) | undefined;
+		let renderHeader: ((width: number) => readonly string[]) | undefined;
 		let headerCalls = 0;
 		const events = new EventEmitter();
 		if (version)
@@ -72,7 +72,7 @@ describe("welcome lifecycle", () => {
 							tui: { requestRender(): void },
 							theme: Theme,
 						) => {
-							render(width: number): string[];
+							render(width: number): readonly string[];
 						},
 					) {
 						headerCalls++;
@@ -434,7 +434,7 @@ describe("checkPiIgnore", () => {
 		const dir = await repo("dist/\n");
 		try {
 			let onStart: ((event: { reason: "new" }, ctx: unknown) => void) | undefined;
-			let renderHeader: ((width: number) => string[]) | undefined;
+			let renderHeader: ((width: number) => readonly string[]) | undefined;
 			let finish!: () => void;
 			const finished = new Promise<void>((resolve) => {
 				finish = resolve;
@@ -468,7 +468,7 @@ describe("checkPiIgnore", () => {
 							factory: (
 								tui: { requestRender(): void },
 								theme: Theme,
-							) => { render(width: number): string[] },
+							) => { render(width: number): readonly string[] },
 						) {
 							renderHeader = factory(
 								{

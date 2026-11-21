@@ -195,7 +195,9 @@ describe("result rows", () => {
 			store: new DiagnosticStore(),
 			manager: fakeManager(),
 			cwd: "/repo",
-		}) as unknown as { renderResult: (...args: unknown[]) => { render(w: number): string[] } };
+		}) as unknown as {
+			renderResult: (...args: unknown[]) => { render(w: number): readonly string[] };
+		};
 		const plain = { fg: (_role: string, text: string) => text, bold: (t: string) => t };
 		const text = `src/a.ts:1:1 error ts(1) ${"word ".repeat(20)}\nsrc/b.ts: unconfirmed: no reply`;
 		const rows = tool!

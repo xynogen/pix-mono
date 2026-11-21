@@ -19,7 +19,9 @@ test("actual optimizer overlay and pushed status without RTK initialization", as
 		unsubscribe = originalListener(callback);
 		return unsubscribe;
 	});
-	let overlay: { render(width: number): string[]; handleInput(data: string): void } | undefined;
+	let overlay:
+		| { render(width: number): readonly string[]; handleInput(data: string): void }
+		| undefined;
 	let open: PackageSettings["open"] | undefined;
 	let rows = 40;
 	let paints = 0;

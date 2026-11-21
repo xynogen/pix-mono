@@ -97,7 +97,7 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 				throw new Error("Real orphan kill forbidden");
 			}),
 		);
-		type Component = { render(width: number): string[] };
+		type Component = { render(width: number): readonly string[] };
 		type Modal = Component & { handleInput(data: string): void; loading: Promise<void> };
 		let tool:
 			| {
@@ -268,7 +268,7 @@ test("proc registered self shell, modal, and widget with a fake manager", async 
 			{ ...base, handle: "proc-dev", command: "serve", status: "running" },
 			{ ...base, handle: "proc-old", command: "compile", status: "exited", exitCode: 1 },
 		];
-		let listed: string[] = [];
+		let listed: readonly string[] = [];
 		await command("", {
 			ui: {
 				custom: async (factory: (...args: unknown[]) => Component) => {

@@ -178,7 +178,7 @@ class McpPanel {
 	private pager = new ModalPager();
 	private addChild: {
 		handleInput(data: string): void;
-		render(width: number): string[];
+		render(width: number): readonly string[];
 		dispose(): void;
 	} | null = null;
 
@@ -767,7 +767,7 @@ class McpPanel {
 		this.updateDirty();
 	}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		const mw = modalWidth(width);
 		const innerW = mw - 4;
 		const header: string[] = [];

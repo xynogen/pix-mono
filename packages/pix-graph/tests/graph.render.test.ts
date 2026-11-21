@@ -15,7 +15,10 @@ test("captures actual graph calls, progress, trees and terminal result states", 
 		expect(tool.renderShell).toBe("self");
 		const theme = roleTheme();
 		const captures: Record<string, string[]> = {};
-		const rows = (component: { render(width: number): string[] } | undefined, width = 80) => {
+		const rows = (
+			component: { render(width: number): readonly string[] } | undefined,
+			width = 80,
+		) => {
 			if (!component) throw new Error("Missing graph renderer");
 			return captureRows(component, { width, surface: "host-self" });
 		};

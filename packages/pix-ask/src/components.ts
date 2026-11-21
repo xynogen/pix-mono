@@ -26,7 +26,7 @@ export class TabBar implements Component {
 
 	invalidate(): void {}
 
-	render(width: number): string[] {
+	render(width: number): readonly string[] {
 		const t = this.theme;
 		const inner = Math.max(10, width - 2);
 

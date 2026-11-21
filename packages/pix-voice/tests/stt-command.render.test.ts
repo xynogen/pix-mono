@@ -90,7 +90,7 @@ async function captureStt(onStage = (_stage: string) => {}) {
 		});
 		restoreTranscript = () => transcribe.mockRestore();
 		const { default: registerStt, toggleDictation } = await import("../src/stt-command.ts");
-		let component: { render(width: number): string[] } | undefined;
+		let component: { render(width: number): readonly string[] } | undefined;
 		let redraw!: () => void;
 		let input!: (data: string) => unknown;
 		let sessionStart!: (event: unknown, context: unknown) => void;
@@ -203,7 +203,7 @@ async function captureStt(onStage = (_stage: string) => {}) {
 						theme: unknown,
 						kb: unknown,
 						done: unknown,
-					) => { render(width: number): string[]; dispose?(): void },
+					) => { render(width: number): readonly string[]; dispose?(): void },
 				) => {
 					const modal = factory(
 						{ requestRender() {}, terminal: { rows: 40 } },

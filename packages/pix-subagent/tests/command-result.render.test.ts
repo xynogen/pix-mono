@@ -14,7 +14,7 @@ test("captures /agent result card: done, long collapsed and expanded, error, emp
 			entry: unknown,
 			options: unknown,
 			theme: unknown,
-		) => { render(width: number): string[] };
+		) => { render(width: number): readonly string[] };
 		registerCommandResultRenderer({
 			registerEntryRenderer: (name: string, callback: typeof renderer) => {
 				expect(name).toBe(COMMAND_RESULT_TYPE);

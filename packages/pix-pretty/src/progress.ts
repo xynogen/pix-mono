@@ -30,7 +30,7 @@ interface ProgressTheme {
 }
 
 interface ProgressComponent {
-	render(width: number): string[];
+	render(width: number): readonly string[];
 	invalidate(): void;
 	handleInput(data: string): void;
 }

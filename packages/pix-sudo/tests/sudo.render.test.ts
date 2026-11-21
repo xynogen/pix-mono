@@ -73,7 +73,10 @@ test("sudo self-shell calls and all result states", async () => {
 		const tool = host();
 		expect(tool.renderShell).toBe("self");
 		const captures: Record<string, string[]> = {};
-		const rows = (component: { render(width: number): string[] } | undefined, width = 80) => {
+		const rows = (
+			component: { render(width: number): readonly string[] } | undefined,
+			width = 80,
+		) => {
 			if (!component) throw new Error("Missing sudo renderer");
 			return captureRows(component, { width, surface: "host-self" });
 		};

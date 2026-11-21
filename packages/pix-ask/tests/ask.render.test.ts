@@ -36,13 +36,13 @@ test("ask self shell, questionnaire, preview, paging, and real chips", async () 
 						args: unknown,
 						theme: Theme,
 						context: unknown,
-					): { render(width: number): string[] };
+					): { render(width: number): readonly string[] };
 					renderResult(
 						result: unknown,
 						options: unknown,
 						theme: Theme,
 						context: unknown,
-					): { render(width: number): string[] };
+					): { render(width: number): readonly string[] };
 			  }
 			| undefined;
 		registerAsk({
@@ -56,7 +56,7 @@ test("ask self shell, questionnaire, preview, paging, and real chips", async () 
 		const states: string[] = [];
 		const capture = (
 			name: string,
-			component: { render(width: number): string[] },
+			component: { render(width: number): readonly string[] },
 			width = 80,
 			surface: "component" | "host-self" = "component",
 		) => {
