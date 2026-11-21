@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-models",
-	"version": "0.4.13",
+	"version": "0.4.14",
 	"description": "Pi extension — enhanced /model picker with BenchLM ranks",
 	"type": "module",
 	"main": "src/index.ts",
@@ -43,8 +43,8 @@
 	},
 	"dependencies": {
 		"@xynogen/pix-data": "^0.6.1",
-		"@xynogen/pix-pretty": "^3.0.0",
-		"@xynogen/pix-runtime": "^0.22.0"
+		"@xynogen/pix-pretty": "^3.0.2",
+		"@xynogen/pix-runtime": "^0.22.2"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-ai": "*",
