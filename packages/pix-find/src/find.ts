@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import {
 	formatCallTargets,
 	resolveBatchStrings,
@@ -57,6 +57,30 @@ export function globHighlight(pattern: string): RegExp | undefined {
 	}
 }
 
+/**
+ * Map a find pattern to an FFF glob over the cwd-rooted index, with Pi's SDK find semantics:
+ * a pattern with `/` is relative to the search folder; one without matches names at any depth.
+ * `strip` turns an index path back into a search-folder-relative path. Undefined when the
+ * search folder is outside the index, so the caller uses the SDK.
+ */
+export function fffGlobQuery(
+	pattern: string,
+	searchDir: string,
+): { glob: string; strip: (indexPath: string) => string } | undefined {
+	const base = searchDir.replaceAll("\\", "/");
+	if (base.startsWith("..") || isAbsolute(base)) return undefined;
+	const rel = pattern.replace(/^\.\//, "");
+	const glob = rel.includes("/") ? rel : `**/${rel}`;
+	const prefix = base ? `${base}/` : "";
+	return {
+		glob: `${prefix}${glob}`,
+		strip: (indexPath) => {
+			const p = indexPath.replaceAll("\\", "/");
+			return p.startsWith(prefix) ? p.slice(prefix.length) : p;
+		},
+	};
+}
+
 export const TOP_LEVEL_NOTICE =
 	"Home or filesystem root: top-level folders only. Pass one as `path` to search inside it.";
 
@@ -72,7 +96,7 @@ export function registerFindTool(
 		...origFind,
 		name: "find",
 		description:
-			"Find files by glob pattern. Defaults to 200 paths; use limit to request more. Respects .gitignore and remains capped by Pi's 50KB hard limit. Pass `patterns` to search several known globs in one call.",
+			"Find files by glob pattern. A pattern with `/` is relative to `path` (`src/*.ts` matches only that folder; use `**/src/*.ts` for any depth); one without `/` matches file names at any depth. Defaults to 200 paths; use limit to request more. Respects .gitignore and remains capped by Pi's 50KB hard limit. Pass `patterns` to search several known globs in one call.",
 		parameters: withOptionalStringArray(
 			origFind.parameters,
 			"patterns",
@@ -109,14 +133,17 @@ export function registerFindTool(
 					});
 				}
 
-				// Try FFF first (frecency-ranked, SIMD-accelerated)
-				if (fffState.finder && !fffState.finder.isDestroyed) {
+				// Try FFF first: exact glob over the frecency index, matched like the SDK fallback.
+				const finder = fffState.finder;
+				const indexRoot = finder && !finder.isDestroyed ? finder.getBasePath() : undefined;
+				const query =
+					indexRoot?.ok && indexRoot.value
+						? fffGlobQuery(effectiveParams.pattern, relative(indexRoot.value, root))
+						: undefined;
+				if (finder && query) {
 					try {
 						const effectiveLimit = Math.max(1, effectiveParams.limit ?? DEFAULT_FIND_LIMIT);
-						let query = effectiveParams.pattern;
-						if (effectiveParams.path) query = `${effectiveParams.path} ${query}`;
-
-						const searchResult = fffState.finder.fileSearch(query, {
+						const searchResult = finder.glob(query.glob, {
 							pageSize: effectiveLimit,
 						});
 						if (searchResult.ok) {
@@ -128,7 +155,7 @@ export function registerFindTool(
 							if (totalMatched > trimmed.length) notices.push(`${totalMatched} total matches`);
 
 							const textContent = appendNotices(
-								trimmed.map((item) => item.relativePath).join("\n"),
+								trimmed.map((item) => query.strip(item.relativePath)).join("\n"),
 								notices,
 							);
 							return makeTextResult<FindResultDetails>(textContent, {

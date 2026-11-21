@@ -5,13 +5,16 @@ import {
 	makeTheme,
 	makeToolContext,
 } from "@xynogen/pix-pretty/test-utils";
-import type { ToolResultLike } from "@xynogen/pix-pretty/types";
+import type { FffBackedFinder, ToolResultLike } from "@xynogen/pix-pretty/types";
 import {
 	applyFindDefaults,
 	DEFAULT_FIND_LIMIT,
+	fffGlobQuery,
 	globHighlight,
 	registerFindTool,
 } from "../src/find";
+
+type GlobResult = Extract<ReturnType<FffBackedFinder["glob"]>, { ok: true }>["value"];
 
 const noopFactory = () => ({ execute: async () => ({ content: [], details: undefined }) });
 
@@ -58,6 +61,26 @@ describe("applyFindDefaults", () => {
 	});
 });
 
+describe("fffGlobQuery", () => {
+	it("matches the SDK: `/` patterns are folder-relative, bare names match at any depth", () => {
+		expect(fffGlobQuery("find.ts", "")?.glob).toBe("**/find.ts");
+		expect(fffGlobQuery("src/*.ts", "")?.glob).toBe("src/*.ts");
+		expect(fffGlobQuery("./src/*.ts", "pkg")?.glob).toBe("pkg/src/*.ts");
+		expect(fffGlobQuery("*.ts", "pkg\\a")?.glob).toBe("pkg/a/**/*.ts");
+	});
+
+	it("strips the search folder from index paths", () => {
+		const q = fffGlobQuery("*.ts", "pkg");
+		expect(q?.strip("pkg\\src\\a.ts")).toBe("src/a.ts");
+		expect(fffGlobQuery("*.ts", "")?.strip("src/a.ts")).toBe("src/a.ts");
+	});
+
+	it("falls back to the SDK outside the index", () => {
+		expect(fffGlobQuery("*.ts", "..")).toBeUndefined();
+		expect(fffGlobQuery("*.ts", "../other")).toBeUndefined();
+	});
+});
+
 describe("registerFindTool", () => {
 	it("registers a tool named 'find'", () => {
 		const { pi, names } = capturePi();
@@ -78,6 +101,41 @@ describe("registerFindTool", () => {
 		const body = text && "text" in text ? text.text : "";
 		expect(body).toContain("===== *.ts =====");
 		expect(body).toContain("match-for-*.md.ts");
+	});
+
+	it("uses FFF glob with SDK semantics and folder-relative output", async () => {
+		const globs: string[] = [];
+		const stub: Pick<FffBackedFinder, "isDestroyed" | "getBasePath" | "glob"> = {
+			isDestroyed: false,
+			getBasePath: () => ({ ok: true, value: process.cwd() }),
+			glob: (pattern) => {
+				globs.push(pattern);
+				// SAFETY: find reads only relativePath from a glob item.
+				const item = { relativePath: "pkg/src/a.ts" } as GlobResult["items"][number];
+				return { ok: true, value: { items: [item], scores: [], totalMatched: 1, totalFiles: 1 } };
+			},
+		};
+		// SAFETY: the find tool reads only isDestroyed, getBasePath and glob from the finder.
+		const finder = stub as FffBackedFinder;
+		const { pi, tool } = capturePi();
+		registerFindTool(
+			pi,
+			noopFactory,
+			makeToolContext({
+				fffState: { module: null, finder, partialIndex: false, dbDir: null },
+			}),
+		);
+		const execute = tool.execute as (...args: unknown[]) => Promise<ToolResultLike>;
+		const result = await execute(
+			"tid",
+			{ pattern: "src/*.ts", path: "pkg" },
+			undefined,
+			undefined,
+			{},
+		);
+		expect(globs).toEqual(["pkg/src/*.ts"]);
+		const text = result.content?.[0];
+		expect(text && "text" in text ? text.text : "").toBe("src/a.ts");
 	});
 
 	it("keeps the single-search shape for one glob", async () => {
