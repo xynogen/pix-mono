@@ -225,7 +225,7 @@ export function captureRows(
 	if (!Number.isInteger(width) || width < 1)
 		throw new Error("Capture width must be a positive integer");
 	let rows: string[];
-	// ponytail: these adapters cover installed 1.5.0 shell geometry only. Use a public host adapter for full-host coverage.
+	// ponytail: these adapters cover installed 1.6.0 shell geometry only. Use a public host adapter for full-host coverage.
 	if (surface === "host-box") {
 		const box = new Box(1, 1);
 		box.addChild({ render: (childWidth) => component.render(childWidth), invalidate() {} });
