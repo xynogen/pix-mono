@@ -123,7 +123,7 @@
         "@xynogen/pix-diagnostics": "^0.5.2",
         "@xynogen/pix-display": "^0.3.11",
         "@xynogen/pix-edit": "^0.2.19",
-        "@xynogen/pix-find": "^0.3.14",
+        "@xynogen/pix-find": "^0.3.15",
         "@xynogen/pix-footer": "^0.2.22",
         "@xynogen/pix-gate": "^0.5.0",
         "@xynogen/pix-grep": "^0.3.15",
@@ -221,7 +221,7 @@
     },
     "packages/pix-find": {
       "name": "@xynogen/pix-find",
-      "version": "0.3.14",
+      "version": "0.3.15",
       "dependencies": {
         "@xynogen/pix-pretty": "^3.0.2",
         "@xynogen/pix-runtime": "^0.22.2",
