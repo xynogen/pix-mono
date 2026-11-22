@@ -29,6 +29,10 @@ describe("getInputTypes", () => {
 		expect(getInputTypes({ id: "gpt-4o" })).toEqual(["text", "image"]);
 	});
 
+	it("falls back to pattern match for gpt-6.2 (Pi 1.6 serves it with image input)", () => {
+		expect(getInputTypes({ id: "cx/gpt-6.2-sol" })).toEqual(["text", "image"]);
+	});
+
 	it("falls back to pattern match for kimi-k2", () => {
 		expect(getInputTypes({ id: "kimi-k2-instruct" })).toEqual(["text", "image"]);
 	});

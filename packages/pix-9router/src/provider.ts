@@ -36,7 +36,7 @@ const ZERO_COST = {
 };
 
 // Fallback when the router omits capabilities.vision.
-const IMAGE_CAPABLE_PATTERNS = [/claude/i, /gpt-5/i, /gpt-4/i, /kimi-k2/i, /hy3/i];
+const IMAGE_CAPABLE_PATTERNS = [/claude/i, /gpt-[456]/i, /kimi-k2/i, /hy3/i];
 
 /** Known patterns for classifier models (System One protocol) */
 export const CLASSIFIER_PATTERNS = [
