@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-grep",
-	"version": "0.3.15",
+	"version": "0.3.16",
 	"description": "Pi tool — pattern search in files",
 	"type": "module",
 	"main": "src/index.ts",

@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-hunk",
-	"version": "0.2.9",
+	"version": "0.2.10",
 	"description": "Pi tool — drive live Hunk diff reviews with ordered bulk operations",
 	"type": "module",
 	"main": "src/index.ts",
