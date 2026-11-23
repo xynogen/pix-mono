@@ -1,7 +1,6 @@
 import { showOverlay } from "@xynogen/pix-pretty/gate-overlay";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
-import { padIcon } from "@xynogen/pix-pretty/render-row";
 import type { FgTheme } from "@xynogen/pix-pretty/types";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
@@ -23,7 +22,7 @@ import {
 	writeSharedServerEntry,
 	writeStarterProjectConfig,
 } from "./config.ts";
-import { getFailureAgeSeconds, lazyConnect, updateMetadataCache, updateStatusBar } from "./init.ts";
+import { getFailureAgeSeconds, lazyConnect, updateStatusBar } from "./init.ts";
 import { getAuthForUrl } from "./mcp-auth.ts";
 import { authenticate, removeAuth, supportsOAuth } from "./mcp-auth-flow.ts";
 import { loadMetadataCache } from "./metadata-cache.ts";
@@ -33,14 +32,12 @@ import {
 	markSetupCompleted as persistSetupCompleted,
 } from "./onboarding-state.ts";
 import type { McpExtensionState } from "./state.ts";
-import { buildToolMetadata } from "./tool-metadata.ts";
 import type {
 	ImportKind,
 	McpAuthResult,
 	McpConfig,
 	McpPanelCallbacks,
 	McpPanelResult,
-	ServerEntry,
 } from "./types.ts";
 import { openPath } from "./utils.ts";
 
@@ -58,131 +55,6 @@ function colorizeConfigDiff(diffText: string, th: FgTheme): string[] {
 		else out.push(th.fg("dim", line));
 	}
 	return out;
-}
-
-export async function showStatus(state: McpExtensionState, ctx: ExtensionContext): Promise<void> {
-	if (!ctx.hasUI) return;
-
-	const lines: string[] = ["MCP Server Status:", ""];
-
-	for (const name of Object.keys(state.config.mcpServers)) {
-		const connection = state.manager.getConnection(name);
-		const metadata = state.toolMetadata.get(name);
-		const toolCount = metadata?.length ?? 0;
-		const failedAgo = getFailureAgeSeconds(state, name);
-		let status = "not connected";
-		let statusIcon = icon("status.pending");
-		let failed = false;
-
-		if (connection?.status === "connected") {
-			status = "connected";
-			statusIcon = icon("status.ok");
-		} else if (connection?.status === "needs-auth") {
-			status = "needs auth";
-			statusIcon = icon("status.warn");
-		} else if (failedAgo !== null) {
-			status = `failed ${failedAgo}s ago`;
-			statusIcon = icon("status.error");
-			failed = true;
-		} else if (metadata !== undefined) {
-			status = "cached";
-		}
-
-		const toolSuffix = failed
-			? ""
-			: ` (${toolCount} tools${status === "cached" ? ", cached" : ""})`;
-		// padIcon normalizes 1-cell markers vs 2-cell `⚠` (status.warn) to one column.
-		lines.push(`${padIcon(statusIcon)} ${name}: ${status}${toolSuffix}`);
-	}
-
-	if (Object.keys(state.config.mcpServers).length === 0) {
-		lines.push("No MCP servers configured");
-		lines.push("Run /mcp setup to adopt imports or scaffold a starter .mcp.json");
-	}
-
-	ctx.ui.notify(lines.join("\n"), "info");
-}
-
-export async function showTools(state: McpExtensionState, ctx: ExtensionContext): Promise<void> {
-	if (!ctx.hasUI) return;
-
-	const allTools = [...state.toolMetadata.values()].flat().map((m) => m.name);
-
-	if (allTools.length === 0) {
-		ctx.ui.notify("No MCP tools available", "info");
-		return;
-	}
-
-	const lines = [
-		"MCP Tools:",
-		"",
-		...allTools.map((t) => `  ${t}`),
-		"",
-		`Total: ${allTools.length} tools`,
-	];
-
-	ctx.ui.notify(lines.join("\n"), "info");
-}
-
-export async function reconnectServers(
-	state: McpExtensionState,
-	ctx: ExtensionContext,
-	targetServer?: string,
-): Promise<void> {
-	if (targetServer && !state.config.mcpServers[targetServer]) {
-		if (ctx.hasUI) {
-			ctx.ui.notify(`Server "${targetServer}" not found in config`, "error");
-		}
-		return;
-	}
-
-	const entries = targetServer
-		? [[targetServer, state.config.mcpServers[targetServer]] as [string, ServerEntry]]
-		: Object.entries(state.config.mcpServers);
-
-	for (const [name, definition] of entries) {
-		try {
-			await state.manager.close(name);
-
-			const connection = await state.manager.connect(name, definition);
-			if (connection.status === "needs-auth") {
-				if (ctx.hasUI) {
-					ctx.ui.notify(`MCP: ${name} requires OAuth. Open /mcp and select it.`, "warning");
-				}
-				continue;
-			}
-			const prefix = state.config.settings?.toolPrefix ?? "server";
-
-			const { metadata, failedTools } = buildToolMetadata(
-				connection.tools,
-				connection.resources,
-				definition,
-				name,
-				prefix,
-			);
-			state.toolMetadata.set(name, metadata);
-			updateMetadataCache(state, name);
-			state.failureTracker.delete(name);
-
-			if (ctx.hasUI) {
-				ctx.ui.notify(
-					`MCP: Reconnected to ${name} (${connection.tools.length} tools, ${connection.resources.length} resources)`,
-					"info",
-				);
-				if (failedTools.length > 0) {
-					ctx.ui.notify(`MCP: ${name} - ${failedTools.length} tools skipped`, "warning");
-				}
-			}
-		} catch (error) {
-			const message = getErrorMessage(error);
-			state.failureTracker.set(name, Date.now());
-			if (ctx.hasUI) {
-				ctx.ui.notify(`MCP: Failed to reconnect to ${name}: ${message}`, "error");
-			}
-		}
-	}
-
-	updateStatusBar(state);
 }
 
 export async function authenticateServer(
@@ -253,27 +125,6 @@ export async function authenticateServer(
 	} finally {
 		ctx.ui.setStatus("mcp-auth", undefined);
 	}
-}
-
-export async function logoutServer(
-	serverName: string,
-	state: McpExtensionState,
-	ctx: ExtensionContext,
-): Promise<{ ok: boolean; message: string }> {
-	const definition = state.config.mcpServers[serverName];
-	if (!definition) {
-		const message = `Server "${serverName}" not found in config`;
-		if (ctx.hasUI) ctx.ui.notify(message, "error");
-		return { ok: false, message };
-	}
-
-	await removeAuth(serverName);
-	await state.manager.close(serverName);
-	updateStatusBar(state);
-
-	const message = `OAuth credentials cleared for "${serverName}". Open /mcp to authenticate again.`;
-	if (ctx.hasUI) ctx.ui.notify(message, "info");
-	return { ok: true, message };
 }
 
 export interface PanelFlowResult {

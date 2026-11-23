@@ -25,7 +25,6 @@ import { toolErrorOverride } from "./error-signal.ts";
 import { flushMetadataCache, initializeMcp, updateStatusBar } from "./init.ts";
 import { logger, routeSdkDiagnostics } from "./logger.ts";
 import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.ts";
-import { runMcpCommand } from "./mcp-command.ts";
 import { loadMetadataCache } from "./metadata-cache.ts";
 import { patchOutBuiltinMcp } from "./patch-builtin.ts";
 import { type ProxyParams, parseProxyArgs, proxyParameters, runProxyMode } from "./proxy-tool.ts";
@@ -99,7 +98,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 }
 
 function register(pi: ExtensionAPI) {
-	// The current load already replaced built-in MCP through the /mcp command.
+	// The current load already replaced built-in MCP with this package.
 	// Keep the same choice in settings for the next load without changing Pi's files.
 	try {
 		patchOutBuiltinMcp();
@@ -351,26 +350,6 @@ function register(pi: ExtensionAPI) {
 			if (!state) throw new Error("MCP not initialized");
 			const result = await openMcpPanel(state, pi, ctx, earlyConfigPath);
 			if (result?.configChanged) await ctx.reload();
-		},
-	});
-
-	pi.registerCommand("mcp", {
-		description: "Show MCP server status",
-		handler: async (args, ctx) => {
-			if (!state && initPromise) {
-				try {
-					state = await initPromise;
-				} catch (error) {
-					const message = getErrorMessage(error);
-					if (ctx.hasUI) ctx.ui.notify(`MCP initialization failed: ${message}`, "error");
-					return;
-				}
-			}
-			if (!state) {
-				if (ctx.hasUI) ctx.ui.notify("MCP not initialized", "error");
-				return;
-			}
-			await runMcpCommand(args, state, pi, ctx, earlyConfigPath);
 		},
 	});
 

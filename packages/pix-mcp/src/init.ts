@@ -152,7 +152,7 @@ export async function initializeMcp(
 					name,
 					definition,
 					connection: null,
-					error: "OAuth authentication required. Open /mcp and select this server.",
+					error: "OAuth authentication required. Open /pix mcp and select this server.",
 				};
 			}
 			return { name, definition, connection, error: null };

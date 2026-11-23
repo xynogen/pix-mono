@@ -70,12 +70,8 @@ test("registered MCP gateway and direct tools render their own shell", async () 
 			takeUnsupportedConfigNotes: () => [],
 		}));
 		mock.module("../src/commands.ts", () => ({
-			logoutServer: forbiddenCommand,
 			openMcpPanel: forbiddenCommand,
 			openMcpSetup: forbiddenCommand,
-			reconnectServers: forbiddenCommand,
-			showStatus: forbiddenCommand,
-			showTools: forbiddenCommand,
 		}));
 		const cacheModule = await import("../src/metadata-cache.ts");
 		mock.module("../src/metadata-cache.ts", () => ({

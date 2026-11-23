@@ -110,12 +110,12 @@ This flow does not open a browser or use callback handling. `oauth.redirectUri` 
 Open the unified MCP panel:
 
 ```
-/mcp
+/pix mcp
 ```
 
 Servers that require OAuth appear dimmed with a `needs auth` label. Select one and press Enter to start authentication. Successful authentication reconnects the server automatically.
 
-Manual authentication through `/mcp` is the default flow. If you set `settings.autoAuth: true`, proxy/direct tool execution will trigger OAuth automatically when a server returns `needs-auth`, then retry the original operation once.
+Manual authentication through `/pix mcp` is the default flow. If you set `settings.autoAuth: true`, proxy/direct tool execution will trigger OAuth automatically when a server returns `needs-auth`, then retry the original operation once.
 
 This will:
 
@@ -162,11 +162,7 @@ The SDK automatically:
 - Refreshes expired tokens automatically
 - Re-authenticates if tokens are invalid
 
-To clear stored OAuth credentials and force a fresh authorization:
-
-```
-/mcp logout my-oauth-server
-```
+To clear stored OAuth credentials and force a fresh authorization, delete the server's token directory (see [Token Storage](#token-storage)), then authenticate again in `/pix mcp`.
 
 ## How It Works
 
@@ -281,7 +277,7 @@ Credentials are tied to a specific server URL. If the URL changes, the credentia
 
 ### "No OAuth tokens found"
 
-Open `/mcp`, select the dimmed server marked `needs auth`, and press Enter.
+Open `/pix mcp`, select the dimmed server marked `needs auth`, and press Enter.
 
 ### "Failed to discover OAuth endpoints"
 

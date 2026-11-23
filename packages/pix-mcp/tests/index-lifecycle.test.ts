@@ -15,10 +15,6 @@ const mocks = {
 	getMissingConfiguredDirectToolServers: mock((): string[] => []),
 	resolveDirectTools: mock((): any[] => []),
 	resolveCodemodeTools: mock((): any[] => []),
-	showStatus: mock(),
-	showTools: mock(),
-	reconnectServers: mock(),
-	logoutServer: mock(),
 	openMcpPanel: mock(),
 	openMcpSetup: mock(),
 	executeAuthComplete: mock(),
@@ -78,10 +74,6 @@ mock.module("../src/direct-tools.ts", () => ({
 }));
 
 mock.module("../src/commands.ts", () => ({
-	showStatus: mocks.showStatus,
-	showTools: mocks.showTools,
-	reconnectServers: mocks.reconnectServers,
-	logoutServer: mocks.logoutServer,
 	openMcpPanel: mocks.openMcpPanel,
 	openMcpSetup: mocks.openMcpSetup,
 }));
@@ -545,105 +537,13 @@ describe("mcpAdapter session lifecycle", () => {
 		expect(mocks.shutdownOAuth).toHaveBeenCalledTimes(1);
 	});
 
-	it("routes `/mcp setup` to the onboarding flow", async () => {
-		const state = createState();
-		mocks.initializeMcp.mockResolvedValue(state);
-
-		const { default: mcpAdapter } = await import("../src/index.ts");
-		const { api, handlers } = createPi();
-		mcpAdapter(api);
-
-		const sessionStart = handlers.get("session_start");
-		await sessionStart?.({}, { hasUI: true, ui: { notify: mock() } });
-		await Promise.resolve();
-		await Promise.resolve();
-
-		const commandDef = api.registerCommand.mock.calls.find((call: any[]) => call[0] === "mcp")?.[1];
-		expect(commandDef).toBeDefined();
-
-		await commandDef.handler("setup", { hasUI: true, ui: { notify: mock() } });
-
-		expect(mocks.openMcpSetup).toHaveBeenCalledWith(
-			state,
-			api,
-			expect.any(Object),
-			undefined,
-			"setup",
-		);
-	});
-
-	it("routes `/mcp logout <server>` to credential logout", async () => {
-		const state = createState();
-		mocks.initializeMcp.mockResolvedValue(state);
-
-		const { default: mcpAdapter } = await import("../src/index.ts");
-		const { api, handlers } = createPi();
-		mcpAdapter(api);
-
-		const ui = { notify: mock() };
-		const sessionStart = handlers.get("session_start");
-		await sessionStart?.({}, { hasUI: true, ui });
-		await Promise.resolve();
-		await Promise.resolve();
-
-		const commandDef = api.registerCommand.mock.calls.find((call: any[]) => call[0] === "mcp")?.[1];
-		await commandDef.handler("logout oauth-server", { hasUI: true, ui });
-
-		expect(mocks.logoutServer).toHaveBeenCalledWith("oauth-server", state, expect.any(Object));
-	});
-
-	it("shows usage for `/mcp logout` without a server", async () => {
-		const state = createState();
-		mocks.initializeMcp.mockResolvedValue(state);
-
-		const { default: mcpAdapter } = await import("../src/index.ts");
-		const { api, handlers } = createPi();
-		mcpAdapter(api);
-
-		const ui = { notify: mock() };
-		const sessionStart = handlers.get("session_start");
-		await sessionStart?.({}, { hasUI: true, ui });
-		await Promise.resolve();
-		await Promise.resolve();
-
-		const commandDef = api.registerCommand.mock.calls.find((call: any[]) => call[0] === "mcp")?.[1];
-		await commandDef.handler("logout", { hasUI: true, ui });
-
-		expect(mocks.logoutServer).not.toHaveBeenCalled();
-		expect(ui.notify).toHaveBeenCalledWith("Usage: /mcp logout <server>", "error");
-	});
-
-	it("triggers core reload after setup changes config", async () => {
-		const initialState = createState();
-		mocks.initializeMcp.mockResolvedValue(initialState);
-		mocks.openMcpSetup.mockResolvedValue({ configChanged: true });
-
-		const { default: mcpAdapter } = await import("../src/index.ts");
-		const { api, handlers } = createPi();
-		mcpAdapter(api);
-
-		const ui = { notify: mock() };
-		const reload = mock().mockResolvedValue(undefined);
-		const sessionStart = handlers.get("session_start");
-		await sessionStart?.({}, { hasUI: true, ui });
-		await Promise.resolve();
-		await Promise.resolve();
-
-		const commandDef = api.registerCommand.mock.calls.find((call: any[]) => call[0] === "mcp")?.[1];
-		await commandDef.handler("setup", { hasUI: true, ui, reload });
-
-		expect(reload).toHaveBeenCalledTimes(1);
-		expect(mocks.initializeMcp).toHaveBeenCalledTimes(1);
-		expect(mocks.flushMetadataCache).not.toHaveBeenCalledWith(initialState);
-	});
-
-	it("registers /mcp as the only interactive MCP management command", async () => {
+	it("manages MCP in /pix, not a /mcp command", async () => {
 		const { default: mcpAdapter } = await import("../src/index.ts");
 		const { api } = createPi();
 		mcpAdapter(api);
 
 		const commandNames = api.registerCommand.mock.calls.map((call: any[]) => call[0]);
-		expect(commandNames).toContain("mcp");
+		expect(commandNames).not.toContain("mcp");
 		expect(commandNames).not.toContain("mcp-auth");
 	});
 

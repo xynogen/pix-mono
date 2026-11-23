@@ -202,7 +202,7 @@ describe("direct tools auto auth", () => {
 
 		expect(mocks.authenticate).not.toHaveBeenCalled();
 		expect(firstText(result)).toContain("auth-start");
-		expect(firstText(result)).toContain("open /mcp");
+		expect(firstText(result)).toContain("open /pix mcp");
 	});
 
 	it("runs URL elicitations returned by a URL-required tool error", async () => {

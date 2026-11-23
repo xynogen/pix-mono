@@ -62,7 +62,7 @@ type AutoAuthResult =
 function getAuthRequiredMessage(
 	state: McpExtensionState,
 	serverName: string,
-	defaultMessage = `Server "${serverName}" requires OAuth authentication. Run mcp({ action: "auth-start", server: "${serverName}" }) to get a browser URL, or open /mcp and select the server in an interactive local session.`,
+	defaultMessage = `Server "${serverName}" requires OAuth authentication. Run mcp({ action: "auth-start", server: "${serverName}" }) to get a browser URL, or open /pix mcp and select the server in an interactive local session.`,
 ): string {
 	return formatAuthRequiredMessage(state.config, serverName, defaultMessage);
 }
@@ -76,7 +76,7 @@ function getAuthFailedMessage(
 	if (customGuidance) {
 		return `OAuth authentication failed for "${serverName}": ${message}. ${getAuthRequiredMessage(state, serverName)}`;
 	}
-	return `OAuth authentication failed for "${serverName}": ${message}. Run mcp({ action: "auth-start", server: "${serverName}" }) to get a browser URL, or open /mcp and select the server in an interactive local session.`;
+	return `OAuth authentication failed for "${serverName}": ${message}. Run mcp({ action: "auth-start", server: "${serverName}" }) to get a browser URL, or open /pix mcp and select the server in an interactive local session.`;
 }
 
 function getRedirectPort(authorizationUrl: string): number | undefined {
@@ -135,7 +135,7 @@ async function attemptAutoAuth(
 			message: getAuthRequiredMessage(
 				state,
 				serverName,
-				`Server "${serverName}" requires OAuth authentication. Run mcp({ action: "auth-start", server: "${serverName}" }) to get a browser URL, or open /mcp and select the server in an interactive local session.`,
+				`Server "${serverName}" requires OAuth authentication. Run mcp({ action: "auth-start", server: "${serverName}" }) to get a browser URL, or open /pix mcp and select the server in an interactive local session.`,
 			),
 		};
 	}
@@ -661,7 +661,7 @@ export function executeList(
 			content: [
 				{
 					type: "text" as const,
-					text: `Server "${server}" is configured but not connected. Use mcp({ connect: "${server}" }) or /mcp reconnect ${server} to retry.`,
+					text: `Server "${server}" is configured but not connected. Use mcp({ connect: "${server}" }) or reconnect it in /pix mcp.`,
 				},
 			],
 			details: { mode: "list", server, tools: [], count: 0, error: "not_connected" },

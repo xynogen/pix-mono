@@ -254,7 +254,7 @@ function isSafeProviderUrl(url: string | undefined): boolean {
 
 /**
  * Apply the Pi mcp.json server fields:
- * - `enabled: false` drops the server, unless `includeDisabled` (the /mcp panel lists it).
+ * - `enabled: false` drops the server, unless `includeDisabled` (the MCP panel lists it).
  * - `exposure` / `toolExposure` aliases resolve. Invalid values are dropped and noted.
  * - `auth: { provider }` stays only when the Pi global mcp.json sets it for the same URL.
  *   A project or imported file cannot choose where a login token goes.
@@ -827,7 +827,7 @@ export function getServerProvenance(
 	return provenance;
 }
 
-// ── /mcp add helpers ───────────────────────────────────────────────────────
+// ── MCP add helpers ───────────────────────────────────────────────────────
 export type AddServerScope = "global" | "project";
 export type AddServerType = "stdio" | "npx" | "http" | "sse";
 export interface AddServerInput {
@@ -919,7 +919,7 @@ export function isServerNameTaken(
 	return name in cfg.mcpServers;
 }
 /**
- * Apply a /mcp direct-tools choice. A server that uses Pi `exposure` gets per-tool
+ * Apply an MCP panel direct-tools choice. A server that uses Pi `exposure` gets per-tool
  * `toolExposure` entries (`direct`, else `codemode`), because exposure wins over `directTools`.
  * Other servers keep the legacy `directTools` field.
  */

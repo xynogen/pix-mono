@@ -224,7 +224,7 @@ function parseOptionalJson<T>(
 	return parsed as T;
 }
 
-// ponytail: the /mcp panel toggle is binary (all tools on, or off/unset).
+// ponytail: the MCP panel toggle is binary (all tools on, or off/unset).
 // A per-tool allow-list (directTools: string[]) stays a config-file-only advanced
 // case; editing such a server via the panel collapses it to the on state.
 function parseDirectTools(value: string): boolean | undefined {

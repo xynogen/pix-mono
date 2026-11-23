@@ -140,13 +140,11 @@ describe("commands onboarding", () => {
 		rmSync(sharedConfigPath, { force: true });
 	});
 
-	it("clears OAuth credentials, cancels pending auth, and closes the server on logout", async () => {
+	it("removeAuth clears OAuth credentials and cancels pending auth", async () => {
 		process.env.MCP_OAUTH_DIR = mkdtempSync(join(tempDir(), "pi-mcp-commands-logout-"));
-		const ui = createUi();
-		const close = mock(() => {});
 		const { getAuthEntry, updateOAuthState, updateTokens } = await import("../src/mcp-auth.ts");
 		const { waitForCallback } = await import("../src/mcp-callback-server.ts");
-		const { logoutServer } = await import("../src/commands.ts");
+		const { removeAuth } = await import("../src/mcp-auth-flow.ts");
 
 		updateTokens(
 			"oauth-server",
@@ -154,34 +152,15 @@ describe("commands onboarding", () => {
 			"https://example.com/mcp",
 		);
 		updateOAuthState("oauth-server", "pending-state", "https://example.com/mcp");
-		const pendingCallback = waitForCallback("pending-state");
-		const pendingCallbackResult = pendingCallback.then(
+		const pendingCallbackResult = waitForCallback("pending-state").then(
 			() => null,
 			(error: Error) => error,
 		);
 
-		const result = await logoutServer(
-			"oauth-server",
-			{
-				config: {
-					mcpServers: { "oauth-server": { url: "https://example.com/mcp", auth: "oauth" } },
-				},
-				manager: { close },
-				toolMetadata: new Map(),
-				failureTracker: new Map(),
-			} as any,
-			{ hasUI: true, ui } as any,
-		);
+		await removeAuth("oauth-server");
 
-		const pendingError = await pendingCallbackResult;
-		expect(pendingError?.message).toBe("Authorization cancelled");
-		expect(result.ok).toBe(true);
+		expect((await pendingCallbackResult)?.message).toBe("Authorization cancelled");
 		expect(getAuthEntry("oauth-server")).toBeUndefined();
-		expect(close).toHaveBeenCalledWith("oauth-server");
-		expect(ui.notify).toHaveBeenCalledWith(
-			expect.stringContaining("OAuth credentials cleared"),
-			"info",
-		);
 	});
 
 	it("marks explicit OAuth servers as needs-auth when only stale URL tokens exist", async () => {
