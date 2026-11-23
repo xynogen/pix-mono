@@ -150,6 +150,74 @@ test("standalone settings render directly in /pix without a second overlay and d
 	}
 });
 
+test("a package panel can close one step and mount the next inside /pix", async () => {
+	const iso = createIsolatedRuntime();
+	try {
+		await iso.runtime.init();
+		const bus = new EventEmitter();
+		const commands = new Map();
+		registerPixCommand(host(bus, commands), iso.runtime);
+		const step =
+			(label: string) =>
+			(_tui: unknown, _theme: unknown, _kb: unknown, done: (v: null) => void) => ({
+				render: () => ["╭──────╮", `│ ${label} │`, "╰──────╯"],
+				handleInput: () => done(null),
+				invalidate() {},
+			});
+		let finished = false;
+		registerPackageSettings(host(bus, commands), {
+			id: "pix-mcp",
+			label: "MCP",
+			open: async (ctx) => {
+				// Like /mcp: the list closes itself, then the Add form opens.
+				await ctx.ui.custom(step("list"));
+				await ctx.ui.custom(step("form"));
+				finished = true;
+			},
+		});
+		const theme = {
+			fg: (_c: string, s: string) => s,
+			bg: (_c: string, s: string) => s,
+			bold: (s: string) => s,
+		};
+		let closed = false;
+		await commands.get("pix").handler("mcp", {
+			ui: {
+				custom: (
+					factory: (...a: unknown[]) => {
+						render(w: number): readonly string[];
+						handleInput(d: string): void;
+					},
+				) =>
+					new Promise<void>((resolve) => {
+						const component = factory(
+							{ requestRender() {}, terminal: { rows: 40 } },
+							theme,
+							getKeybindings(),
+							() => {
+								closed = true;
+								resolve();
+							},
+						);
+						void (async () => {
+							await Bun.sleep(0);
+							expect(component.render(100).join("\n")).toContain("list");
+							component.handleInput("x");
+							await Bun.sleep(0);
+							expect(closed).toBe(false);
+							expect(component.render(100).join("\n")).toContain("form");
+							component.handleInput("x");
+						})();
+					}),
+			},
+		} as unknown as ExtensionCommandContext);
+		expect(finished).toBe(true);
+		expect(closed).toBe(true);
+	} finally {
+		iso.cleanup();
+	}
+});
+
 test("all package tabs keep their active name visible in a narrow overlay", async () => {
 	const iso = createIsolatedRuntime();
 	try {

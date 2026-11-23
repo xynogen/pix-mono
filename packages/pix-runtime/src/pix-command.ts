@@ -603,16 +603,23 @@ class PixSettingsView {
 		this.leavePanel = undefined;
 		const panel = this.d.panels.find((entry) => entry.label === this.tab);
 		if (!panel) return;
-		void panel.open(this.panelContext(generation)).catch((error) => {
-			if (generation !== this.panelGeneration) return;
-			const message = error instanceof Error ? error.message : String(error);
-			this.d.notify(`pix: ${panel.label}: ${message}`, "error");
-		});
+		// Close /pix when the package flow ends, not when one of its steps ends: a panel may
+		// finish one step (done) and mount the next (Add form, confirm) via ui.custom again.
+		void panel.open(this.panelContext(generation)).then(
+			() => {
+				if (generation === this.panelGeneration) this.d.done(null);
+			},
+			(error) => {
+				if (generation !== this.panelGeneration) return;
+				const message = error instanceof Error ? error.message : String(error);
+				this.d.notify(`pix: ${panel.label}: ${message}`, "error");
+			},
+		);
 	}
 
 	/** Command context whose `ui.custom` mounts the panel inside this overlay, not a new one. */
 	private panelContext(generation: number): ExtensionCommandContext {
-		const { ctx, tui, theme, kb, done } = this.d;
+		const { ctx, tui, theme, kb } = this.d;
 		// SAFETY: spreads the real command context and only overrides ui.custom, so the full shape is kept.
 		return {
 			...ctx,
@@ -640,10 +647,8 @@ class PixSettingsView {
 						const panelTui = forward(tui, { terminal: () => panelTerminal });
 						this.embedded = factory(panelTui, theme, kb, (value: unknown) => {
 							if (generation !== this.panelGeneration) return resolve(null);
-							if (value == null) {
-								this.embedded = undefined;
-								done(null);
-							}
+							this.embedded = undefined;
+							tui.requestRender();
 							resolve(value);
 						});
 						tui.requestRender();
