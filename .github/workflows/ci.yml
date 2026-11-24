@@ -56,6 +56,8 @@ jobs:
   # Windows catches path, CRLF and symlink bugs the Linux job cannot. Tests only: lint, typecheck
   # and the tarball smoke are OS-independent, and coverage is ratcheted once, on Linux.
   # ponytail: only ripgrep is installed here (pix-graph needs it); other tests that need a binary skip.
+  # ripgrep comes pinned from its GitHub release, not Chocolatey: a choco feed 504 exits 0 with
+  # nothing installed. Bump RG_VERSION and the sha256 together.
   test-windows:
     runs-on: windows-latest
     steps:
@@ -71,7 +73,16 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Install test binaries
-        run: choco install ripgrep --no-progress -y
+        env:
+          RG_VERSION: 15.2.0
+          RG_SHA256: 71b2fef860abe467217a538ff31de02f5258807c0129f771846f87bd029aafc5
+        run: |
+          $name = "ripgrep-$env:RG_VERSION-x86_64-pc-windows-msvc"
+          Invoke-WebRequest "https://github.com/BurntSushi/ripgrep/releases/download/$env:RG_VERSION/$name.zip" -OutFile rg.zip
+          if ((Get-FileHash rg.zip -Algorithm SHA256).Hash -ne $env:RG_SHA256) { throw "rg.zip checksum mismatch" }
+          Expand-Archive rg.zip -DestinationPath $env:RUNNER_TEMP
+          "$env:RUNNER_TEMP\$name" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & "$env:RUNNER_TEMP\$name\rg.exe" --version
 
       - name: Test
         run: bun run test
