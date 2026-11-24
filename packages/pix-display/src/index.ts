@@ -8,6 +8,7 @@
  *   @xynogen/pix-pretty/chips  Inline chips (tag format, editor, sent messages)
  *   thinking.ts      Leaked reasoning tag → native thinking content blocks
  *   code-blocks.ts   Framed, syntax-highlighted code fences in LLM output
+ *   directives.ts    `::stat[…]` directives in LLM output → stat cards
  */
 
 import { registerChips } from "@xynogen/pix-pretty/chips";
@@ -15,6 +16,7 @@ import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 
 import codeBlocksExtension from "./code-blocks.ts";
+import directivesExtension from "./directives.ts";
 import thinkingExtension from "./thinking.ts";
 import workingExtension from "./working.ts";
 
@@ -23,6 +25,7 @@ export default function pixDisplayExtension(pi: ExtensionAPI): void {
 		registerChips(pi);
 		thinkingExtension(pi);
 		codeBlocksExtension(pi);
+		directivesExtension(pi);
 		workingExtension(pi);
 	});
 }

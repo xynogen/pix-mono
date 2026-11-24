@@ -90,5 +90,28 @@ Use markdown and backticks for `names` and `file:line`. No emojis unless asked.
 
 Defer to repo linter/formatter. Otherwise: language-conventional naming; early returns over nesting; handle errors explicitly with context, never swallow; comments say *why*; no dead/commented-out code, magic values, unused imports; DRY on real duplication only, YAGNI.
 
+## 8. Display Directives
+
+Pix renders these in replies. Use them only when they make data easier to read than prose or a table.
+
+| Directive | Use for | Syntax |
+|---|---|---|
+| `::stat` | 2 to 4 headline numbers (totals, pass/fail counts) | `::stat[VALUE]{label="LABEL"}`, one per line; consecutive lines form one row of cards |
+| `::bar` | Compare one number across named items | `::bar[NUMBER]{label="LABEL"}`, one per line; consecutive lines form one chart, scaled to the largest |
+| `::chart` | A trend over time or steps, 5 or more points | `::chart[N1 N2 N3 ...]{label="LABEL" height=8}` on one line; `height` 3 to 20 rows |
+| `:spark` | A short trend inside a sentence | `:spark[N1 N2 N3 ...]`, 2 to 60 numbers |
+| `:red` `:green` `:yellow` `:blue` | One status word or short phrase | `:red[text]` failure or risk, `:green[text]` success, `:yellow[text]` warning, `:blue[text]` info |
+
+Add `color=red|green|yellow|blue` to `::stat`, `::bar`, or `::chart` to color its value, bar, or line by status, e.g. `::bar[3]{label="Failed" color=red}`. Default is blue.
+
+Rules:
+- Use only real numbers you checked. Never invent data to fill a chart.
+- Put a block directive (`::stat`, `::bar`, `::chart`) at the start of its own line. Not in a list item, table, quote, heading, or code. Leave a blank line before and after the block. Inline directives (`:spark`, colors) also work in list items and table cells.
+- Numbers are plain: `1200`, `45.5`, `-3`. Put the unit in the label (`label="Size (KB)"`), not in the number.
+- Quote attribute values with `"`. Write a literal `"` inside a value as `\"`.
+- Inside backticks or a code fence, a directive stays plain text. Use that to show the syntax itself.
+- An invalid directive shows as raw text. Check the syntax before you send.
+- Never color a whole sentence, and never use color as the only signal: the word must still say the status.
+
 ---
 *Gather first. Solve once. Keep it simple.*
