@@ -18,11 +18,10 @@
  */
 
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { runBinary } from "../exec.ts";
+import { installIntoPrefix, type PrefixInstallResult } from "../npm-prefix.ts";
 import { agentDir } from "../paths.ts";
 import { isBundled, loadEngine, parse, parseDynamic, type SgNode } from "./engine.ts";
 
@@ -143,41 +142,10 @@ export async function ensureLanguage(lang: string): Promise<GrammarResult> {
 
 /**
  * Install a `@ast-grep/lang-*` package into the pix cache prefix. This runs a
- * network install — the caller must get user consent first. It never touches a
- * global path or this package's own node_modules.
+ * network install — the caller must get user consent first.
  */
-export async function installGrammar(
-	pkg: string,
-	signal?: AbortSignal,
-): Promise<{ ok: boolean; message?: string }> {
-	signal?.throwIfAborted();
-	const dir = grammarCacheDir();
-	try {
-		await mkdir(dir, { recursive: true });
-		// A minimal package.json so npm installs into this prefix cleanly.
-		const pkgJson = join(dir, "package.json");
-		if (!existsSync(pkgJson)) {
-			const { writeFile } = await import("node:fs/promises");
-			await writeFile(pkgJson, JSON.stringify({ name: "pix-astgrep-grammars", private: true }));
-		}
-		const result = await runBinary("npm", ["install", "--save", "--prefix", dir, pkg], {
-			cwd: dir,
-			timeoutMs: 120_000,
-			signal,
-		});
-		if (result.code !== 0) {
-			return {
-				ok: false,
-				message: result.timedOut
-					? "grammar installation timed out"
-					: result.stderr || `npm exited ${result.code}`,
-			};
-		}
-		return { ok: true };
-	} catch (err) {
-		signal?.throwIfAborted();
-		return { ok: false, message: errorText(err) };
-	}
+export function installGrammar(pkg: string, signal?: AbortSignal): Promise<PrefixInstallResult> {
+	return installIntoPrefix(grammarCacheDir(), [pkg], { signal });
 }
 
 export type ParseOutcome = { kind: "ok"; root: SgNode } | GrammarResult;
