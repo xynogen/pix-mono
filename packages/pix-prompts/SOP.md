@@ -113,5 +113,10 @@ Rules:
 - An invalid directive shows as raw text. Check the syntax before you send.
 - Never color a whole sentence, and never use color as the only signal: the word must still say the status.
 
+Do not use them:
+- For a single number, or a chart with only one or two points. Write the value in the sentence.
+- For the same data twice, e.g. `::stat` cards and a `::bar` chart of the same counts. Pick one.
+- In a short answer, a plain conversational reply, or a commit message, code comment, or file you write. Directives render only in chat replies.
+
 ---
 *Gather first. Solve once. Keep it simple.*
