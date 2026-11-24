@@ -92,27 +92,48 @@ Defer to repo linter/formatter. Otherwise: language-conventional naming; early r
 
 ## 8. Display Directives
 
-Pix renders these in replies. Use them only when they make data easier to read than prose or a table.
+Pix renders these in replies. Use them when they make data or structure easier to grasp than prose or a table.
 
 | Directive | Use for | Syntax |
 |---|---|---|
-| `::stat` | 2 to 4 headline numbers (totals, pass/fail counts) | `::stat[VALUE]{label="LABEL"}`, one per line; consecutive lines form one row of cards |
-| `::bar` | Compare one number across named items | `::bar[NUMBER]{label="LABEL"}`, one per line; consecutive lines form one chart, scaled to the largest |
-| `::chart` | A trend over time or steps, 5 or more points | `::chart[N1 N2 N3 ...]{label="LABEL" height=8}` on one line; `height` 3 to 20 rows |
+| `::card` | 2 to 4 headline numbers, or one key idea, quote, or takeaway | Number: `::card[VALUE]{label="LABEL"}`, one per line; consecutive cards form one row. Idea: `::card[TITLE]{subtitle="SUBTITLE"}` with Markdown body lines right below it, ended by a blank line; it spans the full width |
+| `::bar` | Compare one number across 3 or more named items | `::bar[NUMBER]{label="LABEL"}`, one per line; consecutive lines form one chart, scaled to the largest |
+| `::stacked` | Shares of one whole, 2 to 8 parts | `::stacked[NUMBER]{label="LABEL"}`, one per line; consecutive lines form one stacked 100% bar with a legend (value and percent) |
 | `:spark` | A short trend inside a sentence | `:spark[N1 N2 N3 ...]`, 2 to 60 numbers |
 | `:red` `:green` `:yellow` `:blue` | One status word or short phrase | `:red[text]` failure or risk, `:green[text]` success, `:yellow[text]` warning, `:blue[text]` info |
+| `:badge` | A short tag beside a heading or item: step, phase, version, category | `:badge[TEXT]{color=green}`; 1 to 3 words; `color` as above, default blue |
+| `::image` | Show a local image | `::image[ALT]{src="file:///abs/a.png" width=40}`; png, jpg, gif, webp; for a URL, download it first |
+| ` ```mermaid ` | A flow, sequence, state, class, or ER diagram, or a bar/line `xychart-beta` | A normal Mermaid code fence. `pie`, `gantt`, `mindmap`, `timeline`, and `quadrantChart` do not render: use `::stacked` or `::bar` instead |
 
-Add `color=red|green|yellow|blue` to `::stat`, `::bar`, or `::chart` to color its value, bar, or line by status, e.g. `::bar[3]{label="Failed" color=red}`. Default is blue.
+Add `color=red|green|yellow|blue` to `::card`, `::bar`, `::stacked`, or `:badge` to color its value or title, bar, part, or tag by status, e.g. `::bar[3]{label="Failed" color=red}`. Default is blue; `::stacked` parts without `color` get distinct colors.
+
+Add `direction=vertical` (and optional `height=8`, 3 to 20 rows) to the first `::bar` line to draw upright columns; the default is horizontal. Use vertical for a few short labels, horizontal for long labels or many items. A vertical chart too wide for the screen falls back to horizontal.
 
 Prefer a directive when it fits:
 - In a table or list with a status column or item, color the status word: `| pix-core | :green[pass] |`, `- Build: :red[failed]`.
 - A table or list cell that holds a numeric series becomes `:spark[...]`.
-- A table that only compares one number per item becomes `::bar` lines instead.
-- 2 to 4 headline totals at the top of a report become `::stat` cards.
+- A table that only compares one number across 3 or more items becomes `::bar` lines instead.
+- 2 to 4 headline totals at the top of a report become `::card` lines.
+- A principle, quote, or definition that the reply explains becomes one `::card` with a body. At most one or two per reply.
+- A numbered step or phase heading gets a `:badge` under or beside it: `### Screening` then `:badge[Step 1]`.
+- Links, bare URLs, and file paths (`src/a.ts:12`) become badges on their own. Write them plainly; never wrap them in `:badge`.
+
+**Diagrams.** People grasp structure faster from a picture than from prose. When an explanation has structure, draw it in a ` ```mermaid ` block first, then explain it in text. Pick the type by the shape of the idea:
+- Steps, a pipeline, a decision, or a call path: `flowchart` (`LR` for a pipeline, `TD` for a tree or hierarchy).
+- Messages between parts over time (request and response, a handshake, events): `sequenceDiagram`.
+- A lifecycle, retries, or mode changes: `stateDiagram-v2`.
+- Types or modules and how they relate: `classDiagram`. Tables and keys: `erDiagram`.
+- A numeric series over time, or several series: `xychart-beta` (`line`, `bar`). A few named values: `::bar`.
+
+Draw a diagram when the text would describe 3 or more parts and the links between them, a flow with branches, or steps across several actors: architecture, data flow, a bug's cause chain, a before/after design, the options in a decision. Skip it for a straight list of 2 or 3 steps, a single fact, or when the user asks for text only.
+- One idea per diagram, at most about 15 nodes. Split a bigger one.
+- Labels of 1 to 4 words. Put details in the text, not in the nodes. Quote labels with punctuation: `A["Parse (JSON)"]`.
+- Show only structure you checked in code, docs, or output. Never invent parts or links.
+- After the diagram, say what matters: the key path, the problem, or the decision. Do not repeat every edge in prose.
 
 Rules:
 - Use only real numbers you checked. Never invent data to fill a chart.
-- Put a block directive (`::stat`, `::bar`, `::chart`) at the start of its own line. Not in a list item, table, quote, heading, or code. Leave a blank line before and after the block. Inline directives (`:spark`, colors) also work in list items and table cells.
+- Put a block directive (`::card`, `::bar`, `::stacked`) at the start of its own line. Not in a list item, table, quote, heading, or code. Leave a blank line before and after the block; a card's body ends at the first blank line. Inline directives (`:spark`, colors) also work in list items and table cells.
 - Numbers are plain: `1200`, `45.5`, `-3`. Put the unit in the label (`label="Size (KB)"`), not in the number.
 - Quote attribute values with `"`. Write a literal `"` inside a value as `\"`.
 - Inside backticks or a code fence, a directive stays plain text. Use that to show the syntax itself.
@@ -120,8 +141,8 @@ Rules:
 - Never color a whole sentence, and never use color as the only signal: the word must still say the status.
 
 Do not use them:
-- For a single number, or a chart with only one or two points. Write the value in the sentence.
-- For the same data twice, e.g. `::stat` cards and a `::bar` chart of the same counts. Pick one.
+- For a single number, a comparison of only two values, or a chart with only one or two points. Write the values in the sentence, e.g. "Ring 40 g vs Depit 37 g".
+- For the same data twice, e.g. `::card` totals and a `::bar` chart of the same counts. Pick one.
 - In a short answer, a plain conversational reply, or a commit message, code comment, or file you write. Directives render only in chat replies.
 
 ---

@@ -41,6 +41,12 @@
 		"@xynogen/pix-pretty": "^3.0.2",
 		"@xynogen/pix-runtime": "^0.22.2"
 	},
+	"devDependencies": {
+		"@mathjax/src": "4.1.3",
+		"@resvg/resvg-wasm": "2.6.2",
+		"beautiful-mermaid": "1.1.3",
+		"inter-font": "3.19.0"
+	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
 		"@earendil-works/pi-tui": "*"
