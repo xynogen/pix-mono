@@ -9,6 +9,7 @@
  *   thinking.ts      Leaked reasoning tag → native thinking content blocks
  *   code-blocks.ts   Framed, syntax-highlighted code fences in LLM output
  *   directives.ts    `::card[…]`, charts and inline directives in LLM output
+ *   tables.ts        Themed Markdown tables with column alignment
  */
 
 import { registerChips } from "@xynogen/pix-pretty/chips";
@@ -19,6 +20,7 @@ import codeBlocksExtension from "./code-blocks.ts";
 import directivesExtension from "./directives.ts";
 import { hasDisplayMath, offerMathInstall, startMath } from "./math.ts";
 import { hasMermaid, offerMermaidInstall, startMermaid } from "./mermaid.ts";
+import tablesExtension from "./tables.ts";
 import thinkingExtension from "./thinking.ts";
 import workingExtension from "./working.ts";
 
@@ -27,6 +29,7 @@ export default async function pixDisplayExtension(pi: ExtensionAPI): Promise<voi
 		registerChips(pi);
 		thinkingExtension(pi);
 		codeBlocksExtension(pi);
+		tablesExtension(pi);
 		directivesExtension(pi);
 		workingExtension(pi);
 		pi.on("agent_end", (event, ctx) => {

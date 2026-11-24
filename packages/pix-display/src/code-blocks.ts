@@ -31,11 +31,11 @@ let activeTheme: CodeFrameTheme | undefined;
  * their print/RPC session clear the theme silently disables code frames in the
  * still-running parent transcript.
  */
-export function themeAfterSessionStart(
-	current: CodeFrameTheme | undefined,
+export function themeAfterSessionStart<T extends CodeFrameTheme>(
+	current: T | undefined,
 	mode: RenderMode,
-	theme: CodeFrameTheme,
-): CodeFrameTheme | undefined {
+	theme: T,
+): T | undefined {
 	return mode === "tui" ? theme : current;
 }
 
