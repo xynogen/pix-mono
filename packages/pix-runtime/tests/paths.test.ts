@@ -2,13 +2,16 @@ import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, parse, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
 	agentDir,
 	binDir,
 	cacheDir,
 	expandHome,
 	homeDir,
+	importFile,
 	isHomeOrFsRoot,
+	localFilePath,
 	moduleFile,
 	ownerDir,
 	ownerRel,
@@ -84,5 +87,25 @@ describe("moduleFile", () => {
 		const p = moduleFile(import.meta.url, "../src/paths.ts");
 		expect(isAbsolute(p)).toBe(true);
 		expect(existsSync(p)).toBe(true);
+	});
+});
+
+describe("importFile", () => {
+	test("loads a module from an absolute OS path, drive letters included", async () => {
+		const mod = await importFile<{ moduleFile: unknown }>(
+			moduleFile(import.meta.url, "../src/paths.ts"),
+		);
+		expect(mod.moduleFile).toBe(moduleFile);
+	});
+});
+
+describe("localFilePath", () => {
+	test("accepts file:// URLs and absolute paths only", () => {
+		const file = join(tmpdir(), "dot.png");
+		expect(localFilePath(pathToFileURL(file).href)).toBe(file);
+		expect(localFilePath(file)).toBe(file);
+		expect(localFilePath("https://example.com/a.png")).toBeUndefined();
+		expect(localFilePath("rel/a.png")).toBeUndefined();
+		expect(localFilePath("file:///a%2Fb")).toBeUndefined();
 	});
 });

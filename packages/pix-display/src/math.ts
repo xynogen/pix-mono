@@ -12,13 +12,12 @@
  * support, engine not installed or loaded, a TeX error, or a formula wider than the screen.
  */
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { FG_DIM, RST } from "@xynogen/pix-pretty/ansi";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { getCapabilities, getCellDimensions } from "@xynogen/pix-pretty/tui";
 import { readFile } from "@xynogen/pix-runtime/fs";
 import { installIntoPrefix } from "@xynogen/pix-runtime/npm-prefix";
-import { agentDir, requireFrom } from "@xynogen/pix-runtime/paths";
+import { agentDir, importFile, requireFrom } from "@xynogen/pix-runtime/paths";
 import { renderImageRows } from "./image.ts";
 
 /** SVG plus its natural size in `ex`, the unit MathJax lays math out in. */
@@ -74,7 +73,7 @@ async function load(): Promise<void> {
 	const req = engineRequire();
 	missing = !req;
 	if (!req) return;
-	const at = <T>(spec: string): Promise<T> => import(pathToFileURL(req.resolve(spec)).href);
+	const at = <T>(spec: string): Promise<T> => importFile(req.resolve(spec));
 	const wasm = req.resolve("@resvg/resvg-wasm/index_bg.wasm");
 	const [{ mathjax }, { TeX }, { SVG }, { liteAdaptor }, { RegisterHTMLHandler }, resvg] =
 		await Promise.all([
@@ -86,9 +85,7 @@ async function load(): Promise<void> {
 			),
 			at<typeof import("@mathjax/src/mjs/handlers/html.js")>("@mathjax/src/mjs/handlers/html.js"),
 			// The ESM entry sits beside the WASM file; the package does not export its path.
-			import(pathToFileURL(join(dirname(wasm), "index.mjs")).href) as Promise<
-				typeof import("@resvg/resvg-wasm")
-			>,
+			importFile<typeof import("@resvg/resvg-wasm")>(join(dirname(wasm), "index.mjs")),
 			at("@mathjax/src/mjs/input/tex/base/BaseConfiguration.js"),
 			at("@mathjax/src/mjs/input/tex/ams/AmsConfiguration.js"),
 		]);

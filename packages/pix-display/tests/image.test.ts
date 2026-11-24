@@ -5,7 +5,6 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Markdown, resetCapabilitiesCache, setCapabilities } from "@earendil-works/pi-tui";
 import { renderDirectives } from "../src/directives.js";
-import { localPath } from "../src/image.js";
 
 // 1×1 transparent PNG.
 const PNG = Buffer.from(
@@ -29,13 +28,6 @@ afterEach(() => resetCapabilitiesCache());
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("::image", () => {
-	it("accepts file:// URLs and absolute paths only", () => {
-		expect(localPath(pathToFileURL(file).href)).toBe(file);
-		expect(localPath(file)).toBe(file);
-		expect(localPath("https://example.com/a.png")).toBeUndefined();
-		expect(localPath("rel/a.png")).toBeUndefined();
-	});
-
 	it("emits a Kitty image sequence and reserves its rows", () => {
 		setCapabilities({ images: "kitty", trueColor: true, hyperlinks: false });
 		const lines = render(`a\n\n::image[dot]{src="${pathToFileURL(file).href}" width=4}\n\nb`);

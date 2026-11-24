@@ -17,7 +17,7 @@
 
 import { createRequire } from "node:module";
 import { extname } from "node:path";
-import { pathToFileURL } from "node:url";
+import { importFile } from "../paths.ts";
 
 // The typed shape of the addon accessor we use (parse → root → findAll).
 export interface SgEdit {
@@ -75,7 +75,7 @@ export async function loadEngine(): Promise<AstGrepNapi | undefined> {
 			const entry = _require.resolve("@ast-grep/napi");
 			// SAFETY: the addon has no bundled ESM types; the accessors we use
 			// (ts/tsx/js/jsx/css/html .parse) are verified at runtime by tests.
-			const mod = (await import(pathToFileURL(entry).href)) as unknown as AstGrepNapi;
+			const mod = await importFile<AstGrepNapi>(entry);
 			cached = mod;
 			return mod;
 		} catch {

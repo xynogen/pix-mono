@@ -11,8 +11,8 @@
 
 import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, parse, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, isAbsolute, join, parse, relative, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /**
  * User home. For the live process this is exactly `os.homedir()` (what Pi's
@@ -119,6 +119,26 @@ export function moduleFile(moduleUrl: string, ...segments: string[]): string {
 /** CommonJS `require` that resolves from a module's own location: `requireFrom(import.meta.url)`. */
 export function requireFrom(moduleUrl: string): NodeJS.Require {
 	return createRequire(moduleUrl);
+}
+
+/**
+ * Load an ES module by absolute path. Windows rejects a bare `C:\...` specifier
+ * (`ERR_UNSUPPORTED_ESM_URL_SCHEME`), so it goes through a `file://` URL.
+ */
+export function importFile<T>(path: string): Promise<T> {
+	return import(pathToFileURL(path).href);
+}
+
+/** Local path for a `file://` URL or an absolute path (`/a`, `C:\a`); undefined for anything else. */
+export function localFilePath(src: string): string | undefined {
+	if (src.startsWith("file://")) {
+		try {
+			return fileURLToPath(src);
+		} catch {
+			return undefined;
+		}
+	}
+	return isAbsolute(src) ? src : undefined;
 }
 
 /** Pi cache root: `$XDG_CACHE_HOME/pi` or `~/.cache/pi`. */

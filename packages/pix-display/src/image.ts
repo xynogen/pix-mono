@@ -5,11 +5,11 @@
  * Only `file://` URLs and absolute paths: a remote image is downloaded first by a
  * visible tool call, so rendering never touches the network.
  */
-import { basename, isAbsolute } from "node:path";
-import { fileURLToPath } from "node:url";
+import { basename } from "node:path";
 import { FG_DIM, RST } from "@xynogen/pix-pretty/ansi";
 import { getImageDimensions, Image } from "@xynogen/pix-pretty/tui";
 import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
+import { localFilePath } from "@xynogen/pix-runtime/paths";
 
 const IMAGE = /^::image\[([^\]\n]*)\](?:\{([^}\n]*)\})?\s*$/;
 // Read synchronously during render, so bound the bytes one directive can load.
@@ -37,18 +37,6 @@ export function parseImage(
 	return { alt: match[1] ?? "", src, width: cells > 0 ? cells : undefined };
 }
 
-/** Absolute local path for `file://` URLs and absolute paths; undefined for anything else. */
-export function localPath(src: string): string | undefined {
-	if (src.startsWith("file://")) {
-		try {
-			return fileURLToPath(src);
-		} catch {
-			return undefined;
-		}
-	}
-	return isAbsolute(src) ? src : undefined;
-}
-
 // Pi may re-render a message many times; keep the encoded rows per file version and width.
 // Insertion-ordered, so dropping the first key evicts the oldest entry.
 const cache = new Map<string, string[]>();
@@ -64,7 +52,7 @@ function note(text: string): string[] {
  * Pi's text fallback. Blank rows are kept as NBSP so Markdown reserves the image height.
  */
 export function renderImage(image: ImageDirective, width: number): string[] {
-	const path = localPath(image.src);
+	const path = localFilePath(image.src);
 	if (!path) return note(`${image.alt || image.src}: only file:// or absolute paths`);
 	const mime = MIME[path.split(".").pop()?.toLowerCase() ?? ""];
 	if (!mime) return note(`${image.alt || path}: unsupported type`);

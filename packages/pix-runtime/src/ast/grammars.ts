@@ -20,9 +20,8 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { installIntoPrefix, type PrefixInstallResult } from "../npm-prefix.ts";
-import { agentDir } from "../paths.ts";
+import { agentDir, importFile } from "../paths.ts";
 import { isBundled, loadEngine, parse, parseDynamic, type SgNode } from "./engine.ts";
 
 const require = createRequire(import.meta.url);
@@ -93,7 +92,7 @@ async function importGrammar(pkg: string): Promise<unknown | undefined> {
 			if ((err as NodeJS.ErrnoException).code === "MODULE_NOT_FOUND") continue;
 			throw err;
 		}
-		const mod = (await import(pathToFileURL(entry).href)) as { default?: unknown };
+		const mod = await importFile<{ default?: unknown }>(entry);
 		return mod.default ?? mod;
 	}
 	return undefined;

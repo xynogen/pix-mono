@@ -14,13 +14,12 @@
  * beautiful-mermaid's text drawing, or to the plain code block when that fails too.
  */
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { getCapabilities, getCellDimensions } from "@xynogen/pix-pretty/tui";
 import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { existsSync, readFile, readFileSync } from "@xynogen/pix-runtime/fs";
 import { installIntoPrefix } from "@xynogen/pix-runtime/npm-prefix";
-import { agentDir, requireFrom } from "@xynogen/pix-runtime/paths";
+import { agentDir, importFile, requireFrom } from "@xynogen/pix-runtime/paths";
 import { renderImageRows } from "./image.ts";
 
 type Svg = (source: string) => string;
@@ -134,8 +133,8 @@ async function load(): Promise<void> {
 	missing = !paths;
 	if (!paths) return;
 	const [bm, resvg] = await Promise.all([
-		import(pathToFileURL(paths.mermaid).href) as Promise<typeof import("beautiful-mermaid")>,
-		import(pathToFileURL(paths.resvg).href) as Promise<typeof import("@resvg/resvg-wasm")>,
+		importFile<typeof import("beautiful-mermaid")>(paths.mermaid),
+		importFile<typeof import("@resvg/resvg-wasm")>(paths.resvg),
 	]);
 	// Shared with math.ts: Node keeps one resvg WASM instance, which refuses a second init.
 	await resvg.initWasm(readFile(paths.wasm)).catch((error: unknown) => {
