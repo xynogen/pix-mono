@@ -104,6 +104,12 @@ Pix renders these in replies. Use them only when they make data easier to read t
 
 Add `color=red|green|yellow|blue` to `::stat`, `::bar`, or `::chart` to color its value, bar, or line by status, e.g. `::bar[3]{label="Failed" color=red}`. Default is blue.
 
+Prefer a directive when it fits:
+- In a table or list with a status column or item, color the status word: `| pix-core | :green[pass] |`, `- Build: :red[failed]`.
+- A table or list cell that holds a numeric series becomes `:spark[...]`.
+- A table that only compares one number per item becomes `::bar` lines instead.
+- 2 to 4 headline totals at the top of a report become `::stat` cards.
+
 Rules:
 - Use only real numbers you checked. Never invent data to fill a chart.
 - Put a block directive (`::stat`, `::bar`, `::chart`) at the start of its own line. Not in a list item, table, quote, heading, or code. Leave a blank line before and after the block. Inline directives (`:spark`, colors) also work in list items and table cells.
