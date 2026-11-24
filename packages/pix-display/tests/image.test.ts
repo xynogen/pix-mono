@@ -57,6 +57,9 @@ describe("::image", () => {
 		expect(text("https://example.com/a.png")).toBe("(image: x: only file:// or absolute paths)");
 		expect(text(join(dir, "missing.png"))).toBe("(image: x: not found)");
 		expect(text(join(dir, "a.txt"))).toBe("(image: x: unsupported type)");
+		// A Windows path keeps its backslashes through the attribute parser.
+		const win = render('::image[]{src="C:\\a\\b.png"}', 200).join("").replace(ANSI_RE, "");
+		expect(win).toContain("C:\\a\\b.png");
 	});
 
 	it("stays literal inside a code fence or without src", () => {

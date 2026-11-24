@@ -5,6 +5,7 @@
  * Only `file://` URLs and absolute paths: a remote image is downloaded first by a
  * visible tool call, so rendering never touches the network.
  */
+import { basename, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FG_DIM, RST } from "@xynogen/pix-pretty/ansi";
 import { getImageDimensions, Image } from "@xynogen/pix-pretty/tui";
@@ -45,7 +46,7 @@ export function localPath(src: string): string | undefined {
 			return undefined;
 		}
 	}
-	return src.startsWith("/") ? src : undefined;
+	return isAbsolute(src) ? src : undefined;
 }
 
 // Pi may re-render a message many times; keep the encoded rows per file version and width.
@@ -86,7 +87,7 @@ export function renderImage(image: ImageDirective, width: number): string[] {
 	}
 	const rows = renderImageRows(data, mime, width, {
 		maxWidthCells: Math.min(image.width ?? 60, width),
-		filename: path.split("/").pop(),
+		filename: basename(path),
 	});
 	cache.set(key, rows);
 	if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value ?? "");

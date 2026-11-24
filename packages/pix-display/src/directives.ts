@@ -157,7 +157,8 @@ function inlineLines(lines: readonly string[]): string[] {
 function attrs(raw: string | undefined): Record<string, string> {
 	const out: Record<string, string> = {};
 	for (const [, key, quoted, bare] of (raw ?? "").matchAll(ATTR)) {
-		if (key) out[key] = quoted?.replace(/\\(.)/g, "$1") ?? bare ?? "";
+		// Only `\"` is an escape, so a Windows path keeps its backslashes.
+		if (key) out[key] = quoted?.replaceAll('\\"', '"') ?? bare ?? "";
 	}
 	return out;
 }
