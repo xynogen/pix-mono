@@ -2,7 +2,7 @@ import { Markdown, sliceByColumn, type Theme, visibleWidth } from "@xynogen/pix-
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { themeAfterSessionStart } from "./code-blocks.ts";
 
-type TableTheme = Pick<Theme, "bg" | "bold" | "fg">;
+type TableTheme = Pick<Theme, "bold" | "fg">;
 type Align = "left" | "center" | "right" | null;
 type RenderTable = (
 	this: unknown,
@@ -29,9 +29,9 @@ function alignCell(cell: string, width: number, align: Align | undefined): strin
 }
 
 /**
- * Restyle Pi's box table: dim rounded borders, column alignment, an accent header on
- * `selectedBg` and zebra-striped body rows on `toolPendingBg`. A stripe covers every
- * wrapped line of its row.
+ * Restyle Pi's box table: dim rounded borders, column alignment and an accent header.
+ * No background fill: a cell-wide fill overhangs the half-cell `│` borders, and some
+ * themes and terminals show it barely or not at all, so the table looks the same everywhere.
  */
 export function styleTable(
 	lines: readonly string[],
@@ -47,21 +47,19 @@ export function styleTable(
 		.map((cell) => cell.length);
 	const border = (text: string) => theme.fg("borderMuted", text);
 	const bar = border("│");
-	let row = -1;
+	let header = true;
 	return lines.map((line) => {
 		if (!line.startsWith("│")) {
-			if (line.startsWith("├")) row++;
+			if (line.startsWith("├")) header = false;
 			return line && border(line.replace(/^[┌└]|[┐┘]$/g, (c) => CORNERS[c] ?? c));
 		}
 		let col = 2;
 		const cells = widths.map((width, i) => {
 			const cell = alignCell(sliceByColumn(line, col, width, true), width, align[i]);
 			col += width + 3;
-			return row < 0 ? theme.fg("accent", cell) : cell;
+			return header ? theme.fg("accent", cell) : cell;
 		});
-		const styled = `${bar} ${cells.join(` ${bar} `)} ${bar}`;
-		if (row < 0) return theme.bg("selectedBg", styled);
-		return row % 2 === 1 ? theme.bg("toolPendingBg", styled) : styled;
+		return `${bar} ${cells.join(` ${bar} `)} ${bar}`;
 	});
 }
 

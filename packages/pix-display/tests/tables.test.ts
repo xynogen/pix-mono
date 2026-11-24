@@ -5,8 +5,6 @@ import tablesExtension, { styleTable } from "../src/tables.js";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const theme = {
-	bg: (color: string, text: string) =>
-		`\x1b[4${color === "selectedBg" ? "1" : "2"}m${text}\x1b[49m`,
 	bold: (text: string) => text,
 	fg: (color: string, text: string) => `\x1b[3${color === "accent" ? "2" : "8"}m${text}\x1b[39m`,
 };
@@ -62,23 +60,18 @@ describe("styleTable", () => {
 		}
 	});
 
-	it("shades the header and every second body row, wrapped lines included", () => {
-		const md = `${TABLE}\n| third | 3 | a b c d e f g h i j k l m n o p q r s t u v w x y z |`;
+	it("draws no background, wrapped header lines included", () => {
+		const md = `| a b c d e f g h i j k l m n o p q r s t u v w x y z | b |\n|-|-|\n| x | y |\n| z | w |`;
 		const lines = render(md, 30);
 		const styled = styleTable(lines, [], theme);
-		const shade = (line: string) => line.match(/^\x1b\[4(\d)m/)?.[1];
-		let row = -1;
-		for (const [i, line] of lines.entries()) {
-			if (line.startsWith("├")) row++;
-			if (!line.startsWith("│")) {
-				expect(shade(styled[i] ?? "")).toBeUndefined();
-				continue;
-			}
-			const expected = row < 0 ? "1" : row % 2 === 1 ? "2" : undefined;
-			expect(shade(styled[i] ?? "")).toBe(expected);
-		}
-		// More text rows than header + 3 rows: the long cell wrapped.
-		expect(lines.filter((line) => line.startsWith("│")).length).toBeGreaterThan(4);
+		// The long header wrapped; every header line keeps the accent.
+		const header = styled.slice(
+			1,
+			styled.findIndex((line) => plain(line).startsWith("├")),
+		);
+		expect(header.length).toBeGreaterThan(1);
+		for (const line of header) expect(line).toContain("\x1b[32m");
+		for (const line of styled) expect(line).not.toMatch(/\x1b\[4\d/);
 	});
 
 	it("keeps Pi's raw fallback for a table too narrow to draw", () => {
