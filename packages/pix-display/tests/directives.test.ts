@@ -115,11 +115,13 @@ describe("renderDirectives", () => {
 		expect(renderDirectives("`:spark[1 2]`", 40)).toBe("`:spark[1 2]`");
 	});
 
-	it("renders a padded badge on a tinted background, blue by default", () => {
-		expect(render("**Langkah** :badge[Tahap 1] mulai", 40)[0]).toBe("Langkah  Tahap 1  mulai");
+	it("renders an unpadded badge on a tinted background, blue by default", () => {
+		expect(render("**Langkah** :badge[Tahap 1] mulai", 40)[0]).toBe("Langkah Tahap 1 mulai");
 		const out = renderDirectives(":badge[ok]{color=green} :badge[x]{color=pink}", 40);
-		expect(out).toContain(`${FG_GREEN}\u00a0ok\u00a0\x1b[39m\x1b[49m`);
-		expect(out).toContain(`${FG_BLUE}\u00a0x\u00a0`);
+		// The tint starts and ends at the text: no padding cells for it to bleed into.
+		expect(out).toContain(`${FG_GREEN}ok\x1b[39m\x1b[49m`);
+		expect(out).toContain(`${FG_BLUE}x\x1b[39m`);
+		expect(out).not.toContain("\u00a0");
 		expect(renderDirectives("`:badge[a]`", 40)).toBe("`:badge[a]`");
 	});
 
@@ -134,10 +136,10 @@ describe("renderDirectives", () => {
 				.replaceAll("\u00a0", " ")
 				.trimEnd();
 		expect(links("See [the docs](https://pi.dev/x) or https://www.github.com/a/b.")).toBe(
-			"See <a https://pi.dev/x> the docs </a> or <a https://www.github.com/a/b> github.com </a>.",
+			"See <a https://pi.dev/x>the docs</a> or <a https://www.github.com/a/b>github.com</a>.",
 		);
 		expect(render("Edit src/a.ts:12 or `pkg/b.md`, not `npm i`.", 80)[0]).toBe(
-			"Edit  src/a.ts:12  or  pkg/b.md , not npm i.",
+			"Edit src/a.ts:12 or pkg/b.md, not npm i.",
 		);
 		const plain = "3/4 and/or TCP/IP v1.2 e.g. ![x](https://i.png)";
 		expect(renderDirectives(plain, 80)).toBe(plain);
