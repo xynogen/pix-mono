@@ -93,4 +93,20 @@ describe("tablesExtension", () => {
 		start?.({}, { mode: "tui", ui: { theme } });
 		expect(plain(render(TABLE)[0] ?? "")).toStartWith("╭");
 	});
+
+	it("a reloaded module replaces the old wrapper around Pi's own renderer", async () => {
+		const renderTable = () => Reflect.get(Markdown.prototype, "renderTable");
+		const native = Reflect.get(
+			Markdown.prototype,
+			Symbol.for("@xynogen/pix-display:native-render-table"),
+		);
+		const reloaded = await import(`../src/tables.ts?reload=${Date.now()}`);
+		const before = renderTable();
+		// SAFETY: the extension only calls pi.on("session_start", ...), which this stub covers.
+		reloaded.default({ on: () => undefined } as unknown as ExtensionAPI);
+		expect(renderTable()).not.toBe(before);
+		expect(
+			Reflect.get(Markdown.prototype, Symbol.for("@xynogen/pix-display:native-render-table")),
+		).toBe(native);
+	});
 });

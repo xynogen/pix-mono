@@ -10,7 +10,7 @@ type RenderTable = (
 	...rest: unknown[]
 ) => string[];
 
-const PATCHED = Symbol.for("@xynogen/pix-display:table-renderer");
+const NATIVE = Symbol.for("@xynogen/pix-display:native-render-table");
 const CORNERS: Record<string, string> = { "┌": "╭", "┐": "╮", "└": "╰", "┘": "╯" };
 // Pi pads each cell with plain spaces, sometimes inside its closing style codes.
 const TRAILING_PAD_RE = /(?: |\x1b\[[0-9;]*m)+$/;
@@ -65,16 +65,17 @@ export function styleTable(
 
 function patchTableRenderer(): void {
 	const prototype = Markdown.prototype;
-	if (Reflect.get(prototype, PATCHED)) return;
-	const native: unknown = Reflect.get(prototype, "renderTable");
+	// Pi's own renderTable, kept on the prototype: /reload loads a new module that must
+	// replace the previous wrapper, not wrap it or skip patching.
+	const native: unknown = Reflect.get(prototype, NATIVE) ?? Reflect.get(prototype, "renderTable");
 	// A Pi release without this private method keeps its own table rendering.
 	if (typeof native !== "function") return;
 	const renderStyledTable: RenderTable = function renderStyledTable(token, ...rest) {
 		const lines: string[] = native.call(this, token, ...rest);
 		return activeTheme ? styleTable(lines, token.align ?? [], activeTheme) : lines;
 	};
+	Reflect.set(prototype, NATIVE, native);
 	Reflect.set(prototype, "renderTable", renderStyledTable);
-	Reflect.set(prototype, PATCHED, true);
 }
 
 export default function tablesExtension(pi: ExtensionAPI): void {
