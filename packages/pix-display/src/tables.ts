@@ -15,9 +15,9 @@ const CORNERS: Record<string, string> = { "┌": "╭", "┐": "╮", "└": "�
 const HEAVY: Record<string, string> = { "├": "┝", "─": "━", "┼": "┿", "┤": "┥" };
 // Pi pads each cell with plain spaces, sometimes inside its closing style codes.
 const TRAILING_PAD_RE = /(?: |\x1b\[[0-9;]*m)+$/;
-// Same text-style reset Pi uses between wrapped cell fragments; the slice drops a
-// style close that sits exactly on the column edge.
-const STYLE_RESET = "\x1b[22;23;24;25;27;28;29;39m";
+// Pi's text-style reset between wrapped cell fragments, plus the background: the slice
+// drops a style close that sits exactly on the column edge, such as a badge's tint.
+const STYLE_RESET = "\x1b[22;23;24;25;27;28;29;39;49m";
 
 let activeTheme: TableTheme | undefined;
 

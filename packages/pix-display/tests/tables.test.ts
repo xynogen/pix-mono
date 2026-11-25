@@ -74,6 +74,14 @@ describe("styleTable", () => {
 		for (const line of styled) expect(line).not.toMatch(/\x1b\[4\d/);
 	});
 
+	it("ends a tinted badge at the cell edge, so the tint does not bleed into the padding", () => {
+		const badge = "\x1b[48;2;30;58;40mtest/long.cpp\x1b[39m\x1b[49m";
+		const lines = render(`| File | Isi |\n|-|-|\n| ${badge} | x |\n| a | y |`);
+		const row = styleTable(lines, [], theme)[3] ?? "";
+		// The slice drops the close on the edge; the reset must restore the background.
+		expect(row).toMatch(/long\.cpp\x1b\[[0-9;]*;49m/);
+	});
+
 	it("keeps Pi's raw fallback for a table too narrow to draw", () => {
 		const lines = render(TABLE, 8);
 		expect(styleTable(lines, [], theme)).toEqual(lines);
