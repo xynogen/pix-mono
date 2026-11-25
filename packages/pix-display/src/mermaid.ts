@@ -20,7 +20,7 @@ import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { existsSync, readFile, readFileSync } from "@xynogen/pix-runtime/fs";
 import { installIntoPrefix } from "@xynogen/pix-runtime/npm-prefix";
 import { agentDir, importFile, requireFrom } from "@xynogen/pix-runtime/paths";
-import { renderImageRows } from "./image.ts";
+import { FRAME_COLS, frameImage, renderImageRows } from "./image.ts";
 
 type Svg = (source: string) => string;
 type Text = (source: string) => string;
@@ -51,8 +51,9 @@ const COLORS = {
 	accent: "#7aa2f7",
 	muted: "#565f89",
 };
-// Node labels are 13px in beautiful-mermaid's layout: that size becomes one text row.
+// Node labels are 13px in beautiful-mermaid's layout; ZOOM sets how many text rows that is.
 const TEXT_PX = 13;
+const ZOOM = 1;
 const MAX_ROWS = 40;
 const MAX_CACHE = 16;
 const cache = new Map<string, string[]>();
@@ -276,13 +277,13 @@ export function renderMermaidImage(source: string, width: number): string[] | un
 	}
 	const [, , w, h] = (/viewBox="([^"]+)"/.exec(svg)?.[1] ?? "").split(/\s+/).map(Number);
 	if (!(w && h && w > 0 && h > 0)) return undefined;
-	// Size from the diagram, like math.ts: its label text lands at one text row.
+	// Size from the diagram, like math.ts: its label text lands at ZOOM text rows.
 	const cell = getCellDimensions();
-	const scale = cell.heightPx / TEXT_PX;
+	const scale = (ZOOM * cell.heightPx) / TEXT_PX;
 	let cols = Math.ceil((w * scale) / cell.widthPx);
 	let rows = Math.ceil((h * scale) / cell.heightPx);
-	// Too wide or tall: shrink to fit; the text gets smaller than a row.
-	const shrink = Math.min(1, width / cols, MAX_ROWS / rows);
+	// Too wide or tall: shrink to fit, frame included; the text gets smaller than a row.
+	const shrink = Math.min(1, (width - FRAME_COLS) / cols, MAX_ROWS / rows);
 	cols = Math.max(1, Math.floor(cols * shrink));
 	rows = Math.max(1, Math.floor(rows * shrink));
 	// Rasterise at 2× the displayed height so text and lines stay sharp.
@@ -292,10 +293,11 @@ export function renderMermaidImage(source: string, width: number): string[] | un
 	} catch {
 		return undefined;
 	}
-	const lines = renderImageRows(Buffer.from(png).toString("base64"), "image/png", width, {
+	const image = renderImageRows(Buffer.from(png).toString("base64"), "image/png", width, {
 		maxWidthCells: cols,
 		maxHeightCells: rows,
 	});
+	const lines = frameImage(image, width);
 	cache.set(key, lines);
 	if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value ?? "");
 	return lines;

@@ -7,7 +7,7 @@
  */
 import { basename } from "node:path";
 import { FG_DIM, RST } from "@xynogen/pix-pretty/ansi";
-import { getImageDimensions, Image } from "@xynogen/pix-pretty/tui";
+import { getCapabilities, getImageDimensions, Image } from "@xynogen/pix-pretty/tui";
 import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
 import { localFilePath } from "@xynogen/pix-runtime/paths";
 
@@ -95,4 +95,41 @@ export function renderImageRows(
 	return new Image(data, mime, { fallbackColor: (s) => `${FG_DIM}${s}${RST}` }, options, dims)
 		.render(width)
 		.map((row) => row || NBSP);
+}
+
+// Space between an image and its frame: columns left/right, rows above/below.
+const PAD_X = 2;
+const PAD_Y = 1;
+/** Columns the frame adds around an image. */
+export const FRAME_COLS = 2 + 2 * PAD_X;
+
+/**
+ * Box image rows in a dim rounded frame, like the `::card` cards, when it fits in
+ * `width`. Kitty only: it draws without moving the cursor, so each row jumps the cursor
+ * past the image (`CSI n C`) to reach the right border. iTerm2 draws from the last row
+ * with its own cursor movement, so it stays unframed.
+ */
+export function frameImage(image: string[], width: number): string[] {
+	// The columns Pi's Image actually drew, which can differ from the requested cap.
+	const cols = Number(/[;,]c=(\d+)/.exec(image[0] ?? "")?.[1]);
+	if (getCapabilities().images !== "kitty" || !(cols > 0) || cols + FRAME_COLS > width) {
+		return image;
+	}
+	const pad = " ".repeat(PAD_X);
+	const skip = `\x1b[${cols}C`;
+	const side = `${FG_DIM}│${RST}`;
+	const rule = "─".repeat(cols + 2 * PAD_X);
+	const blank = `${side}${pad}${skip}${pad}${side}`;
+	// Markdown indents every row by Pi's outputPad except image rows, so indent that one here.
+	// ponytail: assumes the reply spans the terminal (true for Pi's transcript).
+	const margin = " ".repeat(Math.max(0, ((process.stdout.columns ?? width) - width) >> 1));
+	return [
+		`${FG_DIM}╭${rule}╮${RST}`,
+		...Array<string>(PAD_Y).fill(blank),
+		...image.map((row, i) =>
+			i === 0 ? `${margin}${side}${pad}${row}${skip}${pad}${side}` : blank,
+		),
+		...Array<string>(PAD_Y).fill(blank),
+		`${FG_DIM}╰${rule}╯${RST}`,
+	];
 }

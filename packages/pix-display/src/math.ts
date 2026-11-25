@@ -12,13 +12,12 @@
  * support, engine not installed or loaded, a TeX error, or a formula wider than the screen.
  */
 import { dirname, join } from "node:path";
-import { FG_DIM, RST } from "@xynogen/pix-pretty/ansi";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { getCapabilities, getCellDimensions } from "@xynogen/pix-pretty/tui";
 import { readFile } from "@xynogen/pix-runtime/fs";
 import { installIntoPrefix } from "@xynogen/pix-runtime/npm-prefix";
 import { agentDir, importFile, requireFrom } from "@xynogen/pix-runtime/paths";
-import { renderImageRows } from "./image.ts";
+import { frameImage, renderImageRows } from "./image.ts";
 
 /** SVG plus its natural size in `ex`, the unit MathJax lays math out in. */
 type Typeset = (tex: string) => { svg: string; widthEx: number; heightEx: number } | undefined;
@@ -43,9 +42,6 @@ const INK = "#e6e6e6";
 // One `ex` is about half a text row, so text-size math is `heightEx / 2` rows tall.
 const ROWS_PER_EX = 0.5;
 const MAX_ROWS = 8;
-// Space between the formula and its frame: columns left/right, rows above/below.
-const PAD_X = 2;
-const PAD_Y = 1;
 const MAX_CACHE = 32;
 const cache = new Map<string, string[]>();
 
@@ -180,35 +176,6 @@ export async function offerMathInstall(
 	);
 }
 
-/**
- * Box the image in a dim rounded frame, like the `::card` cards. Kitty only: it
- * draws without moving the cursor, so each row jumps the cursor past the image
- * (`CSI n C`) to reach the right border. iTerm2 draws from the last row with its
- * own cursor movement, so it stays unframed.
- */
-function frame(image: string[], width: number): string[] {
-	// The columns Pi's Image actually drew, which can differ from the requested cap.
-	const cols = Number(/[;,]c=(\d+)/.exec(image[0] ?? "")?.[1]);
-	if (getCapabilities().images !== "kitty" || !(cols > 0)) return image;
-	const pad = " ".repeat(PAD_X);
-	const skip = `\x1b[${cols}C`;
-	const side = `${FG_DIM}│${RST}`;
-	const rule = "─".repeat(cols + 2 * PAD_X);
-	const blank = `${side}${pad}${skip}${pad}${side}`;
-	// Markdown indents every row by Pi's outputPad except image rows, so indent that one here.
-	// ponytail: assumes the reply spans the terminal (true for Pi's transcript).
-	const margin = " ".repeat(Math.max(0, ((process.stdout.columns ?? width) - width) >> 1));
-	return [
-		`${FG_DIM}╭${rule}╮${RST}`,
-		...Array<string>(PAD_Y).fill(blank),
-		...image.map((row, i) =>
-			i === 0 ? `${margin}${side}${pad}${row}${skip}${pad}${side}` : blank,
-		),
-		...Array<string>(PAD_Y).fill(blank),
-		`${FG_DIM}╰${rule}╯${RST}`,
-	];
-}
-
 /** Image rows for one display formula, or undefined to keep Pi's own rendering. */
 export function renderMath(tex: string, width: number): string[] | undefined {
 	if (!engine || !getCapabilities().images) return undefined;
@@ -233,7 +200,7 @@ export function renderMath(tex: string, width: number): string[] | undefined {
 		maxWidthCells: cols,
 		maxHeightCells: rows,
 	});
-	const lines = cols + 2 + 2 * PAD_X <= width ? frame(image, width) : image;
+	const lines = frameImage(image, width);
 	cache.set(key, lines);
 	if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value ?? "");
 	return lines;

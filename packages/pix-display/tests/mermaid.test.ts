@@ -36,7 +36,16 @@ describe("mermaid", () => {
 		expect(wide?.rows).toBeGreaterThan(3);
 		expect(wide?.cols).toBeLessThan(120);
 		const narrow = size(renderMermaidImage(FLOW, 20));
-		expect(narrow?.cols).toBeLessThanOrEqual(20);
+		// Shrunk to leave room for the frame.
+		expect(narrow?.cols).toBeLessThanOrEqual(14);
+	});
+
+	it("frames the diagram in a dim box like display math", () => {
+		setCapabilities({ images: "kitty", trueColor: true, hyperlinks: false });
+		const rows = renderMermaidImage(FLOW, 120) ?? [];
+		const cols = size(rows)?.cols ?? 0;
+		expect(rows[0]).toContain(`╭${"─".repeat(cols + 4)}╮`);
+		expect(rows.at(-1)).toContain(`╰${"─".repeat(cols + 4)}╯`);
 	});
 
 	it("falls back to text without image support, and keeps unsupported diagrams as code", () => {
