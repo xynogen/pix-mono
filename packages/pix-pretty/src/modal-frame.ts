@@ -18,6 +18,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { config } from "@xynogen/pix-runtime/config";
 import { prettySection, type RenderSize } from "@xynogen/pix-runtime/sections";
+import { reopenAfterResets } from "./ansi.ts";
 
 export { truncateToWidth, visibleWidth, wrapTextWithAnsi };
 
@@ -233,24 +234,12 @@ export function frameLines(opts: FrameOptions): string[] {
 	// Expand before framing so a long command wraps instead of losing its tail.
 	const { rows: lines } = fitModalLines(opts.lines, inner, wrap);
 
-	// Derive the OPEN sequences so we can re-assert them after any embedded
-	// reset. A full reset (\x1b[0m) clears both fg and bg; \x1b[49m clears bg;
-	// \x1b[39m clears fg. Re-emitting the base opens after each keeps the modal
-	// background solid AND gives raw text a readable foreground.
+	// Re-assert the base opens after any embedded reset so the modal background stays
+	// solid AND raw text keeps a readable foreground.
 	const SENTINEL = "\x00";
 	const bgOpen = bg(SENTINEL).split(SENTINEL)[0] ?? "";
 	const fgOpen = fg ? (fg(SENTINEL).split(SENTINEL)[0] ?? "") : "";
-	const reassert = (s: string): string =>
-		bgOpen || fgOpen
-			? s.replace(/\x1b\[([0-9;]*)m/g, (seq, p: string) => {
-					const parts = p.split(";");
-					const isFull = p === "0";
-					let tail = seq;
-					if (isFull || parts.includes("49")) tail += bgOpen;
-					if (isFull || parts.includes("39")) tail += fgOpen;
-					return tail;
-				})
-			: s;
+	const reassert = (s: string): string => reopenAfterResets(s, bgOpen, fgOpen);
 
 	const row = (content: string): string => {
 		const pad = inner - visibleWidth(content);

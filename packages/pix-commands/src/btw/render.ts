@@ -1,4 +1,6 @@
+import { solidBackground } from "@xynogen/pix-pretty/ansi";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { transformMarkdown } from "@xynogen/pix-pretty/markdown-transform";
 import { clickToggle, dotJoin } from "@xynogen/pix-pretty/render-row";
 import { Box, getMarkdownTheme, Markdown, Spacer, Text } from "@xynogen/pix-pretty/tui";
 import { formatDuration } from "@xynogen/pix-pretty/widget-format";
@@ -41,17 +43,24 @@ export function registerBtwRenderer(pi: Pick<ExtensionAPI, "registerEntryRendere
 		// Keep chrome as Text and render only the answer as Markdown; ANSI-styled
 		// header text embedded inside Markdown can confuse wrapping and parsing.
 		const build = (expanded: boolean) => {
-			const card = new Box(1, 1, (text) => theme.bg("selectedBg", text));
-			card.addChild(
-				new Text(`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("muted", `· ${meta}`)}`, 0, 0),
+			// Directive output ends styles with a full reset; keep the card color behind it.
+			// Children pad themselves, not the Box: Markdown leaves image rows unpadded, and
+			// framed images (math, Mermaid) indent that row to match, as in the transcript.
+			const card = new Box(
+				0,
+				1,
+				solidBackground((text) => theme.bg("selectedBg", text)),
 			);
 			card.addChild(
-				new Text(`${theme.fg("accent", "▐")} ${theme.fg("dim", details.question)}`, 0, 0),
+				new Text(`${statusGlyph} ${theme.bold("BTW")} ${theme.fg("muted", `· ${meta}`)}`, 1, 0),
+			);
+			card.addChild(
+				new Text(`${theme.fg("accent", "▐")} ${theme.fg("dim", details.question)}`, 1, 0),
 			);
 			card.addChild(new Spacer(1));
 
 			if (failed) {
-				card.addChild(new Text(theme.fg("error", details.error ?? "Unknown error"), 0, 0));
+				card.addChild(new Text(theme.fg("error", details.error ?? "Unknown error"), 1, 0));
 				return card;
 			}
 
@@ -59,12 +68,12 @@ export function registerBtwRenderer(pi: Pick<ExtensionAPI, "registerEntryRendere
 			// requests the expanded view, never discarded (see AGENTS.md §1.3).
 			if (details.thinking) {
 				if (expanded) {
-					card.addChild(new Text(theme.fg("dim", theme.bold("Reasoning")), 0, 0));
-					card.addChild(new Text(theme.fg("thinkingText", details.thinking), 0, 0));
+					card.addChild(new Text(theme.fg("dim", theme.bold("Reasoning")), 1, 0));
+					card.addChild(new Text(theme.fg("thinkingText", details.thinking), 1, 0));
 					card.addChild(new Spacer(1));
 				} else {
 					card.addChild(
-						new Text(theme.fg("muted", "› reasoning hidden — click or expand to view"), 0, 0),
+						new Text(theme.fg("muted", "› reasoning hidden — click or expand to view"), 1, 0),
 					);
 					card.addChild(new Spacer(1));
 				}
@@ -72,12 +81,18 @@ export function registerBtwRenderer(pi: Pick<ExtensionAPI, "registerEntryRendere
 
 			try {
 				card.addChild(
-					new Markdown(details.answer, 0, 0, getMarkdownTheme(), {
-						color: (text) => theme.fg("customMessageText", text),
-					}),
+					new Markdown(
+						details.answer,
+						1,
+						0,
+						getMarkdownTheme(),
+						{ color: (text) => theme.fg("customMessageText", text) },
+						// Same display pipeline as main replies (directives, math, Mermaid).
+						{ transform: transformMarkdown },
+					),
 				);
 			} catch {
-				card.addChild(new Text(theme.fg("customMessageText", details.answer), 0, 0));
+				card.addChild(new Text(theme.fg("customMessageText", details.answer), 1, 0));
 			}
 			return card;
 		};

@@ -151,8 +151,8 @@ async function load(): Promise<void> {
 		rasterise: (svg, heightPx) =>
 			new resvg.Resvg(svg, {
 				fitTo: { mode: "height", value: heightPx },
-				// Opaque: kitty draws over the cells, so a transparent image shows old text through it.
-				background: COLORS.bg,
+				// Transparent, like math: frameImage writes spaces under the image, so the cells
+				// hold the surrounding background (a card's color) and no old text.
 				font: { fontBuffers, defaultFontFamily: "Inter", loadSystemFonts: false },
 			})
 				.render()

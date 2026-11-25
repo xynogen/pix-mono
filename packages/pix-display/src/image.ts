@@ -105,9 +105,12 @@ export const FRAME_COLS = 2 + 2 * PAD_X;
 
 /**
  * Box image rows in a dim rounded frame, like the `::card` cards, when it fits in
- * `width`. Kitty only: it draws without moving the cursor, so each row jumps the cursor
- * past the image (`CSI n C`) to reach the right border. iTerm2 draws from the last row
- * with its own cursor movement, so it stays unframed.
+ * `width`. Kitty only: it draws without moving the cursor, so each row writes spaces
+ * over the image cells to reach the right border. Spaces, not a cursor jump: a jump
+ * leaves the cells unpainted, so a card background has a hole there and old text
+ * shows through a transparent image. Kitty keeps an image when text is written
+ * under it. iTerm2 draws from the last row with its own cursor movement, so it
+ * stays unframed.
  */
 export function frameImage(image: string[], width: number): string[] {
 	// The columns Pi's Image actually drew, which can differ from the requested cap.
@@ -116,18 +119,19 @@ export function frameImage(image: string[], width: number): string[] {
 		return image;
 	}
 	const pad = " ".repeat(PAD_X);
-	const skip = `\x1b[${cols}C`;
+	const under = " ".repeat(cols);
 	const side = `${FG_DIM}│${RST}`;
 	const rule = "─".repeat(cols + 2 * PAD_X);
-	const blank = `${side}${pad}${skip}${pad}${side}`;
-	// Markdown indents every row by Pi's outputPad except image rows, so indent that one here.
-	// ponytail: assumes the reply spans the terminal (true for Pi's transcript).
+	const blank = `${side}${pad}${under}${pad}${side}`;
+	// Markdown indents every row by its paddingX except image rows, so indent that one here.
+	// ponytail: assumes Markdown spans its parent with equal paddingX on both sides (Pi's
+	// transcript, and cards that pad their Markdown rather than their Box).
 	const margin = " ".repeat(Math.max(0, ((process.stdout.columns ?? width) - width) >> 1));
 	return [
 		`${FG_DIM}╭${rule}╮${RST}`,
 		...Array<string>(PAD_Y).fill(blank),
 		...image.map((row, i) =>
-			i === 0 ? `${margin}${side}${pad}${row}${skip}${pad}${side}` : blank,
+			i === 0 ? `${margin}${side}${pad}${row}${under}${pad}${side}` : blank,
 		),
 		...Array<string>(PAD_Y).fill(blank),
 		`${FG_DIM}╰${rule}╯${RST}`,

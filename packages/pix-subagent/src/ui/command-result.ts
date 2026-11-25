@@ -6,7 +6,9 @@
  * finishes. The full result is kept; collapse only shortens the view.
  */
 
+import { solidBackground } from "@xynogen/pix-pretty/ansi";
 import { icon } from "@xynogen/pix-pretty/icon-catalog";
+import { transformMarkdown } from "@xynogen/pix-pretty/markdown-transform";
 import { clickToggle, dotJoin } from "@xynogen/pix-pretty/render-row";
 import { pluralize } from "@xynogen/pix-pretty/text";
 import { Box, getMarkdownTheme, Markdown, Spacer, Text } from "@xynogen/pix-pretty/tui";
@@ -66,25 +68,38 @@ export function registerCommandResultRenderer(
 		const cut = lines.length > PREVIEW_LINES;
 
 		const build = (expanded: boolean) => {
-			const card = new Box(1, 1, (text) => theme.bg("selectedBg", text));
-			card.addChild(
-				new Text(`${glyph} ${theme.bold("AGENT")} ${theme.fg("muted", `· ${meta}`)}`, 0, 0),
+			// Directive output ends styles with a full reset; keep the card color behind it.
+			// Children pad themselves, not the Box: Markdown leaves image rows unpadded, and
+			// framed images (math, Mermaid) indent that row to match, as in the transcript.
+			const card = new Box(
+				0,
+				1,
+				solidBackground((text) => theme.bg("selectedBg", text)),
 			);
-			card.addChild(new Text(`${theme.fg("accent", "▐")} ${theme.fg("dim", d.prompt)}`, 0, 0));
+			card.addChild(
+				new Text(`${glyph} ${theme.bold("AGENT")} ${theme.fg("muted", `· ${meta}`)}`, 1, 0),
+			);
+			card.addChild(new Text(`${theme.fg("accent", "▐")} ${theme.fg("dim", d.prompt)}`, 1, 0));
 			card.addChild(new Spacer(1));
-			if (d.error) card.addChild(new Text(theme.fg("error", d.error), 0, 0));
+			if (d.error) card.addChild(new Text(theme.fg("error", d.error), 1, 0));
 			const body = expanded || !cut ? d.result : lines.slice(0, PREVIEW_LINES).join("\n");
 			if (body) {
 				try {
 					card.addChild(
-						new Markdown(body, 0, 0, getMarkdownTheme(), {
-							color: (text) => theme.fg("customMessageText", text),
-						}),
+						new Markdown(
+							body,
+							1,
+							0,
+							getMarkdownTheme(),
+							{ color: (text) => theme.fg("customMessageText", text) },
+							// Same display pipeline as main replies (directives, math, Mermaid).
+							{ transform: transformMarkdown },
+						),
 					);
 				} catch {
-					card.addChild(new Text(theme.fg("customMessageText", body), 0, 0));
+					card.addChild(new Text(theme.fg("customMessageText", body), 1, 0));
 				}
-			} else if (!d.error) card.addChild(new Text(theme.fg("muted", "No output."), 0, 0));
+			} else if (!d.error) card.addChild(new Text(theme.fg("muted", "No output."), 1, 0));
 			if (cut && !expanded)
 				card.addChild(
 					new Text(
@@ -92,7 +107,7 @@ export function registerCommandResultRenderer(
 							"muted",
 							`… ${pluralize(lines.length - PREVIEW_LINES, "more line")} — click or expand to view`,
 						),
-						0,
+						1,
 						0,
 					),
 				);

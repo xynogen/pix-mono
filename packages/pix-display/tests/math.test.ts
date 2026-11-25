@@ -28,9 +28,11 @@ describe("display math", () => {
 		const cols = size(rows)?.cols ?? 0;
 		expect(rows[0]).toContain(`╭${"─".repeat(cols + 4)}╮`);
 		expect(rows.at(-1)).toContain(`╰${"─".repeat(cols + 4)}╯`);
-		// A padding row, then the image row, both jumping over the image to the right border.
+		// A padding row, then the image row, both writing spaces under the image to the
+		// right border: a cursor jump would leave a hole in a card background.
 		expect(rows[1]).not.toContain("\x1b_G");
-		expect(rows[1]).toContain(`\x1b[${cols}C`);
+		expect(rows[1]).toContain(`\x1b[0m${" ".repeat(cols + 4)}\x1b`);
+		expect(rows[1]).not.toMatch(/\x1b\[\d+C/);
 		expect(rows[2]).toContain("\x1b_G");
 		expect(rows).toHaveLength(5);
 		// Too narrow for the frame: the bare image.

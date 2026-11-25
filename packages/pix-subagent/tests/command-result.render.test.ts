@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { setMarkdownTransform } from "@xynogen/pix-pretty/markdown-transform";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import {
 	COMMAND_RESULT_TYPE,
@@ -55,6 +56,40 @@ test("captures /agent result card: done, long collapsed and expanded, error, emp
 		expect(text.split("card:long-expanded")[1]).toContain("line 26");
 		expect(text).toMatchSnapshot();
 	} finally {
+		await fixture.restore();
+	}
+});
+
+test("passes the /agent result through the shared display transform", async () => {
+	const fixture = await withUiFixture({ hostTheme: true });
+	setMarkdownTransform((markdown) => markdown.replace("::card[3]", "CARD-3"));
+	try {
+		let renderer!: (
+			entry: unknown,
+			options: unknown,
+			theme: unknown,
+		) => { render(width: number): readonly string[] };
+		registerCommandResultRenderer({
+			registerEntryRenderer: (_name: string, callback: typeof renderer) => {
+				renderer = callback;
+			},
+		} as never);
+		const data: CommandResultDetails = {
+			id: "agent-1",
+			type: "general",
+			prompt: "p",
+			status: "completed",
+			durationMs: 1_000,
+			toolUses: 0,
+			result: "::card[3]",
+		};
+		const rows = captureRows(renderer({ data }, { expanded: false }, roleTheme()), {
+			width: 80,
+			surface: "host-self",
+		});
+		expect(rows.join("\n")).toContain("CARD-3");
+	} finally {
+		setMarkdownTransform(undefined);
 		await fixture.restore();
 	}
 });

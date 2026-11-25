@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { type ExtensionAPI, initTheme } from "@earendil-works/pi-coding-agent";
+import { setMarkdownTransform } from "@xynogen/pix-pretty/markdown-transform";
 import { type BtwMessageDetails, registerBtwRenderer } from "../../src/btw/render.ts";
 
 const stripAnsi = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, "");
@@ -72,6 +73,25 @@ describe("BTW renderer", () => {
 		expect(output).toContain("alpha");
 		expect(output).toContain("beta");
 		expect(output).toContain("code");
+	});
+
+	test("passes the answer through the shared display transform", () => {
+		initTheme();
+		setMarkdownTransform((markdown) => markdown.replace("::card[3]", "CARD-3"));
+		try {
+			const output = render({
+				question: "q",
+				answer: "::card[3]",
+				thinking: "",
+				model: "Model",
+				thinkingLevel: "low",
+				durationMs: 1_000,
+				toolUses: 0,
+			});
+			expect(output).toContain("CARD-3");
+		} finally {
+			setMarkdownTransform(undefined);
+		}
 	});
 
 	test("hides reasoning by default and reveals it when expanded", () => {

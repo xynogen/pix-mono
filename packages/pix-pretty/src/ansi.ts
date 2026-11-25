@@ -32,6 +32,35 @@ export function hasAnsi(s: string): boolean {
 	return s.includes(ESC);
 }
 
+/**
+ * Re-open `bgOpen`/`fgOpen` after every reset inside `s`: `\x1b[0m` clears both, `49`
+ * clears the background, `39` the foreground. Keeps a panel color solid behind
+ * embedded content that ends its own styles with a full reset.
+ */
+export function reopenAfterResets(s: string, bgOpen: string, fgOpen = ""): string {
+	if (!bgOpen && !fgOpen) return s;
+	return s.replace(ANSI_CAPTURE_RE, (seq, params: string) => {
+		let bgReset = false;
+		let fgReset = false;
+		const codes = params === "" ? [0] : params.split(";").map(Number);
+		for (let i = 0; i < codes.length; i++) {
+			const code = codes[i];
+			// 38/48 carry color arguments (`5;n` or `2;r;g;b`); a 49 there is not a reset.
+			if (code === 38 || code === 48) i += codes[i + 1] === 5 ? 2 : 4;
+			else if (code === 0) bgReset = fgReset = true;
+			else if (code === 49) bgReset = true;
+			else if (code === 39) fgReset = true;
+		}
+		return `${seq}${bgReset ? bgOpen : ""}${fgReset ? fgOpen : ""}`;
+	});
+}
+
+/** A `Box` background function that stays solid behind content with embedded resets. */
+export function solidBackground(bg: (text: string) => string): (text: string) => string {
+	const bgOpen = bg("\x00").split("\x00")[0] ?? "";
+	return (text) => bg(reopenAfterResets(text, bgOpen));
+}
+
 // ---------------------------------------------------------------------------
 // Low-contrast fix (same as pi-diff)
 // ---------------------------------------------------------------------------

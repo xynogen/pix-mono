@@ -13,6 +13,7 @@
  * inline code stay literal.
  */
 import { BOLD, FG_BLUE, FG_DIM, FG_GREEN, FG_RED, FG_YELLOW, RST } from "@xynogen/pix-pretty/ansi";
+import { setMarkdownTransform } from "@xynogen/pix-pretty/markdown-transform";
 import {
 	getCapabilities,
 	getMarkdownTheme,
@@ -477,13 +478,16 @@ export function renderDirectives(markdown: string, width: number): string {
 	return out.join("\n");
 }
 
+/** The display pipeline for assistant Markdown: Mermaid, math, then directives. */
+export function renderDisplayMarkdown(markdown: string, width: number): string {
+	return renderDirectives(renderMathBlocks(renderMermaidBlocks(markdown, width), width), width);
+}
+
 export default function directivesExtension(pi: ExtensionAPI): void {
 	pi.registerMarkdownTransformer?.(
-		(markdown, { availableWidth }) =>
-			renderDirectives(
-				renderMathBlocks(renderMermaidBlocks(markdown, availableWidth), availableWidth),
-				availableWidth,
-			),
+		(markdown, { availableWidth }) => renderDisplayMarkdown(markdown, availableWidth),
 		{ messageTypes: ["assistant"] },
 	);
+	// Entry renderers (the /btw card) bypass Pi's chain; share the same pipeline.
+	setMarkdownTransform(renderDisplayMarkdown);
 }

@@ -17,6 +17,7 @@
 		"./diff-render": "./src/diff-render.ts",
 		"./highlight": "./src/highlight.ts",
 		"./lang": "./src/lang.ts",
+		"./markdown-transform": "./src/markdown-transform.ts",
 		"./icons": "./src/icons.ts",
 		"./icon-catalog": "./src/icon-catalog.ts",
 		"./icon-persist": "./src/icon-persist.ts",
