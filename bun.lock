@@ -114,14 +114,14 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.7.40",
+      "version": "0.7.41",
       "dependencies": {
         "@xynogen/pix-ask": "^0.4.3",
         "@xynogen/pix-bash": "^0.2.20",
         "@xynogen/pix-commands": "^0.7.1",
         "@xynogen/pix-data": "^0.6.2",
         "@xynogen/pix-diagnostics": "^0.5.2",
-        "@xynogen/pix-display": "^0.4.1",
+        "@xynogen/pix-display": "^0.4.2",
         "@xynogen/pix-edit": "^0.2.20",
         "@xynogen/pix-find": "^0.3.15",
         "@xynogen/pix-footer": "^0.2.22",
@@ -180,7 +180,7 @@
     },
     "packages/pix-display": {
       "name": "@xynogen/pix-display",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "dependencies": {
         "@xynogen/pix-pretty": "^3.0.2",
         "@xynogen/pix-runtime": "^0.22.3",

@@ -41,7 +41,7 @@ describe("styleTable", () => {
 		expect(styled).toEqual([
 			"╭────────┬──────┬──────╮",
 			"│ Name   │  Qty │ Note │",
-			"├────────┼──────┼──────┤",
+			"┝━━━━━━━━┿━━━━━━┿━━━━━━┥",
 			"│ pix    │    7 │  ok  │",
 			"├────────┼──────┼──────┤",
 			"│ pretty │ 1200 │  x   │",
@@ -67,7 +67,7 @@ describe("styleTable", () => {
 		// The long header wrapped; every header line keeps the accent.
 		const header = styled.slice(
 			1,
-			styled.findIndex((line) => plain(line).startsWith("├")),
+			styled.findIndex((line) => plain(line).startsWith("┝")),
 		);
 		expect(header.length).toBeGreaterThan(1);
 		for (const line of header) expect(line).toContain("\x1b[32m");

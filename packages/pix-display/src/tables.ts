@@ -12,6 +12,7 @@ type RenderTable = (
 
 const NATIVE = Symbol.for("@xynogen/pix-display:native-render-table");
 const CORNERS: Record<string, string> = { "┌": "╭", "┐": "╮", "└": "╰", "┘": "╯" };
+const HEAVY: Record<string, string> = { "├": "┝", "─": "━", "┼": "┿", "┤": "┥" };
 // Pi pads each cell with plain spaces, sometimes inside its closing style codes.
 const TRAILING_PAD_RE = /(?: |\x1b\[[0-9;]*m)+$/;
 // Same text-style reset Pi uses between wrapped cell fragments; the slice drops a
@@ -29,7 +30,8 @@ function alignCell(cell: string, width: number, align: Align | undefined): strin
 }
 
 /**
- * Restyle Pi's box table: dim rounded borders, column alignment and an accent header.
+ * Restyle Pi's box table: dim rounded borders, column alignment, an accent header and a
+ * heavy rule under it.
  * No background fill: a cell-wide fill overhangs the half-cell `│` borders, and some
  * themes and terminals show it barely or not at all, so the table looks the same everywhere.
  */
@@ -50,7 +52,10 @@ export function styleTable(
 	let header = true;
 	return lines.map((line) => {
 		if (!line.startsWith("│")) {
-			if (line.startsWith("├")) header = false;
+			if (header && line.startsWith("├")) {
+				header = false;
+				return border(line.replace(/[├─┼┤]/g, (c) => HEAVY[c] ?? c));
+			}
 			return line && border(line.replace(/^[┌└]|[┐┘]$/g, (c) => CORNERS[c] ?? c));
 		}
 		let col = 2;
