@@ -56,9 +56,11 @@ Pix stores its settings in `~/.pi/agent/pix.json`. `PI_CODING_AGENT_DIR` can cha
 | `fetch` / `search` | Default web provider and 9router model |
 | `voice` | Speech providers, models, microphone, language, shortcut, cleanup, and playback |
 | `toolbox` | Disabled tools and deferred tools selected for loading |
+| `notify` | Sound when the agent waits on you |
+| `extensions` | Bundled members you turned off (`/pix` → **Extensions**) |
 
-Use `/pix` for all settings. It shows one tab per loaded package: **Tools**, **MCP**, **Optimizer**, **Web**, **Voice**, **Footer**, and **Binaries**.
-Every tab saves to `pix.json`. Defaults apply when a field is absent.
+Use `/pix` for all settings. It shows one tab per loaded package. Press `tab` to switch tabs. **Settings** has sub-tabs (**Appearance**, **Footer**, **Behaviour**); press `` ` `` to switch them. The other tabs are **Tools**, **MCP**, **Optimizer**, **Web**, **Voice**, **Notify**, **Extensions**, and **Binaries**. `/pix <tab>` opens one directly.
+Every tab saves to `pix.json`. Defaults apply when a field is absent. Every tab uses the same keys: `↑↓` move, `space` or `enter` change the value, `←→` step through choices, `esc` close.
 
 On startup, Pix imports `voice.json`, `fetch.json`, `search.json`, `toolbox.json`, and `optimizer.json`.
 Existing values in `pix.json` win. After a successful save, Pix renames old files to `*.json.migrated-v1`.
@@ -101,9 +103,9 @@ Widgets, slash commands, and display changes for the TUI.
 | --- | --- |
 | [`@xynogen/pix-welcome`](https://www.npmjs.com/package/@xynogen/pix-welcome) | ASCII π banner + startup health checks (version, auth, models, tools, skills, gitignore) |
 | [`@xynogen/pix-footer`](https://www.npmjs.com/package/@xynogen/pix-footer) | Status bar — mode, git branch, model, tokens, cost, live TPS |
-| [`@xynogen/pix-models`](https://www.npmjs.com/package/@xynogen/pix-models) | `/models` — enhanced model picker with coding score/rank, context window, cost |
+| [`@xynogen/pix-models`](https://www.npmjs.com/package/@xynogen/pix-models) | `/model` picker with coding score/rank, context window, cost. Also opens from `Ctrl+L` and `/model <term>` |
 | [`@xynogen/pix-update`](https://www.npmjs.com/package/@xynogen/pix-update) | `/update` — self-update Pi + all extensions, detects install method |
-| [`@xynogen/pix-commands`](https://www.npmjs.com/package/@xynogen/pix-commands) | `/clear` (flushes `~/.cache/pi`), `/btw` isolated side question, `/afk` and `/yolo` unattended-run modes |
+| [`@xynogen/pix-commands`](https://www.npmjs.com/package/@xynogen/pix-commands) | `/clear` (flushes `~/.cache/pi`) and `/btw` isolated side question |
 | [`@xynogen/pix-nudge`](https://www.npmjs.com/package/@xynogen/pix-nudge) | Tools nudge + capability nudge hooks to steer model toward correct tools |
 | [`@xynogen/pix-diagnostics`](https://www.npmjs.com/package/@xynogen/pix-diagnostics) | One `lsp` tool (diagnostics, navigate, mark), lazy servers, and a compact session widget — replaces the pi-lens LSP core |
 | [`@xynogen/pix-display`](https://www.npmjs.com/package/@xynogen/pix-display) | Paste chip rendering (`[paste image #1]`) + leaked `<think>` tag → native thinking blocks |
@@ -134,7 +136,8 @@ How the agent acts — output optimization, permission gate, and sub-agents.
 | Package | Description |
 | --- | --- |
 | [`@xynogen/pix-optimizer`](https://www.npmjs.com/package/@xynogen/pix-optimizer) | Caveman mode + RTK tool rewriting + ponytail lazy-dev mode (`/pix` → **Optimizer**) |
-| [`@xynogen/pix-gate`](https://www.npmjs.com/package/@xynogen/pix-gate) | Permission gate for dangerous bash + path commands — 4 severity tiers (block/critical/dangerous/risky) + sudo redirect, configurable |
+| [`@xynogen/pix-gate`](https://www.npmjs.com/package/@xynogen/pix-gate) | Permission gate for dangerous bash + path commands — 4 severity tiers (block/critical/dangerous/risky) + sudo redirect, configurable. Also `/afk`, `/yolo` and `/nuclear` unattended-run modes. Can be turned off in `/pix` → **Extensions** |
+| [`@xynogen/pix-notify`](https://www.npmjs.com/package/@xynogen/pix-notify) | Sound (and a popup in herdr) when the agent waits on you — `ask_user`, a gate approval, or a `sudo_run`/`ssh_run` prompt |
 | [`@xynogen/pix-subagent`](https://www.npmjs.com/package/@xynogen/pix-subagent) | Sub-agent spawning — 2 tools (`agent`, `agent_control`), live model widget, work-splitting |
 
 ### Standalone extensions (opt-in)
@@ -144,13 +147,13 @@ Not bundled by `pix-core`. Install each one only if you want it. Each one stays 
 | Package | Why it's opt-in |
 | --- | --- |
 | [`@xynogen/pix-web`](https://www.npmjs.com/package/@xynogen/pix-web) | Provider-neutral `web` tool (`search`, `fetch`) with Exa, Tavily, You.com, Brave, SearXNG, 9Router, and more adapters |
-| [`@xynogen/pix-voice`](https://www.npmjs.com/package/@xynogen/pix-voice) | Provider-neutral push-to-talk dictation (`Ctrl+Alt+Z`) plus the `transcribe` and `speak` tools, with 9Router, OpenAI, Groq, Deepgram, ElevenLabs, Gemini, and more adapters |
+| [`@xynogen/pix-voice`](https://www.npmjs.com/package/@xynogen/pix-voice) | Provider-neutral push-to-talk dictation (default `Ctrl+Alt+Z`, changeable in `/pix` → **Voice**) plus the `transcribe` and `speak` tools, with 9Router, OpenAI, Groq, Deepgram, ElevenLabs, Gemini, and more adapters |
 | [`@xynogen/pix-9router`](https://www.npmjs.com/package/@xynogen/pix-9router) | 9Router LLM provider — needs a 9Router API key |
 | [`@xynogen/pix-sudo`](https://www.npmjs.com/package/@xynogen/pix-sudo) | `sudo_run` — root execution via a PAM password overlay (blocked in non-interactive mode) |
 | [`@xynogen/pix-python`](https://www.npmjs.com/package/@xynogen/pix-python) | `python_run` — run local Python snippets with intent, indentation repair and an approval prompt (not sandboxed) |
 | [`@xynogen/pix-ssh`](https://www.npmjs.com/package/@xynogen/pix-ssh) | `ssh_run` — run commands on a remote host over SSH (key/password auth + remote `sudo`) |
 | [`@xynogen/pix-env`](https://www.npmjs.com/package/@xynogen/pix-env) | Broker `.env` secrets to tools via `$KEY` references, keeping the values out of the model's context |
-| [`@xynogen/pix-toolbox`](https://www.npmjs.com/package/@xynogen/pix-toolbox) | Enable, defer, or disable tools at runtime (`/pix` → **Tools**; `/toolbox enable\|defer\|disable\|list`) |
+| [`@xynogen/pix-toolbox`](https://www.npmjs.com/package/@xynogen/pix-toolbox) | Enable, defer, or disable tools at runtime (`/pix` → **Tools**, or `/pix tools`) |
 | [`@xynogen/pix-mcp`](https://www.npmjs.com/package/@xynogen/pix-mcp) | Token-efficient MCP gateway — external servers can execute commands or reach sensitive services |
 | [`@xynogen/pix-codemode`](https://www.npmjs.com/package/@xynogen/pix-codemode) | Native `codemode` with highlighted JavaScript, formatted JSON, and Pix result frames |
 | [`@xynogen/pix-graph`](https://www.npmjs.com/package/@xynogen/pix-graph) | `graph` tool — native-TS code knowledge graph (build/query, no Python); TS/JS only |
@@ -166,7 +169,7 @@ Installed with any feature package. Install one directly only when you build you
 
 | Package | Depends on | Description |
 | --- | --- | --- |
-| [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime) | — (zero deps) | Base runtime used by every feature package — `pix.json` config, `once()` guard, collapse policy, binary catalog (`binary.json` overrides, resolve, verified download), and per-OS exec/open/clipboard/git jobs |
+| [`@xynogen/pix-runtime`](https://www.npmjs.com/package/@xynogen/pix-runtime) | `systeminformation`, `xxhash-wasm` | Base runtime used by every feature package — `pix.json` config, the `/pix` settings command and its tab bars, `once()` guard, collapse policy, binary catalog (`binary.json` overrides, resolve, verified download), reversible in-memory patches of Pi, and per-OS exec/open/clipboard/git jobs |
 | [`@xynogen/pix-pretty`](https://www.npmjs.com/package/@xynogen/pix-pretty) | `pix-runtime` + `chalk`, `cli-highlight`, `@ff-labs/fff-node`, `diff` | Rendering lib — syntax highlighting, icons, tree views, diff, FFF, gate-overlay |
 | [`@xynogen/pix-data`](https://www.npmjs.com/package/@xynogen/pix-data) | `pix-runtime` | Model data layer (modelgrep catalog + coding score), cached at `~/.cache/pi` |
 
