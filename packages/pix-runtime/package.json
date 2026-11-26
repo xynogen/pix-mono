@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-runtime",
-	"version": "0.22.3",
+	"version": "0.22.4",
 	"description": "Pix shared runtime — versioned pix.json config, atomic persistence, typed change events",
 	"type": "module",
 	"main": "src/index.ts",
@@ -44,6 +44,8 @@
 		"./os": "./src/os.ts",
 		"./output": "./src/output.ts",
 		"./path-access": "./src/path-access.ts",
+		"./patch": "./src/patch.ts",
+		"./pi-settings": "./src/pi-settings.ts",
 		"./paths": "./src/paths.ts",
 		"./platform": "./src/platform.ts",
 		"./safe-path": "./src/safe-path.ts",

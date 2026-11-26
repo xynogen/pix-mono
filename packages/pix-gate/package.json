@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-gate",
-	"version": "0.5.1",
+	"version": "0.5.2",
 	"description": "Pi extension — permission gate for dangerous bash commands (confirm/block with TUI dialog)",
 	"type": "module",
 	"main": "src/index.ts",
@@ -43,7 +43,7 @@
 	"dependencies": {
 		"@xynogen/pix-data": "^0.6.1",
 		"@xynogen/pix-pretty": "^3.0.2",
-		"@xynogen/pix-runtime": "^0.22.2"
+		"@xynogen/pix-runtime": "^0.22.4"
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*",
