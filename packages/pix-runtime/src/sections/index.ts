@@ -33,6 +33,8 @@ import { optimizerSection } from "./optimizer.ts";
 import { prettySection } from "./pretty.ts";
 
 export {
+	type ExtensionsConfig,
+	extensionsSection,
 	fetchSection,
 	type NotifyConfig,
 	notifySection,
@@ -45,6 +47,7 @@ export {
 } from "./services.ts";
 
 import {
+	extensionsSection,
 	fetchSection,
 	notifySection,
 	searchSection,
@@ -66,4 +69,5 @@ export const builtinSections = [
 	voiceSection,
 	notifySection,
 	toolboxSection,
+	extensionsSection,
 ] as const;

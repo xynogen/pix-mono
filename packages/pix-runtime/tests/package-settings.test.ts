@@ -264,13 +264,67 @@ test("all package tabs keep their active name visible in a narrow overlay", asyn
 							() => {},
 						);
 						const lines = component.render(26);
-						expect(lines[1]).toMatch(new RegExp(`${label}\\s+\\d+/8`));
+						// The active tab stays visible; ‹/› mark the hidden tabs beside it.
+						expect(lines[1]).toContain(label);
+						expect(lines[1]).toMatch(/[‹›]/);
 						expect(lines.every((line) => visibleWidth(line) <= 26)).toBe(true);
 						component.dispose();
 					},
 				},
 			} as unknown as ExtensionCommandContext);
 		}
+	} finally {
+		iso.cleanup();
+	}
+});
+
+test("a panel's onLeave runs when tab leaves it and again when /pix closes", async () => {
+	const iso = createIsolatedRuntime();
+	try {
+		await iso.runtime.init();
+		const bus = new EventEmitter();
+		const commands = new Map();
+		registerPixCommand(host(bus, commands), iso.runtime);
+		const leaves: string[] = [];
+		registerPackageSettings(host(bus, commands), {
+			id: "pix-core-extensions",
+			label: "Extensions",
+			open: async (ctx) => {
+				await ctx.ui.custom(() => ({
+					render: () => ["╭─╮", "│x│", "╰─╯"],
+					handleInput() {},
+					invalidate() {},
+				}));
+			},
+			// The real context: its ui.custom opens a new overlay, not one inside /pix.
+			onLeave: async (ctx) => {
+				leaves.push((ctx as unknown as { tag: string }).tag);
+			},
+		});
+		const theme = {
+			fg: (_c: string, s: string) => s,
+			bg: (_c: string, s: string) => s,
+			bold: (s: string) => s,
+		};
+		await commands.get("pix").handler("extensions", {
+			tag: "real",
+			ui: {
+				notify() {},
+				custom: (factory: (...args: unknown[]) => { handleInput(data: string): void }) =>
+					new Promise<void>((resolve) => {
+						const view = factory(
+							{ requestRender() {}, terminal: { rows: 40 } },
+							theme,
+							getKeybindings(),
+							() => resolve(),
+						);
+						view.handleInput("\t");
+						expect(leaves).toEqual(["real"]);
+						view.handleInput("\u001b");
+					}),
+			},
+		} as unknown as ExtensionCommandContext);
+		expect(leaves).toEqual(["real", "real"]);
 	} finally {
 		iso.cleanup();
 	}

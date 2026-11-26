@@ -413,14 +413,14 @@ describe("/pix → Tools", () => {
 								expect(captureRows(view, { width: 120, surface: "component" })).toMatchSnapshot(
 									"wide tools",
 								);
-								view.handleInput("\t");
+								view.handleInput("`");
 								screen("MCP tab");
 								view.handleInput("\x04");
 								expect(host.getActive()).not.toContain("ctx_docs");
 								screen("disabled status");
 								view.handleInput("zzzz");
 								screen("no match search");
-								view.handleInput("\r");
+								view.handleInput("\x1b");
 							} catch (error) {
 								reject(error);
 							}
@@ -477,12 +477,16 @@ describe("/pix → Tools", () => {
 		expect(screen()).not.toContain("^F defer");
 		v.handleInput("\x06");
 		expect(host.getActive()).toContain("fetch");
-		expect(screen()).toMatch(/Tools \(3 adjustable \+ 3 always-on\).*MCP \(1\)/);
+		expect(screen()).toMatch(/● Tools \(3 adjustable \+ 3 always-on\).*○ MCP \(1\)/);
+		// `tab` belongs to the /pix tab bar: it never switches these sub-tabs.
 		v.handleInput("\t");
+		expect(screen()).not.toMatch(/ctx_docs/);
+		v.handleInput("`");
+		expect(screen()).toMatch(/○ Tools .*● MCP \(1\)/);
 		expect(screen()).toMatch(/ctx_docs/);
-		v.handleInput("\t");
+		v.handleInput("`");
 
-		// Tab switches reset the selection to the first row. Move to hunk.
+		// Sub-tab switches reset the selection to the first row. Move to hunk.
 		for (let i = 0; i < 5; i++) v.handleInput("\x1b[B");
 		expect(selected()).toContain(`→ ${icon("status.pending")}   ~ hunk`);
 		v.handleInput("\x05"); // ctrl+e

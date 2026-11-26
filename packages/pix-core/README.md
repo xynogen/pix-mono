@@ -57,6 +57,15 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 | `pix-subagent` | `agent` / `agent_control` — planner-driven sub-agents with live widget |
 | `compaction` | Built into pix-core: replaces pi's built-in context compaction with two levers. **Summary prompt is always pix's** — every compaction (manual `/compact`, threshold, overflow) generates the summary with the current conversation model (no silent routing) from an editable source prompt. **Trigger is pix's when `compaction.triggerPercent > 0`** — after each settled turn pix reads live context usage and compacts at `max(contextWindow × triggerPercent, compaction.minimumTokens)`. The default 100K floor prevents low percentages from compacting too early (for example, 10% of a 300K model waits for 100K rather than 30K); `0` disables pix's trigger and lets pi decide, while pix's summary prompt still applies. After a pix-triggered compaction pix sends a short, visible "resume" user message so the agent continues on its own. Every trigger, resume, and summary run emits a notify line (reason, model, token counts). |
 
+## Turn members off, add standalone packages
+
+`/pix extensions` lists every pix package.
+
+- **Core members**: enter turns a member on or off. The toggle is only marked `pending` until you leave the tab or close `/pix`; then one prompt lists every pending change. Pix-core skips a member that is off on the next load, so it is never imported. The list is `extensions.disabled` in `~/.pi/agent/pix.json`. `runtime`, `data`, and `pretty` always stay on, because every member needs them. `gate` always stays on, because it protects you from dangerous commands.
+- **Standalone packages**: pix packages that pix-core does not load (`pix-mcp`, `pix-web`, `pix-9router`, and others). Enter installs or removes one with `pi install` or `pi remove`, after you confirm. Install downloads from npm. A package you installed from a local path is removed by that path.
+
+Every change needs a fresh Pi process: `/reload` is not enough, because runtime patches from the old load stay in the process. So every change asks first. Allow writes it and closes Pi; start Pi again to load it. Deny writes nothing.
+
 ## Tool exposure
 
 Only `read`, `bash`, `edit`, `write`, `tool_search`, and `codemode` are declared up front (plus `powershell` on Windows). Pix-core marks every other direct tool from a bundled member as deferred, so the model loads it on demand through `tool_search`. Standalone installs keep their own exposure. Pix-core also re-ranks `tool_search` hits so native tools beat MCP tools that only share a word with the query.

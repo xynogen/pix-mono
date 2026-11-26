@@ -165,6 +165,7 @@ export function registerWebCommand(pi: ExtensionAPI): void {
 				// The modal stays open for model edits. It closes only to open the provider tree.
 				const action = await showSettingsPicker(ctx.ui, {
 					title: `${icon("settings")} Web Settings`,
+					sectionTabs: true,
 					rows: settingsRows,
 					selected: cursor,
 					onAction: async ({ key, value }) => {

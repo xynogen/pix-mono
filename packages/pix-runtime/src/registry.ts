@@ -29,12 +29,13 @@ export class SectionRegistry {
 	}
 
 	/**
-	 * Swap in a newer definition for a known key (Pi reload re-evaluates modules, but the
-	 * runtime singleton on globalThis survives with the old schema). True when it changed.
+	 * Adopt this copy's definition for a key (Pi reload re-evaluates modules, but the runtime
+	 * singleton on globalThis survives with the old registry). A key the old registry never had
+	 * (a section added since the session started) is added, or its reads fall back to defaults
+	 * and its writes are dropped. True when it changed.
 	 */
 	adopt(handle: SectionHandle<string, unknown>): boolean {
-		if (!this.byKey.has(handle.key) || this.byKey.get(handle.key) === handle.__section)
-			return false;
+		if (this.byKey.get(handle.key) === handle.__section) return false;
 		this.byKey.set(handle.key, handle.__section);
 		return true;
 	}

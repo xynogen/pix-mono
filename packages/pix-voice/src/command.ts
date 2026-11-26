@@ -206,6 +206,7 @@ export default function registerVoiceCommand(pi: ExtensionAPI): void {
 					// The modal stays open for every setting. It closes only to open the provider tree.
 					const action = await showSettingsPicker(ctx.ui, {
 						title: `${icon("settings")} Voice Settings`,
+						sectionTabs: true,
 						rows: () => settingsRows(Boolean(stopMeter), mics, cleanup),
 						selected: cursor,
 						onMount: (fn) => {

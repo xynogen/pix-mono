@@ -203,7 +203,11 @@ async function captureStt(onStage = (_stage: string) => {}) {
 						theme: unknown,
 						kb: unknown,
 						done: unknown,
-					) => { render(width: number): readonly string[]; dispose?(): void },
+					) => {
+						render(width: number): readonly string[];
+						handleInput(data: string): void;
+						dispose?(): void;
+					},
 				) => {
 					const modal = factory(
 						{ requestRender() {}, terminal: { rows: 40 } },
@@ -213,6 +217,12 @@ async function captureStt(onStage = (_stage: string) => {}) {
 					);
 					dispose = () => modal.dispose?.();
 					output.push("voice:settings", ...captureRows(modal, { width: 80, surface: "component" }));
+					// Second sub-tab (`` ` ``): the other voice section.
+					modal.handleInput("`");
+					output.push(
+						"voice:settings ~",
+						...captureRows(modal, { width: 80, surface: "component" }),
+					);
 					dispose();
 					return null;
 				},

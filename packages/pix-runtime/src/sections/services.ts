@@ -81,3 +81,17 @@ export const toolboxSection = defineSection<"toolbox", ToolboxConfig>({
 		return result;
 	},
 });
+
+export interface ExtensionsConfig {
+	/** pix-core members to skip at load, by package name (`@xynogen/pix-footer`). */
+	disabled: string[];
+}
+export const extensionsSection = defineSection<"extensions", ExtensionsConfig>({
+	key: "extensions",
+	defaults: { disabled: [] },
+	parse(raw) {
+		const list =
+			isPlainObject(raw) && Array.isArray(raw.disabled) ? toStringArray(raw.disabled) : [];
+		return { disabled: [...new Set(list)] };
+	},
+});

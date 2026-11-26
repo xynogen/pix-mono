@@ -18,6 +18,7 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
+import { isSubTabKey, nextTab, renderSubTabBar, renderTabRule } from "@xynogen/pix-runtime/tab-bar";
 import {
 	frameModal,
 	MIN_MODAL_HEIGHT,
@@ -165,6 +166,8 @@ export interface SettingsRow {
 	value: string;
 	/** Theme role for the value. Default `success`. */
 	tone?: "success" | "warning" | "muted";
+	/** Dim the label too: the row is turned off. The cursor still highlights it. */
+	dim?: boolean;
 	/** Enter edits `value` in a text field inside the row, not in a new dialog. */
 	editable?: boolean;
 	/**
@@ -210,14 +213,16 @@ export function renderSettingsRows(
 	let listLine: number | undefined;
 	let section = "";
 	rows.forEach((row, index) => {
-		if (row.section !== section) {
+		// An empty section (rows of one sub-tab) gets no heading.
+		if (row.section !== section && row.section) {
 			if (section) lines.push("");
 			lines.push(theme.fg("dim", `  ${row.section}`));
 			section = row.section;
 		}
 		const active = index === selected;
 		rowLines[index] = lines.length;
-		const label = `${active ? theme.fg("accent", "→") : " "} ${theme.fg(active ? "accent" : "text", row.label.padEnd(labelWidth))}  `;
+		const labelRole = active ? "accent" : row.dim ? "dim" : "text";
+		const label = `${active ? theme.fg("accent", "→") : " "} ${theme.fg(labelRole, row.label.padEnd(labelWidth))}  `;
 		const editing = active ? field : undefined;
 		const valueWidth = Math.max(10, width - labelWidth - 4);
 		lines.push(
@@ -270,10 +275,16 @@ export interface SettingsPickerOptions {
 	onMount?: (redraw: () => void) => () => void;
 	/** Start row. */
 	selected?: number;
+	/**
+	 * Show each row `section` as a sub-tab (`` ` `` switches) instead of a heading in one list.
+	 * Off by default; one section shows no tab bar.
+	 */
+	sectionTabs?: boolean;
 }
 
 /**
- * Show the sectioned settings overview. It stays open until esc, or until
+ * Show the sectioned settings overview, or one section per sub-tab with `sectionTabs`.
+ * It stays open until esc, or until
  * `onAction` returns `"close"`. For an `editable` row, enter opens a text field in
  * the row. Resolves with the closing action, or null on escape.
  */
@@ -283,8 +294,16 @@ export async function showSettingsPicker(
 ): Promise<SettingsAction | null> {
 	const result = await ui.custom<SettingsAction | null>(
 		(tui, theme, keybindings, done) => {
-			let rows = opts.rows();
-			let selected = Math.min(opts.selected ?? 0, Math.max(0, rows.length - 1));
+			let all = opts.rows();
+			const sectionsOf = (list: SettingsRow[]) => [...new Set(list.map((row) => row.section))];
+			// Start on the section of the requested row, so a reopened panel keeps its place.
+			let tab = opts.sectionTabs ? (all[opts.selected ?? 0]?.section ?? all[0]?.section ?? "") : "";
+			const visible = () => (tab ? all.filter((row) => row.section === tab) : all);
+			let rows = visible();
+			let selected = Math.max(
+				0,
+				Math.min(rows.indexOf(all[opts.selected ?? 0] as SettingsRow), rows.length - 1),
+			);
 			let field: Input | undefined;
 			let list: { row: SettingsRow; query: string; cursor: number } | undefined;
 			let busy = false;
@@ -304,7 +323,10 @@ export async function showSettingsPicker(
 					error = getErrorMessage(cause);
 				}
 				busy = false;
-				rows = opts.rows();
+				all = opts.rows();
+				if (tab && !sectionsOf(all).includes(tab)) tab = all[0]?.section ?? "";
+				rows = visible();
+				selected = Math.min(selected, Math.max(0, rows.length - 1));
 				redraw();
 			};
 			const edit = (row: SettingsRow) => {
@@ -361,8 +383,9 @@ export async function showSettingsPicker(
 			return {
 				render(width: number) {
 					const mw = modalWidth(width);
+					const tabs = tab ? sectionsOf(all) : [];
 					const body = renderSettingsRows(
-						rows,
+						tabs.length > 1 ? rows.map((row) => ({ ...row, section: "" })) : rows,
 						theme,
 						selected,
 						field,
@@ -378,7 +401,10 @@ export async function showSettingsPicker(
 						minHeight: MIN_MODAL_HEIGHT,
 						title: opts.title,
 						titleColor: (text) => theme.fg("accent", theme.bold(text)),
-						header: [""],
+						header:
+							tabs.length > 1
+								? [renderSubTabBar(tabs, tab, theme, mw - 4), renderTabRule(theme, mw - 4)]
+								: [""],
 						body: body.lines,
 						footer: [
 							"",
@@ -388,7 +414,7 @@ export async function showSettingsPicker(
 									? "enter save · esc cancel"
 									: list
 										? "type to filter · ↑↓ move · enter pick · esc cancel"
-										: "↑↓ move · enter change · esc close",
+										: `↑↓ move · space/enter${all.some((row) => row.choices?.length) ? "/←→" : ""} change${tabs.length > 1 ? " · ` sub-tab" : ""} · esc close`,
 							),
 						],
 						selectedBodyLine: body.listLine ?? body.rowLines[selected],
@@ -406,12 +432,26 @@ export async function showSettingsPicker(
 					if (list) return listInput(data);
 					if (keybindings.matches(data, "tui.select.cancel")) return close(null);
 					if (busy) return;
+					if (tab && isSubTabKey(data)) {
+						tab = nextTab(sectionsOf(all), tab);
+						rows = visible();
+						selected = 0;
+						return redraw();
+					}
 					const row = rows[selected];
-					if (matchesKey(data, Key.enter)) {
+					// Standard /pix keys: enter or space acts on the row; ←→ step through its choices.
+					if (matchesKey(data, Key.enter) || matchesKey(data, Key.space)) {
 						if (!row) return;
 						if (row.choices?.length) openList(row);
 						else if (row.editable) edit(row);
 						else void run({ key: row.key });
+						return redraw();
+					}
+					if (row?.choices?.length && (matchesKey(data, Key.left) || matchesKey(data, Key.right))) {
+						const at = row.choices.findIndex((choice) => choice.value === row.value);
+						const step = matchesKey(data, Key.left) ? -1 : 1;
+						const next = row.choices[(at + step + row.choices.length) % row.choices.length];
+						if (next && next.value !== row.value) void run({ key: row.key, value: next.value });
 						return redraw();
 					}
 					if (keybindings.matches(data, "tui.select.up"))
@@ -497,11 +537,11 @@ export async function showProviderPicker(
 							"",
 							field
 								? guide("enter", "submit") + sep + guide("esc", "cancel")
-								: guide("\u2191\u2193", "navigate") +
+								: guide("↑↓", "move") +
 									sep +
 									guide("enter", "set default") +
 									sep +
-									guide("space", "open") +
+									guide("space", "expand") +
 									sep +
 									guide("esc", "close"),
 						],

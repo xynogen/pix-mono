@@ -118,6 +118,43 @@ describe("settings overview modal", () => {
 		expect(await result).toBeNull();
 	});
 
+	test("space acts like enter, and ←→ step through choices (standard /pix keys)", async () => {
+		let play = false;
+		let language = "auto";
+		const h = harness();
+		const result = showSettingsPicker(h.ui, {
+			title: "Voice",
+			rows: () => [
+				{ key: "play", section: "", label: "play", value: play ? "on" : "off" },
+				{
+					key: "lang",
+					section: "",
+					label: "language",
+					value: language,
+					choices: [{ value: "auto" }, { value: "en" }, { value: "id" }],
+				},
+			],
+			onAction: ({ key, value }) => {
+				if (key === "play") play = !play;
+				else language = value ?? language;
+				return undefined;
+			},
+		});
+		expect(h.frame()).toContain("space/enter/←→ change");
+		h.press(" ");
+		await Bun.sleep(0);
+		expect(play).toBe(true);
+		h.press("\x1b[B");
+		h.press("\x1b[D");
+		await Bun.sleep(0);
+		expect(language).toBe("id");
+		h.press("\x1b[C");
+		await Bun.sleep(0);
+		expect(language).toBe("auto");
+		h.press("\x1b");
+		expect(await result).toBeNull();
+	});
+
 	test("closes with the action only when onAction returns close", async () => {
 		const h = harness();
 		const result = showSettingsPicker(h.ui, {
@@ -127,6 +164,56 @@ describe("settings overview modal", () => {
 		});
 		h.press("\r");
 		expect(await result).toEqual({ key: "search:provider" });
+	});
+
+	test("sectionTabs shows one section per sub-tab; ` switches and keeps the place after an action", async () => {
+		const on = new Set<string>();
+		const h = harness();
+		const rows = () => [
+			{ key: "a1", section: "Core", label: "alpha", value: on.has("a1") ? "on" : "off" },
+			{ key: "a2", section: "Core", label: "beta", value: "off" },
+			{ key: "b1", section: "Packages", label: "gamma", value: on.has("b1") ? "on" : "off" },
+		];
+		const result = showSettingsPicker(h.ui, {
+			title: "Extensions",
+			rows,
+			sectionTabs: true,
+			onAction: ({ key }) => {
+				on.add(key);
+				return undefined;
+			},
+		});
+		const plain = () => h.frame().replace(/<\/?[a-z]+>/g, "");
+		expect(plain()).toMatch(/● Core {3}○ Packages/);
+		expect(plain()).toContain("alpha");
+		expect(plain()).not.toContain("gamma");
+		expect(plain()).toContain("` sub-tab");
+		h.press("`");
+		expect(plain()).toContain("gamma");
+		expect(plain()).not.toContain("alpha");
+		h.press("\r");
+		await Bun.sleep(0);
+		// Still on Packages after the action; the cursor row shows the new value.
+		expect(plain()).toMatch(/→ gamma\s+on/);
+		h.press("`");
+		expect(plain()).toMatch(/→ alpha\s+off/);
+		h.press("\x1b");
+		expect(await result).toBeNull();
+	});
+
+	test("sectionTabs with one section shows no tab bar and ignores `", async () => {
+		const h = harness();
+		const result = showSettingsPicker(h.ui, {
+			title: "Notify",
+			rows: () => [{ key: "x", section: "Only", label: "x", value: "1" }],
+			sectionTabs: true,
+			onAction: () => undefined,
+		});
+		expect(h.frame()).not.toContain("` sub-tab");
+		h.press("`");
+		expect(h.frame()).toContain("x");
+		h.press("\x1b");
+		expect(await result).toBeNull();
 	});
 });
 
@@ -173,6 +260,24 @@ describe("settings overview rows", () => {
 			field,
 		);
 		expect(lines[1]).toBe("<accent>→</accent> <accent>model</accent>  > dg/nova-2█");
+	});
+
+	test("dims the label of a turned-off row unless the cursor is on it", () => {
+		const rows = [
+			{
+				key: "a",
+				section: "",
+				label: "welcome",
+				value: "disabled",
+				tone: "muted" as const,
+				dim: true,
+			},
+			{ key: "b", section: "", label: "footer", value: "on" },
+		];
+		expect(renderSettingsRows(rows, theme, 1).lines[0]).toBe(
+			"  <dim>welcome</dim>  <muted>disabled</muted>",
+		);
+		expect(renderSettingsRows(rows, theme, 0).lines[0]).toContain("<accent>welcome</accent>");
 	});
 
 	test("cuts a long dropdown choice to one line with an ellipsis", () => {

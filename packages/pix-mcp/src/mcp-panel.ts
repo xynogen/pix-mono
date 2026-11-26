@@ -882,21 +882,17 @@ class McpPanel {
 		}
 
 		const hints = [
-			guide("↑↓", "navigate"),
+			guide("↑↓", "move"),
 			guide("space", "toggle"),
-			guide("⏎", "expand/add"),
-			guide("?", "desc search"),
-			guide("ctrl+a", "auth"),
-			guide("ctrl+r", "reconnect"),
-			guide("ctrl+x", "disconnect"),
-			guide("ctrl+e", "edit"),
-			guide("ctrl+d", "delete"),
-			guide("ctrl+s", "save"),
+			guide("enter", "expand/add"),
+			guide("?", "search desc"),
+			guide("ctrl+a/r/x", "auth/reconnect/disconnect"),
+			guide("ctrl+e/d/s", "edit/delete/save"),
 			guide("esc", "clear/close"),
-			guide("ctrl+c", "quit"),
 		];
-		const gap = "  ";
-		const gapW = 2;
+		// Same separator as every other /pix tab.
+		const gap = fg(t.hint, " · ");
+		const gapW = 3;
 		const maxW = innerW - 2;
 		let curLine = "";
 		let curW = 0;

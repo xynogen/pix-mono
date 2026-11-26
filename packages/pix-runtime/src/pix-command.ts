@@ -27,6 +27,7 @@ import { editSection } from "./sections/edit.ts";
 import { gateSection } from "./sections/gate.ts";
 import { ioSection } from "./sections/io.ts";
 import { prettySection, type RenderSize } from "./sections/pretty.ts";
+import { isSubTabKey, nextTab, renderSubTabBar, renderTabBar, renderTabRule } from "./tab-bar.ts";
 
 interface SettingRow<T> {
 	section: string;
@@ -262,10 +263,16 @@ function forward<T extends object>(target: T, overrides: Record<string, () => un
 	});
 }
 
-const TABS = ["Settings", "Binaries", "Footer"] as const;
+const TABS = ["Settings", "Binaries"] as const;
 /** Most frequently changed tabs sit leftmost; unknown package tabs go before rare ones. */
 const TAB_ORDER = ["Settings", "Tools", "MCP", "Optimizer", "Web", "Voice"];
-const RARE_TABS = ["Footer", "Binaries"];
+const RARE_TABS = ["Extensions", "Binaries"];
+/** Settings sub-tabs (`` ` ``): each setting section belongs to one. */
+const SUBTAB_SECTIONS: Record<string, readonly string[]> = {
+	Appearance: ["Pretty", "Collapse"],
+	Footer: ["Footer"],
+	Behaviour: ["Compaction", "Edit", "Gate", "Network"],
+};
 function tabRank(label: string): number {
 	const common = TAB_ORDER.indexOf(label);
 	if (common >= 0) return common;
@@ -313,6 +320,11 @@ export type PackageSettings = {
 	id: string;
 	label: string;
 	open(ctx: ExtensionCommandContext): Promise<void>;
+	/**
+	 * Called with the real command context when the user leaves this tab or closes /pix, for
+	 * example to confirm changes the panel only staged. Runs on every leave: keep it idempotent.
+	 */
+	onLeave?(ctx: ExtensionCommandContext): Promise<void>;
 };
 
 const SETTINGS_QUERY = "pix:settings";
@@ -340,10 +352,15 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 		if (data && typeof data === "object" && "registered" in data) data.registered = true;
 	});
 	pi.registerCommand("pix", {
-		description: "pix: open shared settings (edit pix.json); /pix <tab> opens that tab",
+		description:
+			"pix: open shared settings (edit pix.json); /pix <tab> opens a tab or Settings sub-tab",
 		getArgumentCompletions: (prefix: string) => {
 			const p = prefix.trim().toLowerCase();
-			const items = [...TABS, ...packageSettings(pi).map((entry) => entry.label)]
+			const items = [
+				...TABS,
+				...Object.keys(SUBTAB_SECTIONS),
+				...packageSettings(pi).map((entry) => entry.label),
+			]
 				.map((label) => label.toLowerCase())
 				.filter((name) => name.startsWith(p))
 				.map((name) => ({ value: name, label: name }));
@@ -370,36 +387,61 @@ export function registerPixCommand(pi: ExtensionAPI, runtime: PixRuntime): void 
 				return;
 			}
 
-			await ui.custom(
-				(tui: OverlayTui, theme: OverlayTheme, kb: KeybindingsManager, done: (v: null) => void) =>
-					new PixSettingsView({
-						runtime,
-						ctx,
-						notify: (m, t) => ui.notify(m, t),
-						panels,
-						settings,
-						themeRow: themeRowFor(ctx),
-						args,
-						tui,
-						theme,
-						kb,
-						done,
-					}),
-				{
-					overlay: true,
-					overlayOptions: () => {
-						const pretty = runtime.get(prettySection);
-						return {
-							anchor: "center",
-							width: pretty.maxRenderWidth,
-							maxHeight: pretty.maxRenderHeight,
-							margin: 2,
-						};
+			const custom = ui.custom;
+			// Every panel gets onLeave once /pix closes, so staged changes are confirmed or dropped.
+			try {
+				await showPixOverlay();
+			} finally {
+				for (const panel of panels) await leavePanel(panel, ctx, (m, t) => ui.notify(m, t));
+			}
+			function showPixOverlay() {
+				return custom(
+					(tui: OverlayTui, theme: OverlayTheme, kb: KeybindingsManager, done: (v: null) => void) =>
+						new PixSettingsView({
+							runtime,
+							ctx,
+							notify: (m, t) => ui.notify(m, t),
+							panels,
+							settings,
+							themeRow: themeRowFor(ctx),
+							args,
+							tui,
+							theme,
+							kb,
+							done,
+						}),
+					{
+						overlay: true,
+						overlayOptions: () => {
+							const pretty = runtime.get(prettySection);
+							return {
+								anchor: "center",
+								width: pretty.maxRenderWidth,
+								maxHeight: pretty.maxRenderHeight,
+								margin: 2,
+							};
+						},
 					},
-				},
-			);
+				);
+			}
 		},
 	});
+}
+
+/** Run a panel's onLeave; a failure is reported, never thrown, so the other panels still get theirs. */
+async function leavePanel(
+	panel: PackageSettings,
+	ctx: ExtensionCommandContext,
+	notify: (message: string, type?: "info" | "warning" | "error") => void,
+): Promise<void> {
+	try {
+		await panel.onLeave?.(ctx);
+	} catch (error) {
+		notify(
+			`pix: ${panel.label}: ${error instanceof Error ? error.message : String(error)}`,
+			"error",
+		);
+	}
 }
 
 /** Pi owns the active theme (settings.json); `/pix` only cycles it through `ctx.ui.setTheme`. */
@@ -479,13 +521,14 @@ const CLOSE_GUIDES: Array<[string, string]> = [
 	["esc", "close"],
 ];
 const SETTINGS_GUIDES: Array<[string, string]> = [
-	["←→", "change"],
 	["↑↓", "move"],
+	["space/enter/←→", "change"],
+	["`", "sub-tab"],
 	["PgUp/PgDn", "inspect"],
 	...CLOSE_GUIDES,
 ];
 
-/** The `/pix` overlay: built-in tabs (Settings, Binaries, Footer) plus package panels as tabs. */
+/** The `/pix` overlay: built-in tabs (Settings, Binaries) plus package panels as tabs; Settings has `` ` `` sub-tabs. */
 class PixSettingsView {
 	private selected = 0;
 	private bodyOffset = 0;
@@ -494,21 +537,29 @@ class PixSettingsView {
 	private inspectingPage = false;
 	private readonly tabs: string[];
 	private tab: string;
+	private readonly subTabs: string[];
+	private subTab: string;
 	private embedded: EmbeddedPanel | undefined;
 	private leavePanel: (() => void) | undefined;
 	private panelGeneration = 0;
-	private panelShrink = 1;
+	/** Rows `/pix` adds above an embedded panel: the tab bar and its rule. */
+	private panelShrink = 2;
 	private binaries: BinariesTab | undefined;
 
 	constructor(private readonly d: SettingsViewDeps) {
-		this.tabs = [
-			...TABS.filter(
-				(name) => name !== "Footer" || d.settings.some((row) => row.section === "Footer"),
-			),
-			...d.panels.map((entry) => entry.label),
-		].sort((a, b) => tabRank(a) - tabRank(b));
+		this.tabs = [...TABS, ...d.panels.map((entry) => entry.label)].sort(
+			(a, b) => tabRank(a) - tabRank(b),
+		);
+		// A sub-tab with no rows (pix-footer not loaded) is hidden.
+		this.subTabs = Object.entries(SUBTAB_SECTIONS)
+			.filter(([, sections]) => d.settings.some((row) => sections.includes(row.section)))
+			.map(([name]) => name);
 		const wanted = (d.args ?? "").trim().toLowerCase();
-		this.tab = this.tabs.find((name) => name.toLowerCase() === wanted) ?? "Settings";
+		const sub = this.subTabs.find((name) => name.toLowerCase() === wanted);
+		this.subTab = sub ?? this.subTabs[0] ?? "Appearance";
+		this.tab = sub
+			? "Settings"
+			: (this.tabs.find((name) => name.toLowerCase() === wanted) ?? "Settings");
 		// `/pix <tab>` opens straight into that tab.
 		if (this.tab === "Binaries") this.binariesTab().refresh();
 		this.mountPanel();
@@ -555,6 +606,14 @@ class PixSettingsView {
 			return;
 		}
 		if (this.pageInput(data)) return;
+		if (this.tab === "Settings" && isSubTabKey(data)) {
+			this.subTab = nextTab(this.subTabs, this.subTab);
+			this.selected = 0;
+			this.bodyOffset = 0;
+			this.inspectingPage = false;
+			tui.requestRender();
+			return;
+		}
 		// matchesKey handles both legacy bytes and Kitty CSI-u encodings
 		// for letters and special keys alike — raw string compares like
 		// `data === "k"` silently fail under the Kitty keyboard protocol.
@@ -570,7 +629,13 @@ class PixSettingsView {
 		if (kb.matches(data, "tui.select.up")) this.move(-1);
 		else if (kb.matches(data, "tui.select.down")) this.move(1);
 		else if (matchesKey(data, Key.left)) this.cycle(-1);
-		else if (matchesKey(data, Key.right)) this.cycle(1);
+		// Standard /pix keys: space and enter change the value like →.
+		else if (
+			matchesKey(data, Key.right) ||
+			matchesKey(data, Key.space) ||
+			matchesKey(data, Key.enter)
+		)
+			this.cycle(1);
 		else return;
 		tui.requestRender();
 	}
@@ -658,23 +723,18 @@ class PixSettingsView {
 		} as unknown as ExtensionCommandContext;
 	}
 
+	private tabRule(width: number): string {
+		return renderTabRule(this.d.theme, width);
+	}
+
 	private tabBar(width: number): string {
-		const { theme } = this.d;
-		const full = this.tabs
-			.map((name) =>
-				name === this.tab
-					? theme.fg("accent", theme.bold(`  ${name}  `))
-					: theme.fg("muted", `  ${name}  `),
-			)
-			.join(theme.fg("muted", "│"));
-		if (visibleWidth(full) <= width) return full;
-		return (
-			theme.fg("accent", theme.bold(`  ${this.tab}  `)) +
-			theme.fg("muted", `${this.tabs.indexOf(this.tab) + 1}/${this.tabs.length}`)
-		);
+		return renderTabBar(this.tabs, this.tab, this.d.theme, width);
 	}
 
 	private switchTab(direction: -1 | 1): void {
+		const left = this.d.panels.find((entry) => entry.label === this.tab);
+		// Its own overlay on top of /pix; /pix keeps running underneath.
+		if (left) void leavePanel(left, this.d.ctx, this.d.notify);
 		const next = (this.tabs.indexOf(this.tab) + direction + this.tabs.length) % this.tabs.length;
 		this.tab = this.tabs[next] ?? "Settings";
 		this.selected = 0;
@@ -685,10 +745,12 @@ class PixSettingsView {
 	}
 
 	private rows(): Row[] {
-		const list = this.d.settings.filter(
-			(r) => (r.section === "Footer") === (this.tab === "Footer"),
+		const sections = SUBTAB_SECTIONS[this.subTab] ?? [];
+		// Sub-tab order follows SUBTAB_SECTIONS, not the SETTINGS list.
+		const list = sections.flatMap((section) =>
+			this.d.settings.filter((r) => r.section === section),
 		);
-		return this.tab === "Settings" && this.d.themeRow ? [this.d.themeRow, ...list] : list;
+		return this.subTab === "Appearance" && this.d.themeRow ? [this.d.themeRow, ...list] : list;
 	}
 
 	private move(direction: -1 | 1): void {
@@ -782,7 +844,11 @@ class PixSettingsView {
 		const view = bt.view(width);
 		return this.framed({
 			...frame,
-			header: [this.tabBar(Math.max(1, width - 4)), "", ...view.header],
+			header: [
+				this.tabBar(Math.max(1, width - 4)),
+				this.tabRule(Math.max(1, width - 4)),
+				...view.header,
+			],
 			body: view.body,
 			footer: ["", this.guides(bt.editing ? view.footer : [...view.footer, ...CLOSE_GUIDES])],
 			bodyOffset: this.bodyOffset,
@@ -795,21 +861,23 @@ class PixSettingsView {
 		if (!embedded) {
 			return frameModal({
 				...frame,
-				header: [this.tabBar(Math.max(1, width - 4)), ""],
+				header: [this.tabBar(Math.max(1, width - 4)), this.tabRule(Math.max(1, width - 4))],
 				body: [this.d.theme.fg("dim", `  Loading ${this.tab} settings…`)],
 				footer: ["", this.guides(CLOSE_GUIDES)],
 				bodyOffset: 0,
 			}).lines;
 		}
 		let lines = embedded.render(width);
-		// Keep the composite inside the same budget as built-in tabs.
-		for (let tries = 0; lines.length + 1 > frame.maxHeight && tries < 8; tries++) {
-			this.panelShrink += lines.length + 1 - frame.maxHeight;
+		// Keep the composite inside the same budget as built-in tabs: the tab bar and rule add 2 rows.
+		for (let tries = 0; lines.length + 2 > frame.maxHeight && tries < 8; tries++) {
+			this.panelShrink += lines.length + 2 - frame.maxHeight;
 			lines = embedded.render(width);
 		}
 		const panelWidth = visibleWidth(lines[0] ?? "");
-		const bar = frameRows(panelWidth, [this.tabBar(Math.max(1, panelWidth - 4))], frame);
+		const inner = Math.max(1, panelWidth - 4);
+		const bar = frameRows(panelWidth, [this.tabBar(inner), this.tabRule(inner)], frame);
 		// render() output may be the panel's cached array (pi-tui 1.6): build a new one.
+		// The panel's own first row (blank or its sub-tabs) sits under the rule.
 		return [lines[0] ?? "", ...bar.slice(1, -1), ...lines.slice(1)];
 	}
 
@@ -820,8 +888,10 @@ class PixSettingsView {
 		const body: string[] = [];
 		const settingBodyLines: number[] = [];
 		let lastSection = "";
+		// A sub-tab with one section is already named by the sub-tab bar: no heading.
+		const headed = (SUBTAB_SECTIONS[this.subTab]?.length ?? 0) > 1;
 		for (const [i, row] of rows.entries()) {
-			if (row.section !== lastSection) {
+			if (headed && row.section !== lastSection) {
 				if (lastSection) body.push("");
 				body.push(theme.fg("dim", `  ${row.section}`));
 				lastSection = row.section;
@@ -839,7 +909,12 @@ class PixSettingsView {
 		}
 		return this.framed({
 			...frame,
-			header: [this.tabBar(Math.max(1, width - 4)), ""],
+			header: [
+				this.tabBar(Math.max(1, width - 4)),
+				this.tabRule(Math.max(1, width - 4)),
+				renderSubTabBar(this.subTabs, this.subTab, theme, Math.max(1, width - 4)),
+				this.tabRule(Math.max(1, width - 4)),
+			],
 			body,
 			footer: ["", this.guides(SETTINGS_GUIDES)],
 			bodyOffset: this.bodyOffset,

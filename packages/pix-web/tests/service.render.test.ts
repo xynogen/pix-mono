@@ -207,7 +207,11 @@ test("captures actual web command rows with fixed provider maps and no saves", a
 							theme: unknown,
 							kb: unknown,
 							done: unknown,
-						) => { render(width: number): readonly string[]; dispose?(): void },
+						) => {
+							render(width: number): readonly string[];
+							handleInput(data: string): void;
+							dispose?(): void;
+						},
 					) => {
 						const component = factory(
 							{ requestRender() {}, terminal: { rows: 40 } },
@@ -218,6 +222,12 @@ test("captures actual web command rows with fixed provider maps and no saves", a
 						try {
 							output.push(
 								`web:${state}`,
+								...captureRows(component, { width: 80, surface: "component" }),
+							);
+							// Second sub-tab (`` ` ``): Web fetch.
+							component.handleInput("`");
+							output.push(
+								`web:${state} ~`,
 								...captureRows(component, { width: 80, surface: "component" }),
 							);
 						} finally {

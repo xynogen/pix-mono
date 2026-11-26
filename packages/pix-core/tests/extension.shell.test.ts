@@ -1,7 +1,9 @@
 import { expect, mock, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
+import { pixRuntime } from "@xynogen/pix-runtime/config";
 import { tempDir } from "@xynogen/pix-runtime/paths";
+import { extensionsSection } from "@xynogen/pix-runtime/sections";
 import { withUiFixture } from "../../../scripts/ui-capture.ts";
 import registerPlanMode from "../src/plan-mode.ts";
 
@@ -92,7 +94,8 @@ test("core awaits member factories in order and skips a failing member", async (
 			"tool_call",
 			"session_start",
 		]);
-		expect(commands).toEqual(["plan"]);
+		// pix-runtime is stubbed, so the Extensions panel is the one that claims /pix.
+		expect(commands).toEqual(["plan", "pix"]);
 		pi.registerTool({ name: "read" });
 		pi.registerTool({ name: "fixture-feature" });
 		expect(registered).toEqual([
@@ -118,6 +121,19 @@ test("core awaits member factories in order and skips a failing member", async (
 		// The real source must still list each declared member. No independent core rendering exists.
 		const source = readFileSync(new URL("../src/extension.ts", import.meta.url), "utf8");
 		for (const member of members) expect(source).toContain(`"${member}"`);
+		// A member listed in pix.json extensions.disabled is never imported or run.
+		const runtime = pixRuntime();
+		await runtime.update(extensionsSection, {
+			disabled: ["@xynogen/pix-footer", "@xynogen/pix-gate"],
+		});
+		try {
+			seen.length = 0;
+			fail = false;
+			await extension({ ...pi, on() {} } as never);
+			expect(seen).toEqual(members.filter((m) => m !== "@xynogen/pix-footer/extension"));
+		} finally {
+			await runtime.update(extensionsSection, { disabled: [] });
+		}
 	} finally {
 		release.resolve();
 		try {

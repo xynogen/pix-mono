@@ -14,12 +14,16 @@
  * reported on session_start instead of stopping Pi from starting.
  */
 
+import { config } from "@xynogen/pix-runtime/config";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import { readFileSync } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
+import { extensionsSection } from "@xynogen/pix-runtime/sections";
 import registerCompaction from "./compaction.ts";
 import deferNonCoreTools from "./defer-tools.ts";
+import { isMemberDisabled } from "./extensions-lib.ts";
+import { registerExtensionsPanel } from "./extensions-panel.ts";
 import registerPlanMode from "./plan-mode.ts";
 
 type PixExtension = (pi: ExtensionAPI) => void | Promise<void>;
@@ -70,6 +74,15 @@ const MEMBERS: readonly (PixExtension | string)[] = [
 	registerPlanMode,
 ];
 
+/** pix.json `extensions.disabled`; empty until pix-runtime has loaded the config. */
+function disabledMembers(): readonly string[] {
+	try {
+		return config(extensionsSection).disabled;
+	} catch {
+		return [];
+	}
+}
+
 async function resolveMember(member: PixExtension | string): Promise<PixExtension> {
 	if (typeof member !== "string") return member;
 	const mod: { default?: unknown } = await import(member);
@@ -92,6 +105,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
 	// ponytail: sequential on purpose. Parallel import() under Pi's jiti loader returns broken modules.
 	for (const [i, member] of MEMBERS.entries()) {
 		const name = typeof member === "string" ? member : member.name || `#${i}`;
+		// Read after pix-runtime ran, so pix.json is live. A disabled member is never imported.
+		if (typeof member === "string" && isMemberDisabled(member, disabledMembers())) continue;
 		try {
 			await (await resolveMember(member))(pi);
 		} catch (error) {
@@ -99,6 +114,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
 			failed.push(`${name}: ${getErrorMessage(error).split("\n")[0]}`);
 		}
 	}
+	const members = MEMBERS.filter((member): member is string => typeof member === "string");
+	registerExtensionsPanel(pi, members);
 	if (failed.length === 0) return;
 	pi.on("session_start", (_event, ctx) =>
 		ctx.ui.notify(

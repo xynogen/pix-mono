@@ -36,6 +36,7 @@ import { createHash } from "@xynogen/pix-runtime/crypto";
 import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 import { toolboxSection } from "@xynogen/pix-runtime/sections";
+import { isSubTabKey, renderSubTabBar, renderTabRule } from "@xynogen/pix-runtime/tab-bar";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -474,15 +475,17 @@ function register(pi: ExtensionAPI): void {
 				const TABS = ["Tools", "MCP"] as const;
 				let tab: (typeof TABS)[number] = "Tools";
 				const inTab = (it: SelectItem) => (byValue.get(it.value)?.mcp === true) === (tab === "MCP");
-				const tabBar = () =>
-					TABS.map((name) => {
-						const n = rows.filter((r) => r.mcp === (name === "MCP")).length;
-						const label =
-							name === "Tools"
-								? `  Tools (${n - alwaysOnCount} adjustable + ${alwaysOnCount} always-on)  `
-								: `  MCP (${n})  `;
-						return name === tab ? theme.fg(accent, theme.bold(label)) : mute(label);
-					}).join(mute("│"));
+				const tabLabel = (name: (typeof TABS)[number]) => {
+					const n = rows.filter((r) => r.mcp === (name === "MCP")).length;
+					return name === "Tools"
+						? `Tools (${n - alwaysOnCount} adjustable + ${alwaysOnCount} always-on)`
+						: `MCP (${n})`;
+				};
+				// Sub-tabs (`` ` ``), like every /pix panel: `tab` belongs to the /pix tab bar.
+				const tabBar = (width: number) => [
+					renderSubTabBar(TABS.map(tabLabel), tabLabel(tab), theme, width),
+					renderTabRule(theme, width),
+				];
 
 				const search = new Input();
 				let statusText = "";
@@ -524,8 +527,8 @@ function register(pi: ExtensionAPI): void {
 				};
 				applyFilter("");
 
-				const switchTab = (direction: -1 | 1) => {
-					tab = TABS[(TABS.indexOf(tab) + direction + TABS.length) % TABS.length] ?? "Tools";
+				const switchTab = () => {
+					tab = TABS[(TABS.indexOf(tab) + 1) % TABS.length] ?? "Tools";
 					statusText = "";
 					applyFilter(search.getValue?.() ?? "");
 					pager.followSelection();
@@ -560,17 +563,17 @@ function register(pi: ExtensionAPI): void {
 						);
 						footer.push(
 							[
-								guide("tab", "switch tab"),
-								guide("↑↓", "navigate"),
-								guide("←→/PgUp/PgDn", "inspect"),
+								guide("↑↓", "move"),
 								...(fixed || !row
 									? []
 									: [
-											guide("^E", "enable"),
-											...(canDefer(row) ? [guide("^F", "defer")] : []),
-											guide("^D", "disable"),
-											guide("space", "cycle"),
+											guide("space/enter", "change"),
+											guide("ctrl+e", "enable"),
+											...(canDefer(row) ? [guide("ctrl+f", "defer")] : []),
+											guide("ctrl+d", "disable"),
 										]),
+								guide("`", "sub-tab"),
+								guide("←→/PgUp/PgDn", "inspect"),
 								guide("esc", "close"),
 							].join(guideSep),
 						);
@@ -580,8 +583,7 @@ function register(pi: ExtensionAPI): void {
 							minHeight: MIN_MODAL_HEIGHT,
 							header: [
 								theme.fg(accent, theme.bold("🧰  Toolbox")),
-								tabBar(),
-								"",
+								...tabBar(inner),
 								theme.fg("dim", "Search:"),
 								...search.render(inner),
 								"",
@@ -609,14 +611,12 @@ function register(pi: ExtensionAPI): void {
 						if (matchesKey(data, Key.up) || matchesKey(data, Key.down)) {
 							list.handleInput?.(data);
 							pager.followSelection();
-						} else if (matchesKey(data, Key.enter) || matchesKey(data, Key.escape)) {
+						} else if (matchesKey(data, Key.escape)) {
 							done(null);
 							return;
-						} else if (matchesKey(data, Key.shift(Key.tab))) {
-							switchTab(-1);
-						} else if (matchesKey(data, Key.tab)) {
-							switchTab(1);
-						} else if (matchesKey(data, Key.space)) {
+						} else if (isSubTabKey(data)) {
+							switchTab();
+						} else if (matchesKey(data, Key.space) || matchesKey(data, Key.enter)) {
 							setSelected("cycle");
 						} else if (matchesKey(data, Key.ctrl("e"))) {
 							setSelected("enabled");

@@ -16,7 +16,7 @@ Adds a **Tools** tab to `/pix` (`/pix tools` opens it directly) — a TUI fuzzy-
 | deferred | `~` | Not declared. `tool_search` loads it on demand. Only for tools with `deferred` exposure. |
 | disabled | `#` | Not declared, and every call is blocked, also through `tool_search` or `codemode`. |
 
-Keys: `tab`/`shift+tab` switch tab · `↑↓` navigate · `←→`/`PgUp`/`PgDn` inspect · `ctrl+e` enable · `ctrl+f` defer · `ctrl+d` disable · `space` cycle · `esc` close · any other key types into the search.
+Keys: `↑↓` move · `space`/`enter` change (cycle the state) · `ctrl+e` enable · `ctrl+f` defer · `ctrl+d` disable · `` ` `` switch sub-tab (Tools / MCP) · `←→`/`PgUp`/`PgDn` inspect · `esc` close · any other key types into the search.
 
 - Rows are grouped: always-on tools first, then direct tools, then deferrable tools. Always-on tools (`read`, `bash`, `edit`, `write`, `tool_search`, `codemode`) are in every prompt. They are listed read-only and cannot be disabled or deferred. Direct tools can only be enabled or disabled.
 - State persists to `~/.pi/agent/pix.json` under `toolbox`. Only changes from the default are saved: `disabledTools` (tools you disabled) and `loadedTools` (deferred tools you enabled). A newly installed tool keeps its default. A legacy `enabledTools` file is migrated on the next session start.

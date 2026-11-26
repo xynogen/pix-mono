@@ -169,9 +169,9 @@ export function registerOptCommand(
 									"",
 									theme.fg("dim", helpSummary(handles[TOOL_ORDER[selected] as OptimizerTool].help)),
 									"",
-									guide("←→", "change") +
+									guide("↑↓", "move") +
 										guideSep +
-										guide("↑↓", "move") +
+										guide("space/enter/←→", "change") +
 										guideSep +
 										guide("PgUp/PgDn", "inspect") +
 										guideSep +

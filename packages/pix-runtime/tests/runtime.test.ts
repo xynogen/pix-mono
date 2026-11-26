@@ -14,6 +14,7 @@ import { gateSection } from "../src/sections/gate.ts";
 import { prettySection } from "../src/sections/index.ts";
 import { ioSection } from "../src/sections/io.ts";
 import { optimizerSection } from "../src/sections/optimizer.ts";
+import { extensionsSection } from "../src/sections/services.ts";
 import { createIsolatedRuntime, type IsolatedRuntime } from "../src/testing.ts";
 
 let iso: IsolatedRuntime | null = null;
@@ -551,5 +552,26 @@ describe("events and lifecycle", () => {
 		expect(JSON.parse(readFileSync(join(agentDir, "pix.json"), "utf8")).pretty.footer).toEqual({
 			clock: false,
 		});
+	});
+
+	it("a reload adds a section the surviving runtime never had (Pi /reload)", async () => {
+		// Regression: `extensions` was added after the session started. The old registry lacked
+		// it, so reads returned defaults: pix-core loaded disabled members after /reload.
+		const { agentDir } = fresh();
+		writeFileSync(
+			join(agentDir, "pix.json"),
+			JSON.stringify({ extensions: { disabled: ["@xynogen/pix-welcome"] } }),
+		);
+		const runtime = createRuntime({
+			agentDir,
+			storage: new FileStorage(agentDir),
+			registry: new SectionRegistry([prettySection]),
+		}) as ReturnType<typeof createRuntime> & {
+			adoptSections(h: readonly (typeof extensionsSection)[]): void;
+		};
+		await runtime.init();
+		expect(runtime.get(extensionsSection).disabled).toEqual([]);
+		runtime.adoptSections([extensionsSection]);
+		expect(runtime.get(extensionsSection).disabled).toEqual(["@xynogen/pix-welcome"]);
 	});
 });

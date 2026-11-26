@@ -52,6 +52,7 @@ interface Overlay {
 
 interface Driver {
 	feed(data: string): void;
+	behaviour(): void;
 	/** Wait for fire-and-forget runtime.update() calls to land. */
 	settle(): Promise<void>;
 	lines(): readonly string[];
@@ -76,7 +77,8 @@ afterEach(() => {
 /** Register /pix against a mock host + isolated runtime and open its overlay. */
 async function openOverlay(
 	kb = getKeybindings(),
-	rows = 12,
+	// Header is tab bar, rule, sub-tabs, rule: leave room for a few setting rows.
+	rows = 14,
 	themes: string[] = [],
 ): Promise<Driver> {
 	const iso = createIsolatedRuntime();
@@ -142,6 +144,11 @@ async function openOverlay(
 
 	return {
 		feed: (data) => comp.handleInput(data),
+		// Settings sub-tabs: Appearance → Footer → Behaviour.
+		behaviour: () => {
+			comp.handleInput("`");
+			comp.handleInput("`");
+		},
 		// The overlay's cycle() fires `void runtime.update(...)` without awaiting;
 		// yield to the event loop so the write lands before the test reads back.
 		settle: () => new Promise((resolve) => setTimeout(resolve, 0)),
@@ -206,13 +213,21 @@ for (const enc of ENCODINGS) {
 			expect(d.iconsValue()).toBe(before);
 		});
 
-		it("space and enter do not change values", async () => {
+		it("space and enter change the value like right arrow (standard /pix keys)", async () => {
 			const d = await openOverlay();
 			const before = d.iconsValue();
-			d.feed(KEYS.space[enc]);
-			d.feed(KEYS.enter[enc]);
+			d.feed(KEYS.right[enc]);
 			await d.settle();
-			expect(d.iconsValue()).toBe(before);
+			const next = d.iconsValue();
+			expect(next).not.toBe(before);
+			for (const key of [KEYS.space[enc], KEYS.enter[enc]]) {
+				d.feed(KEYS.left[enc]);
+				await d.settle();
+				expect(d.iconsValue()).toBe(before);
+				d.feed(key);
+				await d.settle();
+				expect(d.iconsValue()).toBe(next);
+			}
 		});
 
 		it("escape closes the overlay", async () => {
@@ -278,7 +293,8 @@ describe("/pix modal sizing", () => {
 describe("/pix network timeout", () => {
 	it("exposes and updates the shared timeout row", async () => {
 		const d = await openOverlay();
-		for (let i = 0; i < 6; i++) d.feed(KEYS.down.legacy);
+		d.behaviour();
+		for (let i = 0; i < 4; i++) d.feed(KEYS.down.legacy);
 		expect(d.cursorLine()).toContain("timeout (sec)");
 		expect(d.timeoutValue()).toBe(30);
 		d.feed(KEYS.right.legacy);
@@ -290,7 +306,7 @@ describe("/pix network timeout", () => {
 describe("/pix compaction floor", () => {
 	it("rapid right presses each advance one step (no stale-read collapse)", async () => {
 		const d = await openOverlay();
-		for (let i = 0; i < 7; i++) d.feed(KEYS.down.legacy);
+		d.behaviour();
 		expect(d.cursorLine()).toContain("Trigger (% ctx)");
 		expect(d.triggerPercentValue()).toBe(60);
 		// Two presses before any settle — both must land: 60 → 65 → 70.
@@ -302,7 +318,7 @@ describe("/pix compaction floor", () => {
 
 	it("down moves from trigger to minimum tokens without changing either number", async () => {
 		const d = await openOverlay();
-		for (let i = 0; i < 7; i++) d.feed(KEYS.down.legacy);
+		d.behaviour();
 		expect(d.cursorLine()).toContain("Trigger (% ctx)");
 		const triggerPercent = d.triggerPercentValue();
 		const minimumTokens = d.minimumTokensValue();
@@ -328,7 +344,8 @@ describe("/pix compaction floor", () => {
 
 	it("offers 25k through 600k and defaults to 100k", async () => {
 		const d = await openOverlay();
-		for (let i = 0; i < 8; i++) d.feed(KEYS.down.legacy);
+		d.behaviour();
+		d.feed(KEYS.down.legacy);
 		expect(d.cursorLine()).toContain("Minimum tokens");
 		expect(d.cursorLine()).toContain("100k");
 		expect(d.minimumTokensValue()).toBe(100_000);
@@ -385,16 +402,25 @@ describe("/pix tabs", () => {
 	const SHIFT_TAB = { legacy: "\u001b[Z", kitty: "\u001b[9;2u" } as const;
 
 	for (const enc of ENCODINGS) {
-		it(`tab / shift+tab follow usage order: Settings, Footer, Binaries (${enc})`, async () => {
+		it(`tab switches top tabs, backtick switches Settings sub-tabs (${enc})`, async () => {
 			if (enc === "kitty") setKittyProtocolActive(true);
 			try {
 				const d = await openOverlay(getKeybindings(), 60);
-				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>.* {2}Footer {2}.* {2}Binaries {2}/);
-				d.feed(TAB[enc]);
-				expect(d.lines()[1]).toMatch(/<b> {2}Footer {2}<\/b>/);
+				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>.* {2}Binaries {2}/);
+				// A ─ rule separates the top tabs from the ●/○ sub-tab chips.
+				expect(d.lines()[2]).toMatch(/│ ─+ │/);
+				expect(d.lines()[3]).toMatch(/● <b>Appearance<\/b>.*○ Footer.*○ Behaviour/);
+				expect(d.lines()[3]).not.toMatch(/Appearance.*│.*Footer/);
+				d.feed(enc === "kitty" ? "\u001b[96u" : "`");
+				expect(d.lines()[3]).toMatch(/● <b>Footer<\/b>/);
 				expect(d.lines().join("\n")).toMatch(/mode\s+show/);
+				d.feed("`");
+				expect(d.lines()[3]).toMatch(/● <b>Behaviour<\/b>/);
+				expect(d.lines().join("\n")).toMatch(/Trigger \(% ctx\)/);
+				d.feed("`");
+				expect(d.lines()[3]).toMatch(/● <b>Appearance<\/b>/);
 				d.feed(TAB[enc]);
-				expect(d.lines()[1]).toMatch(/ {2}Footer {2}.*<b> {2}Binaries {2}<\/b>/);
+				expect(d.lines()[1]).toMatch(/ {2}Settings {2}.*<b> {2}Binaries {2}<\/b>/);
 				d.feed(TAB[enc]);
 				expect(d.lines()[1]).toMatch(/<b> {2}Settings {2}<\/b>/);
 				d.feed(SHIFT_TAB[enc]);
