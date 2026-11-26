@@ -39,7 +39,7 @@ describe("setPiSettings", () => {
 	it("creates the file, keeps other keys, and writes nothing when unchanged", () => {
 		const path = file();
 		expect(setPiSettings({ a: 1 }, { path, mode: 0o644 })).toBe(true);
-		expect(statSync(path).mode & 0o777).toBe(0o644);
+		if (process.platform !== "win32") expect(statSync(path).mode & 0o777).toBe(0o644);
 		writeFileSync(path, '{"theme":"x"}\n');
 		expect(setPiSettings({ a: 1 }, { path })).toBe(true);
 		expect(read(path)).toEqual({ theme: "x", a: 1 });
@@ -62,7 +62,8 @@ describe("setPiSettings", () => {
 		expect(read(path)).toEqual({ quietStartup: false });
 	});
 
-	it("keeps the mode of an existing file", () => {
+	// Windows has no POSIX file modes.
+	it.skipIf(process.platform === "win32")("keeps the mode of an existing file", () => {
 		const path = file();
 		writeFileSync(path, "{}");
 		chmodSync(path, 0o640);
