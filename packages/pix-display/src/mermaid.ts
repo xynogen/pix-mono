@@ -280,10 +280,11 @@ export function renderMermaidImage(source: string, width: number): string[] | un
 	const shrink = Math.min(1, (width - FRAME_COLS) / cols, MAX_ROWS / rows);
 	cols = Math.max(1, Math.floor(cols * shrink));
 	rows = Math.max(1, Math.floor(rows * shrink));
-	// Rasterise at 2× the displayed height so text and lines stay sharp.
+	// Rasterise at the displayed size: cell pixels are the terminal's own resolution,
+	// and renderImageRows would shrink anything larger back down.
 	let png: Uint8Array;
 	try {
-		png = engine.rasterise(svg, rows * cell.heightPx * 2);
+		png = engine.rasterise(svg, rows * cell.heightPx);
 	} catch {
 		return undefined;
 	}

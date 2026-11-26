@@ -1,10 +1,18 @@
 import { afterAll, afterEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Markdown, resetCapabilitiesCache, setCapabilities } from "@earendil-works/pi-tui";
+import {
+	getPngDimensions,
+	Markdown,
+	resetCapabilitiesCache,
+	setCapabilities,
+	setCellDimensions,
+} from "@earendil-works/pi-tui";
 import { renderDirectives } from "../src/directives.js";
+import { renderImageRows } from "../src/image.js";
 
 // 1×1 transparent PNG.
 const PNG = Buffer.from(
@@ -57,5 +65,25 @@ describe("::image", () => {
 	it("stays literal inside a code fence or without src", () => {
 		const md = '```\n::image[x]{src="/a.png"}\n```\n::image[x]';
 		expect(renderDirectives(md, 40)).toBe(md);
+	});
+
+	it("downscales a large image to the pixels its cells show", () => {
+		setCapabilities({ images: "kitty", trueColor: true, hyperlinks: false });
+		setCellDimensions({ widthPx: 10, heightPx: 20 });
+		const req = createRequire(import.meta.resolve("@earendil-works/pi-coding-agent"));
+		const photon = req("@silvia-odwyer/photon-node");
+		const big = new photon.PhotonImage(new Uint8Array(4000 * 2000 * 4).fill(255), 4000, 2000);
+		const data = Buffer.from(big.get_bytes()).toString("base64");
+		big.free();
+		const payload = (rows: string[]) =>
+			[...rows.join("").matchAll(/\x1b_G[^;]*;([^\x1b]*)\x1b\\/g)].map((m) => m[1]).join("");
+		// 50 columns at 10 px: the 4000 px source shrinks to 500 px wide, aspect kept.
+		const shown = payload(renderImageRows(data, "image/png", 80, { maxWidthCells: 50 }));
+		expect(getPngDimensions(shown)).toEqual({ widthPx: 500, heightPx: 250 });
+		// Already within its cells: passed through untouched.
+		const small = payload(
+			renderImageRows(PNG.toString("base64"), "image/png", 80, { maxWidthCells: 4 }),
+		);
+		expect(small).toBe(PNG.toString("base64"));
 	});
 });

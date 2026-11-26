@@ -7,9 +7,14 @@
  */
 import { basename } from "node:path";
 import { FG_DIM, RST } from "@xynogen/pix-pretty/ansi";
-import { getCapabilities, getImageDimensions, Image } from "@xynogen/pix-pretty/tui";
+import {
+	getCapabilities,
+	getCellDimensions,
+	getImageDimensions,
+	Image,
+} from "@xynogen/pix-pretty/tui";
 import { readFileSync, statSync } from "@xynogen/pix-runtime/fs";
-import { localFilePath } from "@xynogen/pix-runtime/paths";
+import { localFilePath, requireFrom } from "@xynogen/pix-runtime/paths";
 
 const IMAGE = /^::image\[([^\]\n]*)\](?:\{([^}\n]*)\})?\s*$/;
 // Read synchronously during render, so bound the bytes one directive can load.
@@ -83,6 +88,7 @@ export function renderImage(image: ImageDirective, width: number): string[] {
 }
 
 type RowOptions = { maxWidthCells: number; maxHeightCells?: number; filename?: string };
+type Dimensions = { widthPx: number; heightPx: number };
 
 /** Image rows through Pi's `Image`; blank rows become NBSP so Markdown keeps the height. */
 export function renderImageRows(
@@ -91,10 +97,82 @@ export function renderImageRows(
 	width: number,
 	options: RowOptions,
 ): string[] {
-	const dims = getImageDimensions(data, mime) ?? undefined;
-	return new Image(data, mime, { fallbackColor: (s) => `${FG_DIM}${s}${RST}` }, options, dims)
+	const source = getImageDimensions(data, mime) ?? undefined;
+	const png =
+		source && getCapabilities().images ? fitToCells(data, source, width, options) : undefined;
+	const [shown, type] = png ? [png, "image/png"] : [data, mime];
+	const dims = getImageDimensions(shown, type) ?? undefined;
+	return new Image(shown, type, { fallbackColor: (s) => `${FG_DIM}${s}${RST}` }, options, dims)
 		.render(width)
 		.map((row) => row || NBSP);
+}
+
+type PhotonImage = { get_bytes(): Uint8Array; free(): void };
+type Photon = {
+	PhotonImage: { new_from_byteslice(bytes: Uint8Array): PhotonImage };
+	resize(image: PhotonImage, width: number, height: number, filter: number): PhotonImage;
+};
+// photon's SamplingFilter.Lanczos3, the filter Pi's own image resize uses.
+const LANCZOS3 = 5;
+let photon: Photon | null | undefined;
+
+/** Pi's photon-node (a Pi dependency, not ours): the running CLI's copy, else the peer install's. */
+function loadPhoton(): Photon | null {
+	if (photon !== undefined) return photon;
+	photon = null;
+	const hosts = [
+		() => process.argv[1] ?? "",
+		// ESM-only package (no `require` export): resolve it the ESM way.
+		() => import.meta.resolve("@earendil-works/pi-coding-agent"),
+	];
+	for (const host of hosts) {
+		try {
+			// SAFETY: photon-node is CommonJS with this API; Pi's utils/photon.ts makes the same calls.
+			photon = requireFrom(host())("@silvia-odwyer/photon-node") as Photon;
+			break;
+		} catch {
+			// Not resolvable from this host: try the next one.
+		}
+	}
+	return photon;
+}
+
+/**
+ * The image as a PNG no larger than the pixels its cells show, or undefined when it
+ * already fits or cannot be resized. A terminal shows no more than that anyway, and
+ * herdr drops a Kitty image whose decoded RGBA exceeds its transfer budget (~30 MB).
+ * The box mirrors Pi's `Image`: `width - 2` columns, square-ish rows by default. One
+ * extra cell each way absorbs callers' rounding, so a raster sized to its cells stays.
+ * ponytail: synchronous (render is sync) and no EXIF rotation; a huge photo costs ~1 s
+ * once per cache entry. Upgrade path: Pi's async `resizeImage` plus a transcript redraw.
+ */
+function fitToCells(data: string, source: Dimensions, width: number, options: RowOptions) {
+	const cell = getCellDimensions();
+	const cols = Math.max(1, Math.min(width - 2, options.maxWidthCells));
+	const rows = options.maxHeightCells ?? Math.ceil((cols * cell.widthPx) / cell.heightPx);
+	if (source.widthPx <= (cols + 1) * cell.widthPx && source.heightPx <= (rows + 1) * cell.heightPx)
+		return undefined;
+	const scale = Math.min(
+		(cols * cell.widthPx) / source.widthPx,
+		(rows * cell.heightPx) / source.heightPx,
+	);
+	const lib = loadPhoton();
+	if (!lib) return undefined;
+	let image: PhotonImage | undefined;
+	let out: PhotonImage | undefined;
+	try {
+		image = lib.PhotonImage.new_from_byteslice(Buffer.from(data, "base64"));
+		const w = Math.max(1, Math.round(source.widthPx * scale));
+		const h = Math.max(1, Math.round(source.heightPx * scale));
+		out = lib.resize(image, w, h, LANCZOS3);
+		return Buffer.from(out.get_bytes()).toString("base64");
+	} catch {
+		// Undecodable source: show it unchanged and let Pi's Image fall back.
+		return undefined;
+	} finally {
+		out?.free();
+		image?.free();
+	}
 }
 
 // Space between an image and its frame: columns left/right, rows above/below.

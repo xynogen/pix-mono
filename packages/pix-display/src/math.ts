@@ -194,8 +194,9 @@ export function renderMath(tex: string, width: number): string[] | undefined {
 	const rows = Math.max(1, Math.min(MAX_ROWS, Math.round(math.heightEx * ROWS_PER_EX)));
 	const cols = Math.ceil((rows * cell.heightPx * math.widthEx) / math.heightEx / cell.widthPx);
 	if (cols > width) return undefined;
-	// Rasterise at 2× the displayed height so the glyphs stay sharp.
-	const png = engine.rasterise(math.svg, rows * cell.heightPx * 2);
+	// Rasterise at the displayed size: cell pixels are the terminal's own resolution,
+	// and renderImageRows would shrink anything larger back down.
+	const png = engine.rasterise(math.svg, rows * cell.heightPx);
 	const image = renderImageRows(Buffer.from(png).toString("base64"), "image/png", width, {
 		maxWidthCells: cols,
 		maxHeightCells: rows,
