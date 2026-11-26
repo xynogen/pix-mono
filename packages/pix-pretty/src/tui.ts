@@ -13,6 +13,7 @@ export {
 	AssistantMessageComponent,
 	CustomEditor,
 	getMarkdownTheme,
+	InteractiveMode,
 	Theme,
 } from "@earendil-works/pi-coding-agent";
 export type {

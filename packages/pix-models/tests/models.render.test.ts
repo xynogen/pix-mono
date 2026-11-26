@@ -1,20 +1,17 @@
 import { expect, spyOn, test } from "bun:test";
-import type { Theme } from "@earendil-works/pi-coding-agent";
+import { InteractiveMode, type Theme } from "@earendil-works/pi-coding-agent";
 import { KeybindingsManager, type TUI, TUI_KEYBINDINGS } from "@earendil-works/pi-tui";
+import { nativeMethodKey } from "@xynogen/pix-runtime/patch";
 import { agentDir } from "@xynogen/pix-runtime/paths";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 
-test("registered models picker isolates host patch, metadata, reload, and model choice", async () => {
+test("registered models picker wraps the host selector, metadata, reload, and model choice", async () => {
 	if (!agentDir().includes("pix-test-home-")) throw new Error("Test sandbox preload required");
 	const cache = process.env.XDG_CACHE_HOME;
 	const fixture = await withUiFixture({ hostTheme: true });
 	const restores: { mockRestore(): void }[] = [];
 	try {
 		process.env.XDG_CACHE_HOME = `${fixture.agentDir}/capture-cache`;
-		// Intercept before importing the registrar. HOME cannot contain the host disk patch.
-		const patch = await import("../src/patch-builtin.ts");
-		const patchSpy = spyOn(patch, "patchOutBuiltinModelCommand").mockImplementation(() => {});
-		restores.push(patchSpy);
 		const data = await import("@xynogen/pix-data");
 		restores.push(
 			spyOn(data.modelgrep, "getCached").mockImplementation(() => [
@@ -60,16 +57,26 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 			render(width: number): readonly string[];
 			handleInput(data: string): void | Promise<void>;
 		};
-		let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
-		const commands: string[] = [];
+		let start: ((event: unknown, ctx: unknown) => void) | undefined;
+		const proto = InteractiveMode.prototype;
+		const nativeKey = nativeMethodKey("showModelSelector");
+		const saved = ["showModelSelector", nativeKey].map(
+			(key) => [key, Object.getOwnPropertyDescriptor(proto, key)] as const,
+		);
+		restores.push({
+			mockRestore() {
+				for (const [key, d] of saved) {
+					if (d) Object.defineProperty(proto, key, d);
+					else Reflect.deleteProperty(proto, key);
+				}
+			},
+		});
 		let level = "medium";
 		const selected: unknown[] = [];
 		let accept = true;
 		register({
-			on() {},
-			registerCommand(name: string, command: { handler: typeof handler }) {
-				commands.push(name);
-				if (name === "model") handler = command.handler;
+			on(name: string, hook: typeof start) {
+				if (name === "session_start") start = hook;
 			},
 			getThinkingLevel: () => level,
 			setThinkingLevel(value: string) {
@@ -80,9 +87,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 				return accept;
 			},
 		} as never);
-		expect(patchSpy).toHaveBeenCalledTimes(1);
-		expect(commands).toEqual(["model"]);
-		if (!handler) throw new Error("models command not registered");
+		if (!start) throw new Error("session_start hook not registered");
 		const models = [
 			{ provider: "fixture", id: "alpha", name: "Alpha", contextWindow: 200_000, reasoning: true },
 			{ provider: "fixture", id: "beta", name: "Beta", contextWindow: 0 },
@@ -222,6 +227,11 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 				},
 			},
 		};
+		// Pi's own entry point: InteractiveMode.showModelSelector, wrapped by the extension.
+		start(undefined, ctx);
+		const handler = async (search: string, _ctx: unknown) => {
+			await Reflect.apply(Reflect.get(proto, "showModelSelector"), {}, search ? [search] : []);
+		};
 		await handler("", ctx);
 		expect(refreshCalls.map((call) => call.force)).toEqual([false, true]);
 		expect(refreshCalls.every((call) => call.signal?.aborted)).toBe(true);
@@ -266,7 +276,7 @@ test("registered models picker isolates host patch, metadata, reload, and model 
 		expect(notifications.at(-1)).toBe("Thinking options for alpha: models.dev");
 		selected.length = 0;
 		// `/model beta` opens pre-filtered, so Enter picks beta, not the first row.
-		await handler(" beta ", ctx);
+		await handler("beta", ctx);
 		expect(selected[0]).toMatchObject({ id: "beta" });
 	} finally {
 		for (const restore of restores.reverse()) restore.mockRestore();

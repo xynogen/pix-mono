@@ -1,14 +1,15 @@
 import { expect, test } from "bun:test";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { AssistantMessageComponent, getMarkdownTheme } from "@earendil-works/pi-coding-agent";
+import { nativeMethodKey } from "@xynogen/pix-runtime/patch";
 import { captureRows, roleTheme, withUiFixture } from "../../../scripts/ui-capture.ts";
 import thinkingExtension from "../src/thinking.ts";
 
 test("native assistant thinking hooks and code frames", async () => {
 	const fixture = await withUiFixture({ hostTheme: true });
 	const prototype = AssistantMessageComponent.prototype;
-	const patched = Symbol.for("@xynogen/pix-display:code-block-renderer");
-	const descriptors = ["render", patched].map(
+	const native = nativeMethodKey("render");
+	const descriptors = ["render", "invalidate", native].map(
 		(key) => [key, Object.getOwnPropertyDescriptor(prototype, key)] as const,
 	);
 	const hooks = new Map<
@@ -41,7 +42,6 @@ test("native assistant thinking hooks and code frames", async () => {
 		// ponytail: a fresh module owns private activeTheme. Restore the shared prototype below.
 		const path = "../src/code-blocks.ts?display-capture";
 		const code = (await import(path)) as typeof import("../src/code-blocks.ts");
-		Reflect.deleteProperty(prototype, patched);
 		code.default(pi as never);
 		hooks.get("session_start")?.(
 			{ message: message("") },

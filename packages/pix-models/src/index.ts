@@ -5,4 +5,3 @@ export {
 	type SortableModel,
 	sortModels,
 } from "./lib.ts";
-export { patchOutBuiltinModelCommand } from "./patch-builtin.ts";

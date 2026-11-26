@@ -5,6 +5,7 @@ import {
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { wrapMethod } from "@xynogen/pix-runtime/patch";
 
 const OPENING_FENCE_RE = /^```([^`]*)$/;
 const CLOSING_FENCE_RE = /^```\s*$/;
@@ -12,16 +13,9 @@ const DEFAULT_LABEL = "code";
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const BACKGROUND_ANSI_RE = /\x1b\[(?:4[0-9]|48)(?:;[^m]*)?m/g;
 const OSC_RE = /\x1b\][^\x07]*(?:\x07|\x1b\\)/g;
-const PATCHED = Symbol.for("@xynogen/pix-display:code-block-renderer");
 
 type CodeFrameTheme = Pick<Theme, "bold" | "fg">;
 type RenderMode = "tui" | "rpc" | "json" | "print";
-
-type PatchablePrototype = {
-	[PATCHED]?: boolean;
-	render(width: number): readonly string[];
-	invalidate(): void;
-};
 
 let activeTheme: CodeFrameTheme | undefined;
 
@@ -138,13 +132,9 @@ export function renderCodeFences(
 }
 
 function patchAssistantRenderer(): void {
-	const prototype = AssistantMessageComponent.prototype as PatchablePrototype;
-	if (prototype[PATCHED]) return;
-
-	const nativeRender = prototype.render;
-	const nativeInvalidate = prototype.invalidate;
+	const prototype = AssistantMessageComponent.prototype;
 	const cache = new WeakMap<
-		PatchablePrototype,
+		object,
 		{
 			width: number;
 			theme: CodeFrameTheme;
@@ -152,28 +142,37 @@ function patchAssistantRenderer(): void {
 			output: readonly string[];
 		}
 	>();
-	prototype.invalidate = function invalidateCodeFrames(): void {
-		cache.delete(this);
-		nativeInvalidate.call(this);
-	};
-	prototype.render = function renderWithCodeFrames(width: number): readonly string[] {
-		const lines = nativeRender.call(this, width);
-		if (!activeTheme) return lines;
-		const previous = cache.get(this);
-		if (
-			previous &&
-			previous.width === width &&
-			previous.theme === activeTheme &&
-			previous.input.length === lines.length &&
-			lines.every((line, i) => line === previous.input[i])
-		) {
-			return previous.output;
-		}
-		const output = renderCodeFences(lines, width, activeTheme);
-		cache.set(this, { width, theme: activeTheme, input: [...lines], output });
-		return output;
-	};
-	prototype[PATCHED] = true;
+	wrapMethod(
+		prototype,
+		"invalidate",
+		(native) =>
+			function invalidateCodeFrames(this: object): void {
+				cache.delete(this);
+				native.call(this);
+			},
+	);
+	wrapMethod(
+		prototype,
+		"render",
+		(native) =>
+			function renderWithCodeFrames(this: object, width: number): readonly string[] {
+				const lines: readonly string[] = native.call(this, width);
+				if (!activeTheme) return lines;
+				const previous = cache.get(this);
+				if (
+					previous &&
+					previous.width === width &&
+					previous.theme === activeTheme &&
+					previous.input.length === lines.length &&
+					lines.every((line, i) => line === previous.input[i])
+				) {
+					return previous.output;
+				}
+				const output = renderCodeFences(lines, width, activeTheme);
+				cache.set(this, { width, theme: activeTheme, input: [...lines], output });
+				return output;
+			},
+	);
 }
 
 export default function codeBlocksExtension(pi: ExtensionAPI): void {

@@ -99,7 +99,7 @@ export default function mcpAdapter(pi: ExtensionAPI) {
 
 function register(pi: ExtensionAPI) {
 	// The current load already replaced built-in MCP with this package.
-	// Keep the same choice in settings for the next load without changing Pi's files.
+	// Keep the same choice in settings for the next load. Pi's own files are not touched.
 	try {
 		patchOutBuiltinMcp();
 	} catch (error) {

@@ -1,16 +1,11 @@
 import { Markdown, sliceByColumn, type Theme, visibleWidth } from "@xynogen/pix-pretty/tui";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { wrapMethod } from "@xynogen/pix-runtime/patch";
 import { themeAfterSessionStart } from "./code-blocks.ts";
 
 type TableTheme = Pick<Theme, "bold" | "fg">;
 type Align = "left" | "center" | "right" | null;
-type RenderTable = (
-	this: unknown,
-	token: { align?: readonly Align[] },
-	...rest: unknown[]
-) => string[];
 
-const NATIVE = Symbol.for("@xynogen/pix-display:native-render-table");
 const CORNERS: Record<string, string> = { "┌": "╭", "┐": "╮", "└": "╰", "┘": "╯" };
 const HEAVY: Record<string, string> = { "├": "┝", "─": "━", "┼": "┿", "┤": "┥" };
 // Pi pads each cell with plain spaces, sometimes inside its closing style codes.
@@ -69,18 +64,20 @@ export function styleTable(
 }
 
 function patchTableRenderer(): void {
-	const prototype = Markdown.prototype;
-	// Pi's own renderTable, kept on the prototype: /reload loads a new module that must
-	// replace the previous wrapper, not wrap it or skip patching.
-	const native: unknown = Reflect.get(prototype, NATIVE) ?? Reflect.get(prototype, "renderTable");
 	// A Pi release without this private method keeps its own table rendering.
-	if (typeof native !== "function") return;
-	const renderStyledTable: RenderTable = function renderStyledTable(token, ...rest) {
-		const lines: string[] = native.call(this, token, ...rest);
-		return activeTheme ? styleTable(lines, token.align ?? [], activeTheme) : lines;
-	};
-	Reflect.set(prototype, NATIVE, native);
-	Reflect.set(prototype, "renderTable", renderStyledTable);
+	wrapMethod(
+		Markdown.prototype,
+		"renderTable",
+		(native) =>
+			function renderStyledTable(
+				this: unknown,
+				token: { align?: readonly Align[] },
+				...rest: unknown[]
+			) {
+				const lines: string[] = native.call(this, token, ...rest);
+				return activeTheme ? styleTable(lines, token.align ?? [], activeTheme) : lines;
+			},
+	);
 }
 
 export default function tablesExtension(pi: ExtensionAPI): void {

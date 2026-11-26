@@ -74,7 +74,7 @@
 					"complexity": {
 						"noExcessiveLinesPerFunction": {
 							"level": "error",
-							"options": { "maxLines": 253, "skipBlankLines": true }
+							"options": { "maxLines": 240, "skipBlankLines": true }
 						}
 					},
 					"suspicious": {

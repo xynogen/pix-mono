@@ -12,11 +12,10 @@
 
 import { dirname, join, resolve } from "node:path";
 import { showTransientMessage } from "@xynogen/pix-pretty/transient-error";
-import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
-import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { agentDir, projectDir, projectPath, projectRel } from "@xynogen/pix-runtime/paths";
+import { setPiSettings } from "@xynogen/pix-runtime/pi-settings";
 
 export type ModelPrefs = {
 	defaultProvider?: string;
@@ -40,25 +39,7 @@ export function prefsTarget(cwd: string, trusted: boolean, agent = agentDir()): 
 
 /** Merge `prefs` into the JSON settings file at `path`. Returns true if it changed. */
 export function writePrefs(path: string, prefs: ModelPrefs): boolean {
-	let current: Record<string, unknown> = {};
-	if (existsSync(path)) {
-		const raw = readFileSync(path, "utf8").replace(/^\uFEFF/, "");
-		if (raw.trim()) {
-			const parsed: unknown = JSON.parse(raw);
-			if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-				current = parsed as Record<string, unknown>;
-			}
-		}
-	}
-	let changed = false;
-	for (const [key, value] of Object.entries(prefs)) {
-		if (value !== undefined && current[key] !== value) {
-			current[key] = value;
-			changed = true;
-		}
-	}
-	if (changed) writeFileAtomicSync(path, `${JSON.stringify(current, null, 2)}\n`, 0o644);
-	return changed;
+	return setPiSettings(prefs, { path, mode: 0o644 });
 }
 
 /** Save prefs for ctx.cwd and surface where they went. */

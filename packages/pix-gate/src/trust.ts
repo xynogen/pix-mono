@@ -9,7 +9,6 @@
  */
 
 import { join } from "node:path";
-import { existsSync, readFileSync } from "@xynogen/pix-runtime/fs";
 import {
 	type ExtensionAPI,
 	type ProjectTrustContext,
@@ -18,6 +17,7 @@ import {
 	ProjectTrustStore,
 } from "@xynogen/pix-runtime/host";
 import { agentDir } from "@xynogen/pix-runtime/paths";
+import { readPiSettings } from "@xynogen/pix-runtime/pi-settings";
 
 export const TRUST_LABEL = "Trust";
 export const DISTRUST_LABEL = "Do not trust";
@@ -30,11 +30,8 @@ export interface TrustDeps {
 }
 
 function readDefaultProjectTrust(dir: string): string {
-	const path = join(dir, "settings.json");
-	if (!existsSync(path)) return "ask";
 	try {
-		const parsed = JSON.parse(readFileSync(path, "utf-8").replace(/^\uFEFF/, ""));
-		const value = parsed?.defaultProjectTrust;
+		const value = readPiSettings(join(dir, "settings.json")).defaultProjectTrust;
 		return typeof value === "string" ? value : "ask";
 	} catch {
 		return "ask";

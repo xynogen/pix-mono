@@ -16,10 +16,10 @@
 import { join } from "node:path";
 import { type ConfirmUI, confirmOverlay } from "@xynogen/pix-pretty/confirm";
 import { getCapabilities, getCellDimensions } from "@xynogen/pix-pretty/tui";
-import { writeFileAtomicSync } from "@xynogen/pix-runtime/atomic-write";
 import { existsSync, readFile, readFileSync } from "@xynogen/pix-runtime/fs";
 import { installIntoPrefix } from "@xynogen/pix-runtime/npm-prefix";
 import { agentDir, importFile, requireFrom } from "@xynogen/pix-runtime/paths";
+import { setPiSettings } from "@xynogen/pix-runtime/pi-settings";
 import { FRAME_COLS, frameImage, renderImageRows } from "./image.ts";
 
 type Svg = (source: string) => string;
@@ -188,14 +188,8 @@ export function hasMermaid(messages: readonly TextMessage[]): boolean {
  * this extension. Returns "changed", "already" when it was off, or "failed".
  */
 function disablePiMermaid(): "changed" | "already" | "failed" {
-	const path = join(agentDir(), "settings.json");
 	try {
-		const text = existsSync(path) ? readFileSync(path, "utf-8").replace(/^\uFEFF/, "") : "{}";
-		const settings = JSON.parse(text) as { markdown?: Record<string, unknown> };
-		if (settings.markdown?.mermaid === "off") return "already";
-		settings.markdown = { ...settings.markdown, mermaid: "off" };
-		writeFileAtomicSync(path, `${JSON.stringify(settings, null, 2)}\n`);
-		return "changed";
+		return setPiSettings({ markdown: { mermaid: "off" } }) ? "changed" : "already";
 	} catch {
 		return "failed";
 	}

@@ -124,8 +124,9 @@ $__pixUninstaller = {
 	}
 
 	# --- /model restore ------------------------------------------------------------
-	# pix-models strips Pi's /model entry from BUILTIN_SLASH_COMMANDS at load time
-	# (packages/pix-models/src/patch-builtin.ts). Re-insert it as the first entry.
+	# Older pix-models versions stripped Pi's /model entry from BUILTIN_SLASH_COMMANDS on disk.
+	# Current versions patch Pi in memory only. Re-insert the entry for installs that kept the
+	# old edit; nothing changes when it already exists.
 	function Get-PiPackageRoots([string]$Pi) {
 		$roots = New-Object System.Collections.Generic.List[string]
 		$agentDir = Join-Path $env:USERPROFILE ".pi\agent"

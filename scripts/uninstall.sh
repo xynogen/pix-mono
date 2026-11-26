@@ -111,11 +111,11 @@ fi
 
 # Restore Pi's built-in /model slash command.
 #
-# pix-models strips Pi's `/model` entry from compiled slash-commands.js at load
-# time (see packages/pix-models/src/patch-builtin.ts). Removing the package
-# leaves that edit in place, so re-insert the current Pi form as the first item
-# in BUILTIN_SLASH_COMMANDS. This is intentionally independent of the removed
-# entry's historical shape and is idempotent when `/model` already exists.
+# Older pix-models versions stripped Pi's `/model` entry from compiled
+# slash-commands.js at load time. Current versions patch Pi in memory only, but
+# an install that ran an old version keeps that edit, so re-insert the current Pi
+# form as the first item in BUILTIN_SLASH_COMMANDS. Idempotent: nothing changes
+# when `/model` already exists.
 restore_builtin_model_command() {
 	# Locate slash-commands.js via the running pi binary.
 	pi_bin=$(command -v pi 2>/dev/null) || true

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Markdown, visibleWidth } from "@earendil-works/pi-tui";
+import { nativeMethodKey } from "@xynogen/pix-runtime/patch";
 import tablesExtension, { styleTable } from "../src/tables.js";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
@@ -104,17 +105,12 @@ describe("tablesExtension", () => {
 
 	it("a reloaded module replaces the old wrapper around Pi's own renderer", async () => {
 		const renderTable = () => Reflect.get(Markdown.prototype, "renderTable");
-		const native = Reflect.get(
-			Markdown.prototype,
-			Symbol.for("@xynogen/pix-display:native-render-table"),
-		);
+		const native = Reflect.get(Markdown.prototype, nativeMethodKey("renderTable"));
 		const reloaded = await import(`../src/tables.ts?reload=${Date.now()}`);
 		const before = renderTable();
 		// SAFETY: the extension only calls pi.on("session_start", ...), which this stub covers.
 		reloaded.default({ on: () => undefined } as unknown as ExtensionAPI);
 		expect(renderTable()).not.toBe(before);
-		expect(
-			Reflect.get(Markdown.prototype, Symbol.for("@xynogen/pix-display:native-render-table")),
-		).toBe(native);
+		expect(Reflect.get(Markdown.prototype, nativeMethodKey("renderTable"))).toBe(native);
 	});
 });

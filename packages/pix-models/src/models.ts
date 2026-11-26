@@ -1,16 +1,18 @@
 /**
  * models.ts — enhanced /model command with benchlm rank + score
  *
- * Takes over Pi's built-in /model name (see patch-builtin.ts). Each row shows:
+ * Takes over Pi's built-in /model picker (in-memory wrap, see modelPickerExtension). Each row shows:
  *   <name>  <provider> · <ctx> · <cost> · 🏅 #rank score
  *
  * Sorted by benchlm rank when available (best first), then alphabetical.
  */
 
 import { modalOverlayOptions } from "@xynogen/pix-pretty/modal-frame";
+import { InteractiveMode } from "@xynogen/pix-pretty/tui";
+import { getErrorMessage } from "@xynogen/pix-runtime/errors";
 import type { ExtensionAPI, ExtensionContext } from "@xynogen/pix-runtime/host";
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
-import { patchOutBuiltinModelCommand } from "./patch-builtin";
+import { wrapMethod } from "@xynogen/pix-runtime/patch";
 import { nonChatNotice, type PickerSource } from "./picker-rows.ts";
 import { MODEL_REFRESH_TIMEOUT_MS, ModelPickerView, type ModelSource } from "./picker-view.ts";
 import { registerProjectPrefs } from "./project-prefs";
@@ -141,16 +143,29 @@ async function applySelection(
 	// Persistence happens in project-prefs.ts via the model_select event.
 }
 
+/**
+ * Route Pi's own `/model` (typed command, Ctrl+L, `/model <term>`) to the pix picker by
+ * wrapping InteractiveMode.showModelSelector in memory. Pi's handler still resolves an exact
+ * `/model <id>` itself and only reaches the selector for a search. Without pix loaded, or
+ * before session_start gives a context, Pi opens its own picker.
+ */
 export default function modelPickerExtension(pi: ExtensionAPI) {
-	// Route Pi's built-in /model (autocomplete entry and submit shortcut) to this picker.
-	// Self-healing: re-applies on every load, so a Pi upgrade can't restore it.
-	patchOutBuiltinModelCommand();
-
-	registerProjectPrefs(pi);
-	pi.registerCommand("model", {
-		description: "Enhanced model picker — shows benchlm rank + score",
-		handler: async (args, ctx) => {
-			await showEnhancedPicker(pi, ctx, typeof args === "string" ? args.trim() : "");
-		},
+	let ctx: ExtensionContext | undefined;
+	pi.on("session_start", (_event, next) => {
+		ctx = next;
 	});
+	wrapMethod(
+		InteractiveMode.prototype,
+		"showModelSelector",
+		(native) =>
+			function showModelSelector(this: unknown, initialSearch?: string) {
+				if (!ctx) return native.call(this, initialSearch);
+				const active = ctx;
+				// Pi ignores the return value; tests await it.
+				return showEnhancedPicker(pi, active, initialSearch ?? "").catch((error) =>
+					active.ui.notify(`Model picker failed: ${getErrorMessage(error)}`, "error"),
+				);
+			},
+	);
+	registerProjectPrefs(pi);
 }
