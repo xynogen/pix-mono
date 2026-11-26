@@ -124,13 +124,16 @@ test("core awaits member factories in order and skips a failing member", async (
 		// A member listed in pix.json extensions.disabled is never imported or run.
 		const runtime = pixRuntime();
 		await runtime.update(extensionsSection, {
-			disabled: ["@xynogen/pix-footer", "@xynogen/pix-gate"],
+			disabled: ["@xynogen/pix-footer", "@xynogen/pix-gate", "@xynogen/pix-runtime"],
 		});
 		try {
 			seen.length = 0;
 			fail = false;
 			await extension({ ...pi, on() {} } as never);
-			expect(seen).toEqual(members.filter((m) => m !== "@xynogen/pix-footer/extension"));
+			// Gate can be turned off; runtime is locked and still loads.
+			expect(seen).toEqual(
+				members.filter((m) => m !== "@xynogen/pix-footer/extension" && m !== "@xynogen/pix-gate"),
+			);
 		} finally {
 			await runtime.update(extensionsSection, { disabled: [] });
 		}

@@ -61,7 +61,7 @@ Pi activates extensions per installed package via each package's `pi.extensions`
 
 `/pix extensions` lists every pix package.
 
-- **Core members**: enter turns a member on or off. The toggle is only marked `pending` until you leave the tab or close `/pix`; then one prompt lists every pending change. Pix-core skips a member that is off on the next load, so it is never imported. The list is `extensions.disabled` in `~/.pi/agent/pix.json`. `runtime`, `data`, and `pretty` always stay on, because every member needs them. `gate` always stays on, because it protects you from dangerous commands.
+- **Core members**: enter turns a member on or off. The toggle is only marked `pending` until you leave the tab or close `/pix`; then one prompt lists every pending change. Pix-core skips a member that is off on the next load, so it is never imported. The list is `extensions.disabled` in `~/.pi/agent/pix.json`. `runtime`, `data`, and `pretty` always stay on, because every member needs them. Turning `gate` off removes the approval prompt for dangerous commands, so the prompt warns about it; to keep the gate but drop only its built-in rules, set Settings → Gate → Guardrails to `off`.
 - **Standalone packages**: pix packages that pix-core does not load (`pix-mcp`, `pix-web`, `pix-9router`, and others). Enter installs or removes one with `pi install` or `pi remove`, after you confirm. Install downloads from npm. A package you installed from a local path is removed by that path.
 
 Every change needs a fresh Pi process: `/reload` is not enough, because runtime patches from the old load stay in the process. So every change asks first. Allow writes it and closes Pi; start Pi again to load it. Deny writes nothing.

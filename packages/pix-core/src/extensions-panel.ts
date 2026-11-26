@@ -15,6 +15,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@xynogen/pix-runtime
 import { readPiSettings } from "@xynogen/pix-runtime/pi-settings";
 import { extensionsSection } from "@xynogen/pix-runtime/sections";
 import {
+	GATE,
 	installedStandalone,
 	LOCKED_MEMBERS,
 	memberPackage,
@@ -98,6 +99,9 @@ export async function confirmStaged(
 		title: "Apply extension changes?",
 		body: [
 			changes.charAt(0).toUpperCase() + changes.slice(1),
+			...(staged.includes(GATE) && !saved.includes(GATE)
+				? ["", "Gate off: dangerous commands run without asking."]
+				: []),
 			"",
 			"Pi closes to apply them: /reload cannot unload an extension.",
 			"Start Pi again afterwards. Deny changes nothing.",

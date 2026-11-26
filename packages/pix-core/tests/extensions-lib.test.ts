@@ -21,10 +21,11 @@ describe("extensions-lib", () => {
 		expect(shortName("@xynogen/pix-footer")).toBe("footer");
 	});
 
-	test("a disabled member is skipped; a locked member never is", () => {
+	test("a disabled member is skipped, gate included; a locked member never is", () => {
 		expect(isMemberDisabled("@xynogen/pix-welcome/extension", [WELCOME])).toBe(true);
 		expect(isMemberDisabled("@xynogen/pix-footer/extension", [WELCOME])).toBe(false);
-		expect(isMemberDisabled("@xynogen/pix-gate", ["@xynogen/pix-gate"])).toBe(false);
+		expect(isMemberDisabled("@xynogen/pix-gate", ["@xynogen/pix-gate"])).toBe(true);
+		expect(isMemberDisabled("@xynogen/pix-runtime", ["@xynogen/pix-runtime"])).toBe(false);
 	});
 
 	test("toggle adds and removes sorted; locked members never enter the list", () => {

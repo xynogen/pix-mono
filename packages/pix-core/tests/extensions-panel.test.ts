@@ -28,7 +28,7 @@ function contextAnswering(choice: "allow" | "deny") {
 					getKeybindings(),
 					resolve,
 				);
-				events.push(`prompt: ${view.render(80).find((line) => line.includes("isable")) ?? ""}`);
+				events.push(`prompt: ${view.render(80).join("\n")}`);
 				if (choice === "deny") view.handleInput("\x1b[B");
 				view.handleInput("\r");
 			}),
@@ -63,6 +63,15 @@ test("deny writes nothing and keeps Pi running", async () => {
 	await confirmStaged(ctx, [WELCOME]);
 	expect(config(extensionsSection).disabled).toEqual([]);
 	expect(events.filter((e) => !e.startsWith("prompt:"))).toEqual([]);
+});
+
+test("turning gate off warns in the prompt", async () => {
+	const { ctx, events } = contextAnswering("deny");
+	await confirmStaged(ctx, ["@xynogen/pix-gate"]);
+	expect(events[0]).toContain("Gate off: dangerous commands run without asking.");
+	const plain = contextAnswering("deny");
+	await confirmStaged(plain.ctx, [WELCOME]);
+	expect(plain.events[0]).not.toContain("Gate off");
 });
 
 test("staged toggles that cancel out do not prompt", async () => {

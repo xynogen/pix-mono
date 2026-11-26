@@ -8,13 +8,15 @@
  *   `pi install` / `pi remove`, recorded in Pi's settings.json `packages`.
  */
 
-/** Members that cannot be turned off: every other member depends on them, or they protect the user. */
+/** Members that cannot be turned off: every other member depends on them. */
 export const LOCKED_MEMBERS: ReadonlySet<string> = new Set([
 	"@xynogen/pix-runtime",
 	"@xynogen/pix-data",
 	"@xynogen/pix-pretty",
-	"@xynogen/pix-gate",
 ]);
+
+/** Turning this member off removes the approval prompt for dangerous commands. */
+export const GATE = "@xynogen/pix-gate";
 
 /** Pix packages Pi installs on their own, next to pix-core. */
 // Short names: a bare package string on its own line reads as an import to scripts/deps.test.ts.
