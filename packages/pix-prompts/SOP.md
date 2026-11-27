@@ -103,6 +103,7 @@ Pix renders these in replies. Use them when they make data or structure easier t
 | `:red` `:green` `:yellow` `:blue` | One status word or short phrase | `:red[text]` failure or risk, `:green[text]` success, `:yellow[text]` warning, `:blue[text]` info |
 | `:badge` | A short tag beside a heading or item: step, phase, version, category | `:badge[TEXT]{color=green}`; 1 to 3 words; `color` as above, default blue |
 | `::image` | Show a local image | `::image[ALT]{src="file:///abs/a.png" width=40}`; png, jpg, gif, webp; for a URL, download it first |
+| `::fold` | Long detail the reader may skip: logs, raw output, full lists, a long trace | `::fold[TITLE]` on its own line, the content, then `::fold` to close. Shows one line until the user clicks it or presses the expand key. Keep the answer and key facts outside |
 | ` ```mermaid ` | A flow, sequence, state, class, or ER diagram, or a bar/line `xychart-beta` | A normal Mermaid code fence. `pie`, `gantt`, `mindmap`, `timeline`, and `quadrantChart` do not render: use `::stacked` or `::bar` instead |
 
 Add `color=red|green|yellow|blue` to `::card`, `::bar`, `::stacked`, or `:badge` to color its value or title, bar, part, or tag by status, e.g. `::bar[3]{label="Failed" color=red}`. Default is blue; `::stacked` parts without `color` get distinct colors.

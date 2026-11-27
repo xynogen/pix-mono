@@ -23,6 +23,7 @@ import {
 	wrapTextWithAnsi,
 } from "@xynogen/pix-pretty/tui";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
+import { foldsOpen, renderFolds } from "./fold.ts";
 import { parseImage, renderImage } from "./image.ts";
 import { renderMathBlocks } from "./math.ts";
 import { renderMermaidBlocks } from "./mermaid.ts";
@@ -478,9 +479,10 @@ export function renderDirectives(markdown: string, width: number): string {
 	return out.join("\n");
 }
 
-/** The display pipeline for assistant Markdown: Mermaid, math, then directives. */
+/** The display pipeline for assistant Markdown: folds, Mermaid, math, then directives. */
 export function renderDisplayMarkdown(markdown: string, width: number): string {
-	return renderDirectives(renderMathBlocks(renderMermaidBlocks(markdown, width), width), width);
+	const unfolded = renderFolds(markdown, foldsOpen());
+	return renderDirectives(renderMathBlocks(renderMermaidBlocks(unfolded, width), width), width);
 }
 
 export default function directivesExtension(pi: ExtensionAPI): void {
