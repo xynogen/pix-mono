@@ -20,7 +20,6 @@ import {
 import { padIcon } from "@xynogen/pix-pretty/render-row";
 import {
 	fuzzyFilter,
-	Input,
 	Key,
 	type KeybindingsManager,
 	matchesKey,
@@ -34,6 +33,7 @@ import { registerPackageSettings } from "@xynogen/pix-runtime";
 import { config, pixRuntime, updateConfig } from "@xynogen/pix-runtime/config";
 import { createHash } from "@xynogen/pix-runtime/crypto";
 import type { ExtensionAPI, ExtensionContext, ToolInfo } from "@xynogen/pix-runtime/host";
+import { ListFilter } from "@xynogen/pix-runtime/list-filter";
 import { once } from "@xynogen/pix-runtime/once";
 import { toolboxSection } from "@xynogen/pix-runtime/sections";
 import { isSubTabKey, renderSubTabBar, renderTabRule } from "@xynogen/pix-runtime/tab-bar";
@@ -487,7 +487,7 @@ function register(pi: ExtensionAPI): void {
 					renderTabRule(theme, width),
 				];
 
-				const search = new Input();
+				const search = new ListFilter();
 				let statusText = "";
 				const pager = new ModalPager();
 
@@ -530,21 +530,21 @@ function register(pi: ExtensionAPI): void {
 				const switchTab = () => {
 					tab = TABS[(TABS.indexOf(tab) + 1) % TABS.length] ?? "Tools";
 					statusText = "";
-					applyFilter(search.getValue?.() ?? "");
+					applyFilter(search.query);
 					pager.followSelection();
 				};
 
 				list.onSelect = () => done(null);
 				list.onCancel = () => done(null);
-				search.onEscape = () => done(null);
 
 				return {
 					render(w: number) {
 						const mw = modalWidth(w);
 						const inner = mw - 4; // CHROME = 2 border + 2 padding
 						const footer = statusText ? ["", statusText] : [""];
+						const shown = internal.filteredItems.length;
 						// maxVisible = all items, so list line i is filteredItems[i].
-						const body = list.render(inner);
+						const body = shown ? list.render(inner) : [search.noMatch(theme)];
 						const selLine = internal.selectedIndex;
 						const selected = list.getSelectedItem();
 						const row = selected && byValue.get(selected.value);
@@ -562,20 +562,24 @@ function register(pi: ExtensionAPI): void {
 								: "",
 						);
 						footer.push(
-							[
-								guide("↑↓", "move"),
-								...(fixed || !row
-									? []
-									: [
-											guide("space/enter", "change"),
-											guide("ctrl+e", "enable"),
-											...(canDefer(row) ? [guide("ctrl+f", "defer")] : []),
-											guide("ctrl+d", "disable"),
-										]),
-								guide("`", "sub-tab"),
-								guide("←→/PgUp/PgDn", "inspect"),
-								guide("esc", "close"),
-							].join(guideSep),
+							(search.typing
+								? search.guides().map(([key, action]) => guide(key, action))
+								: [
+										guide("↑↓", "move"),
+										...(fixed || !row
+											? []
+											: [
+													guide("space/enter", "change"),
+													guide("ctrl+e", "enable"),
+													...(canDefer(row) ? [guide("ctrl+f", "defer")] : []),
+													guide("ctrl+d", "disable"),
+												]),
+										guide("`", "sub-tab"),
+										...search.guides().map(([key, action]) => guide(key, action)),
+										guide("←→/PgUp/PgDn", "inspect"),
+										guide("esc", "close"),
+									]
+							).join(guideSep),
 						);
 						const result = frameModal({
 							width: mw,
@@ -584,8 +588,7 @@ function register(pi: ExtensionAPI): void {
 							header: [
 								theme.fg(accent, theme.bold("🧰  Toolbox")),
 								...tabBar(inner),
-								theme.fg("dim", "Search:"),
-								...search.render(inner),
+								search.line(theme, inner, shown, internal.items.filter(inTab).length),
 								"",
 							],
 							body,
@@ -601,19 +604,27 @@ function register(pi: ExtensionAPI): void {
 					},
 					invalidate() {
 						list.invalidate();
-						search.invalidate();
 					},
 					handleInput(data: string) {
 						if (pager.handleInput(data, keybindings, true)) {
 							tui.requestRender?.();
 							return;
 						}
-						if (matchesKey(data, Key.up) || matchesKey(data, Key.down)) {
+						if (search.typing && !matchesKey(data, Key.up) && !matchesKey(data, Key.down)) {
+							search.handleInput(data);
+							applyFilter(search.query);
+							pager.followSelection();
+						} else if (matchesKey(data, Key.up) || matchesKey(data, Key.down)) {
 							list.handleInput?.(data);
 							pager.followSelection();
 						} else if (matchesKey(data, Key.escape)) {
-							done(null);
-							return;
+							if (!search.clear()) {
+								done(null);
+								return;
+							}
+							applyFilter("");
+						} else if (matchesKey(data, "/")) {
+							search.open();
 						} else if (isSubTabKey(data)) {
 							switchTab();
 						} else if (matchesKey(data, Key.space) || matchesKey(data, Key.enter)) {
@@ -624,11 +635,6 @@ function register(pi: ExtensionAPI): void {
 							setSelected("deferred");
 						} else if (matchesKey(data, Key.ctrl("d"))) {
 							setSelected("disabled");
-						} else {
-							// Every other key goes to the search. Ctrl hotkeys never collide with typed text.
-							search.handleInput?.(data);
-							applyFilter(search.getValue?.() ?? "");
-							pager.followSelection();
 						}
 						list.invalidate();
 						tui.requestRender?.();

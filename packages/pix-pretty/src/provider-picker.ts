@@ -18,6 +18,7 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
+import { ListFilter } from "@xynogen/pix-runtime/list-filter";
 import { isSubTabKey, nextTab, renderSubTabBar, renderTabRule } from "@xynogen/pix-runtime/tab-bar";
 import {
 	frameModal,
@@ -198,6 +199,44 @@ export function filterChoices(choices: SettingsChoice[], query: string): Setting
 
 export type SettingsAction = { key: string; value?: string };
 
+const COLUMN_GAP = 3;
+
+/**
+ * Plain toggle rows (no headings, choices or text fields) in column-major columns, so a long
+ * list fills the modal's width instead of paging down one narrow column. One column when the
+ * rows do not fit two. Exported for tests.
+ */
+export function settingsColumns(rows: SettingsRow[], width: number): number {
+	if (rows.length < 8 || rows.some((row) => row.section || row.choices?.length || row.editable))
+		return 1;
+	const labelWidth = Math.max(...rows.map((row) => visibleWidth(row.label)));
+	const valueWidth = Math.max(...rows.map((row) => visibleWidth(row.value)));
+	const cell = 2 + labelWidth + 2 + valueWidth;
+	return Math.max(1, Math.min(4, Math.floor((width + COLUMN_GAP) / (cell + COLUMN_GAP))));
+}
+
+function renderColumns(
+	rows: SettingsRow[],
+	theme: Pick<PickerTheme, "fg">,
+	selected: number,
+	columns: number,
+): { lines: string[]; rowLines: number[] } {
+	const labelWidth = Math.max(...rows.map((row) => visibleWidth(row.label)));
+	const valueWidth = Math.max(...rows.map((row) => visibleWidth(row.value)));
+	const perColumn = Math.ceil(rows.length / columns);
+	const lines: string[] = Array.from({ length: perColumn }, () => "");
+	const rowLines: number[] = [];
+	rows.forEach((row, index) => {
+		const line = index % perColumn;
+		const active = index === selected;
+		const labelRole = active ? "accent" : row.dim ? "dim" : "text";
+		const cell = `${active ? theme.fg("accent", "→") : " "} ${theme.fg(labelRole, row.label.padEnd(labelWidth))}  ${theme.fg(row.tone ?? "success", row.value.padEnd(valueWidth))}`;
+		lines[line] += (index >= perColumn ? " ".repeat(COLUMN_GAP) : "") + cell;
+		rowLines[index] = line;
+	});
+	return { lines, rowLines };
+}
+
 /** Render the sectioned settings overview body. Exported for tests. */
 export function renderSettingsRows(
 	rows: SettingsRow[],
@@ -207,6 +246,8 @@ export function renderSettingsRows(
 	width = 80,
 	list?: { choices: SettingsChoice[]; cursor: number; query: string; max?: number },
 ): { lines: string[]; rowLines: number[]; listLine?: number } {
+	const columns = field || list ? 1 : settingsColumns(rows, width);
+	if (columns > 1) return renderColumns(rows, theme, selected, columns);
 	const labelWidth = Math.max(...rows.map((row) => row.label.length));
 	const lines: string[] = [];
 	const rowLines: number[] = [];
@@ -280,6 +321,8 @@ export interface SettingsPickerOptions {
 	 * Off by default; one section shows no tab bar.
 	 */
 	sectionTabs?: boolean;
+	/** The shared `/pix` search line: `/` filters rows by label or section across every sub-tab. */
+	search?: boolean;
 }
 
 /**
@@ -298,7 +341,14 @@ export async function showSettingsPicker(
 			const sectionsOf = (list: SettingsRow[]) => [...new Set(list.map((row) => row.section))];
 			// Start on the section of the requested row, so a reopened panel keeps its place.
 			let tab = opts.sectionTabs ? (all[opts.selected ?? 0]?.section ?? all[0]?.section ?? "") : "";
-			const visible = () => (tab ? all.filter((row) => row.section === tab) : all);
+			const filter = opts.search ? new ListFilter() : undefined;
+			// A query searches every sub-tab, like the /pix Settings tab.
+			const visible = () =>
+				filter?.query
+					? all.filter((row) => filter.matches(row.label, row.section))
+					: tab
+						? all.filter((row) => row.section === tab)
+						: all;
 			let rows = visible();
 			let selected = Math.max(
 				0,
@@ -352,6 +402,28 @@ export async function showSettingsPicker(
 				const index = (row.choices ?? []).findIndex((choice) => choice.value === row.value);
 				list = { row, query: "", cursor: Math.max(0, index) };
 			};
+			// Columns the last frame drew: ←→ jump a column, ↑↓ walk down one and on into the next.
+			let columns = 1;
+			const move = (step: -1 | 1) => {
+				if (rows.length) selected = (selected + step + rows.length) % rows.length;
+			};
+			const moveColumn = (step: -1 | 1) => {
+				const perColumn = Math.ceil(rows.length / columns);
+				const next = selected + step * perColumn;
+				if (next >= 0 && next < rows.length) selected = next;
+				else if (step > 0) selected = rows.length - 1;
+			};
+			/** Search input open: ↑↓ move through the matches, every other key edits the query. */
+			const searchInput = (search: ListFilter, data: string) => {
+				if (keybindings.matches(data, "tui.select.up")) move(-1);
+				else if (keybindings.matches(data, "tui.select.down")) move(1);
+				else {
+					search.handleInput(data);
+					rows = visible();
+					selected = Math.min(selected, Math.max(0, rows.length - 1));
+				}
+				redraw();
+			};
 			const listInput = (data: string) => {
 				if (!list) return;
 				const choices = listChoices();
@@ -384,14 +456,20 @@ export async function showSettingsPicker(
 				render(width: number) {
 					const mw = modalWidth(width);
 					const tabs = tab ? sectionsOf(all) : [];
+					const shown =
+						tabs.length > 1 && !filter?.query ? rows.map((row) => ({ ...row, section: "" })) : rows;
+					columns = field || list ? 1 : settingsColumns(shown, mw - 4);
 					const body = renderSettingsRows(
-						tabs.length > 1 ? rows.map((row) => ({ ...row, section: "" })) : rows,
+						// Sub-tabs name the section; search results span sections, so they keep headings.
+						shown,
 						theme,
 						selected,
 						field,
 						mw - 4,
 						list && { choices: listChoices(), cursor: list.cursor, query: list.query },
 					);
+					if (filter && rows.length === 0) body.lines.push(filter.noMatch(theme));
+					const searchLine = filter ? [filter.line(theme, mw - 4, rows.length, all.length)] : [];
 					const status = opts.status?.() ?? [];
 					if (error) status.push(theme.fg("error", error));
 					if (status.length) body.lines.push("", ...status);
@@ -403,8 +481,14 @@ export async function showSettingsPicker(
 						titleColor: (text) => theme.fg("accent", theme.bold(text)),
 						header:
 							tabs.length > 1
-								? [renderSubTabBar(tabs, tab, theme, mw - 4), renderTabRule(theme, mw - 4)]
-								: [""],
+								? [
+										renderSubTabBar(tabs, tab, theme, mw - 4),
+										renderTabRule(theme, mw - 4),
+										...searchLine,
+									]
+								: searchLine.length
+									? searchLine
+									: [""],
 						body: body.lines,
 						footer: [
 							"",
@@ -414,7 +498,9 @@ export async function showSettingsPicker(
 									? "enter save · esc cancel"
 									: list
 										? "type to filter · ↑↓ move · enter pick · esc cancel"
-										: `↑↓ move · space/enter${all.some((row) => row.choices?.length) ? "/←→" : ""} change${tabs.length > 1 ? " · ` sub-tab" : ""} · esc close`,
+										: filter?.typing
+											? "↑↓ move · enter keep · esc clear"
+											: `↑↓${columns > 1 ? "←→" : ""} move · space/enter${all.some((row) => row.choices?.length) ? "/←→" : ""} change${tabs.length > 1 ? " · ` sub-tab" : ""}${filter ? " · / search" : ""} · esc close`,
 							),
 						],
 						selectedBodyLine: body.listLine ?? body.rowLines[selected],
@@ -430,10 +516,22 @@ export async function showSettingsPicker(
 						return redraw();
 					}
 					if (list) return listInput(data);
-					if (keybindings.matches(data, "tui.select.cancel")) return close(null);
+					if (filter?.typing) return searchInput(filter, data);
+					if (keybindings.matches(data, "tui.select.cancel")) {
+						if (!filter?.clear()) return close(null);
+						rows = visible();
+						selected = 0;
+						return redraw();
+					}
 					if (busy) return;
+					if (filter && matchesKey(data, "/")) {
+						filter.open();
+						selected = 0;
+						return redraw();
+					}
 					if (tab && isSubTabKey(data)) {
 						tab = nextTab(sectionsOf(all), tab);
+						filter?.clear();
 						rows = visible();
 						selected = 0;
 						return redraw();
@@ -447,6 +545,10 @@ export async function showSettingsPicker(
 						else void run({ key: row.key });
 						return redraw();
 					}
+					if (columns > 1 && (matchesKey(data, Key.left) || matchesKey(data, Key.right))) {
+						moveColumn(matchesKey(data, Key.left) ? -1 : 1);
+						return redraw();
+					}
 					if (row?.choices?.length && (matchesKey(data, Key.left) || matchesKey(data, Key.right))) {
 						const at = row.choices.findIndex((choice) => choice.value === row.value);
 						const step = matchesKey(data, Key.left) ? -1 : 1;
@@ -454,10 +556,8 @@ export async function showSettingsPicker(
 						if (next && next.value !== row.value) void run({ key: row.key, value: next.value });
 						return redraw();
 					}
-					if (keybindings.matches(data, "tui.select.up"))
-						selected = (selected - 1 + rows.length) % rows.length;
-					else if (keybindings.matches(data, "tui.select.down"))
-						selected = (selected + 1) % rows.length;
+					if (keybindings.matches(data, "tui.select.up")) move(-1);
+					else if (keybindings.matches(data, "tui.select.down")) move(1);
 					else return;
 					redraw();
 				},

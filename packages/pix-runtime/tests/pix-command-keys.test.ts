@@ -77,8 +77,8 @@ afterEach(() => {
 /** Register /pix against a mock host + isolated runtime and open its overlay. */
 async function openOverlay(
 	kb = getKeybindings(),
-	// Header is tab bar, rule, sub-tabs, rule: leave room for a few setting rows.
-	rows = 14,
+	// Header is tab bar, rule, sub-tabs, rule, search: leave room for a few setting rows.
+	rows = 15,
 	themes: string[] = [],
 ): Promise<Driver> {
 	const iso = createIsolatedRuntime();
@@ -397,6 +397,34 @@ describe("/pix overlay keys (guards)", () => {
 	});
 });
 
+describe("/pix settings filter", () => {
+	it("/ searches every sub-tab, esc clears the query, a second esc closes", async () => {
+		const d = await openOverlay(getKeybindings(), 40);
+		d.feed("/");
+		for (const ch of "timeout") d.feed(ch);
+		// Network lives on the Behaviour sub-tab; the filter finds it from Appearance.
+		expect(d.cursorLine()).toContain("timeout");
+		expect(d.lines().join("\n")).not.toContain("icons");
+		d.feed("\r"); // keep the filter; keys act on rows again
+		d.feed("\u001b[C");
+		await d.settle();
+		expect(d.timeoutValue()).not.toBe(ioSection.defaults.timeoutSec);
+		d.feed("\u001b");
+		expect(d.closed()).toBe(false);
+		expect(d.lines().join("\n")).toContain("icons");
+		d.feed("\u001b");
+		expect(d.closed()).toBe(true);
+	});
+
+	it("shows a no-match line instead of an empty list", async () => {
+		const d = await openOverlay(getKeybindings(), 40);
+		d.feed("/");
+		for (const ch of "zzz") d.feed(ch);
+		expect(d.lines().join("\n")).toContain('no match for "zzz"');
+		d.feed("\u001b[B"); // ↓ on an empty list must not throw
+	});
+});
+
 describe("/pix tabs", () => {
 	const TAB = { legacy: "\t", kitty: "\u001b[9u" } as const;
 	const SHIFT_TAB = { legacy: "\u001b[Z", kitty: "\u001b[9;2u" } as const;
@@ -447,7 +475,7 @@ describe("/pix tabs", () => {
 		const d = await openOverlay(getKeybindings(), 60);
 		d.feed(SHIFT_TAB.legacy);
 		const before = d.lines();
-		const detail = /│ \S+ · used by [\w-]+(, [\w-]+)*\s*│/;
+		const detail = /│ \S+ used by [\w-]+(, [\w-]+)*\s*│/;
 		expect(before.join("\n")).toMatch(detail);
 		d.feed(KEYS.down.legacy);
 		const after = d.lines();
@@ -468,7 +496,7 @@ describe("/pix tabs", () => {
 		// The last other-platform row differs per host OS, so match its shape, not a name.
 		const lines = d.lines();
 		const cursor = lines.findIndex((l) => /│ → /.test(l));
-		expect(lines[cursor]).toMatch(/│ → ○\s+[\w-]+\s+not used on this OS/);
+		expect(lines[cursor]).toMatch(/│ → ○\s+[\w-]+\s+\S/);
 		expect(lines[cursor + 1]).toMatch(/^│\s+│$/);
 	});
 

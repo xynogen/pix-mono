@@ -10,6 +10,7 @@ import { ensureTool, type ToolStatus } from "./binaries/ensure.ts";
 import { listTools, type ToolLookup, toolVersion } from "./binaries/resolve.ts";
 import { readBinaryStore, setBinaryChoice, syncBinaryStore } from "./binaries/store.ts";
 import { type IconKey, icon } from "./icon-catalog.ts";
+import { ListFilter } from "./list-filter.ts";
 
 export interface TabTheme {
 	fg(color: string, text: string): string;
@@ -26,6 +27,8 @@ export interface TabView {
 	header: string[];
 	body: string[];
 	selectedBodyLine?: number;
+	/** Fixed context lines between the list and the keys: selected row, then the store file. */
+	info: string[];
 	/** Key/action guide pairs. */
 	footer: Array<[string, string]>;
 }
@@ -86,16 +89,11 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 	const versions = new Map<string, string | null>();
 	const installing = new Set<string>();
 	let editor: { name: string; input: Input } | undefined;
-	/** Name/used-by filter. `typing` holds the input while the user types it. */
-	let query = "";
-	let typing: Input | undefined;
+	/** Name/used-by filter. */
+	const filter = new ListFilter();
 
 	/** Rows that match the filter, in display order. */
-	const shown = (): ToolLookup[] => {
-		const q = query.trim().toLowerCase();
-		if (!q) return rows;
-		return rows.filter((r) => [r.name, ...r.usedBy].some((t) => t.toLowerCase().includes(q)));
-	};
+	const shown = (): ToolLookup[] => rows.filter((r) => filter.matches(r.name, ...r.usedBy));
 
 	const refresh = () => {
 		const store = syncBinaryStore(env);
@@ -152,7 +150,7 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 	return {
 		/** True while the path editor or the filter owns the keyboard (esc/tab must not leave the tab). */
 		get editing(): boolean {
-			return editor !== undefined || typing !== undefined;
+			return editor !== undefined || filter.typing;
 		},
 
 		/** True while the path editor is open. It keeps ↑↓ for itself. */
@@ -164,8 +162,7 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 
 		/** Esc with a kept filter clears it before it closes the overlay. True when it cleared one. */
 		clearFilter(): boolean {
-			if (!query) return false;
-			query = "";
+			if (!filter.clear()) return false;
 			selected = 0;
 			return true;
 		},
@@ -176,11 +173,8 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 				return true;
 			}
 			const count = Math.max(1, shown().length);
-			if (typing && !keys.up && !keys.down) {
-				const input = typing;
-				input.handleInput(data);
-				// onEscape clears the query and closes the input. Keep that result.
-				if (typing === input) query = input.getValue();
+			if (filter.typing && !keys.up && !keys.down) {
+				filter.handleInput(data);
 				selected = Math.min(selected, Math.max(0, shown().length - 1));
 				return true;
 			}
@@ -218,21 +212,7 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 				};
 				editor = { name: row.name, input };
 			} else if (matchesKey(data, "/")) {
-				const input = new Input({ prompt: "filter: " });
-				input.focused = true;
-				if (query) input.handleInput(`\x1b[200~${query}\x1b[201~`);
-				// Live filter: every keystroke narrows the list. Enter keeps it, esc clears it.
-				input.onSubmit = () => {
-					typing = undefined;
-					opts.requestRender();
-				};
-				input.onEscape = () => {
-					typing = undefined;
-					query = "";
-					selected = 0;
-					opts.requestRender();
-				};
-				typing = input;
+				filter.open();
 				selected = 0;
 			} else if (matchesKey(data, "d") && row) save(row.name, null);
 			else if (matchesKey(data, "r")) {
@@ -257,15 +237,24 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 				const row = list[i] as ToolLookup;
 				if (row.state === "unsupported" && !otherHeader) {
 					otherHeader = true;
-					body.push("", theme.fg("dim", "  Other platforms"));
+					body.push("", theme.fg("dim", "  Other platforms (not used here)"));
 				}
 				const sel = i === selected;
 				const cursor = sel ? theme.fg("accent", "→") : " ";
 				const soft = row.optional && row.state === "missing";
-				const glyph = soft
-					? theme.fg("muted", icon("status.pending"))
+				// Color = priority: red/yellow rows need action, healthy rows read plain,
+				// optional and other-platform rows recede.
+				const quiet = soft || row.state === "unsupported";
+				const glyph = quiet
+					? theme.fg("dim", icon("status.pending"))
 					: theme.fg(STATE_COLOR[row.state], icon(STATE_ICON[row.state]));
-				const nameColor = row.state === "unsupported" ? "muted" : sel ? "accent" : "text";
+				const nameColor = sel
+					? "accent"
+					: quiet
+						? "dim"
+						: row.state === "ok"
+							? "text"
+							: STATE_COLOR[row.state];
 				const name = theme.fg(nameColor, row.name.padEnd(nameW));
 				const busy = installing.has(row.name);
 				let detail: string;
@@ -278,73 +267,71 @@ export function createBinariesTab(opts: BinariesTabOptions) {
 					const tag = ` · ${meta}`;
 					const room = inner - lead;
 					const pathRoom = Math.max(12, room - Math.min(tag.length, Math.max(0, room - 12)));
-					detail = `${theme.fg("dim", middleTruncate(row.path ?? "", pathRoom))}${theme.fg("muted", tag)}`;
+					detail = `${theme.fg("muted", middleTruncate(row.path ?? "", pathRoom))}${theme.fg("dim", tag)}`;
 				} else if (row.state === "broken") {
 					detail = row.error
 						? theme.fg("warning", "blocked: binary.json is invalid")
-						: `${theme.fg("warning", `${row.choice} (not found)`)} ${theme.fg("muted", "· binary.json")}`;
+						: `${theme.fg("warning", `${row.choice} not found`)}${theme.fg("dim", " · binary.json")}`;
 				} else if (busy) {
 					detail = theme.fg("accent", "installing…");
 				} else if (soft) {
-					detail = theme.fg("muted", `not installed (optional) · ${row.hint}`);
+					detail = theme.fg("dim", `optional · ${row.hint}`);
 				} else if (row.state === "missing") {
 					detail = row.downloadable
-						? `${theme.fg("warning", "missing")} ${theme.fg("muted", "· enter to install")}`
-						: `${theme.fg("warning", "missing")} ${theme.fg("muted", `· ${row.hint}`)}`;
+						? `${theme.fg("error", "missing")}${theme.fg("dim", " · ")}${theme.fg("accent", "enter to install")}`
+						: `${theme.fg("error", "missing")}${theme.fg("muted", ` · ${row.hint}`)}`;
 				} else {
-					detail = theme.fg("muted", `not used on this OS · ${row.hint}`);
+					detail = theme.fg("dim", row.hint);
 				}
 				if (sel) selectedBodyLine = body.length;
 				const line = `${cursor} ${glyph}${" ".repeat(iconW - visibleWidth(glyph))} ${name}  ${detail}`;
 				body.push(visibleWidth(line) > inner ? truncateToWidth(line, inner, "…") : line);
 			}
 
-			const header: string[] = [];
-			if (storeError)
-				header.push(theme.fg("error", `binary.json is invalid: ${storeError} — fix ${storePath}`));
-			else {
-				// Keep the file name (binary.json) visible: shorten the path's middle,
-				// and drop the lookup order before clipping anything else.
-				const order = " (bin → system → PATH → download)";
-				const tail = ` · unset = automatic${storePath.length + 7 + 20 + order.length <= inner ? order : ""}`;
-				const text = `paths: ${middleTruncate(storePath, Math.max(12, inner - 7 - tail.length))}${tail}`;
-				header.push(theme.fg("muted", truncateToWidth(text, inner, "…")));
-			}
+			// CLI layout: search above the list; context (selected row, file) below it, next to the keys.
+			const header: string[] = [filter.line(theme, inner, list.length, rows.length)];
 			// One fixed detail line (editor › action status › selected row) so the
 			// list never shifts as the cursor moves.
 			const current = list[selected];
-			if (editor) header.push(editor.input.render(Math.max(10, width - 4))[0] ?? "");
-			else if (typing) header.push(typing.render(Math.max(10, width - 4))[0] ?? "");
-			else if (status) header.push(theme.fg(status.color, status.text));
-			else if (current)
-				header.push(
-					`${theme.fg("accent", current.name)} ${theme.fg("muted", `· used by ${current.usedBy.join(", ") || "binary.json"}${current.state === "unsupported" ? " · not used on this OS" : ""}`)}`,
+			const info: string[] = [];
+			if (editor) info.push(editor.input.render(Math.max(10, inner))[0] ?? "");
+			else if (status) info.push(theme.fg(status.color, truncateToWidth(status.text, inner, "…")));
+			else if (current) {
+				const users = current.usedBy.join(", ") || "binary.json";
+				const other = current.state === "unsupported" ? " · not used on this OS" : "";
+				info.push(
+					truncateToWidth(
+						`${theme.fg("text", current.name)} ${theme.fg("muted", `used by ${users}${other}`)}`,
+						inner,
+						"…",
+					),
 				);
-			if (query && !typing)
-				header.push(
-					`${theme.fg("accent", `filter: ${query}`)} ${theme.fg("muted", `· ${list.length} of ${rows.length} · / change · esc clear`)}`,
-				);
+			} else info.push("");
+			if (storeError)
+				info.push(theme.fg("error", `binary.json is invalid: ${storeError} — fix ${storePath}`));
+			else {
+				// Keep the file name (binary.json) visible: shorten the path's middle.
+				const tail = " · unset = automatic";
+				const text = `${middleTruncate(storePath, Math.max(12, inner - tail.length))}${tail}`;
+				info.push(theme.fg("dim", truncateToWidth(text, inner, "…")));
+			}
 
-			if (list.length === 0) body.push(theme.fg("muted", `  no binary matches "${query}"`));
+			if (list.length === 0) body.push(filter.noMatch(theme));
 			const footer: Array<[string, string]> = editor
 				? [
 						["enter", "save (empty = automatic)"],
 						["esc", "cancel"],
 					]
-				: typing
-					? [
-							["↑↓", "move"],
-							["enter", "keep filter"],
-							["esc", "clear filter"],
-						]
+				: filter.typing
+					? filter.guides()
 					: [
 							["enter", "install/re-check"],
-							["/", "filter"],
+							...filter.guides(),
 							["e", "set path"],
 							["d", "automatic"],
 							["r", "refresh"],
 						];
-			return { header, body, selectedBodyLine, footer };
+			return { header, body, selectedBodyLine, info, footer };
 		},
 
 		/** Plain-text block for headless `/pix`. */

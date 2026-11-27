@@ -52,6 +52,7 @@ describe("mcp-panel excludeTools", () => {
 			() => {},
 		);
 
+		panel.handleInput("/");
 		panel.handleInput("g");
 		panel.handleInput("e");
 		panel.handleInput("t");

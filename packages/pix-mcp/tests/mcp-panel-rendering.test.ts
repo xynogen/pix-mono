@@ -73,7 +73,7 @@ describe("mcp-panel rendering", () => {
 		expect(lines.join("\n")).toContain("<fg:accent><b>");
 		expect(lines.join("\n")).toContain("MCP servers</b></fg>");
 		expect(lines.join("\n")).toContain("servers · direct tools · estimated prompt cost");
-		expect(lines.join("\n")).toContain("<fg:dim>Search:</fg>");
+		expect(lines.join("\n")).toContain("<fg:muted>Search: </fg><fg:dim>/ to search</fg>");
 		panel.dispose();
 	});
 

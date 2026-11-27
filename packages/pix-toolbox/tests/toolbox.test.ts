@@ -264,7 +264,9 @@ function makeHost(
 							undefined,
 							() => {},
 						);
+						view.handleInput("/");
 						for (const ch of name) view.handleInput(ch);
+						view.handleInput("\r"); // keep the query; keys act on rows again
 						view.handleInput(HOTKEY[state]);
 						return null;
 					},
@@ -418,9 +420,11 @@ describe("/pix → Tools", () => {
 								view.handleInput("\x04");
 								expect(host.getActive()).not.toContain("ctx_docs");
 								screen("disabled status");
+								view.handleInput("/");
 								view.handleInput("zzzz");
 								screen("no match search");
-								view.handleInput("\x1b");
+								view.handleInput("\x1b"); // clears the query
+								view.handleInput("\x1b"); // closes
 							} catch (error) {
 								reject(error);
 							}
@@ -509,9 +513,12 @@ describe("/pix → Tools", () => {
 			setIconMode(savedMode);
 		}
 
-		// Plain letters type into the search, not a state change.
+		// Plain letters are not shortcuts and do not type; `/` opens the shared search line.
 		v.handleInput("d");
-		expect(screen()).toMatch(/> d/);
+		expect(screen()).toMatch(/Search: \/ to search/);
+		v.handleInput("/");
+		v.handleInput("d");
+		expect(screen()).toMatch(/Search: d/);
 	});
 });
 

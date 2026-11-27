@@ -5,6 +5,7 @@ import {
 	type ProviderPickerUI,
 	renderProviderRows,
 	renderSettingsRows,
+	settingsColumns,
 	showSettingsPicker,
 } from "../src/provider-picker.ts";
 
@@ -77,6 +78,71 @@ describe("settings overview modal", () => {
 		h.press("\r");
 		await Bun.sleep(0);
 		expect(h.frame()).toMatch(/play.*<success>on<\/success>[\s\S]*meter ██░░/);
+		h.press("\x1b");
+		expect(await result).toBeNull();
+	});
+
+	test("long toggle lists fill the width in columns; ←→ jump a column", async () => {
+		const names =
+			"runtime data pretty welcome footer models update commands nudge diagnostics display prompts skills read write edit find grep ls bash powershell todo ask optimizer gate notify".split(
+				" ",
+			);
+		const rows = names.map((name) => ({ key: name, section: "", label: name, value: "on" }));
+		const plainTheme = { fg: (_role: string, text: string) => text };
+		// 26 rows at 76 columns: 3 columns of 9, column-major.
+		expect(settingsColumns(rows, 76)).toBe(3);
+		const laid = renderSettingsRows(rows, plainTheme, 9, undefined, 76);
+		expect(laid.lines).toHaveLength(9);
+		expect(laid.lines[0]).toMatch(/^ {2}runtime\s+on\s+→ diagnostics\s+on\s+ls\s+on/);
+		expect(laid.rowLines[9]).toBe(0);
+		// Headings, choices or few rows keep the one-column list.
+		expect(settingsColumns(rows.slice(0, 5), 76)).toBe(1);
+		expect(
+			settingsColumns([...rows, { key: "x", section: "S", label: "x", value: "on" }], 76),
+		).toBe(1);
+
+		// The picker: → jumps one column down the list.
+		let acted = "";
+		const h = harness();
+		void showSettingsPicker(h.ui, {
+			title: "Extensions",
+			rows: () => rows,
+			onAction: ({ key }) => {
+				acted = key;
+				return undefined;
+			},
+		});
+		expect(h.frame()).toContain("move"); // the first render sets the column count
+		h.press("\x1b[C");
+		h.press("\r");
+		await Bun.sleep(0);
+		expect(names.indexOf(acted)).toBeGreaterThan(0);
+	});
+
+	test("search: / filters rows across sub-tabs; esc clears, then closes", async () => {
+		const h = harness();
+		const result = showSettingsPicker(h.ui, {
+			title: "Extensions",
+			sectionTabs: true,
+			search: true,
+			rows: () => [
+				{ key: "a", section: "Core", label: "footer", value: "on" },
+				{ key: "b", section: "Packages", label: "voice", value: "installed" },
+			],
+			onAction: () => undefined,
+		});
+		expect(h.frame()).toContain("Search: </muted><dim>/ to search");
+		h.press("/");
+		for (const char of "voi") h.press(char);
+		// voice lives on the Packages sub-tab; the search finds it from Core.
+		expect(h.frame()).toMatch(/→.*voice/);
+		expect(h.frame()).not.toContain("footer");
+		expect(h.frame()).toContain("1 of 2");
+		h.press("x");
+		expect(h.frame()).toContain('no match for "voix"');
+		h.press("\r");
+		h.press("\x1b");
+		expect(h.frame()).toContain("footer");
 		h.press("\x1b");
 		expect(await result).toBeNull();
 	});

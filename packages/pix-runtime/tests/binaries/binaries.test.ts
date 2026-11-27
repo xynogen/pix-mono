@@ -229,11 +229,11 @@ describe("resolve order", () => {
 			requestRender: () => {},
 		});
 		const body = tab.view(200).body;
-		expect(body.some((l) => l.trim() === "Other platforms")).toBe(true);
+		expect(body.some((l) => l.trim() === "Other platforms (not used here)")).toBe(true);
 		tab.handleInput("", { up: true, down: false, enter: false }); // wraps to the last row
 		const view = tab.view(200);
 		expect(view.selectedBodyLine).toBe(body.length - 1);
-		expect(view.header.join("\n")).toMatch(/not used on this OS/);
+		expect(view.info.join("\n")).toMatch(/not used on this OS/);
 		// d (automatic) on a read-only row writes nothing.
 		tab.handleInput("d", { up: false, down: false, enter: false });
 		expect(existsSync(binaryFilePath(s.env))).toBe(false);
@@ -266,12 +266,12 @@ describe("resolve order", () => {
 		for (const ch of "ssh") tab.handleInput(ch, none);
 		expect(rowNames()).toEqual(expect.arrayContaining(["ssh", "scp", "sshpass"]));
 		expect(rowNames().length).toBeLessThan(all);
-		expect(tab.view(200).header.join("\n")).toMatch(/filter: ssh/);
+		expect(tab.view(200).header.join("\n")).toMatch(/Search: ssh/);
 		tab.handleInput("", { ...none, down: true });
 		expect(tab.view(200).body[1]).toMatch(/^→ /);
 		tab.handleInput("\r", none); // enter keeps the filter and closes the input
 		expect(tab.editing).toBe(false);
-		expect(tab.view(200).header.join("\n")).toMatch(/filter: ssh · \d+ of \d+/);
+		expect(tab.view(200).header.join("\n")).toMatch(/Search: ssh +\d+ of \d+/);
 		expect(tab.clearFilter()).toBe(true);
 		expect(rowNames().length).toBe(all);
 	});

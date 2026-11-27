@@ -166,6 +166,7 @@ export function registerExtensionsPanel(pi: ExtensionAPI, members: readonly stri
 			await showSettingsPicker(ctx.ui, {
 				title: `${icon("settings")} Extensions`,
 				sectionTabs: true,
+				search: true,
 				rows: () => {
 					const saved = config(extensionsSection).disabled;
 					return extensionRows(members, saved, installed(), staged ?? saved);

@@ -78,12 +78,13 @@ const plain = (lines: readonly string[]): string =>
 
 for (const { name, enc } of ENCODINGS) {
 	describe(`mcp-panel printable keys (${name} encoding)`, () => {
-		it("typed characters land in the name-search query", () => {
+		it("/ opens name search; typed characters land in the query", () => {
 			const panel = openPanel();
+			panel.handleInput(enc("/"));
 			panel.handleInput(enc("a"));
 			panel.handleInput(enc("l"));
 			const text = plain(panel.render(100));
-			expect(text).toContain("al│");
+			expect(text).toContain("Search: al");
 			expect(text).toMatch(/alpha/);
 			// Cursor filtered to alpha (first match); + Add server row may also match fuzzy
 			expect(text).toMatch(/▶.*alpha/);
@@ -135,7 +136,7 @@ describe("mcp-panel printable keys (guards)", () => {
 		expect(text).toContain("alpha");
 		expect(text).toContain("bravo");
 		// query line stays empty (no 'a' typed into search)
-		expect(text).not.toContain("a│");
+		expect(text).toContain("Search: / to search");
 		panel.dispose();
 	});
 

@@ -52,6 +52,7 @@
 		"./sections": "./src/sections/index.ts",
 		"./sftp": "./src/sftp.ts",
 		"./sysstat": "./src/sysstat.ts",
+		"./list-filter": "./src/list-filter.ts",
 		"./tab-bar": "./src/tab-bar.ts",
 		"./testing": "./src/testing.ts",
 		"./tool-execution": "./src/tool-execution.ts",

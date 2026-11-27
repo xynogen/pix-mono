@@ -119,8 +119,10 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 		for (const character of "records") panel.handleInput(character);
 		capture("description-filter", panel);
 		panel.handleInput("\x1b");
+		panel.handleInput("/");
 		for (const character of "auth") panel.handleInput(character);
 		capture("name-filter", panel);
+		panel.handleInput("\r"); // keep the query
 		panel.handleInput("\r");
 		capture("auth-busy", panel);
 		let repaint = deferred<void>();
@@ -178,21 +180,22 @@ test("MCP server, add/edit, and setup modals preserve states and overflow", asyn
 			constrained.render(80);
 		}
 		capture("servers-constrained-last", constrained);
+		// The one-row Search line (was label + query rows) leaves one more row for servers.
 		for (const [name, page, first, count] of [
-			["servers-constrained", 1, 1, 6],
-			["servers-constrained-next", 2, 3, 8],
-			["servers-constrained-last", 5, 12, 7],
+			["servers-constrained", 1, 1, 7],
+			["servers-constrained-next", 2, 3, 9],
+			["servers-constrained-last", 4, 11, 8],
 		] as const) {
 			const rows = snap(name);
 			expect(rows).toHaveLength(19);
 			expect(rows.map((row) => visibleWidth(row.replace(/<[^>]+>/g, "")))).toEqual(
 				Array(19).fill(80),
 			);
-			expect(rows[5]).toContain(`PageUp/PageDown inspect • ${page}/5`);
+			expect(rows[4]).toContain(`PageUp/PageDown inspect • ${page}/4`);
 			expect([...rows.join("\n").matchAll(/server-\d{2}/g)].map(([name]) => name)).toEqual(
 				Array.from({ length: count }, (_, i) => `server-${String(first + i).padStart(2, "0")}`),
 			);
-			expect(rows.slice(0, 5)).toEqual(snap("servers-constrained").slice(0, 5));
+			expect(rows.slice(0, 4)).toEqual(snap("servers-constrained").slice(0, 4));
 			expect(rows.slice(-5)).toEqual(snap("servers-constrained").slice(-5));
 			expect(rows[0]).toBe(snap("auth-complete")[0]);
 			expect(rows.at(-1)).toBe(snap("auth-complete").at(-1));

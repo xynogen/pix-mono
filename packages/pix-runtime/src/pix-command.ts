@@ -18,6 +18,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { type BinariesTab, createBinariesTab } from "./binaries-tab.ts";
 import { icon } from "./icon-catalog.ts";
+import { ListFilter } from "./list-filter.ts";
 import { isPackageLoaded } from "./once.ts";
 import { type PixRuntime, pixRuntime } from "./runtime.ts";
 import { type DeepPartial, deepMerge, type SectionHandle } from "./schema.ts";
@@ -520,12 +521,12 @@ const CLOSE_GUIDES: Array<[string, string]> = [
 	["tab", "switch tab"],
 	["esc", "close"],
 ];
+/** Row keys; the search guide and CLOSE_GUIDES follow, in that order, on every built-in tab. */
 const SETTINGS_GUIDES: Array<[string, string]> = [
 	["↑↓", "move"],
 	["space/enter/←→", "change"],
 	["`", "sub-tab"],
-	["PgUp/PgDn", "inspect"],
-	...CLOSE_GUIDES,
+	// No PgUp/PgDn guide: the frame shows "PgUp/PgDn inspect" whenever the body overflows.
 ];
 
 /** The `/pix` overlay: built-in tabs (Settings, Binaries) plus package panels as tabs; Settings has `` ` `` sub-tabs. */
@@ -545,6 +546,8 @@ class PixSettingsView {
 	/** Rows `/pix` adds above an embedded panel: the tab bar and its rule. */
 	private panelShrink = 2;
 	private binaries: BinariesTab | undefined;
+	/** Settings filter: a query searches every sub-tab, not only the current one. */
+	private readonly filter = new ListFilter();
 
 	constructor(private readonly d: SettingsViewDeps) {
 		this.tabs = [...TABS, ...d.panels.map((entry) => entry.label)].sort(
@@ -595,6 +598,10 @@ class PixSettingsView {
 			this.binariesEditInput(data);
 			return;
 		}
+		if (this.tab === "Settings" && this.filter.typing) {
+			this.filterInput(data);
+			return;
+		}
 		const shiftTab = matchesKey(data, Key.shift(Key.tab));
 		if (shiftTab || matchesKey(data, Key.tab)) {
 			this.switchTab(shiftTab ? -1 : 1);
@@ -619,14 +626,21 @@ class PixSettingsView {
 		// `data === "k"` silently fail under the Kitty keyboard protocol.
 		if (kb.matches(data, "tui.select.cancel")) {
 			if (this.tab === "Binaries" && this.binariesTab().clearFilter()) tui.requestRender();
-			else this.d.done(null);
+			else if (this.tab === "Settings" && this.filter.clear()) {
+				this.selected = 0;
+				tui.requestRender();
+			} else this.d.done(null);
 			return;
 		}
 		if (this.tab === "Binaries") {
 			this.binariesInput(data);
 			return;
 		}
-		if (kb.matches(data, "tui.select.up")) this.move(-1);
+		if (matchesKey(data, "/")) {
+			this.filter.open();
+			this.selected = 0;
+			this.inspectingPage = false;
+		} else if (kb.matches(data, "tui.select.up")) this.move(-1);
 		else if (kb.matches(data, "tui.select.down")) this.move(1);
 		else if (matchesKey(data, Key.left)) this.cycle(-1);
 		// Standard /pix keys: space and enter change the value like →.
@@ -649,6 +663,25 @@ class PixSettingsView {
 		return pairs
 			.map(([key, action]) => theme.fg("text", key) + theme.fg("muted", ` ${action}`))
 			.join(theme.fg("muted", " · "));
+	}
+
+	/**
+	 * Guides as whole `key action` items per line: a long footer wraps between items, never inside one.
+	 * Keys in accent, actions muted, separators dim, so the eye lands on the keys first.
+	 */
+	private guideLines(pairs: Array<[string, string]>, width: number): string[] {
+		const { theme } = this.d;
+		const sep = theme.fg("dim", " · ");
+		const lines: string[] = [];
+		let line = "";
+		for (const [key, action] of pairs) {
+			const item = theme.fg("accent", key) + theme.fg("muted", ` ${action}`);
+			if (line && visibleWidth(line) + 3 + visibleWidth(item) > width) {
+				lines.push(line);
+				line = item;
+			} else line = line ? line + sep + item : item;
+		}
+		return line ? [...lines, line] : lines;
 	}
 
 	private binariesTab(): BinariesTab {
@@ -745,18 +778,40 @@ class PixSettingsView {
 	}
 
 	private rows(): Row[] {
-		const sections = SUBTAB_SECTIONS[this.subTab] ?? [];
+		// A filter query searches every sub-tab, in sub-tab order.
+		const sections = this.filter.query
+			? this.subTabs.flatMap((name) => SUBTAB_SECTIONS[name] ?? [])
+			: (SUBTAB_SECTIONS[this.subTab] ?? []);
 		// Sub-tab order follows SUBTAB_SECTIONS, not the SETTINGS list.
-		const list = sections.flatMap((section) =>
+		const list: Row[] = sections.flatMap((section) =>
 			this.d.settings.filter((r) => r.section === section),
 		);
-		return this.subTab === "Appearance" && this.d.themeRow ? [this.d.themeRow, ...list] : list;
+		const withTheme =
+			this.d.themeRow && (this.filter.query || this.subTab === "Appearance")
+				? [this.d.themeRow, ...list]
+				: list;
+		return withTheme.filter((r) => this.filter.matches(r.label, r.section));
 	}
 
 	private move(direction: -1 | 1): void {
 		const count = this.rows().length;
+		if (count === 0) return;
 		this.selected = (this.selected + direction + count) % count;
 		this.inspectingPage = false;
+	}
+
+	/** Filter input open: ↑↓ move through the matches, every other key edits the query. */
+	private filterInput(data: string): void {
+		const { kb } = this.d;
+		if (kb.matches(data, "tui.select.up")) this.move(-1);
+		else if (kb.matches(data, "tui.select.down")) this.move(1);
+		else {
+			this.filter.handleInput(data);
+			this.selected = Math.min(this.selected, Math.max(0, this.rows().length - 1));
+			this.bodyOffset = 0;
+		}
+		this.inspectingPage = false;
+		this.d.tui.requestRender();
 	}
 
 	private cycle(direction: -1 | 1): void {
@@ -850,7 +905,14 @@ class PixSettingsView {
 				...view.header,
 			],
 			body: view.body,
-			footer: ["", this.guides(bt.editing ? view.footer : [...view.footer, ...CLOSE_GUIDES])],
+			footer: [
+				"",
+				...view.info,
+				...this.guideLines(
+					bt.editing ? view.footer : [...view.footer, ...CLOSE_GUIDES],
+					Math.max(1, width - 4),
+				),
+			],
 			bodyOffset: this.bodyOffset,
 			selectedBodyLine: this.inspectingPage ? undefined : view.selectedBodyLine,
 		});
@@ -884,12 +946,13 @@ class PixSettingsView {
 	private renderSettings(width: number, frame: ModalFrame): string[] {
 		const { runtime, theme } = this.d;
 		const rows = this.rows();
-		const labelW = Math.max(...rows.map((r) => visibleWidth(r.label)));
+		const labelW = Math.max(0, ...rows.map((r) => visibleWidth(r.label)));
 		const body: string[] = [];
 		const settingBodyLines: number[] = [];
 		let lastSection = "";
 		// A sub-tab with one section is already named by the sub-tab bar: no heading.
-		const headed = (SUBTAB_SECTIONS[this.subTab]?.length ?? 0) > 1;
+		// Filtered rows come from every sub-tab, so they keep their headings.
+		const headed = !!this.filter.query || (SUBTAB_SECTIONS[this.subTab]?.length ?? 0) > 1;
 		for (const [i, row] of rows.entries()) {
 			if (headed && row.section !== lastSection) {
 				if (lastSection) body.push("");
@@ -907,6 +970,8 @@ class PixSettingsView {
 			settingBodyLines[i] = body.length;
 			body.push(`${cursor} ${label}  ${theme.fg(isDefault ? "dim" : "success", value)}`);
 		}
+		if (rows.length === 0) body.push(this.filter.noMatch(theme));
+		const total = this.d.settings.length + (this.d.themeRow ? 1 : 0);
 		return this.framed({
 			...frame,
 			header: [
@@ -914,9 +979,17 @@ class PixSettingsView {
 				this.tabRule(Math.max(1, width - 4)),
 				renderSubTabBar(this.subTabs, this.subTab, theme, Math.max(1, width - 4)),
 				this.tabRule(Math.max(1, width - 4)),
+				this.filter.line(theme, Math.max(1, width - 4), rows.length, total),
 			],
 			body,
-			footer: ["", this.guides(SETTINGS_GUIDES)],
+			footer: [
+				"",
+				this.guides(
+					this.filter.typing
+						? this.filter.guides()
+						: [...SETTINGS_GUIDES, ...this.filter.guides(), ...CLOSE_GUIDES],
+				),
+			],
 			bodyOffset: this.bodyOffset,
 			selectedBodyLine: this.inspectingPage ? undefined : settingBodyLines[this.selected],
 		});

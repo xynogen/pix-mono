@@ -8,6 +8,7 @@ import {
 } from "@xynogen/pix-pretty/modal-frame";
 import { matchesKey, visibleWidth } from "@xynogen/pix-pretty/tui";
 import { getErrorMessage } from "@xynogen/pix-runtime/errors";
+import { ListFilter } from "@xynogen/pix-runtime/list-filter";
 import type { CachedTool, MetadataCache, ServerCacheEntry } from "./metadata-cache.ts";
 import { createPanelKeys, type PanelKeybindings, type PanelKeys } from "./panel-keys.ts";
 import { printableChar, sanitizeDisplayText, sanitizeRowContent } from "./panel-text.ts";
@@ -160,9 +161,9 @@ class McpPanel {
 	private prefix: "server" | "none" | "short";
 	private servers: ServerState[] = [];
 	private cursorIndex = 0;
-	private nameQuery = "";
-	private descSearchActive = false;
-	private descQuery = "";
+	/** The shared /pix search line. `descMode` (`?`) matches tool descriptions instead of names. */
+	private search = new ListFilter();
+	private descMode = false;
 	private dirty = false;
 	private confirmingDiscard = false;
 	private discardSelected = 1;
@@ -289,8 +290,8 @@ class McpPanel {
 	}
 
 	private rebuildVisibleItems(): void {
-		const query = this.descSearchActive ? this.descQuery : this.nameQuery;
-		const mode = this.descSearchActive ? "desc" : "name";
+		const query = this.search.query.trim();
+		const mode = this.descMode ? "desc" : "name";
 
 		this.visibleItems = [];
 		if (!query || fuzzyScore(query, "add server") > 0 || fuzzyScore(query, "+ add") > 0) {
@@ -419,7 +420,7 @@ class McpPanel {
 			return;
 		}
 
-		if (this.descSearchActive) this.handleDescSearchInput(data);
+		if (this.search.typing) this.handleSearchInput(data);
 		else if (!this.handleListInput(data)) this.handleServerShortcut(data);
 	}
 
@@ -429,40 +430,30 @@ class McpPanel {
 		this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, this.visibleItems.length - 1));
 	}
 
-	/** Modal description search mode (`?`): typing edits the description query. */
-	private handleDescSearchInput(data: string): void {
-		if (matchesKey(data, "escape") || this.keys.selectConfirm(data)) {
-			this.descSearchActive = false;
-			this.descQuery = "";
-			this.refreshVisible();
-			return;
-		}
-		if (matchesKey(data, "backspace")) {
-			if (this.descQuery.length > 0) {
-				this.descQuery = this.descQuery.slice(0, -1);
-				this.refreshVisible();
-			}
-			return;
-		}
+	/** Search input open: ↑↓ move through the matches, every other key edits the query. */
+	private handleSearchInput(data: string): void {
 		if (this.keys.selectUp(data)) this.moveCursor(-1);
 		else if (this.keys.selectDown(data)) this.moveCursor(1);
-		else if (matchesKey(data, "space")) {
-			// Toggle even while in desc search
-			const item = this.visibleItems[this.cursorIndex];
-			if (item) this.toggleItem(item);
-		} else {
-			const descChar = printableChar(data);
-			if (descChar === undefined) return;
-			this.descQuery += descChar;
+		else {
+			this.search.handleInput(data);
+			if (!this.search.query) this.descMode = false;
 			this.refreshVisible();
 		}
 	}
 
-	/** List navigation, toggles and the always-on name filter. False when the key is not one. */
+	/** `/` searches names, `?` searches tool descriptions. */
+	private openSearch(descMode: boolean): void {
+		if (descMode !== this.descMode) this.search.clear();
+		this.descMode = descMode;
+		this.search.open();
+		this.refreshVisible();
+	}
+
+	/** List navigation, toggles and opening search. False when the key is not one. */
 	private handleListInput(data: string): boolean {
 		if (matchesKey(data, "escape")) {
-			if (this.nameQuery) {
-				this.nameQuery = "";
+			if (this.search.clear()) {
+				this.descMode = false;
 				this.refreshVisible();
 			} else if (this.dirty) {
 				this.confirmingDiscard = true;
@@ -479,23 +470,9 @@ class McpPanel {
 			const item = this.visibleItems[this.cursorIndex];
 			if (item) this.toggleItem(item);
 		} else if (this.keys.selectConfirm(data)) this.confirmSelected();
-		else if (printableChar(data) === "?") {
-			this.descSearchActive = true;
-			this.descQuery = "";
-			this.refreshVisible();
-		} else if (matchesKey(data, "backspace")) {
-			// Backspace removes from name query
-			if (this.nameQuery.length > 0) {
-				this.nameQuery = this.nameQuery.slice(0, -1);
-				this.refreshVisible();
-			}
-		} else {
-			// All other printable chars → always-on name search. Ctrl keys are never printable.
-			const nameChar = printableChar(data);
-			if (nameChar === undefined) return false;
-			this.nameQuery += nameChar;
-			this.refreshVisible();
-		}
+		else if (printableChar(data) === "/") this.openSearch(false);
+		else if (printableChar(data) === "?") this.openSearch(true);
+		else return false;
 		return true;
 	}
 
@@ -789,16 +766,16 @@ class McpPanel {
 		const subtitle = "servers · direct tools · estimated prompt cost";
 		header.push(fg(t.title, `${icon("mcp")}  ${title}`));
 		header.push(fg(t.hint, subtitle));
-		header.push(fg(t.description, this.descSearchActive ? "Description search:" : "Search:"));
-
-		const cursor = fg(t.selected, "│");
-		if (this.descSearchActive) {
-			header.push(row(`${this.descQuery}${cursor}`));
-		} else if (this.nameQuery) {
-			header.push(row(`${this.nameQuery}${cursor}`));
-		} else {
-			header.push(row(fg(t.placeholder, italic("type to filter..."))));
-		}
+		const shown = this.visibleItems.filter((item) => item.type === "server").length;
+		header.push(
+			this.search.line(
+				this.popupTheme,
+				innerW,
+				shown,
+				this.servers.length,
+				this.descMode ? "Search descriptions" : "Search",
+			),
+		);
 		if (this.noticeLines.length > 0) {
 			for (const notice of this.noticeLines) {
 				header.push(row(fg(t.hint, italic(sanitizeDisplayText(notice)))));
@@ -818,6 +795,8 @@ class McpPanel {
 			}
 		} else {
 			const total = this.visibleItems.length;
+			if (!this.visibleItems.some((item) => item.type !== "add"))
+				body.push(emptyRow(), this.search.noMatch(this.popupTheme));
 
 			body.push(emptyRow());
 
@@ -881,15 +860,19 @@ class McpPanel {
 			);
 		}
 
-		const hints = [
-			guide("↑↓", "move"),
-			guide("space", "toggle"),
-			guide("enter", "expand/add"),
-			guide("?", "search desc"),
-			guide("ctrl+a/r/x", "auth/reconnect/disconnect"),
-			guide("ctrl+e/d/s", "edit/delete/save"),
-			guide("esc", "clear/close"),
-		];
+		const searchGuides = this.search.guides().map(([key, action]) => guide(key, action));
+		const hints = this.search.typing
+			? searchGuides
+			: [
+					guide("↑↓", "move"),
+					guide("space", "toggle"),
+					guide("enter", "expand/add"),
+					...searchGuides,
+					guide("?", "search desc"),
+					guide("ctrl+a/r/x", "auth/reconnect/disconnect"),
+					guide("ctrl+e/d/s", "edit/delete/save"),
+					guide("esc", "clear/close"),
+				];
 		// Same separator as every other /pix tab.
 		const gap = fg(t.hint, " · ");
 		const gapW = 3;
