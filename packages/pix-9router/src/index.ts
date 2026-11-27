@@ -13,12 +13,18 @@
 
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
-import registerProvider from "./provider.ts";
+import registerProvider, { separateUserTurns } from "./provider.ts";
 
 export default async function pix9Router(pi: ExtensionAPI): Promise<void> {
 	let run: Promise<void> | undefined;
 	once(pi, "pix-9router", () => {
 		run = registerProvider(pi);
+		pi.on("before_provider_request", (event, ctx) => {
+			const { payload } = event;
+			if (ctx.model?.provider !== "9router" || typeof payload !== "object" || !payload) return;
+			if ("messages" in payload && Array.isArray(payload.messages))
+				separateUserTurns(payload.messages);
+		});
 	});
 	await run;
 }

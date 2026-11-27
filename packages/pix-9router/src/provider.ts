@@ -186,6 +186,28 @@ export async function classifySystemOne(
 	return typesafe.classify(model, context, options);
 }
 
+/**
+ * 9router's OpenAI->Claude translator merges adjacent user messages (e.g. after an aborted
+ * turn is dropped) by joining their text blocks with no separator: "/porc" + "fuck" reads
+ * as "/porcfuck". End each user message that another user message follows with a blank line.
+ */
+export function separateUserTurns(messages: unknown[]): void {
+	const isUser = (m: unknown): m is { content?: unknown } =>
+		typeof m === "object" && m !== null && "role" in m && m.role === "user";
+	for (const [i, msg] of messages.entries()) {
+		if (!isUser(msg) || !isUser(messages[i + 1])) continue;
+		if (typeof msg.content === "string") {
+			msg.content = `${msg.content}\n\n`;
+			continue;
+		}
+		if (!Array.isArray(msg.content)) continue;
+		const text = msg.content
+			.filter((part: { type?: unknown; text?: unknown }) => part?.type === "text")
+			.pop();
+		if (typeof text?.text === "string") text.text = `${text.text}\n\n`;
+	}
+}
+
 function providerConfig(apiKey: string, baseUrl: string, models: RouterModel[]) {
 	return {
 		name: "9Router",

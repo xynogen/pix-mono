@@ -8,6 +8,7 @@ import {
 	getModelName,
 	getReasoning,
 	isClassifierModel,
+	separateUserTurns,
 	toModelConfig,
 } from "../src/provider.ts";
 
@@ -297,5 +298,23 @@ describe("classifySystemOne", () => {
 		);
 		expect(result.stopReason).toBe("error");
 		expect(result.errorMessage).toMatch(/400/);
+	});
+});
+
+describe("separateUserTurns", () => {
+	it("ends a user message with a blank line when another user message follows", () => {
+		const messages: unknown[] = [
+			{ role: "user", content: "/porc" },
+			{ role: "user", content: [{ type: "text", text: "fuck" }, { type: "image_url" }] },
+			{ role: "user", content: [{ type: "text", text: "last" }] },
+			{ role: "assistant", content: "ok" },
+		];
+		separateUserTurns(messages);
+		expect(messages).toEqual([
+			{ role: "user", content: "/porc\n\n" },
+			{ role: "user", content: [{ type: "text", text: "fuck\n\n" }, { type: "image_url" }] },
+			{ role: "user", content: [{ type: "text", text: "last" }] },
+			{ role: "assistant", content: "ok" },
+		]);
 	});
 });
