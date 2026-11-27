@@ -1,8 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Markdown, visibleWidth } from "@earendil-works/pi-tui";
+import { type Component, Markdown, visibleWidth } from "@earendil-works/pi-tui";
 import { nativeMethodKey } from "@xynogen/pix-runtime/patch";
-import tablesExtension, { styleTable } from "../src/tables.js";
+import tablesExtension, {
+	cellNumber,
+	columnAt,
+	isNumericColumn,
+	sortRows,
+	styleTable,
+} from "../src/tables.js";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const theme = {
@@ -112,5 +118,112 @@ describe("tablesExtension", () => {
 		reloaded.default({ on: () => undefined } as unknown as ExtensionAPI);
 		expect(renderTable()).not.toBe(before);
 		expect(Reflect.get(Markdown.prototype, nativeMethodKey("renderTable"))).toBe(native);
+	});
+});
+
+describe("table sort", () => {
+	const cell = (text: string) => ({ text });
+	const rows = [
+		["b", "3,781"],
+		["A10", "22"],
+		["a2", ""],
+		["c", "-1.5"],
+	].map((r) => r.map(cell));
+	const col = (sorted: { text: string }[][], i: number) => sorted.map((r) => r[i]?.text);
+
+	it("reads numbers with commas, units and markup, not versions", () => {
+		expect(["3,781", "84.26%", "12 ms", "**7**", "-2"].map(cellNumber)).toEqual([
+			3781, 84.26, 12, 7, -2,
+		]);
+		expect(cellNumber("0.8.0")).toBeUndefined();
+		expect(isNumericColumn(rows, 1)).toBe(true);
+		expect(isNumericColumn(rows, 0)).toBe(false);
+	});
+
+	it("sorts numbers by value and text A-Z with natural digits, empty cells last", () => {
+		expect(col(sortRows(rows, 1, true, true), 1)).toEqual(["3,781", "22", "-1.5", ""]);
+		expect(col(sortRows(rows, 1, false, true), 1)).toEqual(["-1.5", "22", "3,781", ""]);
+		expect(col(sortRows(rows, 0, false, false), 0)).toEqual(["a2", "A10", "b", "c"]);
+		expect(col(sortRows(rows, 0, true, false), 0)).toEqual(["c", "b", "A10", "a2"]);
+	});
+
+	it("maps a click x to its column, borders and padding included", () => {
+		// " │ Name │ Qty │": borders at 1, 8, 14. Column 0 is x 1..7, column 1 is x 8..14.
+		const row = " │ Name │ Qty │";
+		expect([0, 1, 7, 8, 14, 15].map((x) => columnAt(row, x))).toEqual([
+			undefined,
+			0,
+			0,
+			1,
+			1,
+			undefined,
+		]);
+		// Wide characters count two columns; rules and top borders map the same way.
+		expect(columnAt("│ 名前 │ x │", 7)).toBe(1);
+		expect(columnAt("╭──────┬─────╮", 3)).toBe(0);
+	});
+
+	const click = (md: Component, x: number, y: number) =>
+		md.handleMouse?.({
+			type: "click",
+			button: "left",
+			x,
+			y,
+			width: 40,
+			height: 20,
+			screenX: x,
+			screenY: y,
+			shift: false,
+			alt: false,
+			ctrl: false,
+		});
+	const linesOf = (md: Component) => md.render(40).map(plain);
+	const body = (md: Component) =>
+		linesOf(md)
+			.filter((l) => /^ ?│ [abc] /.test(l))
+			.map((l) => l.trim().slice(2, 3));
+	const rowOf = (md: Component, text: string) => linesOf(md).findIndex((l) => l.includes(text));
+
+	it("a header click sorts the rendered table, a second click reverses it", () => {
+		const md: Component = new Markdown(
+			"| Pkg | Tests |\n|---|--:|\n| b | 22 |\n| a | 3,781 |\n| c | 5 |",
+			0,
+			0,
+			mdTheme,
+		);
+		const header = rowOf(md, "Pkg");
+		expect(body(md)).toEqual(["b", "a", "c"]);
+		expect(click(md, 8, header)).toEqual({ handled: true });
+		expect(body(md)).toEqual(["a", "b", "c"]);
+		expect(linesOf(md)[header]).toContain("Tests ▼");
+		click(md, 8, header);
+		expect(body(md)).toEqual(["c", "b", "a"]);
+		click(md, 2, header);
+		expect(body(md)).toEqual(["a", "b", "c"]);
+		expect(linesOf(md)[header]).toContain("Pkg ▲");
+	});
+
+	it("hits the whole header block with padding, and only the clicked table", () => {
+		// Sort state is keyed by table source: give each table its own.
+		const table = (name: string) =>
+			`| ${name} | Tests |\n|---|--:|\n| b | 22 |\n| a | 3,781 |\n| c | 5 |`;
+		const md: Component = new Markdown(
+			`${table("One")}\n\nMiddle\n\n${table("Two")}`,
+			1,
+			0,
+			mdTheme,
+		);
+		const tops = linesOf(md).flatMap((l, i) => (l.trim().startsWith("┌") ? [i] : []));
+		const [first = 0, second = 0] = tops;
+		// Top border of the second table, on "┬": the left border of column 1 (Tests, large first).
+		const x = linesOf(md)[second]?.indexOf("┬") ?? -1;
+		expect(click(md, x, second)).toEqual({ handled: true });
+		expect(linesOf(md).find((l) => l.includes("Two"))).toContain("Tests ▼");
+		// Only the second table: a 3,781 · b 22 · c 5.
+		expect(body(md)).toEqual(["b", "a", "c", "a", "b", "c"]);
+		// The rule under the header also counts; a body row does not.
+		expect(click(md, 3, first + 2)).toEqual({ handled: true });
+		expect(body(md).slice(0, 3)).toEqual(["a", "b", "c"]);
+		expect(click(md, 3, first + 3)).toBeUndefined();
 	});
 });
