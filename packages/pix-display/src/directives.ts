@@ -107,14 +107,14 @@ export function sparkline(raw: string): string | undefined {
 }
 
 /**
- * Label on a tinted background, no padding, so the tint ends at the text and does not
- * bleed into the spaces around it. With `href`, the whole badge is an OSC 8 link (BEL
- * terminated: a `\` would start a Markdown escape). `\x1b[39m`/`\x1b[49m` reset only the
- * colors, so bold or italic around the badge survives.
+ * Plain badges have no padding. Links include a clickable space on either side, so the
+ * tinted hit area extends beyond the letters. OSC 8 uses BEL termination (a `\` would
+ * start a Markdown escape). `\x1b[39m`/`\x1b[49m` reset only the colors, so bold or
+ * italic around the badge survives.
  */
 function badge(text: string, color: string, href?: string): string {
 	const key = COLORS[color] ? color : "blue";
-	const linked = href ? `\x1b]8;;${literal(href)}\x07${text}\x1b]8;;\x07` : text;
+	const linked = href ? `\x1b]8;;${literal(href)}\x07\u00a0${text}\u00a0\x1b]8;;\x07` : text;
 	return `${BADGE_BG[key]}${COLORS[key]}${linked}\x1b[39m\x1b[49m`;
 }
 

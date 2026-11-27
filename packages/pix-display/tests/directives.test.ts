@@ -136,8 +136,12 @@ describe("renderDirectives", () => {
 				.replaceAll("\u00a0", " ")
 				.trimEnd();
 		expect(links("See [the docs](https://pi.dev/x) or https://www.github.com/a/b.")).toBe(
-			"See <a https://pi.dev/x>the docs</a> or <a https://www.github.com/a/b>github.com</a>.",
+			"See <a https://pi.dev/x> the docs </a> or <a https://www.github.com/a/b> github.com </a>.",
 		);
+		const padded = new Markdown(renderDirectives("[go](https://pi.dev)", 80), 0, 0, theme).render(
+			80,
+		)[0];
+		expect(padded).toContain("\x1b]8;;https://pi.dev\x07\u00a0go\u00a0\x1b]8;;\x07");
 		expect(render("Edit src/a.ts:12 or `pkg/b.md`, not `npm i`.", 80)[0]).toBe(
 			"Edit src/a.ts:12 or pkg/b.md, not npm i.",
 		);
