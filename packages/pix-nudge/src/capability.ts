@@ -165,6 +165,8 @@ export function deferredNames(
  * Build the one-time orientation block shown on the FIRST prompt: toolbelt counts,
  * the tool_search gate, a capability → tool map of what is actually registered,
  * and sorted skill names (no descriptions — read_skills() returns those).
+ * Skills with `disable-model-invocation` keep their descriptions out of the prompt, so
+ * their names are the only sign they exist: list them when read_skills can load them.
  */
 export function buildOrientation(
 	tools: ToolInfo[] | undefined,
@@ -173,10 +175,15 @@ export function buildOrientation(
 	activeToolNames?: Iterable<string>,
 ): string {
 	const { mcp, other, gated, mcpGated, otherGated } = partitionTools(tools, activeToolNames);
-	const skillNames = (skills ?? [])
-		.filter((s) => !s.disableModelInvocation)
-		.map((s) => s.name)
-		.sort();
+	const canReadSkills = tools?.some((t) => t.name === "read_skills") ?? false;
+	const sortedNames = (hidden: boolean) =>
+		(skills ?? [])
+			.filter((s) => !!s.disableModelInvocation === hidden)
+			.map((s) => s.name)
+			.sort();
+	const skillNames = sortedNames(false);
+	const onDemand = canReadSkills ? sortedNames(true) : [];
+	const skillCount = skillNames.length + onDemand.length;
 
 	const inventory: string[] = [];
 	if (other)
@@ -187,8 +194,7 @@ export function buildOrientation(
 		inventory.push(
 			`${mcp} MCP tool${mcp === 1 ? "" : "s"}${mcpGated ? ` (${mcpGated} deferred)` : ""}`,
 		);
-	if (skillNames.length)
-		inventory.push(`${skillNames.length} skill${skillNames.length === 1 ? "" : "s"}`);
+	if (skillCount) inventory.push(`${skillCount} skill${skillCount === 1 ? "" : "s"}`);
 	const summary = inventory.length ? inventory.join(", ") : "your toolbelt";
 
 	// Lead with the gate: deferred tools are not callable until tool_search loads them.
@@ -211,6 +217,11 @@ export function buildOrientation(
 	);
 	if (skillNames.length) {
 		lines.push(`Skills: ${skillNames.join(", ")}.`);
+	}
+	if (onDemand.length) {
+		lines.push(
+			`On-demand skills (procedures for these tasks; read_skills(name="<skill>") shows when to use one, full=true loads it): ${onDemand.join(", ")}.`,
+		);
 	}
 	// Graph hint — only when a graph is built and the graph tool can query it.
 	const gHint = graphifyHint(process.cwd());
@@ -256,7 +267,9 @@ export default function registerCapabilityNudge(pi: ExtensionAPI): void {
 			const alwaysOn = (tools ?? []).filter(
 				(tool) =>
 					!/mcp/i.test(tool.sourceInfo?.source ?? "") &&
-					["read", "bash", "edit", "write", "tool_search", "codemode"].includes(tool.name),
+					["read", "bash", "edit", "write", "tool_search", "codemode", "read_skills"].includes(
+						tool.name,
+					),
 			).length;
 			const caps = capabilityLabels(tools).length;
 			details = {

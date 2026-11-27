@@ -250,6 +250,20 @@ describe("buildOrientation", () => {
 		expect(out).not.toContain("Skills:");
 	});
 
+	test("names user-only skills on their own line when read_skills can load them", () => {
+		const skills = [
+			skill("freecad", "f."),
+			skill("commit", "c.", true),
+			skill("debug", "d.", true),
+		];
+		const out = buildOrientation([tool("read_skills", "pix-skills")], skills);
+		expect(out).toContain("3 skills");
+		expect(out).toContain("Skills: freecad.");
+		expect(out).toMatch(/^On-demand skills .*read_skills\(name="<skill>"\).*: commit, debug\.$/m);
+		// Without the loader the names are useless: keep them out.
+		expect(buildOrientation([tool("read", "builtin")], skills)).not.toContain("commit");
+	});
+
 	test("steers away from improvising", () => {
 		const out = buildOrientation([tool("read", "builtin")], []);
 		expect(out.toLowerCase()).toContain("improvis");
