@@ -1,6 +1,6 @@
 {
 	"name": "@xynogen/pix-nudge",
-	"version": "0.3.17",
+	"version": "0.4.0",
 	"description": "Pi extension — model-steering nudges (tools + capability)",
 	"type": "module",
 	"main": "src/index.ts",

@@ -121,7 +121,7 @@
         "@xynogen/pix-commands": "^0.7.2",
         "@xynogen/pix-data": "^0.6.2",
         "@xynogen/pix-diagnostics": "^0.5.2",
-        "@xynogen/pix-display": "^0.4.3",
+        "@xynogen/pix-display": "^0.4.4",
         "@xynogen/pix-edit": "^0.2.20",
         "@xynogen/pix-find": "^0.3.15",
         "@xynogen/pix-footer": "^0.2.22",
