@@ -18,6 +18,8 @@ export const ALWAYS_ON_TOOLS: ReadonlySet<string> = new Set([
 	"write",
 	"tool_search",
 	"codemode",
+	// Skills hide their descriptions from the prompt; a deferred loader left them unreachable.
+	"read_skills",
 ]);
 // Pi registers these inactive. Without them, deferred tools are unreachable.
 const ACTIVATE_ON_START = ["tool_search", "codemode"];

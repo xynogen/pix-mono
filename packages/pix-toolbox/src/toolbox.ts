@@ -48,6 +48,7 @@ export const ALWAYS_ON_TOOLS: ReadonlySet<string> = new Set([
 	"write",
 	"tool_search",
 	"codemode",
+	"read_skills",
 ]);
 
 // ─── Types ──────────────────────────────────────────────────────────────────

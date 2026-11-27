@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import deferNonCoreTools, { weightNative } from "../src/defer-tools.ts";
 
-test("keeps Windows PowerShell direct, defers other non-core tools, and activates loaders", () => {
+test("keeps Windows PowerShell and read_skills direct, defers other non-core tools, and activates loaders", () => {
 	const registered: Array<{ name: string; exposure?: string }> = [];
 	const handlers: Array<() => void> = [];
 	const onResult: Array<(e: unknown) => unknown> = [];
@@ -20,6 +20,7 @@ test("keeps Windows PowerShell direct, defers other non-core tools, and activate
 	pi.registerTool({ name: "read" });
 	pi.registerTool({ name: "grep" });
 	pi.registerTool({ name: "ls" });
+	pi.registerTool({ name: "read_skills" });
 	pi.registerTool({ name: "ask_user", exposure: "direct" });
 	pi.registerTool({ name: "powershell" });
 	pi.registerTool({ name: "voice", exposure: "codemode" });
@@ -27,6 +28,7 @@ test("keeps Windows PowerShell direct, defers other non-core tools, and activate
 		"read:direct",
 		"grep:deferred",
 		"ls:deferred",
+		"read_skills:direct",
 		"ask_user:deferred",
 		"powershell:direct",
 		"voice:codemode",
