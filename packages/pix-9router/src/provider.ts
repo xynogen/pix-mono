@@ -23,7 +23,8 @@ import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { ioTimeoutSignal } from "@xynogen/pix-runtime/io";
 import { routerBaseUrl, routerKey } from "@xynogen/pix-runtime/nine-router";
 import type { RouterModel } from "./data.ts";
-import { routerModels } from "./data.ts";
+import { routerImageModels, routerModels } from "./data.ts";
+import { generateImages } from "./images.ts";
 
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 const DEFAULT_MAX_TOKENS = 16_384;
@@ -97,6 +98,18 @@ export function toModelConfig(model: RouterModel) {
 	};
 }
 
+export function toImageModelConfig(model: RouterModel) {
+	return {
+		type: "image" as const,
+		id: model.id ?? "",
+		name: getModelName(model),
+		api: "9router-images",
+		input: ["text" as const],
+		output: ["image" as const],
+		cost: ZERO_COST,
+	};
+}
+
 export function getInputTypes(model: RouterModel): ("text" | "image")[] {
 	const vision = model.capabilities?.vision;
 	if (typeof vision === "boolean") return vision ? ["text", "image"] : ["text"];
@@ -152,12 +165,14 @@ export default async function registerProvider(pi: ExtensionAPI): Promise<void> 
 
 	// Register from the router list cache only — startup must not block on network.
 	const cached = routerModels.getCached();
-	pi.registerProvider("9router", providerConfig(apiKey, baseUrl, cached));
+	const cachedImages = routerImageModels.getCached();
+	pi.registerProvider("9router", providerConfig(apiKey, baseUrl, cached, cachedImages));
 
 	// Background router list refresh; re-registering after startup applies immediately.
-	void routerModels
-		.get()
-		.then((models) => pi.registerProvider("9router", providerConfig(apiKey, baseUrl, models)))
+	void Promise.all([routerModels.get(), routerImageModels.get()])
+		.then(([models, images]) =>
+			pi.registerProvider("9router", providerConfig(apiKey, baseUrl, models, images)),
+		)
 		.catch(() => {});
 }
 
@@ -208,31 +223,50 @@ export function separateUserTurns(messages: unknown[]): void {
 	}
 }
 
-function providerConfig(apiKey: string, baseUrl: string, models: RouterModel[]) {
+export function providerConfig(
+	apiKey: string,
+	baseUrl: string,
+	models: RouterModel[],
+	imageModels: RouterModel[],
+) {
 	return {
 		name: "9Router",
 		baseUrl,
 		apiKey,
 		api: "openai-completions",
-		models: models.map(toModelConfig),
+		models: [...models.map(toModelConfig), ...imageModels.map(toImageModelConfig)],
+		images: { "9router-images": { generateImages } },
 		classifiers: { "typesafe-system-one": { classify: classifySystemOne } },
 		// Live fetch on /model refresh — bypasses the disk cache.
 		// Pi calls refreshModels once per provider at every startup with
 		// allowNetwork:false (awaited, no timeout) — never touch the network
 		// there; serve the registered snapshot instead.
 		async refreshModels({ signal, allowNetwork }: RefreshModelsContext) {
-			if (!allowNetwork) return models.map(toModelConfig);
-			const res = await fetch(`${baseUrl}/models`, {
-				signal: ioTimeoutSignal(signal),
-				headers: {
-					Authorization: `Bearer ${apiKey}`,
-					"User-Agent": formatUserAgent(),
-				},
-			});
+			if (!allowNetwork)
+				return [...models.map(toModelConfig), ...imageModels.map(toImageModelConfig)];
+			const [res, imageRes] = await Promise.all([
+				fetch(`${baseUrl}/models`, {
+					signal: ioTimeoutSignal(signal),
+					headers: {
+						Authorization: `Bearer ${apiKey}`,
+						"User-Agent": formatUserAgent(),
+					},
+				}),
+				fetch(`${baseUrl}/models/image`, {
+					signal: ioTimeoutSignal(signal),
+					headers: { Authorization: `Bearer ${apiKey}`, "User-Agent": formatUserAgent() },
+				}).catch(() => undefined),
+			]);
 			if (!res.ok) throw new Error(`9router /models: ${res.status}`);
 			const raw = (await res.json()) as RouterModelsResponse;
+			const imageRaw = imageRes?.ok
+				? ((await imageRes.json()) as RouterModelsResponse)
+				: { data: imageModels };
 			const list = (raw.data ?? []).filter((m) => Boolean(m.id));
-			return list.map(toModelConfig);
+			return [
+				...list.map(toModelConfig),
+				...(imageRaw.data ?? []).filter((m) => Boolean(m.id)).map(toImageModelConfig),
+			];
 		},
 	};
 }

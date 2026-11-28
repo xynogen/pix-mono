@@ -21,6 +21,7 @@ Invocation is permission: commit without asking again. Never commit secrets, bin
    - Untracked/generated files: add clear ignore candidates (build dirs, caches, logs, temp, editor/OS junk, local env) to `.gitignore`. If unsure whether to ignore or commit, ask first.
    - Secret in an untracked or ignored file (e.g. `.env`) → never stage it, ignore it, commit the rest, and name the file and key name (never the value) in your final message so the user can rotate it if it was ever exposed.
    - Secret, binary, debug print, or unrelated edit in a tracked or staged diff → stop, commit nothing, and report it with `file:line`.
+   - Before staging, bump every changed publishable package whose version is already on npm (`feat` → minor, `fix`/`perf` → patch; minor/major need user approval). An unpublished bump needs no second bump. Update dependent package ranges, aggregator pins, and the lockfile in the same commit; run the repo's required checks after the bumps.
 2. **Group** — One commit per logical change, clustered by module and function. Never mix `feat` with an unrelated `fix`. Stage with `git add <paths>` (`-p` for partial hunks).
 3. **Compose** — `<type>(<scope>): <subject>`
    - type: `feat` new capability · `fix` bug fix · `refactor` no behavior change · `perf` speed/memory · `docs` documentation · `test` tests only · `build` build system/deps · `ci` CI/CD config · `style` formatting only · `chore` tooling/misc · `revert` undo a commit.

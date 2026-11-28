@@ -59,3 +59,19 @@ export const routerModels = new DataSource<RouterModel[]>({
 		((data as RouterModelsResponse | undefined)?.data ?? []).filter((m) => Boolean(m.id)),
 	empty: [],
 });
+
+export const routerImageModels = new DataSource<RouterModel[]>({
+	label: "9router images",
+	url: () => `${routerBaseUrl() ?? ""}/models/image`,
+	headers: () => {
+		const key = routerKey();
+		return key ? { Authorization: `Bearer ${key}` } : undefined;
+	},
+	skip: () => !routerKey(),
+	cachePath: join(CACHE_DIR, "9router-images.json"),
+	ttlMs: 30 * 60 * 1000,
+	parse: (raw) => ((raw as RouterModelsResponse).data ?? []).filter((m) => Boolean(m.id)),
+	parseCache: (data) =>
+		((data as RouterModelsResponse | undefined)?.data ?? []).filter((m) => Boolean(m.id)),
+	empty: [],
+});

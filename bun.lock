@@ -19,9 +19,9 @@
     },
     "packages/pix-9router": {
       "name": "@xynogen/pix-9router",
-      "version": "0.8.15",
+      "version": "0.9.0",
       "dependencies": {
-        "@xynogen/pix-data": "^0.6.1",
+        "@xynogen/pix-data": "^0.6.3",
         "@xynogen/pix-runtime": "^0.22.2",
       },
       "peerDependencies": {
@@ -114,12 +114,12 @@
     },
     "packages/pix-core": {
       "name": "@xynogen/pix-core",
-      "version": "0.8.1",
+      "version": "0.8.2",
       "dependencies": {
         "@xynogen/pix-ask": "^0.4.3",
         "@xynogen/pix-bash": "^0.2.20",
         "@xynogen/pix-commands": "^0.7.2",
-        "@xynogen/pix-data": "^0.6.2",
+        "@xynogen/pix-data": "^0.6.3",
         "@xynogen/pix-diagnostics": "^0.5.2",
         "@xynogen/pix-display": "^0.5.0",
         "@xynogen/pix-edit": "^0.2.20",
@@ -137,7 +137,7 @@
         "@xynogen/pix-prompts": "^0.6.1",
         "@xynogen/pix-read": "^0.4.15",
         "@xynogen/pix-runtime": "^0.23.0",
-        "@xynogen/pix-skills": "^0.11.1",
+        "@xynogen/pix-skills": "^0.11.2",
         "@xynogen/pix-subagent": "^0.10.23",
         "@xynogen/pix-todo": "^0.4.18",
         "@xynogen/pix-update": "^0.2.16",
@@ -152,7 +152,7 @@
     },
     "packages/pix-data": {
       "name": "@xynogen/pix-data",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "dependencies": {
         "@xynogen/pix-runtime": "^0.22.2",
       },
@@ -512,7 +512,7 @@
     },
     "packages/pix-skills": {
       "name": "@xynogen/pix-skills",
-      "version": "0.11.1",
+      "version": "0.11.2",
       "dependencies": {
         "@xynogen/pix-gate": "^0.5.0",
         "@xynogen/pix-pretty": "^3.0.2",

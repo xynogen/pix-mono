@@ -5,6 +5,7 @@
 
 export type {
 	Api,
+	AssistantImages,
 	AssistantMessage,
 	AssistantMessageEvent,
 	ClassifierApi,
@@ -12,7 +13,11 @@ export type {
 	ClassifierModel,
 	ClassifierOptions,
 	ClassifierResult,
+	ImageApi,
 	ImageContent,
+	ImageModel,
+	ImagesContext,
+	ImagesOptions,
 	Message,
 	Model,
 	RefreshModelsContext,
