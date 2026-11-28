@@ -1,7 +1,7 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getCapabilities, hyperlink, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { ANSI_CAPTURE_RE, BG_BASE, FG_LNUM, RST } from "./ansi.ts";
+import { ANSI_CAPTURE_RE, BG_BASE, FG_LNUM, FG_RULE, RST } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import type { TextComponentCtor, TextComponentLike } from "./types.ts";
 
@@ -289,4 +289,15 @@ export function linkedShortPath(cwd: string, home: string, p: string): string {
 export function lineNumber(n: number, w: number): string {
 	const v = String(n);
 	return `${FG_LNUM}${" ".repeat(Math.max(0, w - v.length))}${v}${RST}`;
+}
+
+/** Columns taken by a numbered gutter: the number, a space, the rule, a space. */
+export function gutterWidth(numberWidth: number): number {
+	return numberWidth + 3;
+}
+
+/** One gutter cell in front of a code row; pass "" to blank a continuation row. */
+export function lineGutter(n: number | "", numberWidth: number): string {
+	const cell = n === "" ? `${FG_LNUM}${" ".repeat(numberWidth)}${RST}` : lineNumber(n, numberWidth);
+	return `${cell} ${FG_RULE}│${RST} `;
 }

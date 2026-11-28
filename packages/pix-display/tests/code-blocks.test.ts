@@ -22,7 +22,7 @@ describe("renderCodeFences", () => {
 		const rendered = renderCodeFences(["```ts", "  const answer = 42;", "```"], 24, theme);
 		expect(rendered.map(plain)).toEqual([
 			`▾ ts ${"─".repeat(13)} copy `,
-			"const answer = 42;",
+			"  1 │ const answer = 42;",
 			"─".repeat(24),
 		]);
 		expect(rendered.join("\n")).not.toMatch(/\x1b\[(?:4[0-9]|48)(?:;[^m]*)?m/);
@@ -42,11 +42,11 @@ describe("renderCodeFences", () => {
 		const text = rendered.map(plain);
 
 		expect(text[0]).toStartWith("▾ bash ");
-		expect(text[1]).toBe("curl -sfL https://get.k3s.io | \\");
-		expect(text[2]).toBe("  K3S_URL=https://192.168.1.20:6443 \\");
-		expect(text[3]).toBe('  K3S_TOKEN="PASTE_TOKEN_HERE" \\');
-		expect(text[4]).toBe("  sh -");
-		expect(text.slice(1, 5).every((line) => !line.includes("│"))).toBe(true);
+		expect(text[1]).toBe("  1 │ curl -sfL https://get.k3s.io | \\");
+		expect(text[2]).toBe("  2 │   K3S_URL=https://192.168.1.20:6443 \\");
+		expect(text[3]).toBe('  3 │   K3S_TOKEN="PASTE_TOKEN_HERE" \\');
+		expect(text[4]).toBe("  4 │   sh -");
+		expect(text.slice(1, 5).every((line) => line.includes("│"))).toBe(true);
 		expect(text[5]).toBe("─".repeat(72));
 		expect(visibleWidth(rendered[0] ?? "")).toBe(72);
 		expect(visibleWidth(rendered[5] ?? "")).toBe(72);
@@ -69,7 +69,7 @@ describe("renderCodeFences", () => {
 	])("supports and labels the %s fence", (language) => {
 		const rendered = renderCodeFences([`\`\`\`${language}`, "  example  ", "```"], 40, theme);
 		expect(plain(rendered[0] ?? "")).toContain(`▾ ${language} `);
-		expect(plain(rendered[1] ?? "")).toBe("example");
+		expect(plain(rendered[1] ?? "")).toBe("  1 │ example");
 	});
 
 	it("keeps the parent TUI renderer active when an in-process child session starts", () => {
@@ -112,17 +112,15 @@ describe("renderCodeFences", () => {
 		expect(rendered.some((line) => line.includes("▾ json "))).toBe(true);
 	});
 
-	it("keeps multiline shell commands copyable without border glyphs", () => {
+	it("keeps multiline shell commands in the numbered code column", () => {
 		const rendered = renderCodeFences(
 			["```bash", "git tag release-1", "git push origin main release-1", "```"],
 			48,
 			theme,
 		).map(plain);
 
-		expect(rendered[1]?.trim()).toBe("git tag release-1");
-		expect(rendered[2]?.trim()).toBe("git push origin main release-1");
-		expect(rendered[1]).not.toContain("│");
-		expect(rendered[2]).not.toContain("│");
+		expect(rendered[1]).toBe("  1 │ git tag release-1");
+		expect(rendered[2]).toBe("  2 │ git push origin main release-1");
 	});
 
 	it("removes layout padding while preserving meaningful Python indentation", () => {
@@ -137,8 +135,8 @@ describe("renderCodeFences", () => {
 			theme,
 		).map(plain);
 
-		expect(rendered[1]).toBe("def greet(name):");
-		expect(rendered[2]).toBe('    print(f"Hello, {name}")');
+		expect(rendered[1]).toBe("  1 │ def greet(name):");
+		expect(rendered[2]).toBe('  2 │     print(f"Hello, {name}")');
 	});
 
 	it("preserves syntax colors while removing native Markdown backgrounds", () => {

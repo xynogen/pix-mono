@@ -2,7 +2,7 @@ import { truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works
 import { config } from "@xynogen/pix-runtime/config";
 import { prettySection } from "@xynogen/pix-runtime/sections";
 
-import { FG_DIM, FG_LNUM, FG_RULE, RST } from "./ansi.ts";
+import { FG_DIM, FG_RULE, RST } from "./ansi.ts";
 import { MAX_PREVIEW_LINES } from "./config.ts";
 import { BODY_PAD, type ExpandHintCtx, expandHint, rule } from "./frame.ts";
 import { hlBlock } from "./highlight.ts";
@@ -10,7 +10,7 @@ import { dirIcon, fileColor, fileIcon } from "./icons.ts";
 import { lang } from "./lang.ts";
 import { type FadeTheme, fadeRowsOf, normalizeLineEndings, pluralize } from "./text.ts";
 import type { FgTheme } from "./types.ts";
-import { lineNumber, terminalWidth } from "./utils.ts";
+import { gutterWidth, lineGutter, terminalWidth } from "./utils.ts";
 
 /** Layout controls for {@link renderFileContent}. */
 export interface RenderFileContentOptions {
@@ -49,7 +49,7 @@ export async function renderFileContent(
 	const startLine = offset;
 	const endLine = startLine + show.length - 1;
 	const nw = Math.max(3, String(endLine).length);
-	const gw = nw + 3; // num + " │ "
+	const gw = gutterWidth(nw);
 	const cw = Math.max(1, tw - gw);
 
 	const out: string[] = [];
@@ -62,15 +62,13 @@ export async function renderFileContent(
 			// Expanded view: no tail is hidden. First row carries the line number,
 			// continuation rows indent under the gutter so the code column aligns.
 			const rows = wrapTextWithAnsi(code, cw);
-			const pad = " ".repeat(nw);
 			rows.forEach((rowText, r) => {
-				const gutter = r === 0 ? lineNumber(ln, nw) : `${FG_LNUM}${pad}${RST}`;
-				out.push(`${gutter} ${FG_RULE}│${RST} ${rowText}${RST}`);
+				out.push(`${lineGutter(r === 0 ? ln : "", nw)}${rowText}${RST}`);
 			});
 			continue;
 		}
 		const display = truncateToWidth(code, cw, `${FG_DIM}›`);
-		out.push(`${lineNumber(ln, nw)} ${FG_RULE}│${RST} ${display}${RST}`);
+		out.push(`${lineGutter(ln, nw)}${display}${RST}`);
 	}
 
 	out.push(rule(tw));

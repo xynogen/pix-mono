@@ -1,9 +1,11 @@
+import { RST } from "@xynogen/pix-pretty/ansi";
 import {
 	AssistantMessageComponent,
 	type Theme,
 	truncateToWidth,
 	visibleWidth,
 } from "@xynogen/pix-pretty/tui";
+import { gutterWidth, lineGutter } from "@xynogen/pix-pretty/utils";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { wrapMethod } from "@xynogen/pix-runtime/patch";
 import {
@@ -99,10 +101,9 @@ function bottomRule(width: number, theme: CodeFrameTheme): string {
 }
 
 function bodyLine(line: string, width: number, layoutIndent: number): string {
-	const content = truncateToWidth(stripLayoutWhitespace(line, layoutIndent), width, "…");
-	// Keep every code row free of frame glyphs and layout padding. Selection must
-	// copy only source text, including meaningful relative indentation in Python.
-	return content;
+	// Code column only; the caller prepends the same numbered gutter as the
+	// file-content renderer.
+	return truncateToWidth(stripLayoutWhitespace(line, layoutIndent), width, "…");
 }
 
 /**
@@ -130,6 +131,8 @@ export function renderCodeFences(
 
 		const frameWidth = width;
 		const body = out.slice(start + 1, end);
+		const numberWidth = Math.max(3, String(body.length).length);
+		const codeWidth = Math.max(1, width - gutterWidth(numberWidth));
 		const bodyIndents = body
 			.map((line) => plainText(line))
 			.filter((line) => line.trim().length > 0)
@@ -145,7 +148,7 @@ export function renderCodeFences(
 		if (!isFoldedBlock) {
 			for (let index = start + 1; index < end; index++) {
 				framed.push(
-					`${oscSequences(out[index] ?? "")}${bodyLine(out[index] ?? "", width, bodyIndent)}`,
+					`${oscSequences(out[index] ?? "")}${lineGutter(index - start, numberWidth)}${bodyLine(out[index] ?? "", codeWidth, bodyIndent)}${RST}`,
 				);
 			}
 			framed.push(`${oscSequences(out[end] ?? "")}${bottomRule(frameWidth, theme)}`);

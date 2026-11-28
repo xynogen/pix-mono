@@ -38,7 +38,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@xynogen/pix-pretty": "^3.1.0",
+		"@xynogen/pix-pretty": "^3.3.0",
 		"@xynogen/pix-runtime": "^0.24.0"
 	},
 	"devDependencies": {
