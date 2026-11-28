@@ -13,6 +13,7 @@ import {
 	type Theme,
 } from "@xynogen/pix-pretty/tui";
 import { wrapMethod } from "@xynogen/pix-runtime/patch";
+import { copyCodeAt } from "./code-copy.ts";
 
 const FOLD = /^::fold(?:\[([^\]\n]*)\])?\s*$/;
 const FENCE = /^\s*(```|~~~)/;
@@ -155,7 +156,7 @@ export function followFoldInput(): void {
 				const result = native.call(this, event);
 				if (result || event.type !== "click" || event.button !== "left") return result;
 				const key = foldAt(this, event.width, event.y);
-				if (key === undefined) return undefined;
+				if (key === undefined) return copyCodeAt(this, event) ? { handled: true } : undefined;
 				clicked.set(key, !(clicked.get(key) ?? open));
 				this.invalidate();
 				return { handled: true };

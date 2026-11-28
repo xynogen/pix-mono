@@ -6,6 +6,7 @@ import {
 } from "@xynogen/pix-pretty/tui";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { wrapMethod } from "@xynogen/pix-runtime/patch";
+import { COPY_BUTTON, type CodeFrame, forgetFrames, rememberFrames } from "./code-copy.ts";
 
 const OPENING_FENCE_RE = /^```([^`]*)$/;
 const CLOSING_FENCE_RE = /^```\s*$/;
@@ -68,11 +69,11 @@ function fenceLabel(line: string): string | undefined {
 }
 
 function topRule(width: number, language: string, theme: CodeFrameTheme): string {
-	const available = Math.max(1, width - 4);
+	const available = Math.max(1, width - 4 - COPY_BUTTON.length);
 	const displayLanguage = truncateToWidth(language, available, "…");
 	const label = theme.bold(theme.fg("accent", ` ${displayLanguage} `));
-	const ruleWidth = Math.max(0, width - visibleWidth(label) - 2);
-	return `${theme.fg("borderMuted", "──")}${label}${theme.fg("borderMuted", "─".repeat(ruleWidth))}`;
+	const ruleWidth = Math.max(0, width - visibleWidth(label) - 2 - COPY_BUTTON.length);
+	return `${theme.fg("borderMuted", "──")}${label}${theme.fg("borderMuted", "─".repeat(ruleWidth))}${theme.fg("dim", COPY_BUTTON)}`;
 }
 
 function bottomRule(width: number, theme: CodeFrameTheme): string {
@@ -94,6 +95,7 @@ export function renderCodeFences(
 	lines: readonly string[],
 	width: number,
 	theme: CodeFrameTheme,
+	frames: CodeFrame[] = [],
 ): readonly string[] {
 	if (width < 12) return lines;
 
@@ -126,6 +128,10 @@ export function renderCodeFences(
 		framed.push(`${oscSequences(out[end] ?? "")}${bottomRule(frameWidth, theme)}`);
 
 		out.splice(start, end - start + 1, ...framed);
+		frames.push({
+			row: start,
+			text: body.map((line) => plainText(stripLayoutWhitespace(line, bodyIndent))).join("\n"),
+		});
 		start += framed.length - 1;
 	}
 	return out;
@@ -148,6 +154,7 @@ function patchAssistantRenderer(): void {
 		(native) =>
 			function invalidateCodeFrames(this: object): void {
 				cache.delete(this);
+				forgetFrames(this);
 				native.call(this);
 			},
 	);
@@ -168,7 +175,9 @@ function patchAssistantRenderer(): void {
 				) {
 					return previous.output;
 				}
-				const output = renderCodeFences(lines, width, activeTheme);
+				const frames: CodeFrame[] = [];
+				const output = renderCodeFences(lines, width, activeTheme, frames);
+				rememberFrames(this, frames);
 				cache.set(this, { width, theme: activeTheme, input: [...lines], output });
 				return output;
 			},

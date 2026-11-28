@@ -8,6 +8,7 @@
  *   @xynogen/pix-pretty/chips  Inline chips (tag format, editor, sent messages)
  *   thinking.ts      Leaked reasoning tag → native thinking content blocks
  *   code-blocks.ts   Framed, syntax-highlighted code fences in LLM output
+ *   code-copy.ts     The `copy` button on a code frame's header row
  *   directives.ts    `::card[…]`, charts and inline directives in LLM output
  *   fold.ts          `::fold[Title]` … `::fold` sections, opened by click or Pi's expand key
  *   tables.ts        Themed Markdown tables with column alignment
@@ -18,6 +19,7 @@ import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 
 import codeBlocksExtension from "./code-blocks.ts";
+import { initCodeCopy } from "./code-copy.ts";
 import directivesExtension from "./directives.ts";
 import { followFoldInput, initFolds } from "./fold.ts";
 import { hasDisplayMath, offerMathInstall, startMath } from "./math.ts";
@@ -36,7 +38,9 @@ export default async function pixDisplayExtension(pi: ExtensionAPI): Promise<voi
 		workingExtension(pi);
 		followFoldInput();
 		pi.on("session_start", (_event, ctx) => {
-			if (ctx.mode === "tui") initFolds(ctx.ui);
+			if (ctx.mode !== "tui") return;
+			initFolds(ctx.ui);
+			initCodeCopy(ctx.ui);
 		});
 		pi.on("agent_end", (event, ctx) => {
 			if (ctx.mode !== "tui") return;

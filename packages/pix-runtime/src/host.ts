@@ -39,6 +39,7 @@ export type {
 } from "@earendil-works/pi-coding-agent";
 export {
 	convertToLlm,
+	copyToClipboard,
 	createAgentSession,
 	createBashTool,
 	createBashToolDefinition,

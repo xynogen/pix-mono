@@ -21,7 +21,7 @@ describe("renderCodeFences", () => {
 	it("keeps the foreground-only Markdown style", () => {
 		const rendered = renderCodeFences(["```ts", "  const answer = 42;", "```"], 24, theme);
 		expect(rendered.map(plain)).toEqual([
-			`── ts ${"─".repeat(18)}`,
+			`── ts ${"─".repeat(12)} copy `,
 			"const answer = 42;",
 			"─".repeat(24),
 		]);
