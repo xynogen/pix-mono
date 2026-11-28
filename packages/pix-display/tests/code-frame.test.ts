@@ -4,10 +4,11 @@ import { renderCodeFences } from "../src/code-blocks.js";
 import {
 	COPY_BUTTON,
 	type CodeFrame,
-	copyCodeAt,
-	initCodeCopy,
+	frameClickAt,
+	initCodeFrames,
 	rememberFrames,
-} from "../src/code-copy.js";
+	setCodeFramesExpanded,
+} from "../src/code-frame.js";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const plain = (line: string) => line.replace(ANSI_RE, "");
@@ -18,7 +19,7 @@ const theme = {
 } as Parameters<typeof renderCodeFences>[2];
 
 const click = (x: number, y: number, width: number) =>
-	({ type: "click", button: "left", x, y, width }) as Parameters<typeof copyCodeAt>[1];
+	({ type: "click", button: "left", x, y, width }) as Parameters<typeof frameClickAt>[1];
 
 function fakeUi() {
 	const shown: string[] = [];
@@ -31,7 +32,7 @@ function fakeUi() {
 	};
 }
 
-describe("code frame copy button", () => {
+describe("code frame header", () => {
 	it("draws the button at the far right without widening the row", () => {
 		const [header] = renderCodeFences(["```ts", "const a = 1;", "```"], 40, theme);
 		const text = plain(header ?? "");
@@ -48,7 +49,7 @@ describe("code frame copy button", () => {
 	it("copies on a click inside the button and ignores the rest of the row", () => {
 		const ui = fakeUi();
 		const written: string[] = [];
-		initCodeCopy(ui, (text) => {
+		initCodeFrames(ui, (text) => {
 			written.push(text);
 			return Promise.resolve();
 		});
@@ -56,10 +57,10 @@ describe("code frame copy button", () => {
 		rememberFrames(owner, [{ row: 2, text: "a\nb" }]);
 		const width = 40;
 
-		expect(copyCodeAt(owner, click(width - COPY_BUTTON.length, 2, width))).toBe(true);
+		expect(frameClickAt(owner, click(width - COPY_BUTTON.length, 2, width))).toBe(true);
 		expect(written).toEqual(["a\nb"]);
-		expect(copyCodeAt(owner, click(width - COPY_BUTTON.length - 1, 2, width))).toBe(false);
-		expect(copyCodeAt(owner, click(width - 1, 1, width))).toBe(false);
+		expect(frameClickAt(owner, click(width - COPY_BUTTON.length - 1, 2, width))).toBe(false);
+		expect(frameClickAt(owner, click(width - 1, 1, width))).toBe(false);
 		expect(written).toEqual(["a\nb"]);
 	});
 
@@ -79,7 +80,7 @@ describe("code frame copy button", () => {
 			hooks.get("session_start")?.({}, { mode: "tui", ui: { theme: roleTheme() } });
 
 			const written: string[] = [];
-			initCodeCopy(fakeUi(), (text) => {
+			initCodeFrames(fakeUi(), (text) => {
 				written.push(text);
 				return Promise.resolve();
 			});
@@ -125,5 +126,31 @@ describe("code frame copy button", () => {
 		} finally {
 			await fixture.restore();
 		}
+	});
+
+	it("folds a block from its arrow and reopens it", () => {
+		const lines = ["```ts", "const a = 1;", "const b = 2;", "```"];
+		const width = 40;
+		const frames: CodeFrame[] = [];
+		const open = renderCodeFences(lines, width, theme, frames).map(plain);
+		expect(open[0]).toStartWith("▾ ts ");
+
+		let invalidated = 0;
+		const owner = { invalidate: () => invalidated++ };
+		rememberFrames(owner, frames);
+		expect(frameClickAt(owner, click(0, 0, width))).toBe(true);
+		expect(invalidated).toBe(1);
+
+		const closedFrames: CodeFrame[] = [];
+		const closed = renderCodeFences(lines, width, theme, closedFrames).map(plain);
+		expect(closed).toHaveLength(1);
+		expect(closed[0]).toStartWith("▸ ts · 2 lines ");
+		expect(closed[0]).toEndWith(COPY_BUTTON);
+		expect(visibleWidth(closed[0] ?? "")).toBe(width);
+		expect(closedFrames).toEqual([{ row: 0, text: "const a = 1;\nconst b = 2;" }]);
+
+		// Pi's expand key opens every block again.
+		expect(setCodeFramesExpanded(true)).toBe(true);
+		expect(renderCodeFences(lines, width, theme)).toHaveLength(open.length);
 	});
 });

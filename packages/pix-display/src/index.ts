@@ -19,7 +19,7 @@ import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { once } from "@xynogen/pix-runtime/once";
 
 import codeBlocksExtension from "./code-blocks.ts";
-import { initCodeCopy } from "./code-copy.ts";
+import { initCodeFrames } from "./code-frame.ts";
 import directivesExtension from "./directives.ts";
 import { followFoldInput, initFolds } from "./fold.ts";
 import { hasDisplayMath, offerMathInstall, startMath } from "./math.ts";
@@ -40,7 +40,7 @@ export default async function pixDisplayExtension(pi: ExtensionAPI): Promise<voi
 		pi.on("session_start", (_event, ctx) => {
 			if (ctx.mode !== "tui") return;
 			initFolds(ctx.ui);
-			initCodeCopy(ctx.ui);
+			initCodeFrames(ctx.ui);
 		});
 		pi.on("agent_end", (event, ctx) => {
 			if (ctx.mode !== "tui") return;

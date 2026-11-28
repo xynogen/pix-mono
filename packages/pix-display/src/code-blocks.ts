@@ -6,7 +6,14 @@ import {
 } from "@xynogen/pix-pretty/tui";
 import type { ExtensionAPI } from "@xynogen/pix-runtime/host";
 import { wrapMethod } from "@xynogen/pix-runtime/patch";
-import { COPY_BUTTON, type CodeFrame, forgetFrames, rememberFrames } from "./code-copy.ts";
+import {
+	COPY_BUTTON,
+	type CodeFrame,
+	FOLD_ARROW,
+	forgetFrames,
+	isFolded,
+	rememberFrames,
+} from "./code-frame.ts";
 
 const OPENING_FENCE_RE = /^```([^`]*)$/;
 const CLOSING_FENCE_RE = /^```\s*$/;
@@ -68,12 +75,23 @@ function fenceLabel(line: string): string | undefined {
 	return info.split(/\s+/, 1)[0] || DEFAULT_LABEL;
 }
 
-function topRule(width: number, language: string, theme: CodeFrameTheme): string {
-	const available = Math.max(1, width - 4 - COPY_BUTTON.length);
+function topRule(
+	width: number,
+	language: string,
+	theme: CodeFrameTheme,
+	lines: number,
+	folded: boolean,
+): string {
+	const meta = folded ? theme.fg("dim", `· ${lines} lines `) : "";
+	const available = Math.max(1, width - 4 - COPY_BUTTON.length - visibleWidth(meta));
 	const displayLanguage = truncateToWidth(language, available, "…");
 	const label = theme.bold(theme.fg("accent", ` ${displayLanguage} `));
-	const ruleWidth = Math.max(0, width - visibleWidth(label) - 2 - COPY_BUTTON.length);
-	return `${theme.fg("borderMuted", "──")}${label}${theme.fg("borderMuted", "─".repeat(ruleWidth))}${theme.fg("dim", COPY_BUTTON)}`;
+	const ruleWidth = Math.max(
+		0,
+		width - FOLD_ARROW - visibleWidth(label) - visibleWidth(meta) - COPY_BUTTON.length,
+	);
+	const arrow = theme.fg("accent", folded ? "▸" : "▾");
+	return `${arrow}${label}${meta}${theme.fg("borderMuted", "─".repeat(ruleWidth))}${theme.fg("dim", COPY_BUTTON)}`;
 }
 
 function bottomRule(width: number, theme: CodeFrameTheme): string {
@@ -117,21 +135,24 @@ export function renderCodeFences(
 			.filter((line) => line.trim().length > 0)
 			.map((line) => leadingSpaces(line));
 		const bodyIndent = bodyIndents.length > 0 ? Math.min(...bodyIndents) : 0;
-		const framed: string[] = [];
-
-		framed.push(`${oscSequences(out[start] ?? "")}${topRule(frameWidth, language, theme)}`);
-		for (let index = start + 1; index < end; index++) {
-			framed.push(
-				`${oscSequences(out[index] ?? "")}${bodyLine(out[index] ?? "", width, bodyIndent)}`,
-			);
+		const source = body
+			.map((line) => plainText(stripLayoutWhitespace(line, bodyIndent)))
+			.join("\n");
+		const isFoldedBlock = isFolded(source);
+		const framed: string[] = [
+			`${oscSequences(out[start] ?? "")}${topRule(frameWidth, language, theme, body.length, isFoldedBlock)}`,
+		];
+		if (!isFoldedBlock) {
+			for (let index = start + 1; index < end; index++) {
+				framed.push(
+					`${oscSequences(out[index] ?? "")}${bodyLine(out[index] ?? "", width, bodyIndent)}`,
+				);
+			}
+			framed.push(`${oscSequences(out[end] ?? "")}${bottomRule(frameWidth, theme)}`);
 		}
-		framed.push(`${oscSequences(out[end] ?? "")}${bottomRule(frameWidth, theme)}`);
 
 		out.splice(start, end - start + 1, ...framed);
-		frames.push({
-			row: start,
-			text: body.map((line) => plainText(stripLayoutWhitespace(line, bodyIndent))).join("\n"),
-		});
+		frames.push({ row: start, text: source });
 		start += framed.length - 1;
 	}
 	return out;
