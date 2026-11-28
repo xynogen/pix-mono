@@ -86,12 +86,18 @@ export function columnAt(plain: string, x: number): number | undefined {
 	return col < 0 ? last - 1 : col;
 }
 
-/** A copy of the table token with rows sorted and an arrow on the sorted header. */
-function sortedToken(token: TableToken, sort: Sort): TableToken {
-	const arrow = { type: "text", raw: "", text: sort.desc ? " ▼" : " ▲" };
-	const header = token.header.map((cell, i) =>
-		i === sort.col ? { ...cell, tokens: [...(cell.tokens ?? []), arrow] } : cell,
-	);
+/** A copy of the table token with sort hints in every header and optional sorted rows. */
+function sortableToken(token: TableToken, sort?: Sort): TableToken {
+	const arrow = (i: number) => ({
+		type: "text",
+		raw: "",
+		text: i === sort?.col ? (sort.desc ? "▼ " : "▲ ") : "▾ ",
+	});
+	const header = token.header.map((cell, i) => ({
+		...cell,
+		tokens: [arrow(i), ...(cell.tokens ?? [])],
+	}));
+	if (!sort) return { ...token, header };
 	const numeric = isNumericColumn(token.rows, sort.col);
 	return { ...token, header, rows: sortRows(token.rows, sort.col, sort.desc, numeric) };
 }
@@ -204,7 +210,7 @@ function patchTableRenderer(): void {
 		(native) =>
 			function renderStyledTable(this: object, token: TableToken, ...rest: unknown[]) {
 				const sort = token.raw ? sorts.get(token.raw) : undefined;
-				const lines: string[] = native.call(this, sort ? sortedToken(token, sort) : token, ...rest);
+				const lines: string[] = native.call(this, sortableToken(token, sort), ...rest);
 				const styled = activeTheme ? styleTable(lines, token.align ?? [], activeTheme) : lines;
 				rememberHeader(this, token, styled);
 				return styled;

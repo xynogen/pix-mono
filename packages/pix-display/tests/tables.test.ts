@@ -192,15 +192,19 @@ describe("table sort", () => {
 			mdTheme,
 		);
 		const header = rowOf(md, "Pkg");
+		expect(linesOf(md)[header]).toContain("▾ Pkg");
+		expect(linesOf(md)[header]).toContain("▾ Tests");
 		expect(body(md)).toEqual(["b", "a", "c"]);
 		expect(click(md, 8, header)).toEqual({ handled: true });
 		expect(body(md)).toEqual(["a", "b", "c"]);
-		expect(linesOf(md)[header]).toContain("Tests ▼");
+		expect(linesOf(md)[header]).toContain("▼ Tests");
+		expect(linesOf(md)[header]).toContain("▾ Pkg");
 		click(md, 8, header);
 		expect(body(md)).toEqual(["c", "b", "a"]);
 		click(md, 2, header);
 		expect(body(md)).toEqual(["a", "b", "c"]);
-		expect(linesOf(md)[header]).toContain("Pkg ▲");
+		expect(linesOf(md)[header]).toContain("▲ Pkg");
+		expect(linesOf(md)[header]).toContain("▾ Tests");
 	});
 
 	it("hits the whole header block with padding, and only the clicked table", () => {
@@ -218,7 +222,7 @@ describe("table sort", () => {
 		// Top border of the second table, on "┬": the left border of column 1 (Tests, large first).
 		const x = linesOf(md)[second]?.indexOf("┬") ?? -1;
 		expect(click(md, x, second)).toEqual({ handled: true });
-		expect(linesOf(md).find((l) => l.includes("Two"))).toContain("Tests ▼");
+		expect(linesOf(md).find((l) => l.includes("Two"))).toContain("▼ Tests");
 		// Only the second table: a 3,781 · b 22 · c 5.
 		expect(body(md)).toEqual(["b", "a", "c", "a", "b", "c"]);
 		// The rule under the header also counts; a body row does not.
